@@ -1,29 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPhases, createPhase, PhaseFilters } from '@/actions/phases';
+import { getPhases, createPhase } from '@/actions/phases';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    
-    const filters: PhaseFilters = {};
-    const competition_id = searchParams.get('competition_id');
-    
-    if (competition_id) filters.competition_id = Number(competition_id);
-    
-    const phases = await getPhases(filters);
-    
-    return NextResponse.json({
-      success: true,
-      data: phases
-    });
-    
+    const searchParams = request.nextUrl.searchParams;
+
+    const filters = {
+      edition_id: searchParams.has('edition_id') ? Number(searchParams.get('edition_id')) : undefined,
+      search: searchParams.get('search') || undefined,
+      page: searchParams.has('page') ? Number(searchParams.get('page')) : 1,
+      limit: searchParams.has('limit') ? Number(searchParams.get('limit')) : 20,
+      with_edition: searchParams.get('with_edition') !== 'false',
+      with_groups: searchParams.get('with_groups') === 'true',
+    };
+
+    const result = await getPhases(filters);
+    return NextResponse.json(result);
   } catch (error: any) {
-    console.error('API GET /phases error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Erreur lors de la récupération des phases' 
-      },
+      { error: error.message || 'Erreur serveur' },
       { status: 500 }
     );
   }
@@ -33,16 +28,10 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const result = await createPhase(formData);
-    
     return NextResponse.json(result, { status: 201 });
-    
   } catch (error: any) {
-    console.error('API POST /phases error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Erreur lors de la création de la phase' 
-      },
+      { error: error.message || 'Erreur serveur' },
       { status: 500 }
     );
   }

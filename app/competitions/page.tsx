@@ -12,21 +12,24 @@ export default function CompetitionsPage() {
               <a href="/" className="text-gray-700 hover:text-orange-600 font-medium">
                 Accueil
               </a>
-              <a href="/lutteurs" className="text-orange-600 font-medium border-b-2 border-orange-600">
+              <a href="/fighters" className="text-gray-700 hover:text-orange-600 font-medium">
                 Lutteurs
               </a>
-              <a href="/competitions" className="text-gray-700 hover:text-orange-600 font-medium">
+              <a href="/competitions" className="text-orange-600 font-medium border-b-2 border-orange-600">
                 Compétitions
+              </a>
+              <a href="/matches" className="text-gray-700 hover:text-orange-600 font-medium">
+                Matchs
               </a>
             </nav>
           </div>
         </div>
       </header>
 
-      {/* Liste des lutteurs */}
-      <div className="container mx-auto px-4 py-8">
+      {/* Contenu principal */}
+      <main className="container mx-auto px-4 py-8">
         <CompetitionsList />
-      </div>
+      </main>
     </div>
   );
 }

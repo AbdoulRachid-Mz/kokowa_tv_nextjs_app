@@ -1,41 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCompetitions, createCompetition, CompetitionFilters } from '@/actions/competitions';
+import { getCompetitions, createCompetition } from '@/actions/competitions';
+import { competitionSchema } from '@/validation/schemas';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     
-    // Filtres
-    const filters: CompetitionFilters = {};
-    const pagination = {};
+    const filters = {
+      search: searchParams.get('search') || undefined,
+      page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
+      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20,
+      type: searchParams.get('type') || undefined,
+      status: searchParams.get('status') || undefined,
+      region_id: searchParams.get('region_id') ? parseInt(searchParams.get('region_id')!) : undefined,
+      date_from: searchParams.get('date_from') || undefined,
+      date_to: searchParams.get('date_to') || undefined,
+      with_region: searchParams.get('with_region') !== 'false',
+      with_editions: searchParams.get('with_editions') === 'true',
+      with_phases: searchParams.get('with_phases') === 'true',
+      with_matches: searchParams.get('with_matches') === 'true',
+    };
+
+    const result = await getCompetitions(filters);
     
-    const search = searchParams.get('search');
-    const date_from = searchParams.get('date_from');
-    const date_to = searchParams.get('date_to');
-    const page = searchParams.get('page');
-    const limit = searchParams.get('limit');
-    
-    if (search) filters.search = search;
-    if (date_from) filters.date_from = date_from;
-    if (date_to) filters.date_to = date_to;
-    if (page) pagination.page = Number(page);
-    if (limit) pagination.limit = Number(limit);
-    
-    const result = await getCompetitions(filters, pagination);
-    
-    return NextResponse.json({
-      success: true,
-      data: result.data,
-      pagination: result.pagination
-    });
-    
-  } catch (error: any) {
-    console.error('API GET /competitions error:', error);
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('API Error GET /api/competitions:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Erreur lors de la récupération des compétitions' 
-      },
+      { error: 'Erreur lors de la récupération des compétitions' },
       { status: 500 }
     );
   }
@@ -43,18 +35,33 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
+    const body = await request.json();
+    
+    const validatedData = competitionSchema.parse(body);
+    
+    // Simuler FormData pour l'action serveur
+    const formData = new FormData();
+    Object.entries(validatedData).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        formData.append(key, value.toString());
+      }
+    });
+
     const result = await createCompetition(formData);
     
-    return NextResponse.json(result, { status: 201 });
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('API Error POST /api/competitions:', error);
     
-  } catch (error: any) {
-    console.error('API POST /competitions error:', error);
+    if (error instanceof Error && error.name === 'ZodError') {
+      return NextResponse.json(
+        { error: 'Données invalides', details: error.message },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Erreur lors de la création de la compétition' 
-      },
+      { error: 'Erreur lors de la création de la compétition' },
       { status: 500 }
     );
   }

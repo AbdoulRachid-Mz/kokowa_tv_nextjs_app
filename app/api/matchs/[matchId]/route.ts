@@ -1,33 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLutteurById, updateLutteur, deleteLutteur } from '@/actions/lutteurs';
+import { getMatchById, updateMatch, deleteMatch } from '@/actions/matchs';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ matchId: string }> }
 ) {
   try {
-    const id = Number(params.id);
+    const {matchId} = await params
+    const id = Number(matchId);
     
     if (isNaN(id)) {
       return NextResponse.json(
-        { success: false, error: 'ID de lutteur invalide' },
+        { success: false, error: 'ID de match invalide' },
         { status: 400 }
       );
     }
 
-    const lutteur = await getLutteurById(id);
+    const match = await getMatchById(id);
     
     return NextResponse.json({
       success: true,
-      data: lutteur
+      data: match
     });
     
   } catch (error: any) {
-    console.error(`API GET /lutteurs/${params.id} error:`, error);
+    console.error(`API GET /matchs/${"matchId"} error:`, error);
     
-    if (error.message === 'Lutteur non trouvé') {
+    if (error.message === 'Match non trouvé') {
       return NextResponse.json(
-        { success: false, error: 'Lutteur non trouvé' },
+        { success: false, error: 'Match non trouvé' },
         { status: 404 }
       );
     }
@@ -41,29 +42,30 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ matchId: string }> }
 ) {
   try {
-    const id = Number(params.id);
+       const {matchId} = await params
+    const id = Number(matchId);
     
     if (isNaN(id)) {
       return NextResponse.json(
-        { success: false, error: 'ID de lutteur invalide' },
+        { success: false, error: 'ID de match invalide' },
         { status: 400 }
       );
     }
 
     const formData = await request.formData();
-    const result = await updateLutteur(id, formData);
+    const result = await updateMatch(id, formData);
     
     return NextResponse.json(result);
     
   } catch (error: any) {
-    console.error(`API PUT /lutteurs/${params.id} error:`, error);
+    console.error(`API PUT /matchs/${"matchId"} error:`, error);
     
-    if (error.message === 'Lutteur non trouvé') {
+    if (error.message === 'Match non trouvé') {
       return NextResponse.json(
-        { success: false, error: 'Lutteur non trouvé' },
+        { success: false, error: 'Match non trouvé' },
         { status: 404 }
       );
     }
@@ -77,28 +79,29 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ matchId: string }> }
 ) {
   try {
-    const id = Number(params.id);
+    const {matchId} = await params
+    const id = Number(matchId);
     
     if (isNaN(id)) {
       return NextResponse.json(
-        { success: false, error: 'ID de lutteur invalide' },
+        { success: false, error: 'ID de match invalide' },
         { status: 400 }
       );
     }
 
-    const result = await deleteLutteur(id);
+    const result = await deleteMatch(id);
     
     return NextResponse.json(result);
     
   } catch (error: any) {
-    console.error(`API DELETE /lutteurs/${params.id} error:`, error);
+    console.error(`API DELETE /matchs/${"params.id"} error:`, error);
     
-    if (error.message === 'Lutteur non trouvé') {
+    if (error.message === 'Match non trouvé') {
       return NextResponse.json(
-        { success: false, error: 'Lutteur non trouvé' },
+        { success: false, error: 'Match non trouvé' },
         { status: 404 }
       );
     }

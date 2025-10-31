@@ -5,12 +5,19 @@ import Link from "next/link";
 
 interface Lutteur {
   id: number;
-  nom: string;
-  surnom?: string;
-  region_name?: string;
-  poids?: number;
-  photo_url?: string;
-  actif: boolean;
+  first_name: string;
+  last_name: string;
+  nickname?: string;
+  region?: {
+    id: number;
+    name: string;
+    code: string;
+  };
+  weight?: number;
+  profile_image?: string;
+  is_active: boolean;
+  is_champion: boolean;
+  ranking: number;
 }
 
 interface ApiResponse {
@@ -32,7 +39,7 @@ export default function LutteursList() {
   useEffect(() => {
     async function loadLutteurs() {
       try {
-        const response = await fetch("/api/lutteurs");
+        const response = await fetch("/api/fighters");
         
         if (!response.ok) {
           throw new Error(`Erreur HTTP: ${response.status}`);
@@ -41,6 +48,8 @@ export default function LutteursList() {
         const result: ApiResponse = await response.json();
         
         if (result.success && Array.isArray(result.data)) {
+          setLutteurs(result.data);
+        } else if (Array.isArray(result.data)) {
           setLutteurs(result.data);
         } else {
           console.error("Format de réponse inattendu:", result);
@@ -61,7 +70,7 @@ export default function LutteursList() {
     if (!confirm("Êtes-vous sûr de vouloir supprimer ce lutteur ?")) return;
     
     try {
-      const res = await fetch(`/api/lutteurs/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/fighters/${id}`, { method: "DELETE" });
       
       if (res.ok) {
         setLutteurs((prev) => prev.filter((l) => l.id !== id));
@@ -74,6 +83,10 @@ export default function LutteursList() {
       alert("Erreur lors de la suppression !");
     }
   }
+
+  const getFullName = (lutteur: Lutteur) => {
+    return `${lutteur.first_name} ${lutteur.last_name}`;
+  };
 
   if (loading) {
     return (
@@ -131,76 +144,104 @@ export default function LutteursList() {
       </div>
 
       {/* Lutteurs Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {lutteurs.map((lutteur) => (
           <div
             key={lutteur.id}
-            className="bg-white rounded-lg shadow-md overflow-hidden border hover:shadow-lg transition-shadow"
+            className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow"
           >
             {/* Photo */}
-            <div className="h-48 bg-gray-200 flex items-center justify-center">
-              {lutteur.photo_url ? (
+            <div className="h-48 bg-gray-200 flex items-center justify-center relative">
+              {lutteur.profile_image ? (
                 <img
-                  src={lutteur.photo_url}
-                  alt={lutteur.nom}
+                  src={lutteur.profile_image}
+                  alt={getFullName(lutteur)}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    // Si l'image ne charge pas, afficher un placeholder
                     (e.target as HTMLImageElement).style.display = 'none';
-                    (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
                   }}
                 />
               ) : null}
-              <div className={`text-gray-400 ${lutteur.photo_url ? 'hidden' : ''}`}>
-                <svg className="w-16 h-16" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                </svg>
-              </div>
+              {(!lutteur.profile_image || lutteur.profile_image === '') && (
+                <div className="text-gray-400">
+                  <svg className="w-16 h-16" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              )}
+              
+              {/* Badge Champion */}
+              {lutteur.is_champion && (
+                <div className="absolute top-2 right-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                  🏆 Champion
+                </div>
+              )}
+              
+              {/* Badge Classement */}
+              {lutteur.ranking > 0 && lutteur.ranking <= 10 && (
+                <div className="absolute top-2 left-2 bg-orange-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                  #{lutteur.ranking}
+                </div>
+              )}
             </div>
 
             {/* Info */}
-            <div className="p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {lutteur.nom}
+            <div className="p-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                {getFullName(lutteur)}
               </h3>
 
-              {lutteur.surnom && (
-                <p className="text-orange-600 font-medium mb-2">
-                  "{lutteur.surnom}"
+              {lutteur.nickname && (
+                <p className="text-orange-600 font-medium text-sm mb-2">
+                  "{lutteur.nickname}"
                 </p>
               )}
 
-              <div className="space-y-2 text-sm text-gray-600">
-                {lutteur.region_name && (
+              <div className="space-y-1 text-sm text-gray-600">
+                {lutteur.region && (
                   <p className="flex items-center">
                     <span className="mr-2">📍</span>
-                    {lutteur.region_name}
+                    {lutteur.region.name}
                   </p>
                 )}
-                {lutteur.poids && (
+                {lutteur.weight && (
                   <p className="flex items-center">
                     <span className="mr-2">⚖️</span>
-                    {lutteur.poids} kg
+                    {lutteur.weight} kg
                   </p>
                 )}
-                <p className={lutteur.actif ? "text-green-600 flex items-center" : "text-red-600 flex items-center"}>
-                  <span className="mr-2">{lutteur.actif ? "✅" : "❌"}</span>
-                  {lutteur.actif ? "Actif" : "Inactif"}
-                </p>
+                <div className="flex justify-between items-center">
+                  <p className={lutteur.is_active ? "text-green-600 flex items-center" : "text-red-600 flex items-center"}>
+                    <span className="mr-1">{lutteur.is_active ? "✅" : "❌"}</span>
+                    {lutteur.is_active ? "Actif" : "Inactif"}
+                  </p>
+                  {lutteur.ranking > 0 && (
+                    <p className="text-blue-600 text-xs font-medium">
+                      Classement: {lutteur.ranking}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 mt-4 pt-4 border-t">
+              <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
+                <Link
+                  href={`/lutteurs/${lutteur.id}`}
+                  className="flex-1 bg-blue-600 text-white text-center py-2 px-3 rounded hover:bg-blue-700 transition-colors text-xs font-medium"
+                >
+                  Voir
+                </Link>
+                
                 <Link
                   href={`/lutteurs/${lutteur.id}/edit`}
-                  className="flex-1 bg-blue-600 text-white text-center py-2 px-4 rounded hover:bg-blue-700 transition-colors text-sm font-medium"
+                  className="flex-1 bg-gray-600 text-white text-center py-2 px-3 rounded hover:bg-gray-700 transition-colors text-xs font-medium"
                 >
                   Modifier
                 </Link>
 
                 <button
                   onClick={() => handleDelete(lutteur.id)}
-                  className="flex-1 bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 transition-colors text-sm font-medium"
+                  className="flex-1 bg-red-600 text-white py-2 px-3 rounded hover:bg-red-700 transition-colors text-xs font-medium"
                 >
                   Supprimer
                 </button>
