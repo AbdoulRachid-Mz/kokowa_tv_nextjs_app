@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/server/auth-middleware';
 import { query } from '@/lib/db/neon-client';
 
-// API admin seulement - nécessite la permission 'manage_users'
-const adminHandler = async (request: NextRequest, context: { params: Promise<{}> }, user: any) => {
+// Handler principal
+async function adminHandler(request: NextRequest, user: any) {
   try {
     const users = await query(`
       SELECT 
@@ -23,6 +23,15 @@ const adminHandler = async (request: NextRequest, context: { params: Promise<{}>
       { status: 500 }
     );
   }
-};
+}
 
-export const GET = withAuth((request: NextRequest, user: any) => adminHandler(request, { params: Promise.resolve({}) }, user), ['manage_users']);
+// Export avec auth - version corrigée
+export const GET = withAuth(adminHandler, ['manage_users']);
+
+// Si vous avez besoin d'autres méthodes
+export async function POST(request: NextRequest) {
+  return NextResponse.json(
+    { error: 'Méthode non autorisée' },
+    { status: 405 }
+  );
+}
