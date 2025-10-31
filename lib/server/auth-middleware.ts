@@ -1,11 +1,116 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/server/auth-middleware';
-import { query } from '@/lib/db/neon-client';
+import { adminAuth } from '../firebase-admin';
 
-export async function GET(request: NextRequest) {
+export interface AuthUser {
+  uid: string;
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
+  picture?: string;
+}
+
+export async function verifyFirebaseToken(request: NextRequest): Promise<{
+  user: AuthUser | null;
+  error?: string;
+}> {
   try {
-    // Vérifier l'authentification
-    const authResult = await requireAuth(request, ['manage_users']);
+    const authHeader = request.headers.get('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return { user: null, error: 'Token manquant' };
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    
+    if (!token) {
+      return { user: null, error: 'Token invalide' };
+    }
+
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    
+    const user: AuthUser = {
+      uid: decodedToken.uid,
+      email: decodedToken.email,
+      email_verified: decodedToken.email_verified,
+      name: decodedToken.name,
+      picture: decodedToken.picture,
+    };
+
+    return { user };
+
+  } catch (error: any) {
+    console.error('Error verifying Firebase token:', error);
+    
+    if (error.code === 'auth/id-token-expired') {
+      return { user: null, error: 'Token expiré' };
+    }
+    if (error.code === 'auth/id-token-revoked') {
+      return { user: null, error: 'Token révoqué' };
+    }
+    if (error.code === 'auth/invalid-id-token') {
+      return { user: null, error: 'Token invalide' };
+    }
+    
+    return { user: null, error: 'Erreur de vérification du token' };
+  }
+}
+
+export async function requireAuth(
+  request: NextRequest, 
+  requiredPermissions: string[] = []
+): Promise<{
+  authorized: boolean;
+  user?: any;
+  firebaseUser?: AuthUser;
+  error?: string;
+  status?: number;
+}> {
+  const authResult = await verifyFirebaseToken(request);
+  
+  if (!authResult.user) {
+    return { 
+      authorized: false, 
+      error: authResult.error || 'Non autorisé',
+      status: 401 
+    };
+  }
+
+  // Vérifier les permissions si demandé
+  if (requiredPermissions.length > 0) {
+    const { checkUserPermissions } = await import('./auth-utils');
+    const permissionResult = await checkUserPermissions(
+      authResult.user.uid, 
+      requiredPermissions
+    );
+
+    if (!permissionResult.hasPermission) {
+      return { 
+        authorized: false, 
+        error: 'Permissions insuffisantes',
+        status: 403 
+      };
+    }
+
+    return { 
+      authorized: true, 
+      user: permissionResult.user,
+      firebaseUser: authResult.user 
+    };
+  }
+
+  return { 
+    authorized: true, 
+    user: authResult.user 
+  };
+}
+
+// Nouvelle version corrigée pour Next.js 14+
+export function withAuth(
+  handler: (request: NextRequest, user: any) => Promise<Response>,
+  requiredPermissions: string[] = []
+) {
+  return async (request: NextRequest, context: { params: Promise<{ [key: string]: string }> }): Promise<Response> => {
+    const authResult = await requireAuth(request, requiredPermissions);
     
     if (!authResult.authorized) {
       return NextResponse.json(
@@ -14,23 +119,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Récupérer les utilisateurs
-    const users = await query(`
-      SELECT 
-        u.*,
-        r.name as region_name
-      FROM users u
-      LEFT JOIN regions r ON u.region_id = r.id
-      ORDER BY u.created_at DESC
-      LIMIT 50
-    `);
+    return handler(request, authResult.user);
+  };
+}
 
-    return NextResponse.json({ users });
-  } catch (error) {
-    console.error('API Error GET /api/admin/users:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la récupération des utilisateurs' },
-      { status: 500 }
-    );
-  }
+// Version alternative plus simple si vous n'utilisez pas les params
+export function withAuthSimple(
+  handler: (request: NextRequest, user: any) => Promise<Response>,
+  requiredPermissions: string[] = []
+) {
+  return async (request: NextRequest): Promise<Response> => {
+    const authResult = await requireAuth(request, requiredPermissions);
+    
+    if (!authResult.authorized) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status || 401 }
+      );
+    }
+
+    return handler(request, authResult.user);
+  };
 }
