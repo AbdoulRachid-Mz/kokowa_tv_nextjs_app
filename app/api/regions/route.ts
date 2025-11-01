@@ -4,31 +4,54 @@ import { getRegions, createRegion } from '@/actions/regions';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limitParam = searchParams.get('limit');
-    const offsetParam = searchParams.get('offset');
-    const orderByParam = searchParams.get('orderBy');
-    const orderParam = searchParams.get('order');
-    const searchParam = searchParams.get('search');
 
-    const limit = limitParam ? Number(limitParam) : 50;
-    const offset = offsetParam ? Number(offsetParam) : 0;
-    const orderBy = orderByParam === 'code' || orderByParam === 'id' ? orderByParam : 'name';
-    const order = orderParam === 'DESC' ? 'DESC' : 'ASC';
-    const search = searchParam ?? '';
+    // Lecture et validation des paramètres
+    const limitParam = searchParams.get("limit");
+    const offsetParam = searchParams.get("offset");
+    const orderByParam = searchParams.get("orderBy");
+    const orderParam = searchParams.get("order");
+    const searchParam = searchParams.get("search");
 
-    const regions = await getRegions({ limit, offset, orderBy, order, search });
+    // Conversion et valeurs par défaut
+    const limit = limitParam ? Math.max(1, Number(limitParam)) : 20;
+    const offset = offsetParam ? Math.max(0, Number(offsetParam)) : 0;
+    const page = Math.floor(offset / limit) + 1;
+    const orderBy =
+      orderByParam === "code" || orderByParam === "id" || orderByParam === "name"
+        ? orderByParam
+        : "name";
+    const order = orderParam === "DESC" ? "DESC" : "ASC";
+    const search = searchParam ?? "";
+
+    // Appel à la méthode de récupération
+    const regions = await getRegions({
+      limit,
+      page,
+      search,
+      // Les filtres de jointure peuvent être personnalisés selon besoin
+      with_fighters: true,
+      with_cities: true,
+      with_competitions: false,
+    });
 
     return NextResponse.json({
-      data: regions,
+      data: regions.data,
       pagination: {
-        limit,
-        offset,
-        count: regions.length,
+        page: regions.pagination.page,
+        limit: regions.pagination.limit,
+        total: regions.pagination.total,
+        totalPages: regions.pagination.totalPages,
       },
+      orderBy,
+      order,
+      search,
     });
   } catch (error) {
-    console.error('Error fetching regions:', error);
-    return NextResponse.json({ error: 'Failed to fetch regions' }, { status: 500 });
+    console.error("Error fetching regions:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch regions" },
+      { status: 500 }
+    );
   }
 }
 

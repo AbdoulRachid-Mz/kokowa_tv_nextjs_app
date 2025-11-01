@@ -1,12 +1,13 @@
 import RegionDetail from '@/components/regions/region-detail';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     regionId: string;
-  };
+  }>;
 }
 
-export default function RegionPage({ params }: PageProps) {
+export default async function RegionPage({ params }: PageProps) {
+  const { regionId } = await params;
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -34,7 +35,7 @@ export default function RegionPage({ params }: PageProps) {
 
       {/* Détail de la région */}
       <div className="container mx-auto px-4 py-8">
-        <RegionDetail regionId={parseInt(params.regionId)} />
+        <RegionDetail regionId={parseInt(regionId)} />
       </div>
     </div>
   );

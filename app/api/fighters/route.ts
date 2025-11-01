@@ -5,25 +5,22 @@ import { fighterSchema } from '@/validation/schemas';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    
-    const filters = {
+
+    // Construire l'objet d'options attendu par getFighters
+    const options = {
       search: searchParams.get('search') || undefined,
-      page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
+      category_id: searchParams.get('category_id') || undefined,
+      region_id: searchParams.get('region_id') || undefined,
+      with_category: searchParams.get('with_category') === 'true',
+      with_region: searchParams.get('with_region') === 'true',
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20,
-      region_id: searchParams.get('region_id') ? parseInt(searchParams.get('region_id')!) : undefined,
-      city_id: searchParams.get('city_id') ? parseInt(searchParams.get('city_id')!) : undefined,
-      is_active: searchParams.get('is_active') !== 'false',
-      is_champion: searchParams.get('is_champion') ? searchParams.get('is_champion') === 'true' : undefined,
-      min_ranking: searchParams.get('min_ranking') ? parseInt(searchParams.get('min_ranking')!) : undefined,
-      max_ranking: searchParams.get('max_ranking') ? parseInt(searchParams.get('max_ranking')!) : undefined,
-      with_region: searchParams.get('with_region') !== 'false',
-      with_city: searchParams.get('with_city') === 'true',
-      with_achievements: searchParams.get('with_achievements') === 'true',
-      with_transfers: searchParams.get('with_transfers') === 'true',
+      offset: searchParams.get('page')
+        ? (parseInt(searchParams.get('page')!) - 1) * (parseInt(searchParams.get('limit')!) || 20)
+        : 0,
     };
 
-    const result = await getFighters(filters);
-    
+    const result = await getFighters(options);
+
     return NextResponse.json(result);
   } catch (error) {
     console.error('API Error GET /api/fighters:', error);

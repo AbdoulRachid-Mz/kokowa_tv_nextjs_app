@@ -12,7 +12,7 @@ interface Region {
 export default function EditRegionPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params.id as string;
+  const id = params.regionId as string;
 
   const [formData, setFormData] = useState({
     name: "",

@@ -25,10 +25,10 @@ async function getStats() {
     }).slice(0, 2);
 
     return {
-      fightersCount: fightersResult.pagination.total,
-      competitionsCount: competitionsResult.pagination.total,
-      regionsCount: regionsResult.pagination.total,
-      editionsCount: editionsResult.pagination.total,
+      fightersCount: fightersResult.data.length,
+      competitionsCount: competitionsResult.data.length,
+      regionsCount: regionsResult.data.length,
+      editionsCount: editionsResult.data.length,
       latestFighters: fightersResult.data.slice(0, 3),
       upcomingEditions: upcomingEditions
     };
@@ -59,7 +59,7 @@ export default async function HomePage() {
               <Link href="/" className="text-gray-700 hover:text-orange-600 font-medium">
                 Accueil
               </Link>
-              <Link href="/fighters" className="text-gray-700 hover:text-orange-600 font-medium">
+              <Link href="/lutteurs" className="text-gray-700 hover:text-orange-600 font-medium">
                 Lutteurs
               </Link>
               <Link href="/competitions" className="text-gray-700 hover:text-orange-600 font-medium">
@@ -85,7 +85,7 @@ export default async function HomePage() {
         
         <div className="flex gap-4 justify-center flex-wrap">
           <Link 
-            href="/fighters" 
+            href="/lutteurs" 
             className="bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors"
           >
             Voir les Lutteurs ({stats.fightersCount})

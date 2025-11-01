@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth } from '../firebase-admin';
 
 export interface AuthUser {
@@ -26,10 +26,8 @@ export async function verifyFirebaseToken(request: NextRequest): Promise<{
       return { user: null, error: 'Token invalide' };
     }
 
-    // Utiliser Firebase Admin pour vérifier le token
     const decodedToken = await adminAuth.verifyIdToken(token);
     
-    // Formater l'utilisateur avec les champs dont on a besoin
     const user: AuthUser = {
       uid: decodedToken.uid,
       email: decodedToken.email,
@@ -43,7 +41,6 @@ export async function verifyFirebaseToken(request: NextRequest): Promise<{
   } catch (error: any) {
     console.error('Error verifying Firebase token:', error);
     
-    // Gérer les erreurs spécifiques
     if (error.code === 'auth/id-token-expired') {
       return { user: null, error: 'Token expiré' };
     }
@@ -107,8 +104,27 @@ export async function requireAuth(
   };
 }
 
-// Helper pour protéger les APIs
-export async function withAuth(
+// Nouvelle version corrigée pour Next.js 14+
+export function withAuth(
+  handler: (request: NextRequest, user: any) => Promise<Response>,
+  requiredPermissions: string[] = []
+) {
+  return async (request: NextRequest, context: { params: Promise<{ [key: string]: string }> }): Promise<Response> => {
+    const authResult = await requireAuth(request, requiredPermissions);
+    
+    if (!authResult.authorized) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status || 401 }
+      );
+    }
+
+    return handler(request, authResult.user);
+  };
+}
+
+// Version alternative plus simple si vous n'utilisez pas les params
+export function withAuthSimple(
   handler: (request: NextRequest, user: any) => Promise<Response>,
   requiredPermissions: string[] = []
 ) {
@@ -116,12 +132,9 @@ export async function withAuth(
     const authResult = await requireAuth(request, requiredPermissions);
     
     if (!authResult.authorized) {
-      return new Response(
-        JSON.stringify({ error: authResult.error }),
-        { 
-          status: authResult.status || 401,
-          headers: { 'Content-Type': 'application/json' }
-        }
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status || 401 }
       );
     }
 

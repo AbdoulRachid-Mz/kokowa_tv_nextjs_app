@@ -12,11 +12,11 @@ export async function GET(
   }
 
   const region = await getRegionById(regionIdNumber);
-  if (!region || region.length === 0) {
-    return NextResponse.json({ error: 'Region not found' }, { status: 404 });
+  if (!region) {
+    return NextResponse.json({ error: 'Region non trouvee' }, { status: 404 });
   }
 
-  return NextResponse.json(region[0]);
+  return NextResponse.json(region);
 }
 
 export async function PUT(
@@ -35,11 +35,11 @@ export async function PUT(
   }
 
   const updated = await updateRegion(regionIdNumber, body.name);
-  if (!updated || updated.length === 0) {
+  if (!updated || updated.success === false) {
     return NextResponse.json({ error: 'Region not found' }, { status: 404 });
   }
 
-  return NextResponse.json(updated[0]);
+  return NextResponse.json(updated);
 }
 
 export async function DELETE(
@@ -53,7 +53,7 @@ export async function DELETE(
   }
 
   const deleted = await deleteRegion(regionIdNumber);
-  if (!deleted || deleted.length === 0) {
+  if (!deleted || deleted.success === false) {
     return NextResponse.json({ error: 'Region not found' }, { status: 404 });
   }
 
