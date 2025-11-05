@@ -27,6 +27,7 @@ export async function getPhaseGroups(
       with_sub_groups = false,
     } = filters;
 
+    let joinClause = '';
     let whereClause = 'WHERE 1=1';
     const params: any[] = [];
     const selectFields: string[] = ['pg.*'];
@@ -53,7 +54,7 @@ export async function getPhaseGroups(
           'phase_order', p.phase_order
         ) as phase
       `);
-      whereClause += ` LEFT JOIN phases p ON pg.phase_id = p.id`;
+      joinClause += ` LEFT JOIN phases p ON pg.phase_id = p.id`;
     }
 
     if (with_sub_groups) {
@@ -104,6 +105,7 @@ export async function getPhaseGroups(
     const countSql = `
       SELECT COUNT(*) as total
       FROM phase_groups pg
+      ${joinClause}
       ${whereClause}
     `;
 
@@ -120,6 +122,7 @@ export async function getPhaseGroups(
     const dataSql = `
       SELECT ${selectFields.join(', ')}
       FROM phase_groups pg
+      ${joinClause}
       ${whereClause}
       ORDER BY pg.group_order ASC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}

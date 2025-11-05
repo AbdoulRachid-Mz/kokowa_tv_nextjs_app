@@ -79,6 +79,8 @@ export interface Referee extends BaseEntity {
   
   // Relations
   region?: Region;
+  refereeAssignments?: RefereeAssignment[];
+// Assignation d'arbitre
 }
 
 // Compétition
@@ -105,6 +107,7 @@ export interface CompetitionEdition extends BaseEntity {
   competition_id: number;
   edition_number: number;
   year: number;
+  // status?: string;
   theme?: string;
   start_date?: string;
   end_date?: string;
@@ -258,6 +261,15 @@ export interface RefereeAssignment extends BaseEntity {
   match?: Match;
 }
 
+export interface RefereeFilters extends BaseFilters {
+  region_id?: number;
+  is_active?: boolean;
+  certification_level?: string;
+  experience_min?: number;
+  with_region?: boolean;
+  with_assignments?: boolean;
+}
+
 // Carton de match
 export interface FighterCard extends BaseEntity {
   fighter_id: number;
@@ -360,20 +372,118 @@ export interface CompetitionFilters extends BaseFilters {
   type?: string;
   status?: string;
   region_id?: number;
+  with_region?: boolean;
+  with_editions?: boolean;
+  with_phases?: boolean;
+  with_matches?: boolean;
 }
 
 export interface EditionFilters extends BaseFilters {
-  competition_id?: number;
+  competition_id?: string;
   year?: number;
-  status?: string;
+  offset?: number;
+  with_competition?: boolean;
+  with_fighters?: boolean;
+  with_regions?: boolean;
+  with_phases?: boolean;
+}
+
+export interface PhaseFilters extends BaseFilters {
+  edition_id?: number;
+  phase_type?: 'qualification' | 'group' | 'knockout' | 'quarterfinal' | 'semifinal' | 'final';
+  is_completed?: boolean;
+  with_edition?: boolean;
+  with_groups?: boolean;
 }
 
 export interface MatchFilters extends BaseFilters {
+  sub_group_id?: number;
   edition_id?: number;
   phase_id?: number;
   group_id?: number;
-  sub_group_id?: number;
   status?: string;
   date_from?: string;
   date_to?: string;
+  with_sub_group?: boolean;
+  with_fighters?: boolean;
+  with_regions?: boolean;
+  with_referees?: boolean;
+}
+
+// Notification
+export interface Notification extends BaseEntity {
+  user_id: number;
+  title: string;
+  message: string;
+  type: 'system' | 'match' | 'competition' | 'fighter' | 'transfer' | 'message';
+  entity_type?: string;
+  entity_id?: number;
+  is_read: boolean;
+  read_at?: string;
+  action_url?: string;
+  priority: 'low' | 'medium' | 'high';
+  
+  // Relations
+  user?: User;
+}
+
+// Types pour les filtres de notifications
+export interface NotificationFilters extends BaseFilters {
+  user_id?: number;
+  type?: string;
+  is_read?: boolean;
+  priority?: string;
+  with_user?: boolean;
+}
+
+
+// Types pour les filtres supplémentaires
+export interface CityFilters extends BaseFilters {
+  region_id?: number;
+  with_region?: boolean;
+}
+
+export interface ArticleFilters extends BaseFilters {
+  status?: string;
+  language?: string;
+  author_id?: number;
+  with_author?: boolean;
+}
+
+export interface MediaFilters extends BaseFilters {
+  file_type?: string;
+  entity_type?: string;
+  entity_id?: number;
+  with_uploader?: boolean;
+}
+
+export interface VideoFilters extends BaseFilters {
+  type?: string;
+  category?: string;
+  is_live?: boolean;
+  is_featured?: boolean;
+}
+
+export interface MessageFilters extends BaseFilters {
+  message_type?: string;
+  entity_type?: string;
+  entity_id?: number;
+  author_id?: number;
+  is_active?: boolean;
+  with_author?: boolean;
+  with_recipient?: boolean;
+}
+
+export interface PhaseGroupFilters extends BaseFilters {
+  phase_id?: number;
+  with_phase?: boolean;
+  with_sub_groups?: boolean;
+}
+
+export interface SubGroupFilters extends BaseFilters {
+  group_id?: number;
+  with_group?: boolean;
+  with_matches?: boolean;
+  with_belt_fighters?: boolean;
+  with_belt_regions?: boolean;
 }

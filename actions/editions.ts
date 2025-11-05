@@ -19,67 +19,115 @@ export interface EditionFilters {
 
 // import { query } from "@/lib/neon-client";
 
+// actions/editions.ts - VERSION COMPLÈTE CORRIGÉE
 export async function getEditions(options: {
   competition_id?: string;
+  year?: number;
   search?: string;
-  with_competition?: boolean;
+  page?: number;
   limit?: number;
   offset?: number;
-}) {
-  const { competition_id, search, with_competition = false, limit = 20, offset = 0 } = options;
+  with_competition?: boolean;
+  with_fighters?: boolean;
+  with_regions?: boolean;
+  with_phases?: boolean;
+} = {}) {
+  try {
+    const {
+      competition_id,
+      year,
+      search = '',
+      page = 1,
+      limit = 20,
+      offset = 0,
+      with_competition = false,
+      with_fighters = false,
+      with_regions = false,
+      with_phases = false,
+    } = options;
 
-  let whereClause = "WHERE 1=1";
-  let joinClause = "";
-  const params: any[] = [];
-  const selectFields = ["e.*"];
+    let whereClause = "WHERE 1=1";
+    let joinClause = "";
+    const params: any[] = [];
+    const selectFields = ["ce.*"];
 
-  // Jointure optionnelle
-  if (with_competition) {
-    joinClause += " LEFT JOIN competitions c ON e.competition_id = c.id";
-    selectFields.push(`
-      JSON_BUILD_OBJECT(
-        'id', c.id,
-        'name', c.name
-      ) as competition
-    `);
+    // Jointures optionnelles
+    if (with_competition) {
+      joinClause += " LEFT JOIN competitions c ON ce.competition_id = c.id";
+      selectFields.push(`
+        JSON_BUILD_OBJECT(
+          'id', c.id,
+          'name', c.name,
+          'type', c.type,
+          'slug', c.slug
+        ) as competition
+      `);
+    }
+
+    // Filtres dynamiques
+    if (competition_id) {
+      params.push(competition_id);
+      whereClause += ` AND ce.competition_id = $${params.length}`;
+    }
+
+    if (year) {
+      params.push(year);
+      whereClause += ` AND ce.year = $${params.length}`;
+    }
+
+    if (search) {
+      params.push(`%${search}%`);
+      whereClause += ` AND (
+        ce.theme ILIKE $${params.length} 
+        OR CAST(ce.year AS TEXT) ILIKE $${params.length}
+        OR CAST(ce.edition_number AS TEXT) ILIKE $${params.length}
+        ${with_competition ? `OR c.name ILIKE $${params.length}` : ''}
+      )`;
+    }
+
+    // Count
+    const countSql = `
+      SELECT COUNT(DISTINCT ce.id) as total
+      FROM competition_editions ce
+      ${joinClause}
+      ${whereClause}
+    `;
+
+    const countResult = await query<{ total: number }>(countSql, params);
+    const total = countResult[0]?.total || 0;
+
+    // Data
+    const validatedLimit = Math.max(1, Math.min(100, limit));
+    const validatedOffset = offset || (page - 1) * validatedLimit;
+    
+    params.push(validatedLimit, validatedOffset);
+    
+    const dataSql = `
+      SELECT ${selectFields.join(", ")}
+      FROM competition_editions ce
+      ${joinClause}
+      ${whereClause}
+      ORDER BY ce.year DESC, ce.edition_number DESC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `;
+
+    const data = await query(dataSql, params);
+    
+    return {
+      data,
+      total,
+      pagination: {
+        page: Math.floor(validatedOffset / validatedLimit) + 1,
+        limit: validatedLimit,
+        total,
+        totalPages: Math.ceil(total / validatedLimit),
+      }
+    };
+  } catch (error) {
+    console.error('Error in getEditions:', error);
+    throw new Error('Erreur lors de la récupération des éditions');
   }
-
-  // Filtres dynamiques
-  if (competition_id) {
-    params.push(competition_id);
-    whereClause += ` AND e.competition_id = $${params.length}`;
-  }
-
-  if (search) {
-    params.push(`%${search}%`);
-    whereClause += ` AND e.name ILIKE $${params.length}`;
-  }
-
-  // Count
-  const countSql = `
-    SELECT COUNT(DISTINCT e.id) as total
-    FROM editions e
-    ${joinClause}
-    ${whereClause}
-  `;
-
-  const [{ total }] = await query<{ total: number }>(countSql, params);
-
-  // Data
-  params.push(limit, offset);
-  const dataSql = `
-    SELECT ${selectFields.join(", ")}
-    FROM editions e
-    ${joinClause}
-    ${whereClause}
-    ORDER BY e.created_at DESC
-    LIMIT $${params.length - 1} OFFSET $${params.length}
-  `;
-
-  const data = await query(dataSql, params);
-  return { total, data };
 }
-
 
 export async function getEditionById(id: number, options: { 
   with_relations?: boolean 
@@ -307,6 +355,280 @@ export async function deleteEdition(id: number) {
   }
 }
 
+
+export interface EditionParticipantsFilters {
+  search?: string;
+  page?: number;
+  limit?: number;
+  status?: string;
+  region_id?: number;
+  with_region?: boolean;
+  with_fighter?: boolean;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+}
+
+// Récupérer les lutteurs participants d'une édition
+export async function getEditionFighters(
+  editionId: number,
+  options: EditionParticipantsFilters = {}
+): Promise<PaginatedResponse<any>> {
+  try {
+    const {
+      search = '',
+      page = 1,
+      limit = 20,
+      status,
+      region_id,
+      with_region = true,
+      with_fighter = true,
+      sort_by = 'ranking',
+      sort_order = 'asc',
+    } = options;
+
+    let whereClause = 'WHERE ef.edition_id = $1';
+    const params: any[] = [editionId];
+    const selectFields: string[] = ['ef.*'];
+
+    // Filtre de recherche
+    if (search) {
+      params.push(`%${search}%`);
+      whereClause += ` AND (
+        f.first_name ILIKE $${params.length} 
+        OR f.last_name ILIKE $${params.length}
+        OR f.nickname ILIKE $${params.length}
+      )`;
+    }
+
+    // Filtre par statut
+    if (status) {
+      params.push(status);
+      whereClause += ` AND ef.status = $${params.length}`;
+    }
+
+    // Filtre par région
+    if (region_id) {
+      params.push(region_id);
+      whereClause += ` AND f.region_id = $${params.length}`;
+    }
+
+    // Jointures
+    let joinClause = 'FROM edition_fighters ef';
+    
+    if (with_fighter || search || region_id) {
+      joinClause += ' JOIN fighters f ON ef.fighter_id = f.id';
+      selectFields.push(`
+        JSON_BUILD_OBJECT(
+          'id', f.id,
+          'first_name', f.first_name,
+          'last_name', f.last_name,
+          'nickname', f.nickname,
+          'ranking', f.ranking,
+          'profile_image', f.profile_image,
+          'is_active', f.is_active,
+          'is_champion', f.is_champion
+        ) as fighter
+      `);
+    }
+
+    if (with_region) {
+      joinClause += ' LEFT JOIN regions r ON f.region_id = r.id';
+      selectFields.push(`
+        JSON_BUILD_OBJECT(
+          'id', r.id,
+          'name', r.name,
+          'code', r.code,
+          'color', r.color
+        ) as region
+      `);
+    }
+
+    // Requête pour le total
+    const countSql = `
+      SELECT COUNT(DISTINCT ef.id) as total
+      ${joinClause}
+      ${whereClause}
+    `;
+
+    const countResult = await query<{ total: string }>(countSql, params);
+    const total = parseInt(countResult[0]?.total ?? '0');
+
+    // Pagination
+    const validatedPage = Math.max(1, page);
+    const validatedLimit = Math.max(1, Math.min(100, limit));
+    const offset = (validatedPage - 1) * validatedLimit;
+    const totalPages = Math.ceil(total / validatedLimit);
+
+    // Ordre de tri
+    let orderClause = 'ORDER BY ';
+    switch (sort_by) {
+      case 'name':
+        orderClause += 'f.first_name, f.last_name';
+        break;
+      case 'ranking':
+        orderClause += 'f.ranking';
+        break;
+      case 'registration_date':
+        orderClause += 'ef.registration_date';
+        break;
+      case 'status':
+        orderClause += 'ef.status';
+        break;
+      default:
+        orderClause += 'f.ranking';
+    }
+    orderClause += ` ${sort_order.toUpperCase()}`;
+
+    // Requête principale
+    const dataSql = `
+      SELECT ${selectFields.join(', ')}
+      ${joinClause}
+      ${whereClause}
+      ${orderClause}
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+    `;
+
+    const data = await query(
+      dataSql, 
+      [...params, validatedLimit, offset]
+    );
+
+    return {
+      data,
+      pagination: {
+        page: validatedPage,
+        limit: validatedLimit,
+        total,
+        totalPages
+      }
+    };
+  } catch (error) {
+    console.error('Error in getEditionFighters:', error);
+    throw new Error('Erreur lors de la récupération des lutteurs de l\'édition');
+  }
+}
+
+// Récupérer les régions participantes d'une édition
+export async function getEditionRegions(
+  editionId: number,
+  options: EditionParticipantsFilters = {}
+): Promise<PaginatedResponse<any>> {
+  try {
+    const {
+      search = '',
+      page = 1,
+      limit = 20,
+      status,
+      with_region = true,
+      sort_by = 'name',
+      sort_order = 'asc',
+    } = options;
+
+    let whereClause = 'WHERE er.edition_id = $1';
+    const params: any[] = [editionId];
+    const selectFields: string[] = ['er.*'];
+
+    // Filtre de recherche
+    if (search) {
+      params.push(`%${search}%`);
+      whereClause += ` AND (
+        r.name ILIKE $${params.length} 
+        OR r.code ILIKE $${params.length}
+      )`;
+    }
+
+    // Filtre par statut
+    if (status) {
+      params.push(status);
+      whereClause += ` AND er.status = $${params.length}`;
+    }
+
+    // Jointures
+    let joinClause = 'FROM edition_regions er';
+    
+    if (with_region || search) {
+      joinClause += ' JOIN regions r ON er.region_id = r.id';
+      selectFields.push(`
+        JSON_BUILD_OBJECT(
+          'id', r.id,
+          'name', r.name,
+          'code', r.code,
+          'color', r.color,
+          'total_fighters', r.total_fighters,
+          'total_champions', r.total_champions,
+          'flag_image', r.flag_image
+        ) as region
+      `);
+    }
+
+    // Requête pour le total
+    const countSql = `
+      SELECT COUNT(DISTINCT er.id) as total
+      ${joinClause}
+      ${whereClause}
+    `;
+
+    const countResult = await query<{ total: string }>(countSql, params);
+    const total = parseInt(countResult[0]?.total ?? '0');
+
+    // Pagination
+    const validatedPage = Math.max(1, page);
+    const validatedLimit = Math.max(1, Math.min(100, limit));
+    const offset = (validatedPage - 1) * validatedLimit;
+    const totalPages = Math.ceil(total / validatedLimit);
+
+    // Ordre de tri
+    let orderClause = 'ORDER BY ';
+    switch (sort_by) {
+      case 'name':
+        orderClause += 'r.name';
+        break;
+      case 'code':
+        orderClause += 'r.code';
+        break;
+      case 'total_fighters':
+        orderClause += 'r.total_fighters';
+        break;
+      case 'registration_date':
+        orderClause += 'er.registration_date';
+        break;
+      case 'status':
+        orderClause += 'er.status';
+        break;
+      default:
+        orderClause += 'r.name';
+    }
+    orderClause += ` ${sort_order.toUpperCase()}`;
+
+    // Requête principale
+    const dataSql = `
+      SELECT ${selectFields.join(', ')}
+      ${joinClause}
+      ${whereClause}
+      ${orderClause}
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+    `;
+
+    const data = await query(
+      dataSql, 
+      [...params, validatedLimit, offset]
+    );
+
+    return {
+      data,
+      pagination: {
+        page: validatedPage,
+        limit: validatedLimit,
+        total,
+        totalPages
+      }
+    };
+  } catch (error) {
+    console.error('Error in getEditionRegions:', error);
+    throw new Error('Erreur lors de la récupération des régions de l\'édition');
+  }
+}
+
 // Gestion des lutteurs d'édition
 export async function addFighterToEdition(editionId: number, fighterId: number, status: string = 'registered') {
   try {
@@ -329,7 +651,8 @@ export async function addFighterToEdition(editionId: number, fighterId: number, 
       validatedData.status,
     ]);
 
-    revalidatePath(`/editions/${editionId}`);
+    revalidatePath(`/ad/editions/${editionId}/figthers`);
+    revalidatePath(`/ad/editions/${editionId}`);
     return { 
       success: true, 
       id: result[0].id,
@@ -363,7 +686,8 @@ export async function addRegionToEdition(editionId: number, regionId: number, st
       validatedData.status,
     ]);
 
-    revalidatePath(`/editions/${editionId}`);
+      revalidatePath(`/ad/editions/${editionId}/regions`);
+    revalidatePath(`/ad/editions/${editionId}`)
     return { 
       success: true, 
       id: result[0].id,
@@ -374,6 +698,49 @@ export async function addRegionToEdition(editionId: number, regionId: number, st
     throw new Error('Erreur lors de l\'ajout de la région à l\'édition');
   }
 }
+
+export async function removeFighterFromEdition(editionId: number, fighterId: number) {
+  try {
+    const sql = `
+      DELETE FROM edition_fighters
+      WHERE edition_id = $1 AND fighter_id = $2
+    `;
+    
+    await query(sql, [editionId, fighterId]);
+
+    revalidatePath(`/ad/editions/${editionId}/figthers`);
+    revalidatePath(`/ad/editions/${editionId}`);
+    return { 
+      success: true, 
+      message: 'Lutteur retiré de l\'édition avec succès'
+    };
+  } catch (error) {
+    console.error('Error in removeFighterFromEdition:', error);
+    throw new Error('Erreur lors du retrait du lutteur de l\'édition');
+  }
+}
+
+export async function removeRegionFromEdition(editionId: number, regionId: number) {
+  try {
+    const sql = `
+      DELETE FROM edition_regions
+      WHERE edition_id = $1 AND region_id = $2
+    `;
+    
+    await query(sql, [editionId, regionId]);
+
+    revalidatePath(`/ad/editions/${editionId}/regions`);
+    revalidatePath(`/ad/editions/${editionId}`);
+    return { 
+      success: true, 
+      message: 'Région retirée de l\'édition avec succès'
+    };
+  } catch (error) {
+    console.error('Error in removeRegionFromEdition:', error);
+    throw new Error('Erreur lors du retrait de la région de l\'édition');
+  }
+}
+
 
 export async function getEditionsStats() {
   try {

@@ -1,3 +1,4 @@
+// actions/phases.ts - VERSION CORRIGÉE
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';
@@ -28,23 +29,27 @@ export async function getPhases(
     } = filters;
 
     let whereClause = 'WHERE 1=1';
+    let joinClause = ''; // Nouvelle variable pour les jointures
     const params: any[] = [];
     const selectFields: string[] = ['p.*'];
 
     // Filtres de base
     if (edition_id) {
-      whereClause += ` AND p.edition_id = $${params.length + 1}`;
       params.push(edition_id);
+      whereClause += ` AND p.edition_id = $${params.length}`;
     }
 
     if (search) {
-      whereClause += ` AND (p.name ILIKE $${params.length + 1} OR p.description ILIKE $${params.length + 2})`;
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm);
+      params.push(`%${search}%`, `%${search}%`);
+      whereClause += ` AND (p.name ILIKE $${params.length - 1} OR p.description ILIKE $${params.length})`;
     }
 
     // Jointures et relations
     if (with_edition) {
+      joinClause += `
+        LEFT JOIN competition_editions ce ON p.edition_id = ce.id
+        LEFT JOIN competitions c ON ce.competition_id = c.id
+      `;
       selectFields.push(`
         JSON_BUILD_OBJECT(
           'id', ce.id,
@@ -57,25 +62,24 @@ export async function getPhases(
           )
         ) as edition
       `);
-      whereClause += ` 
-        LEFT JOIN competition_editions ce ON p.edition_id = ce.id
-        LEFT JOIN competitions c ON ce.competition_id = c.id
-      `;
     }
 
     if (with_groups) {
       selectFields.push(`
-        (SELECT JSON_AGG(
-          JSON_BUILD_OBJECT(
-            'id', pg.id,
-            'name', pg.name,
-            'group_order', pg.group_order,
-            'is_completed', pg.is_completed,
-            'sub_groups_count', (
-              SELECT COUNT(*) FROM sub_groups sg WHERE sg.group_id = pg.id
-            )
-          ) ORDER BY pg.group_order
-        ) FROM phase_groups pg WHERE pg.phase_id = p.id) as groups
+        COALESCE(
+          (SELECT JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', pg.id,
+              'name', pg.name,
+              'group_order', pg.group_order,
+              'is_completed', pg.is_completed,
+              'sub_groups_count', (
+                SELECT COUNT(*) FROM sub_groups sg WHERE sg.group_id = pg.id
+              )
+            ) ORDER BY pg.group_order
+          ) FROM phase_groups pg WHERE pg.phase_id = p.id),
+          '[]'::json
+        ) as groups
       `);
     }
 
@@ -83,6 +87,7 @@ export async function getPhases(
     const countSql = `
       SELECT COUNT(*) as total
       FROM phases p
+      ${joinClause}
       ${whereClause}
     `;
 
@@ -96,18 +101,17 @@ export async function getPhases(
     const totalPages = Math.ceil(total / validatedLimit);
 
     // Requête principale
+    params.push(validatedLimit, offset);
     const dataSql = `
       SELECT ${selectFields.join(', ')}
       FROM phases p
+      ${joinClause}
       ${whereClause}
       ORDER BY p.phase_order ASC
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+      LIMIT $${params.length - 1} OFFSET $${params.length}
     `;
 
-    const data = await query<Phase>(
-      dataSql, 
-      [...params, validatedLimit, offset]
-    );
+    const data = await query<Phase>(dataSql, params);
 
     return {
       data,

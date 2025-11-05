@@ -4,7 +4,6 @@ import { query, queryOne } from '@/lib/db/neon-client';
 import { subGroupSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
 import { SubGroup, PaginatedResponse } from '@/types';
-
 export interface SubGroupFilters {
   group_id?: number;
   search?: string;
@@ -32,6 +31,7 @@ export async function getSubGroups(
     let whereClause = 'WHERE 1=1';
     const params: any[] = [];
     const selectFields: string[] = ['sg.*'];
+    const joins: string[] = [];
 
     // Filtres de base
     if (group_id) {
@@ -59,10 +59,10 @@ export async function getSubGroups(
           )
         ) as group
       `);
-      whereClause += ` 
+      joins.push(`
         LEFT JOIN phase_groups pg ON sg.group_id = pg.id
         LEFT JOIN phases p ON pg.phase_id = p.id
-      `;
+      `);
     }
 
     if (with_belts) {
@@ -90,12 +90,12 @@ export async function getSubGroups(
           'code', r2.code
         ) as belt2_region
       `);
-      whereClause += ` 
+      joins.push(`
         LEFT JOIN fighters f1 ON sg.belt1_fighter_id = f1.id
         LEFT JOIN fighters f2 ON sg.belt2_fighter_id = f2.id
         LEFT JOIN regions r1 ON sg.belt1_region_id = r1.id
         LEFT JOIN regions r2 ON sg.belt2_region_id = r2.id
-      `;
+      `);
     }
 
     if (with_matches) {
@@ -123,6 +123,7 @@ export async function getSubGroups(
     const countSql = `
       SELECT COUNT(*) as total
       FROM sub_groups sg
+      ${joins.join(' ')}
       ${whereClause}
     `;
 
@@ -139,6 +140,7 @@ export async function getSubGroups(
     const dataSql = `
       SELECT ${selectFields.join(', ')}
       FROM sub_groups sg
+      ${joins.join(' ')}
       ${whereClause}
       ORDER BY sg.sub_group_order ASC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}

@@ -1,3 +1,4 @@
+// actions/matches.ts - VERSION COMPLÈTEMENT CORRIGÉE
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';
@@ -43,206 +44,253 @@ export async function getMatches(
       with_referees = false,
     } = filters;
 
-    let whereClause = 'WHERE 1=1';
+    let whereConditions: string[] = ['1=1'];
+    let joinClauses: string[] = [];
     const params: any[] = [];
     const selectFields: string[] = ['m.*'];
 
+    let paramIndex = 1;
+
     // Filtres de base
     if (sub_group_id) {
-      whereClause += ` AND m.sub_group_id = $${params.length + 1}`;
+      whereConditions.push(`m.sub_group_id = $${paramIndex}`);
       params.push(sub_group_id);
-    }
-
-    if (edition_id) {
-      whereClause += ` AND ce.id = $${params.length + 1}`;
-      params.push(edition_id);
-      whereClause += ` 
-        LEFT JOIN sub_groups sg ON m.sub_group_id = sg.id
-        LEFT JOIN phase_groups pg ON sg.group_id = pg.id
-        LEFT JOIN phases p ON pg.phase_id = p.id
-        LEFT JOIN competition_editions ce ON p.edition_id = ce.id
-      `;
-    }
-
-    if (phase_id) {
-      whereClause += ` AND p.id = $${params.length + 1}`;
-      params.push(phase_id);
-      whereClause += ` 
-        LEFT JOIN sub_groups sg ON m.sub_group_id = sg.id
-        LEFT JOIN phase_groups pg ON sg.group_id = pg.id
-        LEFT JOIN phases p ON pg.phase_id = p.id
-      `;
-    }
-
-    if (group_id) {
-      whereClause += ` AND pg.id = $${params.length + 1}`;
-      params.push(group_id);
-      whereClause += ` 
-        LEFT JOIN sub_groups sg ON m.sub_group_id = sg.id
-        LEFT JOIN phase_groups pg ON sg.group_id = pg.id
-      `;
+      paramIndex++;
     }
 
     if (status) {
-      whereClause += ` AND m.status = $${params.length + 1}`;
+      whereConditions.push(`m.status = $${paramIndex}`);
       params.push(status);
+      paramIndex++;
     }
 
     if (date_from) {
-      whereClause += ` AND m.match_date >= $${params.length + 1}`;
+      whereConditions.push(`m.match_date >= $${paramIndex}`);
       params.push(date_from);
+      paramIndex++;
     }
 
     if (date_to) {
-      whereClause += ` AND m.match_date <= $${params.length + 1}`;
+      whereConditions.push(`m.match_date <= $${paramIndex}`);
       params.push(date_to);
+      paramIndex++;
     }
 
     if (search) {
-      whereClause += ` AND (
-        m.venue ILIKE $${params.length + 1} OR 
-        m.notes ILIKE $${params.length + 2}
-      )`;
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm);
+      whereConditions.push(`(m.venue ILIKE $${paramIndex} OR m.notes ILIKE $${paramIndex + 1})`);
+      params.push(`%${search}%`, `%${search}%`);
+      paramIndex += 2;
     }
 
-    // Jointures et relations
-    if (with_sub_group) {
-      selectFields.push(`
-        JSON_BUILD_OBJECT(
-          'id', sg.id,
-          'name', sg.name,
-          'sub_group_order', sg.sub_group_order,
-          'group', JSON_BUILD_OBJECT(
-            'id', pg.id,
-            'name', pg.name,
-            'group_order', pg.group_order,
-            'phase', JSON_BUILD_OBJECT(
-              'id', p.id,
-              'name', p.name,
-              'phase_order', p.phase_order,
-              'edition', JSON_BUILD_OBJECT(
-                'id', ce.id,
-                'edition_number', ce.edition_number,
-                'year', ce.year,
-                'competition', JSON_BUILD_OBJECT(
-                  'id', c.id,
-                  'name', c.name,
-                  'type', c.type
-                )
-              )
-            )
-          )
-        ) as sub_group
-      `);
-      whereClause += ` 
+    // Jointures hiérarchiques pour les filtres
+    if (edition_id || phase_id || group_id || with_sub_group) {
+      joinClauses.push(`
         LEFT JOIN sub_groups sg ON m.sub_group_id = sg.id
         LEFT JOIN phase_groups pg ON sg.group_id = pg.id
         LEFT JOIN phases p ON pg.phase_id = p.id
         LEFT JOIN competition_editions ce ON p.edition_id = ce.id
         LEFT JOIN competitions c ON ce.competition_id = c.id
-      `;
+      `);
     }
 
+    // Filtres hiérarchiques
+    if (edition_id) {
+      whereConditions.push(`ce.id = $${paramIndex}`);
+      params.push(edition_id);
+      paramIndex++;
+    }
+
+    if (phase_id) {
+      whereConditions.push(`p.id = $${paramIndex}`);
+      params.push(phase_id);
+      paramIndex++;
+    }
+
+    if (group_id) {
+      whereConditions.push(`pg.id = $${paramIndex}`);
+      params.push(group_id);
+      paramIndex++;
+    }
+
+    // Jointures pour les relations
     if (with_fighters) {
-      selectFields.push(`
-        JSON_BUILD_OBJECT(
-          'id', f1.id,
-          'first_name', f1.first_name,
-          'last_name', f1.last_name,
-          'nickname', f1.nickname,
-          'ranking', f1.ranking
-        ) as fighter1,
-        JSON_BUILD_OBJECT(
-          'id', f2.id,
-          'first_name', f2.first_name,
-          'last_name', f2.last_name,
-          'nickname', f2.nickname,
-          'ranking', f2.ranking
-        ) as fighter2,
-        JSON_BUILD_OBJECT(
-          'id', wf.id,
-          'first_name', wf.first_name,
-          'last_name', wf.last_name,
-          'nickname', wf.nickname
-        ) as winner_fighter,
-        JSON_BUILD_OBJECT(
-          'id', lf.id,
-          'first_name', lf.first_name,
-          'last_name', lf.last_name,
-          'nickname', lf.nickname
-        ) as loser_fighter
-      `);
-      whereClause += ` 
+      joinClauses.push(`
         LEFT JOIN fighters f1 ON m.fighter1_id = f1.id
         LEFT JOIN fighters f2 ON m.fighter2_id = f2.id
         LEFT JOIN fighters wf ON m.winner_fighter_id = wf.id
         LEFT JOIN fighters lf ON m.loser_fighter_id = lf.id
-      `;
+      `);
+      
+      selectFields.push(`
+        CASE WHEN f1.id IS NOT NULL THEN
+          JSON_BUILD_OBJECT(
+            'id', f1.id,
+            'first_name', f1.first_name,
+            'last_name', f1.last_name,
+            'nickname', f1.nickname,
+            'ranking', f1.ranking
+          )
+        ELSE NULL END as fighter1,
+        CASE WHEN f2.id IS NOT NULL THEN
+          JSON_BUILD_OBJECT(
+            'id', f2.id,
+            'first_name', f2.first_name,
+            'last_name', f2.last_name,
+            'nickname', f2.nickname,
+            'ranking', f2.ranking
+          )
+        ELSE NULL END as fighter2,
+        CASE WHEN wf.id IS NOT NULL THEN
+          JSON_BUILD_OBJECT(
+            'id', wf.id,
+            'first_name', wf.first_name,
+            'last_name', wf.last_name,
+            'nickname', wf.nickname
+          )
+        ELSE NULL END as winner_fighter,
+        CASE WHEN lf.id IS NOT NULL THEN
+          JSON_BUILD_OBJECT(
+            'id', lf.id,
+            'first_name', lf.first_name,
+            'last_name', lf.last_name,
+            'nickname', lf.nickname
+          )
+        ELSE NULL END as loser_fighter
+      `);
     }
 
     if (with_regions) {
-      selectFields.push(`
-        JSON_BUILD_OBJECT(
-          'id', r1.id,
-          'name', r1.name,
-          'code', r1.code
-        ) as region1,
-        JSON_BUILD_OBJECT(
-          'id', r2.id,
-          'name', r2.name,
-          'code', r2.code
-        ) as region2,
-        JSON_BUILD_OBJECT(
-          'id', wr.id,
-          'name', wr.name,
-          'code', wr.code
-        ) as winner_region,
-        JSON_BUILD_OBJECT(
-          'id', lr.id,
-          'name', lr.name,
-          'code', lr.code
-        ) as loser_region
-      `);
-      whereClause += ` 
+      joinClauses.push(`
         LEFT JOIN regions r1 ON m.region1_id = r1.id
         LEFT JOIN regions r2 ON m.region2_id = r2.id
         LEFT JOIN regions wr ON m.winner_region_id = wr.id
         LEFT JOIN regions lr ON m.loser_region_id = lr.id
-      `;
+      `);
+      
+      selectFields.push(`
+        CASE WHEN r1.id IS NOT NULL THEN
+          JSON_BUILD_OBJECT(
+            'id', r1.id,
+            'name', r1.name,
+            'code', r1.code
+          )
+        ELSE NULL END as region1,
+        CASE WHEN r2.id IS NOT NULL THEN
+          JSON_BUILD_OBJECT(
+            'id', r2.id,
+            'name', r2.name,
+            'code', r2.code
+          )
+        ELSE NULL END as region2,
+        CASE WHEN wr.id IS NOT NULL THEN
+          JSON_BUILD_OBJECT(
+            'id', wr.id,
+            'name', wr.name,
+            'code', wr.code
+          )
+        ELSE NULL END as winner_region,
+        CASE WHEN lr.id IS NOT NULL THEN
+          JSON_BUILD_OBJECT(
+            'id', lr.id,
+            'name', lr.name,
+            'code', lr.code
+          )
+        ELSE NULL END as loser_region
+      `);
     }
 
     if (with_referees) {
-      selectFields.push(`
-        JSON_BUILD_OBJECT(
-          'id', ref.id,
-          'first_name', ref.first_name,
-          'last_name', ref.last_name,
-          'nickname', ref.nickname
-        ) as main_referee,
-        (SELECT JSON_AGG(
-          JSON_BUILD_OBJECT(
-            'id', ra.id,
-            'referee', JSON_BUILD_OBJECT(
-              'id', r.id,
-              'first_name', r.first_name,
-              'last_name', r.last_name,
-              'nickname', r.nickname
-            ),
-            'role', ra.role
-          )
-        ) FROM referee_assignments ra
-        JOIN referees r ON ra.referee_id = r.id
-        WHERE ra.match_id = m.id) as referee_assignments
+      joinClauses.push(`
+        LEFT JOIN referees ref ON m.main_referee_id = ref.id
       `);
-      whereClause += ` LEFT JOIN referees ref ON m.main_referee_id = ref.id`;
+      
+      selectFields.push(`
+        CASE WHEN ref.id IS NOT NULL THEN
+          JSON_BUILD_OBJECT(
+            'id', ref.id,
+            'first_name', ref.first_name,
+            'last_name', ref.last_name,
+            'nickname', ref.nickname
+          )
+        ELSE NULL END as main_referee,
+        COALESCE(
+          (SELECT JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', ra.id,
+              'referee', JSON_BUILD_OBJECT(
+                'id', r.id,
+                'first_name', r.first_name,
+                'last_name', r.last_name,
+                'nickname', r.nickname
+              ),
+              'role', ra.role,
+              'assigned_at', ra.assigned_at
+            ) ORDER BY ra.assigned_at DESC
+          ) FROM referee_assignments ra
+          JOIN referees r ON ra.referee_id = r.id
+          WHERE ra.match_id = m.id),
+          '[]'::json
+        ) as referee_assignments
+      `);
     }
+
+    // Construction du sous-groupe avec toutes les relations
+    if (with_sub_group && (edition_id || phase_id || group_id || with_sub_group)) {
+      selectFields.push(`
+        CASE WHEN sg.id IS NOT NULL THEN
+          JSON_BUILD_OBJECT(
+            'id', sg.id,
+            'name', sg.name,
+            'sub_group_order', sg.sub_group_order,
+            'is_completed', sg.is_completed,
+            'group', CASE WHEN pg.id IS NOT NULL THEN
+              JSON_BUILD_OBJECT(
+                'id', pg.id,
+                'name', pg.name,
+                'group_order', pg.group_order,
+                'is_completed', pg.is_completed,
+                'phase', CASE WHEN p.id IS NOT NULL THEN
+                  JSON_BUILD_OBJECT(
+                    'id', p.id,
+                    'name', p.name,
+                    'phase_order', p.phase_order,
+                    'phase_type', p.phase_type,
+                    'is_completed', p.is_completed,
+                    'edition', CASE WHEN ce.id IS NOT NULL THEN
+                      JSON_BUILD_OBJECT(
+                        'id', ce.id,
+                        'edition_number', ce.edition_number,
+                        'year', ce.year,
+                        'theme', ce.theme,
+                        'total_participants', ce.total_participants,
+                        'competition', CASE WHEN c.id IS NOT NULL THEN
+                          JSON_BUILD_OBJECT(
+                            'id', c.id,
+                            'name', c.name,
+                            'type', c.type,
+                            'slug', c.slug
+                          )
+                        ELSE NULL END
+                      )
+                    ELSE NULL END
+                  )
+                ELSE NULL END
+              )
+            ELSE NULL END
+          )
+        ELSE NULL END as sub_group
+      `);
+    }
+
+    // Construction des clauses SQL finales
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const joinClause = joinClauses.join(' ');
 
     // Requête pour le total
     const countSql = `
       SELECT COUNT(DISTINCT m.id) as total
       FROM matches m
+      ${joinClause}
       ${whereClause}
     `;
 
@@ -256,22 +304,21 @@ export async function getMatches(
     const totalPages = Math.ceil(total / validatedLimit);
 
     // Requête principale
+    const limitParamIndex = paramIndex;
+    const offsetParamIndex = paramIndex + 1;
+    
     const dataSql = `
       SELECT ${selectFields.join(', ')}
       FROM matches m
+      ${joinClause}
       ${whereClause}
-      GROUP BY m.id
-      ${with_fighters ? ', f1.id, f2.id, wf.id, lf.id' : ''}
-      ${with_regions ? ', r1.id, r2.id, wr.id, lr.id' : ''}
-      ${with_referees ? ', ref.id' : ''}
       ORDER BY m.match_date ASC, m.match_number ASC
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+      LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
     `;
 
-    const data = await query<Match>(
-      dataSql, 
-      [...params, validatedLimit, offset]
-    );
+    const finalParams = [...params, validatedLimit, offset];
+
+    const data = await query<Match>(dataSql, finalParams);
 
     return {
       data,
@@ -284,6 +331,10 @@ export async function getMatches(
     };
   } catch (error) {
     console.error('Error in getMatches:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     throw new Error('Erreur lors de la récupération des matches');
   }
 }

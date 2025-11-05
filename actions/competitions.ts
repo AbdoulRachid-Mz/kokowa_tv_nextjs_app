@@ -18,8 +18,6 @@ export interface CompetitionFilters {
   with_matches?: boolean;
 }
 
-// import { query } from "@/lib/neon-client";
-
 export async function getCompetitions(options: {
   search?: string;
   page?: number;
@@ -44,7 +42,7 @@ export async function getCompetitions(options: {
     date_from,
     date_to,
     with_region = false,
-    with_editions = false,
+    with_editions = true,
     with_phases = false,
     with_matches = false,
   } = options;
