@@ -13,8 +13,8 @@ export async function getRegions(
       search = '',
       page = 1,
       limit = 20,
+      code,
       with_fighters = true,
-      with_cities = true,
       with_competitions = false,
       fighter_count_min,
       fighter_count_max,
@@ -22,14 +22,18 @@ export async function getRegions(
 
     let whereClause = 'WHERE 1=1';
     const params: any[] = [];
-    const joins: string[] = [];
     const selectFields: string[] = ['r.*'];
 
     // Filtre de recherche
     if (search) {
-      whereClause += ` AND (r.name ILIKE $${params.length + 1} OR r.code ILIKE $${params.length + 2})`;
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm);
+      whereClause += ` AND (r.name ILIKE $${params.length + 1} OR r.code ILIKE $${params.length + 1})`;
+      params.push(`%${search}%`);
+    }
+
+    // Filtre par code
+    if (code) {
+      whereClause += ` AND r.code = $${params.length + 1}`;
+      params.push(code);
     }
 
     // Filtre par nombre de lutteurs
@@ -46,7 +50,6 @@ export async function getRegions(
     // Jointure avec les lutteurs si demandée
     if (with_fighters) {
       selectFields.push(`
-        (SELECT COUNT(*) FROM fighters f WHERE f.region_id = r.id AND f.is_active = true) as fighter_count,
         (SELECT JSON_AGG(
           JSON_BUILD_OBJECT(
             'id', f.id,
@@ -54,48 +57,32 @@ export async function getRegions(
             'last_name', f.last_name,
             'nickname', f.nickname,
             'ranking', f.ranking,
-            'is_champion', f.is_champion
-          ) ORDER BY f.ranking
-        ) FROM fighters f WHERE f.region_id = r.id AND f.is_active = true LIMIT 5) as top_fighters
-      `);
-    }
-
-    // Jointure avec les villes si demandée
-    if (with_cities) {
-      selectFields.push(`
-        (SELECT JSON_AGG(
-          JSON_BUILD_OBJECT(
-            'id', c.id,
-            'name', c.name,
-            'description', c.description
-          ) ORDER BY c.name
-        ) FROM cities c WHERE c.region_id = r.id) as cities
+            'is_champion', f.is_champion,
+            'profile_image', f.profile_image
+          ) ORDER BY f.ranking ASC
+        ) FROM fighters f WHERE f.region_id = r.id AND f.is_active = true LIMIT 10) as fighters
       `);
     }
 
     // Jointure avec les compétitions si demandée
     if (with_competitions) {
-      joins.push(`
-        LEFT JOIN competitions comp ON comp.region_id = r.id
-      `);
       selectFields.push(`
         (SELECT JSON_AGG(
           JSON_BUILD_OBJECT(
-            'id', comp.id,
-            'name', comp.name,
-            'type', comp.type,
-            'status', comp.status,
-            'start_date', comp.start_date
-          ) ORDER BY comp.start_date DESC
-        ) FROM competitions comp WHERE comp.region_id = r.id LIMIT 5) as recent_competitions
+            'id', c.id,
+            'name', c.name,
+            'type', c.type,
+            'status', c.status,
+            'location', c.location
+          ) ORDER BY c.created_at DESC
+        ) FROM competitions c WHERE c.region_id = r.id LIMIT 5) as competitions
       `);
     }
 
     // Requête pour le total
     const countSql = `
-      SELECT COUNT(DISTINCT r.id) as total
+      SELECT COUNT(*) as total
       FROM regions r
-      ${joins.join(' ')}
       ${whereClause}
     `;
 
@@ -112,9 +99,7 @@ export async function getRegions(
     const dataSql = `
       SELECT ${selectFields.join(', ')}
       FROM regions r
-      ${joins.join(' ')}
       ${whereClause}
-      GROUP BY r.id
       ORDER BY r.total_fighters DESC, r.name ASC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
@@ -159,30 +144,29 @@ export async function getRegionById(id: number, options: { with_relations?: bool
               'last_name', f.last_name,
               'nickname', f.nickname,
               'ranking', f.ranking,
-              'is_champion', f.is_champion
-            ) ORDER BY f.ranking
+              'is_champion', f.is_champion,
+              'profile_image', f.profile_image
+            ) ORDER BY f.ranking ASC
           ) FROM fighters f WHERE f.region_id = r.id AND f.is_active = true) as fighters,
           (SELECT JSON_AGG(
             JSON_BUILD_OBJECT(
               'id', c.id,
               'name', c.name,
-              'description', c.description
-            ) ORDER BY c.name
-          ) FROM cities c WHERE c.region_id = r.id) as cities,
-          (SELECT JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'id', comp.id,
-              'name', comp.name,
-              'type', comp.type,
-              'status', comp.status
-            ) ORDER BY comp.created_at DESC
-          ) FROM competitions comp WHERE comp.region_id = r.id LIMIT 10) as competitions
+              'type', c.type,
+              'status', c.status
+            ) ORDER BY c.created_at DESC
+          ) FROM competitions c WHERE c.region_id = r.id LIMIT 10) as competitions
         FROM regions r
         WHERE r.id = $1
       `;
     }
 
-    const result = await queryOne<Region>(sql, params);
+    const result = await queryOne<Region & { 
+      fighter_count?: string; 
+      champion_count?: string;
+      fighters?: any[];
+      competitions?: any[];
+    }>(sql, params);
     
     if (!result) {
       throw new Error('Région non trouvée');
@@ -222,6 +206,7 @@ export async function createRegion(formData: FormData) {
     ]);
 
     revalidatePath('/regions');
+    revalidatePath('/admin/regions');
     return { 
       success: true, 
       id: result[0].id,
@@ -229,6 +214,9 @@ export async function createRegion(formData: FormData) {
     };
   } catch (error) {
     console.error('Error in createRegion:', error);
+    if (error instanceof Error) {
+      throw new Error(`Erreur lors de la création de la région: ${error.message}`);
+    }
     throw new Error('Erreur lors de la création de la région');
   }
 }
@@ -252,7 +240,7 @@ export async function updateRegion(id: number, formData: FormData) {
 
     const sql = `
       UPDATE regions 
-      SET name = $1, code = $2, description = $3, flag_image = $4, color = $5, updated_at = CURRENT_TIMESTAMP
+      SET name = $1, code = $2, description = $3, flag_image = $4, color = $5
       WHERE id = $6
     `;
     
@@ -266,13 +254,19 @@ export async function updateRegion(id: number, formData: FormData) {
     ]);
 
     revalidatePath('/regions');
+    revalidatePath('/admin/regions');
     revalidatePath(`/regions/${id}`);
+    revalidatePath(`/admin/regions/${id}`);
+    
     return { 
       success: true, 
       message: 'Région modifiée avec succès' 
     };
   } catch (error) {
     console.error('Error in updateRegion:', error);
+    if (error instanceof Error) {
+      throw new Error(`Erreur lors de la modification de la région: ${error.message}`);
+    }
     throw error;
   }
 }
@@ -288,15 +282,24 @@ export async function deleteRegion(id: number) {
     const relatedData = await query(`
       SELECT 
         (SELECT COUNT(*) FROM fighters WHERE region_id = $1) as fighter_count,
-        (SELECT COUNT(*) FROM cities WHERE region_id = $1) as city_count,
-        (SELECT COUNT(*) FROM competitions WHERE region_id = $1) as competition_count
+        (SELECT COUNT(*) FROM competitions WHERE region_id = $1) as competition_count,
+        (SELECT COUNT(*) FROM referees WHERE region_id = $1) as referee_count
     `, [id]);
 
-    const counts = relatedData[0];
-    if (counts.fighter_count > 0 || counts.city_count > 0 || counts.competition_count > 0) {
+    const counts = relatedData[0] as { 
+      fighter_count: string; 
+      competition_count: string; 
+      referee_count: string;
+    };
+    
+    const fighterCount = parseInt(counts.fighter_count);
+    const competitionCount = parseInt(counts.competition_count);
+    const refereeCount = parseInt(counts.referee_count);
+
+    if (fighterCount > 0 || competitionCount > 0 || refereeCount > 0) {
       throw new Error(
         `Impossible de supprimer cette région car elle contient des données liées: 
-        ${counts.fighter_count} lutteurs, ${counts.city_count} villes, ${counts.competition_count} compétitions`
+        ${fighterCount} lutteur(s), ${competitionCount} compétition(s), ${refereeCount} arbitre(s)`
       );
     }
 
@@ -304,12 +307,17 @@ export async function deleteRegion(id: number) {
     await query(sql, [id]);
     
     revalidatePath('/regions');
+    revalidatePath('/admin/regions');
+    
     return { 
       success: true, 
       message: 'Région supprimée avec succès' 
     };
   } catch (error) {
     console.error('Error in deleteRegion:', error);
+    if (error instanceof Error) {
+      throw new Error(`Erreur lors de la suppression de la région: ${error.message}`);
+    }
     throw error;
   }
 }
@@ -323,7 +331,6 @@ export async function getRegionsStats() {
         SUM(total_champions) as total_champions,
         AVG(total_fighters) as avg_fighters_per_region
       FROM regions
-      WHERE total_fighters > 0
     `;
     
     const result = await queryOne<{
@@ -355,7 +362,6 @@ export async function getRegionsForSelect() {
     const sql = `
       SELECT id, name, code, total_fighters
       FROM regions 
-      WHERE total_fighters > 0
       ORDER BY name ASC
     `;
     

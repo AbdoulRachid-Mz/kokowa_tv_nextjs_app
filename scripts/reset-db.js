@@ -2,7 +2,6 @@ const { Client } = require('pg');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
-
 async function resetDatabase() {
   // Utiliser DATABASE_URL_UNPOOLED pour les opérations DDL
   const client = new Client({
@@ -11,21 +10,17 @@ async function resetDatabase() {
       rejectUnauthorized: false
     }
   });
-
   try {
     await client.connect();
     console.log('🔄 Connexion à Neon pour réinitialisation...');
-
     // Lecture du schéma
     const schemaPath = path.join(__dirname, '../database/database.sql');
     const schemaSQL = fs.readFileSync(schemaPath, 'utf8');
-
     // Supprimer et recréer toutes les tables
     console.log('🗑️  Nettoyage des tables existantes...');
     
-    // Désactiver les contraintes temporairement
+    // Drop tables in reverse dependency order to avoid constraint errors
     await client.query('DROP TABLE IF EXISTS fighter_cards CASCADE');
-    await client.query('DROP TABLE IF EXISTS referee_assignments CASCADE');
     await client.query('DROP TABLE IF EXISTS matches CASCADE');
     await client.query('DROP TABLE IF EXISTS sub_groups CASCADE');
     await client.query('DROP TABLE IF EXISTS phase_groups CASCADE');
@@ -33,18 +28,18 @@ async function resetDatabase() {
     await client.query('DROP TABLE IF EXISTS edition_fighters CASCADE');
     await client.query('DROP TABLE IF EXISTS edition_regions CASCADE');
     await client.query('DROP TABLE IF EXISTS competition_editions CASCADE');
-    await client.query('DROP TABLE IF EXISTS competitions CASCADE');
     await client.query('DROP TABLE IF EXISTS fighter_achievements CASCADE');
     await client.query('DROP TABLE IF EXISTS fighter_transfers CASCADE');
-    await client.query('DROP TABLE IF EXISTS fighters CASCADE');
+    await client.query('DROP TABLE IF EXISTS belt CASCADE');
+    await client.query('DROP TABLE IF EXISTS competitions CASCADE');
     await client.query('DROP TABLE IF EXISTS referees CASCADE');
-    await client.query('DROP TABLE IF EXISTS cities CASCADE');
-    await client.query('DROP TABLE IF EXISTS regions CASCADE');
+    await client.query('DROP TABLE IF EXISTS fighters CASCADE');
     await client.query('DROP TABLE IF EXISTS interactions CASCADE');
     await client.query('DROP TABLE IF EXISTS videos CASCADE');
     await client.query('DROP TABLE IF EXISTS media CASCADE');
     await client.query('DROP TABLE IF EXISTS articles CASCADE');
     await client.query('DROP TABLE IF EXISTS messages CASCADE');
+    await client.query('DROP TABLE IF EXISTS regions CASCADE');
     await client.query('DROP TABLE IF EXISTS users CASCADE');
 
     console.log('✅ Anciennes tables supprimées');

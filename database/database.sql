@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS users (
     bio TEXT,
     phone_number VARCHAR(20),
     country VARCHAR(100),
-    city VARCHAR(100),
     is_active BOOLEAN DEFAULT TRUE,
     is_verified BOOLEAN DEFAULT FALSE,
     last_login TIMESTAMP,
@@ -31,7 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- =============================================
 -- GESTION DES RÉGIONS ET VILLES
 -- =============================================
-CREATE TABLE IF NOT EXISTS  regions (
+CREATE TABLE IF NOT EXISTS regions (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     code VARCHAR(10) UNIQUE NOT NULL,
@@ -42,14 +41,6 @@ CREATE TABLE IF NOT EXISTS  regions (
     total_champions INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE IF NOT EXISTS cities (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    region_id INTEGER NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (region_id) REFERENCES regions(id)
-);
 -- =============================================
 -- GESTION DES LUTTEURS
 -- =============================================
@@ -58,11 +49,14 @@ CREATE TABLE IF NOT EXISTS fighters (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     nickname VARCHAR(100),
-    slug TEXT GENERATED ALWAYS AS (lower(replace(nickname, ' ', '-'))) STORED,
+    slug TEXT GENERATED ALWAYS AS (
+        lower(
+            replace (nickname, ' ', '-')
+        )
+    ) STORED,
     birth_date DATE,
     birth_place VARCHAR(100),
     region_id INTEGER,
-    city_id INTEGER,
     height DECIMAL(4, 2),
     weight DECIMAL(5, 2),
     profile_image VARCHAR(255),
@@ -76,14 +70,86 @@ CREATE TABLE IF NOT EXISTS fighters (
     social_links JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (region_id) REFERENCES regions(id),
-    FOREIGN KEY (city_id) REFERENCES cities(id)
+    FOREIGN KEY (region_id) REFERENCES regions (id)
 );
+
+-- =============================================
+-- GESTION DES ARBITRES
+-- =============================================
+CREATE TABLE IF NOT EXISTS referees (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    nickname VARCHAR(100),
+    region_id INTEGER,
+    birth_date DATE,
+    profile_image VARCHAR(255),
+    license_number VARCHAR(50) UNIQUE,
+    certification_level VARCHAR(50),
+    experience_years INTEGER,
+    is_active BOOLEAN DEFAULT TRUE,
+    social_links JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (region_id) REFERENCES regions (id)
+);
+-- =============================================
+-- GESTION DES COMPÉTITIONS (NOUVELLE STRUCTURE)
+-- =============================================
+CREATE TABLE IF NOT EXISTS competitions (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    status VARCHAR(20) CHECK (
+        status IN (
+            'upcoming',
+            'ongoing',
+            'completed',
+            'cancelled',
+            'postponed'
+        )
+    ) DEFAULT 'upcoming',
+    featured_image VARCHAR(255),
+    is_active BOOLEAN DEFAULT TRUE,
+    region_id INTEGER, -- ✅ Ajout ici
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (region_id) REFERENCES regions (id)
+);
+
+-- Éditions des compétitions
+CREATE TABLE IF NOT EXISTS competition_editions (
+    id SERIAL PRIMARY KEY,
+    competition_id INTEGER NOT NULL,
+    edition_number INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    theme VARCHAR(255),
+    start_date DATE,
+    end_date DATE,
+    winner_fighter_id INTEGER,
+    is_active BOOLEAN DEFAULT TRUE,
+    region_id INTEGER,
+    total_participants INTEGER DEFAULT 0,
+    prize_pool DECIMAL(12, 2),
+    registration_deadline DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (competition_id) REFERENCES competitions (id) ON DELETE CASCADE,
+    FOREIGN KEY (winner_fighter_id) REFERENCES fighters (id),
+    -- Assure qu'une compétition ne peut avoir qu'une seule édition avec un numéro d'édition donné
+    UNIQUE (
+        competition_id,
+        edition_number
+    ),
+    FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS fighter_achievements (
     id SERIAL PRIMARY KEY,
     fighter_id INTEGER NOT NULL,
+    region_id INTEGER NOT NULL,
     title VARCHAR(255) NOT NULL,
-    competition VARCHAR(255) NOT NULL,
+    edition_id INTEGER NOT NULL,
     year INTEGER NOT NULL,
     position VARCHAR(20) CHECK (
         position IN (
@@ -98,89 +164,16 @@ CREATE TABLE IF NOT EXISTS fighter_achievements (
     description TEXT,
     medal_image VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (fighter_id) REFERENCES fighters(id) ON DELETE CASCADE
-);
--- =============================================
--- GESTION DES ARBITRES
--- =============================================
-CREATE TABLE IF NOT EXISTS referees (
-    id SERIAL PRIMARY KEY,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
-    nickname VARCHAR(100),
-    birth_date DATE,
-    region_id INTEGER,
-    profile_image VARCHAR(255),
-    license_number VARCHAR(50) UNIQUE,
-    certification_level VARCHAR(50),
-    experience_years INTEGER,
-    is_active BOOLEAN DEFAULT TRUE,
-    social_links JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (region_id) REFERENCES regions(id)
-);
--- =============================================
--- GESTION DES COMPÉTITIONS (NOUVELLE STRUCTURE)
--- =============================================
--- Table principale des compétitions
-CREATE TABLE IF NOT EXISTS competitions (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    slug VARCHAR(255) UNIQUE NOT NULL,
-    description TEXT,
-    type VARCHAR(50) CHECK (
-        type IN (
-            'sabre_national',
-            'coupe_regionale',
-            'halarou_bakwai',
-            'aes',
-            'friendly',
-            'ministre',
-            'coupe_airtel',
-            'other'
-        )
-    ) NOT NULL,
-    location VARCHAR(255),
-    region_id INTEGER,
-    status VARCHAR(20) CHECK (
-        status IN (
-            'upcoming',
-            'ongoing',
-            'completed',
-            'cancelled',
-            'postponed'
-        )
-    ) DEFAULT 'upcoming',
-    featured_image VARCHAR(255),
-    registration_deadline DATE,
-    max_participants INTEGER,
-    prize_pool DECIMAL(12, 2),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (region_id) REFERENCES regions(id)
-);
--- Éditions des compétitions
-CREATE TABLE IF NOT EXISTS competition_editions (
-    id SERIAL PRIMARY KEY,
-    competition_id INTEGER NOT NULL,
-    edition_number INTEGER NOT NULL,
-    year INTEGER NOT NULL,
-    theme VARCHAR(255),
-    start_date DATE,
-    end_date DATE,
-    winner_fighter_id INTEGER,
-    total_participants INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (competition_id) REFERENCES competitions(id) ON DELETE CASCADE,
-    FOREIGN KEY (winner_fighter_id) REFERENCES fighters(id),
-    UNIQUE (competition_id, edition_number)
+    FOREIGN KEY (fighter_id) REFERENCES fighters (id) ON DELETE CASCADE,
+    FOREIGN KEY (edition_id) REFERENCES competition_editions (id) ON DELETE CASCADE,
+    FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE
 );
 -- Lutteurs participants à une édition
 CREATE TABLE IF NOT EXISTS edition_fighters (
     id SERIAL PRIMARY KEY,
     edition_id INTEGER NOT NULL,
     fighter_id INTEGER NOT NULL,
+    region_id INTEGER NOT NULL,
     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) CHECK (
         status IN (
@@ -190,11 +183,15 @@ CREATE TABLE IF NOT EXISTS edition_fighters (
             'withdrawn'
         )
     ) DEFAULT 'registered',
-    notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (edition_id) REFERENCES competition_editions(id) ON DELETE CASCADE,
-    FOREIGN KEY (fighter_id) REFERENCES fighters(id) ON DELETE CASCADE,
-    UNIQUE (edition_id, fighter_id)
+    FOREIGN KEY (edition_id) REFERENCES competition_editions (id) ON DELETE CASCADE,
+    FOREIGN KEY (fighter_id) REFERENCES fighters (id) ON DELETE CASCADE,
+    UNIQUE (
+        edition_id,
+        fighter_id,
+        region_id
+    ),
+    FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE
 );
 -- Régions participantes à une édition
 CREATE TABLE IF NOT EXISTS edition_regions (
@@ -203,12 +200,15 @@ CREATE TABLE IF NOT EXISTS edition_regions (
     region_id INTEGER NOT NULL,
     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) CHECK (
-        status IN ('registered', 'approved', 'rejected')
+        status IN (
+            'registered',
+            'approved',
+            'rejected'
+        )
     ) DEFAULT 'registered',
-    notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (edition_id) REFERENCES competition_editions(id) ON DELETE CASCADE,
-    FOREIGN KEY (region_id) REFERENCES regions(id) ON DELETE CASCADE,
+    FOREIGN KEY (edition_id) REFERENCES competition_editions (id) ON DELETE CASCADE,
+    FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE,
     UNIQUE (edition_id, region_id)
 );
 -- =============================================
@@ -220,6 +220,7 @@ CREATE TABLE IF NOT EXISTS phases (
     edition_id INTEGER NOT NULL,
     name VARCHAR(100) NOT NULL,
     phase_order INTEGER NOT NULL,
+    is_active BOOLEAN DEFAULT FALSE,
     phase_type VARCHAR(20) CHECK (
         phase_type IN (
             'qualification',
@@ -235,7 +236,7 @@ CREATE TABLE IF NOT EXISTS phases (
     end_date DATE,
     is_completed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (edition_id) REFERENCES competition_editions(id) ON DELETE CASCADE
+    FOREIGN KEY (edition_id) REFERENCES competition_editions (id) ON DELETE CASCADE
 );
 -- Groupes dans une phase
 CREATE TABLE IF NOT EXISTS phase_groups (
@@ -245,8 +246,16 @@ CREATE TABLE IF NOT EXISTS phase_groups (
     group_order INTEGER NOT NULL,
     description TEXT,
     is_completed BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (phase_id) REFERENCES phases(id) ON DELETE CASCADE
+    FOREIGN KEY (phase_id) REFERENCES phases (id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS belt (
+    id SERIAL PRIMARY KEY,
+    color VARCHAR(20) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- Sous-groupes dans un groupe
 CREATE TABLE IF NOT EXISTS sub_groups (
@@ -255,19 +264,22 @@ CREATE TABLE IF NOT EXISTS sub_groups (
     name VARCHAR(100) NOT NULL,
     sub_group_order INTEGER NOT NULL,
     description TEXT,
-    belt1_fighter_id INTEGER,
-    belt2_fighter_id INTEGER,
-    belt1_region_id INTEGER,
-    belt2_region_id INTEGER,
+    region1_id INTEGER,
+    region2_id INTEGER,
+    belt_region1 INTEGER,
+    belt_region2 INTEGER,
+    main_referee_id INTEGER,
     is_completed BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (group_id) REFERENCES phase_groups(id) ON DELETE CASCADE,
-    FOREIGN KEY (belt1_fighter_id) REFERENCES fighters(id),
-    FOREIGN KEY (belt2_fighter_id) REFERENCES fighters(id),
-    FOREIGN KEY (belt1_region_id) REFERENCES regions(id),
-    FOREIGN KEY (belt2_region_id) REFERENCES regions(id)
+    FOREIGN KEY (group_id) REFERENCES phase_groups (id) ON DELETE CASCADE,
+    FOREIGN KEY (belt_region1) REFERENCES belt (id),
+    FOREIGN KEY (belt_region2) REFERENCES belt (id),
+    FOREIGN KEY (main_referee_id) REFERENCES referees (id),
+    FOREIGN KEY (region1_id) REFERENCES regions (id),
+    FOREIGN KEY (region2_id) REFERENCES regions (id)
 );
--- =============================================
+ -- =============================================
 -- GESTION DES MATCHS
 -- =============================================
 CREATE TABLE IF NOT EXISTS matches (
@@ -277,32 +289,21 @@ CREATE TABLE IF NOT EXISTS matches (
     match_date TIMESTAMP NOT NULL,
     start_time TIME,
     end_time TIME,
-    -- Participants (peuvent être des lutteurs ou des régions)
+    is_active BOOLEAN DEFAULT TRUE,
+    -- Participants
     fighter1_id INTEGER,
     fighter2_id INTEGER,
-    region1_id INTEGER,
-    region2_id INTEGER,
     -- Résultat
     winner_fighter_id INTEGER,
-    winner_region_id INTEGER,
     loser_fighter_id INTEGER,
-    loser_region_id INTEGER,
     -- Score simplifié pour la lutte traditionnelle
-    score_fighter1 INTEGER DEFAULT 0,
-    score_fighter2 INTEGER DEFAULT 0,
-    rounds INTEGER DEFAULT 1,
-    -- Nombre de tours/rounds
     match_result VARCHAR(30) CHECK (
         match_result IN (
             'fighter1_win',
             'fighter2_win',
-            'region1_win',
-            'region2_win',
             'draw',
             'cancelled',
-            'postponed',
-            'technical_win_fighter1',
-            'technical_win_fighter2'
+            'postponed'
         )
     ),
     -- Gestion du temps
@@ -320,70 +321,30 @@ CREATE TABLE IF NOT EXISTS matches (
         )
     ) DEFAULT 'scheduled',
     -- Informations supplémentaires
-    main_referee_id INTEGER,
     audience_count INTEGER,
     video_url VARCHAR(255),
     live_stream_url VARCHAR(255),
-    venue VARCHAR(255),
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sub_group_id) REFERENCES sub_groups(id) ON DELETE CASCADE,
-    FOREIGN KEY (fighter1_id) REFERENCES fighters(id),
-    FOREIGN KEY (fighter2_id) REFERENCES fighters(id),
-    FOREIGN KEY (region1_id) REFERENCES regions(id),
-    FOREIGN KEY (region2_id) REFERENCES regions(id),
-    FOREIGN KEY (winner_fighter_id) REFERENCES fighters(id),
-    FOREIGN KEY (winner_region_id) REFERENCES regions(id),
-    FOREIGN KEY (loser_fighter_id) REFERENCES fighters(id),
-    FOREIGN KEY (loser_region_id) REFERENCES regions(id),
-    FOREIGN KEY (main_referee_id) REFERENCES referees(id),
-    -- Contrainte: soit des lutteurs, soit des régions, pas les deux
-    CHECK (
-        (
-            fighter1_id IS NOT NULL
-            AND fighter2_id IS NOT NULL
-            AND region1_id IS NULL
-            AND region2_id IS NULL
-        )
-        OR (
-            region1_id IS NOT NULL
-            AND region2_id IS NOT NULL
-            AND fighter1_id IS NULL
-            AND fighter2_id IS NULL
-        )
-    )
-);
--- Assignation des arbitres aux matchs
-CREATE TABLE IF NOT EXISTS referee_assignments (
-    id SERIAL PRIMARY KEY,
-    referee_id INTEGER NOT NULL,
-    match_id INTEGER NOT NULL,
-    role VARCHAR(50) CHECK (
-        role IN (
-            'main_referee',
-            'assistant_referee',
-            'time_keeper',
-            'jury'
-        )
-    ) DEFAULT 'main_referee',
-    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (referee_id) REFERENCES referees(id),
-    FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE
+    FOREIGN KEY (sub_group_id) REFERENCES sub_groups (id) ON DELETE CASCADE,
+    FOREIGN KEY (fighter1_id) REFERENCES fighters (id),
+    FOREIGN KEY (fighter2_id) REFERENCES fighters (id),
+    FOREIGN KEY (winner_fighter_id) REFERENCES fighters (id),
+    FOREIGN KEY (loser_fighter_id) REFERENCES fighters (id)
 );
 -- Cartons pendant les matchs
 CREATE TABLE IF NOT EXISTS fighter_cards (
     id SERIAL PRIMARY KEY,
     fighter_id INTEGER NOT NULL,
     match_id INTEGER NOT NULL,
-    card_type VARCHAR(10) CHECK (card_type IN ('yellow', 'red', 'white')) NOT NULL,
+    card_type VARCHAR(10) CHECK (card_type IN ('yellow', 'red')) NOT NULL,
     card_reason TEXT,
-    minute_given INTEGER,
+    minute_given TIME,
     is_cancelled BOOLEAN DEFAULT FALSE,
-    given_by VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (fighter_id) REFERENCES fighters(id) ON DELETE CASCADE,
-    FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE
+    FOREIGN KEY (fighter_id) REFERENCES fighters (id) ON DELETE CASCADE,
+    FOREIGN KEY (match_id) REFERENCES matches (id) ON DELETE CASCADE
 );
 -- =============================================
 -- TRANSFERTS DE LUTTEURS
@@ -401,13 +362,18 @@ CREATE TABLE IF NOT EXISTS fighter_transfers (
     is_permanent BOOLEAN DEFAULT TRUE,
     approved_by_user_id INTEGER,
     status VARCHAR(20) CHECK (
-        status IN ('pending', 'approved', 'rejected', 'completed')
+        status IN (
+            'pending',
+            'approved',
+            'rejected',
+            'completed'
+        )
     ) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (fighter_id) REFERENCES fighters(id),
-    FOREIGN KEY (from_region_id) REFERENCES regions(id),
-    FOREIGN KEY (to_region_id) REFERENCES regions(id),
-    FOREIGN KEY (approved_by_user_id) REFERENCES users(id)
+    FOREIGN KEY (fighter_id) REFERENCES fighters (id),
+    FOREIGN KEY (from_region_id) REFERENCES regions (id),
+    FOREIGN KEY (to_region_id) REFERENCES regions (id),
+    FOREIGN KEY (approved_by_user_id) REFERENCES users (id)
 );
 -- =============================================
 -- SYSTÈME DE MESSAGERIE
@@ -461,7 +427,13 @@ CREATE TABLE IF NOT EXISTS articles (
     content TEXT NOT NULL,
     featured_image VARCHAR(255),
     author_id INTEGER NOT NULL,
-    status VARCHAR(20) CHECK (status IN ('draft', 'published', 'archived')) DEFAULT 'draft',
+    status VARCHAR(20) CHECK (
+        status IN (
+            'draft',
+            'published',
+            'archived'
+        )
+    ) DEFAULT 'draft',
     language VARCHAR(5) CHECK (language IN ('fr', 'ha', 'en')) DEFAULT 'fr',
     view_count INTEGER DEFAULT 0,
     like_count INTEGER DEFAULT 0,
@@ -471,14 +443,19 @@ CREATE TABLE IF NOT EXISTS articles (
     published_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (author_id) REFERENCES users(id)
+    FOREIGN KEY (author_id) REFERENCES users (id)
 );
 CREATE TABLE IF NOT EXISTS media (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     file_path VARCHAR(255) NOT NULL,
     file_type VARCHAR(20) CHECK (
-        file_type IN ('image', 'video', 'document', 'audio')
+        file_type IN (
+            'image',
+            'video',
+            'document',
+            'audio'
+        )
     ) NOT NULL,
     mime_type VARCHAR(100),
     file_size BIGINT,
@@ -489,7 +466,7 @@ CREATE TABLE IF NOT EXISTS media (
     entity_type VARCHAR(50),
     entity_id INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (uploader_id) REFERENCES users(id)
+    FOREIGN KEY (uploader_id) REFERENCES users (id)
 );
 CREATE TABLE IF NOT EXISTS videos (
     id SERIAL PRIMARY KEY,
@@ -535,10 +512,16 @@ CREATE TABLE IF NOT EXISTS interactions (
     entity_type VARCHAR(50) NOT NULL,
     entity_id INTEGER NOT NULL,
     interaction_type VARCHAR(20) CHECK (
-        interaction_type IN ('like', 'view', 'share', 'bookmark', 'follow')
+        interaction_type IN (
+            'like',
+            'view',
+            'share',
+            'bookmark',
+            'follow'
+        )
     ) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (user_id) REFERENCES users (id),
     UNIQUE (
         user_id,
         entity_type,
@@ -550,30 +533,28 @@ CREATE TABLE IF NOT EXISTS interactions (
 -- INDEX POUR LES PERFORMANCES
 -- =============================================
 -- Index pour les compétitions
-CREATE INDEX idx_competitions_status ON competitions(status);
-CREATE INDEX idx_competitions_type ON competitions(type);
-CREATE INDEX idx_competitions_region ON competitions(region_id);
+CREATE INDEX idx_competitions_status ON competitions (status);
+CREATE INDEX idx_competitions_region ON competitions (region_id);
 -- Index pour les éditions
-CREATE INDEX idx_editions_competition ON competition_editions(competition_id);
-CREATE INDEX idx_editions_year ON competition_editions(year);
+CREATE INDEX idx_editions_competition ON competition_editions (competition_id);
+CREATE INDEX idx_editions_year ON competition_editions (year);
 -- Index pour les phases et groupes
-CREATE INDEX idx_phases_edition ON phases(edition_id);
-CREATE INDEX idx_phase_groups_phase ON phase_groups(phase_id);
-CREATE INDEX idx_sub_groups_group ON sub_groups(group_id);
+CREATE INDEX idx_phases_edition ON phases (edition_id);
+CREATE INDEX idx_phase_groups_phase ON phase_groups (phase_id);
+CREATE INDEX idx_sub_groups_group ON sub_groups (group_id);
 -- Index pour les matchs
-CREATE INDEX idx_matches_sub_group ON matches(sub_group_id);
-CREATE INDEX idx_matches_date ON matches(match_date);
-CREATE INDEX idx_matches_status ON matches(status);
-CREATE INDEX idx_matches_fighters ON matches(fighter1_id, fighter2_id);
-CREATE INDEX idx_matches_regions ON matches(region1_id, region2_id);
+CREATE INDEX idx_matches_sub_group ON matches (sub_group_id);
+CREATE INDEX idx_matches_date ON matches (match_date);
+CREATE INDEX idx_matches_status ON matches (status);
+CREATE INDEX idx_matches_fighters ON matches (fighter1_id, fighter2_id);
 -- Index pour les lutteurs et régions d'édition
-CREATE INDEX idx_edition_fighters_edition ON edition_fighters(edition_id);
-CREATE INDEX idx_edition_fighters_fighter ON edition_fighters(fighter_id);
-CREATE INDEX idx_edition_regions_edition ON edition_regions(edition_id);
-CREATE INDEX idx_edition_regions_region ON edition_regions(region_id);
+CREATE INDEX idx_edition_fighters_edition ON edition_fighters (edition_id);
+CREATE INDEX idx_edition_fighters_fighter ON edition_fighters (fighter_id);
+CREATE INDEX idx_edition_regions_edition ON edition_regions (edition_id);
+CREATE INDEX idx_edition_regions_region ON edition_regions (region_id);
 -- Index pour les messages
-CREATE INDEX idx_messages_entity ON messages(entity_type, entity_id);
-CREATE INDEX idx_messages_author ON messages(author_id, created_at);
+CREATE INDEX idx_messages_entity ON messages (entity_type, entity_id);
+CREATE INDEX idx_messages_author ON messages (author_id, created_at);
 -- =============================================
 -- FONCTIONS ET DÉCLENCHEURS
 -- =============================================

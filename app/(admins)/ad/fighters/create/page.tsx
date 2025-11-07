@@ -128,7 +128,7 @@ export default function CreateLutteurPage() {
     loadCities();
   }, [formData.region_id]);
 
-    console.log('regions:', loadingRegions)
+    // console.log('regions:', loadingRegions)
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -212,26 +212,6 @@ export default function CreateLutteurPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-orange-600">Kokowa TV</h1>
-            <nav className="flex gap-6">
-              <a href="/" className="text-gray-700 hover:text-orange-600 font-medium">
-                Accueil
-              </a>
-              <a href="/lutteurs" className="text-orange-600 font-medium border-b-2 border-orange-600">
-                Lutteurs
-              </a>
-              <a href="/competitions" className="text-gray-700 hover:text-orange-600 font-medium">
-                Compétitions
-              </a>
-            </nav>
-          </div>
-        </div>
-      </header>
-
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
           <h1 className="text-2xl font-bold mb-6">Ajouter un Lutteur</h1>
@@ -355,7 +335,7 @@ export default function CreateLutteurPage() {
               </div>
 
               {/* Ville */}
-              <div>
+              {/* <div>
                 <label htmlFor="city_id" className="block text-sm font-medium mb-1">
                   Ville
                 </label>
@@ -377,7 +357,7 @@ export default function CreateLutteurPage() {
                 {loadingCities && (
                   <p className="text-gray-500 text-sm mt-1">Chargement des villes...</p>
                 )}
-              </div>
+              </div> */}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -47,7 +47,6 @@ export interface EntityListProps<T> {
     | "edition"
     | "referee"
     | "match"
-    | "city"
     | "phase"
     | "article"
     | "media"
@@ -181,17 +180,6 @@ const getEntitySpecificFilters = () => {
         },
       ];
 
-    case "city":
-      return [
-        ...baseFilters,
-        {
-          key: "region_id",
-          label: "Région",
-          options: [
-            { value: "all", label: "Toutes régions" },
-          ],
-        },
-      ];
 
     case "competition":
       return [

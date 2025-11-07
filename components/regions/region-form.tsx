@@ -1,0 +1,200 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Typography } from "@/components/ui/typography";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdvancedUpload } from "@/components/ui/advanced-upload";
+import { createRegion, updateRegion } from "@/actions/regions";
+
+interface RegionFormProps {
+  region?: any;
+  isEdit?: boolean;
+}
+
+export function RegionForm({ region, isEdit = false }: RegionFormProps) {
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    name: region?.name || "",
+    code: region?.code || "",
+    description: region?.description || "",
+    color: region?.color || "#3b82f6",
+  });
+  const [flagImage, setFlagImage] = useState(region?.flag_image || "");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setErrors({});
+
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('code', formData.code);
+      if (formData.description) formDataToSend.append('description', formData.description);
+      if (formData.color) formDataToSend.append('color', formData.color);
+      if (flagImage) formDataToSend.append('flag_image', flagImage);
+
+      let result;
+      if (isEdit && region) {
+        result = await updateRegion(region.id, formDataToSend);
+      } else {
+        result = await createRegion(formDataToSend);
+      }
+
+      if (result.success) {
+        router.push('/ad/regions');
+        router.refresh();
+      } else {
+        setErrors({ submit: result.message || "Une erreur est survenue" });
+      }
+    } catch (error) {
+      setErrors({ submit: error instanceof Error ? error.message : "Erreur lors de l'enregistrement" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto">
+        <Typography variant="h2" className="mb-6">
+          {isEdit ? "Modifier la Région" : "Créer une Région"}
+        </Typography>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Informations de la région</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Upload du drapeau */}
+              <div>
+                <Typography variant="body-sm" weight="medium" className="mb-2">
+                  Drapeau de la région
+                </Typography>
+                <AdvancedUpload
+                  value={flagImage}
+                  onChange={setFlagImage}
+                  maxSizeMB={2}
+                  isRounded={false}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Nom */}
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium mb-2">
+                  Nom de la région *
+                </label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Ex: Dakar"
+                  className={errors.name ? "border-red-500" : ""}
+                />
+                {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+              </div>
+
+              {/* Code */}
+              <div>
+                <label htmlFor="code" className="block text-sm font-medium mb-2">
+                  Code *
+                </label>
+                <Input
+                  id="code"
+                  name="code"
+                  type="text"
+                  value={formData.code}
+                  onChange={handleChange}
+                  placeholder="Ex: DK"
+                  maxLength={10}
+                  className={errors.code ? "border-red-500" : ""}
+                />
+                {errors.code && <p className="text-red-500 text-sm mt-1">{errors.code}</p>}
+              </div>
+
+              {/* Couleur */}
+              <div>
+                <label htmlFor="color" className="block text-sm font-medium mb-2">
+                  Couleur
+                </label>
+                <div className="flex gap-4 items-center">
+                  <Input
+                    id="color"
+                    name="color"
+                    type="color"
+                    value={formData.color}
+                    onChange={handleChange}
+                    className="w-20 h-10 p-1"
+                  />
+                  <Input
+                    value={formData.color}
+                    onChange={handleChange}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium mb-2">
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  rows={4}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Description de la région..."
+                />
+              </div>
+
+              {/* Boutons */}
+              <div className="flex justify-end gap-3 pt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push("/ad/regions")}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Enregistrement..." : isEdit ? "Modifier" : "Créer"}
+                </Button>
+              </div>
+
+              {errors.submit && (
+                <div className="bg-red-50 border border-red-200 rounded p-3">
+                  <Typography variant="body-sm" theme="danger">
+                    {errors.submit}
+                  </Typography>
+                </div>
+              )}
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

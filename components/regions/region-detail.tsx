@@ -25,22 +25,19 @@ export default function RegionDetail({ regionId }: RegionDetailProps) {
       setLoading(true);
       
       // Charger les données de la région avec ses relations
-      const [regionRes, citiesRes, fightersRes] = await Promise.all([
-        fetch(`/api/regions/${regionId}?with_relations=true`),
-        fetch(`/api/cities?region_id=${regionId}`),
+      const [regionRes, fightersRes] = await Promise.all([
+        fetch(`/api/regions/${regionId}?with_relations=true&with_cities`),
         fetch(`/api/fighters?region_id=${regionId}&with_region=false`)
       ]);
 
       if (!regionRes.ok) throw new Error("Erreur lors du chargement de la région");
-      if (!citiesRes.ok) throw new Error("Erreur lors du chargement des villes");
       if (!fightersRes.ok) throw new Error("Erreur lors du chargement des lutteurs");
 
       const regionData = await regionRes.json();
-      const citiesData = await citiesRes.json();
       const fightersData = await fightersRes.json();
 
       setRegion(regionData);
-      setCities(citiesData.data || citiesData);
+      setCities(regionData.data?.cities || []);
       setFighters(fightersData.data || fightersData);
       
     } catch (err) {

@@ -10,14 +10,14 @@ import {
   MatchFilters,
   PhaseFilters,
   PaginatedResponse,
-  CityFilters,
   ArticleFilters,
   MediaFilters,
   VideoFilters,
   MessageFilters,
   PhaseGroupFilters,
   SubGroupFilters,
-  NotificationFilters
+  NotificationFilters,
+  UserFilters
 } from '@/types';
 
 // Types pour les filtres par entité
@@ -29,13 +29,14 @@ export type EntityFilters =
   | MatchFilters 
   | RefereeFilters 
   | PhaseFilters
-  | CityFilters
   | ArticleFilters
   | MediaFilters
   | VideoFilters
   | MessageFilters
   | PhaseGroupFilters
   | SubGroupFilters
+  | NotificationFilters
+  | UserFilters
   | Record<string, any>;
 
 export interface UseEntityListProps<T> {
@@ -47,14 +48,14 @@ export interface UseEntityListProps<T> {
     | 'matches' 
     | 'referees' 
     | 'phases'
-    | 'cities'
     | 'articles'
     | 'media'
     | 'videos'
     | 'messages'
     | 'phase-groups'
     | 'sub-groups'
-    | 'notifications';
+    | 'notifications'
+    | 'users';
   defaultFilters?: EntityFilters;
   defaultLimit?: number;
   withRelations?: boolean;
@@ -95,13 +96,11 @@ export function useEntityList<T>({
       case 'fighters':
         const fighterFilters = filters as FighterFilters;
         if (fighterFilters.region_id) params.region_id = fighterFilters.region_id.toString();
-        if (fighterFilters.city_id) params.city_id = fighterFilters.city_id.toString();
         if (fighterFilters.is_active !== undefined) params.is_active = fighterFilters.is_active.toString();
         if (fighterFilters.is_champion !== undefined) params.is_champion = fighterFilters.is_champion.toString();
         if (fighterFilters.min_ranking) params.min_ranking = fighterFilters.min_ranking.toString();
         if (fighterFilters.max_ranking) params.max_ranking = fighterFilters.max_ranking.toString();
         if (fighterFilters.with_region) params.with_region = 'true';
-        if (fighterFilters.with_city) params.with_city = 'true';
         if (fighterFilters.with_achievements) params.with_achievements = 'true';
         if (fighterFilters.with_transfers) params.with_transfers = 'true';
         break;
@@ -110,16 +109,9 @@ export function useEntityList<T>({
         const regionFilters = filters as RegionFilters;
         if (regionFilters.code) params.code = regionFilters.code;
         if (regionFilters.with_fighters) params.with_fighters = 'true';
-        if (regionFilters.with_cities) params.with_cities = 'true';
         if (regionFilters.with_competitions) params.with_competitions = 'true';
         if (regionFilters.fighter_count_min) params.fighter_count_min = regionFilters.fighter_count_min.toString();
         if (regionFilters.fighter_count_max) params.fighter_count_max = regionFilters.fighter_count_max.toString();
-        break;
-
-      case 'cities':
-        const cityFilters = filters as CityFilters;
-        if (cityFilters.region_id) params.region_id = cityFilters.region_id.toString();
-        if (cityFilters.with_region) params.with_region = 'true';
         break;
 
       case 'competitions':
@@ -129,8 +121,7 @@ export function useEntityList<T>({
         if (competitionFilters.region_id) params.region_id = competitionFilters.region_id.toString();
         if (competitionFilters.with_region) params.with_region = 'true';
         if (competitionFilters.with_editions) params.with_editions = 'true';
-        if (competitionFilters.with_phases) params.with_phases = 'true';
-        if (competitionFilters.with_matches) params.with_matches = 'true';
+        if (competitionFilters.is_active !== undefined) params.is_active = competitionFilters.is_active.toString();
         break;
 
       case 'editions':
@@ -141,6 +132,7 @@ export function useEntityList<T>({
         if (editionFilters.with_fighters) params.with_fighters = 'true';
         if (editionFilters.with_regions) params.with_regions = 'true';
         if (editionFilters.with_phases) params.with_phases = 'true';
+        if (editionFilters.is_active !== undefined) params.is_active = editionFilters.is_active.toString();
         break;
 
       case 'phases':
@@ -150,13 +142,15 @@ export function useEntityList<T>({
         if (phaseFilters.is_completed !== undefined) params.is_completed = phaseFilters.is_completed.toString();
         if (phaseFilters.with_edition) params.with_edition = 'true';
         if (phaseFilters.with_groups) params.with_groups = 'true';
+        if (phaseFilters.is_active !== undefined) params.is_active = phaseFilters.is_active.toString();
         break;
 
       case 'phase-groups':
         const phaseGroupFilters = filters as PhaseGroupFilters;
         if (phaseGroupFilters.phase_id) params.phase_id = phaseGroupFilters.phase_id.toString();
         if (phaseGroupFilters.with_phase) params.with_phase = 'true';
-        if (phaseGroupFilters.with_sub_groups) params.with_sub_groups = 'true';
+        if (phaseGroupFilters.is_active !== undefined) params.is_active = phaseGroupFilters.is_active.toString();
+        // if (phaseGroupFilters.with_sub_groups) params.with_sub_groups = 'true';
         break;
 
       case 'sub-groups':
@@ -164,22 +158,21 @@ export function useEntityList<T>({
         if (subGroupFilters.group_id) params.group_id = subGroupFilters.group_id.toString();
         if (subGroupFilters.with_group) params.with_group = 'true';
         if (subGroupFilters.with_matches) params.with_matches = 'true';
-        if (subGroupFilters.with_belt_fighters) params.with_belt_fighters = 'true';
-        if (subGroupFilters.with_belt_regions) params.with_belt_regions = 'true';
+        if (subGroupFilters.with_regions) params.with_regions = 'true';
+        if (subGroupFilters.is_active !== undefined) params.is_active = subGroupFilters.is_active.toString();
         break;
 
       case 'matches':
         const matchFilters = filters as MatchFilters;
+        if (matchFilters.sub_group_id) params.sub_group_id = matchFilters.sub_group_id.toString();
         if (matchFilters.edition_id) params.edition_id = matchFilters.edition_id.toString();
         if (matchFilters.phase_id) params.phase_id = matchFilters.phase_id.toString();
         if (matchFilters.group_id) params.group_id = matchFilters.group_id.toString();
-        if (matchFilters.sub_group_id) params.sub_group_id = matchFilters.sub_group_id.toString();
         if (matchFilters.status) params.status = matchFilters.status;
         if (matchFilters.date_from) params.date_from = matchFilters.date_from;
         if (matchFilters.date_to) params.date_to = matchFilters.date_to;
+        if (matchFilters.with_sub_group) params.with_sub_group = 'true';
         if (matchFilters.with_fighters) params.with_fighters = 'true';
-        if (matchFilters.with_regions) params.with_regions = 'true';
-        if (matchFilters.with_referees) params.with_referees = 'true';
         break;
 
       case 'referees':
@@ -189,7 +182,6 @@ export function useEntityList<T>({
         if (refereeFilters.certification_level) params.certification_level = refereeFilters.certification_level;
         if (refereeFilters.experience_min) params.experience_min = refereeFilters.experience_min.toString();
         if (refereeFilters.with_region) params.with_region = 'true';
-        if (refereeFilters.with_assignments) params.with_assignments = 'true';
         break;
 
       case 'articles':
@@ -229,17 +221,31 @@ export function useEntityList<T>({
 
       case 'notifications':
         const notificationFilters = filters as NotificationFilters;
-        if (notificationFilters.user_id) params.user_id = notificationFilters.user_id.toString();
-        if (notificationFilters.type) params.type = notificationFilters.type;
+        if (notificationFilters.notification_type) params.notification_type = notificationFilters.notification_type;
         if (notificationFilters.is_read !== undefined) params.is_read = notificationFilters.is_read.toString();
-        if (notificationFilters.priority) params.priority = notificationFilters.priority;
         if (notificationFilters.with_user) params.with_user = 'true';
+        break;
+
+      case 'users':
+        const userFilters = filters as UserFilters;
+        if (userFilters.role) params.role = userFilters.role;
+        if (userFilters.is_active !== undefined) params.is_active = userFilters.is_active.toString();
+        if (userFilters.is_verified !== undefined) params.is_verified = userFilters.is_verified.toString();
+        if (userFilters.with_profile) params.with_profile = 'true';
         break;
     }
 
     // Relations par défaut
     if (withRelations) {
       params.with_relations = 'true';
+    }
+
+    // Tri et ordre
+    if (filters.sortBy) {
+      params.sortBy = filters.sortBy;
+    }
+    if (filters.sortOrder) {
+      params.sortOrder = filters.sortOrder;
     }
 
     return params;
@@ -296,20 +302,20 @@ export function useEntityList<T>({
   };
 
   const handleAdd = () => {
-    router.push(`/admin/${entityType}/new`);
+    router.push(`/ad/${entityType}/new`);
   };
 
   const handleEdit = (item: T) => {
     const itemWithId = item as any;
     if (itemWithId.id) {
-      router.push(`/admin/${entityType}/${itemWithId.id}/edit`);
+      router.push(`/ad/${entityType}/${itemWithId.id}/edit`);
     }
   };
 
   const handleView = (item: T) => {
     const itemWithId = item as any;
     if (itemWithId.id) {
-      router.push(`/admin/${entityType}/${itemWithId.id}`);
+      router.push(`/ad/${entityType}/${itemWithId.id}`);
     }
   };
 
@@ -344,6 +350,8 @@ export function useEntityList<T>({
 
   // Fallback pour l'export
   const exportCurrentData = () => {
+    if (data.length === 0) return;
+    
     const headers = Object.keys(data[0] || {}).join(',');
     const rows = data.map(item => 
       Object.values(item as Record<string, unknown>).map(value => 

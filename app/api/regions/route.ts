@@ -28,9 +28,7 @@ export async function GET(request: NextRequest) {
       limit,
       page,
       search,
-      // Les filtres de jointure peuvent être personnalisés selon besoin
-      with_fighters: true,
-      with_cities: true,
+      with_fighters: false,
       with_competitions: false,
     });
 

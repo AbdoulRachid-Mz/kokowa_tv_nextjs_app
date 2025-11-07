@@ -6,20 +6,21 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
-    // Construire l'objet d'options attendu par getFighters
-    const options = {
+    // Build the filters object expected by getFighters
+    const filters = {
       search: searchParams.get('search') || undefined,
-      category_id: searchParams.get('category_id') || undefined,
-      region_id: searchParams.get('region_id') || undefined,
-      with_category: searchParams.get('with_category') === 'true',
+      region_id: searchParams.get('region_id') ? parseInt(searchParams.get('region_id')!) : undefined,
+      is_active: searchParams.get('is_active') ? searchParams.get('is_active') === 'true' : undefined,
+      is_champion: searchParams.get('is_champion') ? searchParams.get('is_champion') === 'true' : undefined,
+      min_ranking: searchParams.get('min_ranking') ? parseInt(searchParams.get('min_ranking')!) : undefined,
+      max_ranking: searchParams.get('max_ranking') ? parseInt(searchParams.get('max_ranking')!) : undefined,
       with_region: searchParams.get('with_region') === 'true',
+      with_achievements: searchParams.get('with_achievements') === 'true',
+      page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20,
-      offset: searchParams.get('page')
-        ? (parseInt(searchParams.get('page')!) - 1) * (parseInt(searchParams.get('limit')!) || 20)
-        : 0,
     };
 
-    const result = await getFighters(options);
+    const result = await getFighters(filters);
 
     return NextResponse.json(result);
   } catch (error) {

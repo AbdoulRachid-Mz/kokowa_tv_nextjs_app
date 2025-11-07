@@ -1,8 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createCompetition } from "@/actions/competitions";
+import { ImageIcon } from "lucide-react";
+import { AdvancedUpload } from "@/components/ui/advanced-upload";
+import { Region } from "@/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type CompetitionFormData = {
   name: string;
@@ -24,7 +34,7 @@ const competitionTypes = [
   { value: "friendly", label: "Amical" },
   { value: "ministre", label: "Ministre" },
   { value: "coupe_airtel", label: "Coupe Airtel" },
-  { value: "other", label: "Autre" }
+  { value: "other", label: "Autre" },
 ];
 
 export default function CreateCompetitionPage() {
@@ -38,16 +48,44 @@ export default function CreateCompetitionPage() {
     featured_image: "",
     registration_deadline: "",
     max_participants: "",
-    prize_pool: ""
+    prize_pool: "",
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof CompetitionFormData, string>>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof CompetitionFormData, string>>
+  >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [regionsData, setRegionsData] = useState<Region[]>([]);
+  const [isLoadingRegions, setIsLoadingRegions] = useState(true);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  useEffect(() => {
+    const loadRegions = async () => {
+      try {
+        const response = await fetch("/api/regions");
+        const data = await response.json();
+        setRegionsData(data.data || []);
+      } catch (error) {
+        console.error("Erreur lors du chargement des régions:", error);
+      } finally {
+        setIsLoadingRegions(false);
+      }
+    };
+
+    loadRegions();
+  }, []);
+
+  if (isLoadingRegions) {
+    return <div>Chargement des régions...</div>;
+  }
+
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name as keyof CompetitionFormData]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
@@ -58,7 +96,7 @@ export default function CreateCompetitionPage() {
 
     try {
       const formDataToSend = new FormData();
-      
+
       // Ajouter tous les champs au FormData
       Object.entries(formData).forEach(([key, value]) => {
         if (value !== undefined && value !== "") {
@@ -66,7 +104,9 @@ export default function CreateCompetitionPage() {
         }
       });
 
-      const result = await createCompetition(formDataToSend, { with_edition: true });
+      const result = await createCompetition(formDataToSend, {
+        with_edition: true,
+      });
 
       if (!result.success) {
         throw new Error(result.message || "Erreur lors de la création");
@@ -89,18 +129,55 @@ export default function CreateCompetitionPage() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Créer une compétition</h1>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Créer une compétition
+        </h1>
         <p className="text-gray-600 mt-2">
           Créez une nouvelle compétition avec son édition automatique
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-md">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-6 bg-white p-6 rounded-lg shadow-md"
+      >
         {/* Informations de base */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Image */}
+          <div>
+            <label
+              htmlFor="featured_image"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Image de couverture
+            </label>
+            <AdvancedUpload
+              value={formData.featured_image || ""}
+              onChange={(url) =>
+                setFormData((prev) => ({ ...prev, featured_image: url }))
+              }
+              maxSizeMB={2}
+              maxWidthOrHeight={1920}
+              uploadPath="competitions"
+              isRounded={false}
+              showInternalSelection={true}
+              internalImagesFolder="competitions"
+              emptyPreview={
+                <div className="text-center">
+                  <ImageIcon className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600">
+                    Aucune image sélectionnée
+                  </p>
+                </div>
+              }
+            />
+          </div>
           {/* Nom */}
           <div className="md:col-span-2">
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Nom de la compétition <span className="text-red-500">*</span>
             </label>
             <input
@@ -115,12 +192,17 @@ export default function CreateCompetitionPage() {
               }`}
               placeholder="Ex: Coupe Nationale 2024"
             />
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+            {errors.name && (
+              <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+            )}
           </div>
 
           {/* Type */}
           <div>
-            <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="type"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Type de compétition <span className="text-red-500">*</span>
             </label>
             <select
@@ -130,7 +212,7 @@ export default function CreateCompetitionPage() {
               onChange={handleChange}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              {competitionTypes.map(type => (
+              {competitionTypes.map((type) => (
                 <option key={type.value} value={type.value}>
                   {type.label}
                 </option>
@@ -140,7 +222,10 @@ export default function CreateCompetitionPage() {
 
           {/* Lieu */}
           <div>
-            <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="location"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Lieu
             </label>
             <input
@@ -156,23 +241,37 @@ export default function CreateCompetitionPage() {
 
           {/* Région */}
           <div>
-            <label htmlFor="region_id" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="region_id"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Région
             </label>
-            <input
-              id="region_id"
-              name="region_id"
-              type="number"
+            <Select
               value={formData.region_id}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-              placeholder="ID de la région"
-            />
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, region_id: value }))
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Sélectionner une région" />
+              </SelectTrigger>
+              <SelectContent>
+                {regionsData.map((region) => (
+                  <SelectItem key={region.id} value={String(region.id)}>
+                    {region.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Date limite d'inscription */}
           <div>
-            <label htmlFor="registration_deadline" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="registration_deadline"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Date limite d'inscription
             </label>
             <input
@@ -187,7 +286,10 @@ export default function CreateCompetitionPage() {
 
           {/* Participants maximum */}
           <div>
-            <label htmlFor="max_participants" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="max_participants"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Participants maximum
             </label>
             <input
@@ -200,11 +302,12 @@ export default function CreateCompetitionPage() {
               placeholder="Ex: 64"
             />
           </div>
-        </div>
-
         {/* Prix */}
         <div>
-          <label htmlFor="prize_pool" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="prize_pool"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Prix total (FCFA)
           </label>
           <input
@@ -218,26 +321,15 @@ export default function CreateCompetitionPage() {
             placeholder="Ex: 5000000"
           />
         </div>
-
-        {/* Image */}
-        <div>
-          <label htmlFor="featured_image" className="block text-sm font-medium text-gray-700 mb-1">
-            URL de l'image
-          </label>
-          <input
-            id="featured_image"
-            name="featured_image"
-            type="url"
-            value={formData.featured_image}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            placeholder="https://example.com/image.jpg"
-          />
         </div>
+
 
         {/* Description */}
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Description
           </label>
           <textarea
@@ -255,8 +347,9 @@ export default function CreateCompetitionPage() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 className="text-blue-800 font-semibold mb-2">ℹ️ Information</h3>
           <p className="text-blue-700 text-sm">
-            Une édition automatique sera créée avec cette compétition. Vous pourrez ensuite 
-            ajouter des phases, groupes et matchs depuis la page de détail.
+            Une édition automatique sera créée avec cette compétition. Vous
+            pourrez ensuite ajouter des phases, groupes et matchs depuis la page
+            de détail.
           </p>
         </div>
 

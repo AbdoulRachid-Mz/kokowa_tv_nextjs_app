@@ -5,97 +5,139 @@ import { fighterSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
 import { Fighter, FighterFilters, PaginatedResponse } from '@/types';
 
-// import { query } from "@/lib/neon-client";
+export async function getFighters(
+  filters: FighterFilters = {}
+): Promise<PaginatedResponse<Fighter>> {
+  try {
+    const {
+      search = '',
+      page = 1,
+      limit = 20,
+      region_id,
+      is_active,
+      is_champion,
+      min_ranking,
+      max_ranking,
+      with_region = false,
+      with_achievements = false,
+    } = filters;
 
-export async function getFighters(options: {
-  search?: string;
-  category_id?: string;
-  region_id?: string;
-  with_category?: boolean;
-  with_region?: boolean;
-  limit?: number;
-  offset?: number;
-}) {
-  const {
-    search,
-    category_id,
-    region_id,
-    with_category = false,
-    with_region = false,
-    limit = 20,
-    offset = 0,
-  } = options;
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+    const selectFields = ['f.*'];
 
-  let whereClause = "WHERE 1=1";
-  let joinClause = "";
-  const params: any[] = [];
-  const selectFields = ["f.*"];
+    // Filtre de recherche
+    if (search) {
+      whereClause += ` AND (
+        f.first_name ILIKE $${params.length + 1} OR 
+        f.last_name ILIKE $${params.length + 1} OR 
+        f.nickname ILIKE $${params.length + 1}
+      )`;
+      params.push(`%${search}%`);
+    }
 
-  // Jointures optionnelles
-  if (with_category) {
-    joinClause += " LEFT JOIN categories cat ON f.category_id = cat.id";
-    selectFields.push(`
-      JSON_BUILD_OBJECT(
-        'id', cat.id,
-        'name', cat.name,
-        'weight_min', cat.weight_min,
-        'weight_max', cat.weight_max
-      ) as category
-    `);
+    // Filtres supplémentaires
+    if (region_id) {
+      whereClause += ` AND f.region_id = $${params.length + 1}`;
+      params.push(region_id);
+    }
+
+    if (is_active !== undefined) {
+      whereClause += ` AND f.is_active = $${params.length + 1}`;
+      params.push(is_active);
+    }
+
+    if (is_champion !== undefined) {
+      whereClause += ` AND f.is_champion = $${params.length + 1}`;
+      params.push(is_champion);
+    }
+
+    if (min_ranking !== undefined) {
+      whereClause += ` AND f.ranking >= $${params.length + 1}`;
+      params.push(min_ranking);
+    }
+
+    if (max_ranking !== undefined) {
+      whereClause += ` AND f.ranking <= $${params.length + 1}`;
+      params.push(max_ranking);
+    }
+
+    // Jointure avec région si demandée
+    if (with_region) {
+      selectFields.push(`
+        JSON_BUILD_OBJECT(
+          'id', r.id,
+          'name', r.name,
+          'code', r.code,
+          'color', r.color,
+          'flag_image', r.flag_image
+        ) as region
+      `);
+    }
+
+    // Jointure avec palmarès si demandée
+    if (with_achievements) {
+      selectFields.push(`
+        (SELECT JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'id', fa.id,
+            'title', fa.title,
+            'competition', fa.competition,
+            'year', fa.year,
+            'position', fa.position,
+            'description', fa.description,
+            'medal_image', fa.medal_image
+          ) ORDER BY fa.year DESC
+        ) FROM fighter_achievements fa WHERE fa.fighter_id = f.id) as achievements
+      `);
+    }
+
+    // Requête pour le total
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM fighters f
+      ${with_region ? 'LEFT JOIN regions r ON f.region_id = r.id' : ''}
+      ${whereClause}
+    `;
+
+    const countResult = await query<{ total: string }>(countSql, params);
+    const total = parseInt(countResult[0]?.total ?? '0');
+
+    // Pagination
+    const validatedPage = Math.max(1, page);
+    const validatedLimit = Math.max(1, Math.min(100, limit));
+    const offset = (validatedPage - 1) * validatedLimit;
+    const totalPages = Math.ceil(total / validatedLimit);
+
+    // Requête principale
+    const dataSql = `
+      SELECT ${selectFields.join(', ')}
+      FROM fighters f
+      ${with_region ? 'LEFT JOIN regions r ON f.region_id = r.id' : ''}
+      ${whereClause}
+      ORDER BY f.ranking ASC, f.last_name ASC, f.first_name ASC
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+    `;
+
+    const data = await query<Fighter>(
+      dataSql, 
+      [...params, validatedLimit, offset]
+    );
+
+    return {
+      data,
+      pagination: {
+        page: validatedPage,
+        limit: validatedLimit,
+        total,
+        totalPages
+      }
+    };
+  } catch (error) {
+    console.error('Error in getFighters:', error);
+    throw new Error('Erreur lors de la récupération des lutteurs');
   }
-
-  if (with_region) {
-    joinClause += " LEFT JOIN regions r ON f.region_id = r.id";
-    selectFields.push(`
-      JSON_BUILD_OBJECT(
-        'id', r.id,
-        'name', r.name,
-        'code', r.code
-      ) as region
-    `);
-  }
-
-  // Filtres dynamiques
-  if (search) {
-    params.push(`%${search}%`);
-    whereClause += ` AND (f.name ILIKE $${params.length} OR f.surname ILIKE $${params.length})`;
-  }
-
-  if (category_id) {
-    params.push(category_id);
-    whereClause += ` AND f.category_id = $${params.length}`;
-  }
-
-  if (region_id) {
-    params.push(region_id);
-    whereClause += ` AND f.region_id = $${params.length}`;
-  }
-
-  // Count
-  const countSql = `
-    SELECT COUNT(DISTINCT f.id) as total
-    FROM fighters f
-    ${joinClause}
-    ${whereClause}
-  `;
-
-  const [{ total }] = await query<{ total: number }>(countSql, params);
-
-  // Data
-  params.push(limit, offset);
-  const dataSql = `
-    SELECT ${selectFields.join(", ")}
-    FROM fighters f
-    ${joinClause}
-    ${whereClause}
-    ORDER BY f.created_at DESC
-    LIMIT $${params.length - 1} OFFSET $${params.length}
-  `;
-
-  const data = await query(dataSql, params);
-  return { total, data };
 }
-
 
 export async function getFighterById(id: number, options: { 
   with_relations?: boolean 
@@ -114,12 +156,9 @@ export async function getFighterById(id: number, options: {
             'id', r.id,
             'name', r.name,
             'code', r.code,
-            'color', r.color
+            'color', r.color,
+            'flag_image', r.flag_image
           ) as region,
-          JSON_BUILD_OBJECT(
-            'id', c.id,
-            'name', c.name
-          ) as city,
           (SELECT JSON_AGG(
             JSON_BUILD_OBJECT(
               'id', fa.id,
@@ -143,11 +182,10 @@ export async function getFighterById(id: number, options: {
             ) ORDER BY ft.transfer_date DESC
           ) FROM fighter_transfers ft WHERE ft.fighter_id = f.id) as transfers,
           (SELECT COUNT(*) FROM matches m WHERE (m.fighter1_id = f.id OR m.fighter2_id = f.id) AND m.status = 'completed') as total_matches,
-          (SELECT COUNT(*) FROM matches m WHERE m.winner_id = f.id) as wins,
-          (SELECT COUNT(*) FROM matches m WHERE m.loser_id = f.id) as losses
+          (SELECT COUNT(*) FROM matches m WHERE m.winner_fighter_id = f.id) as wins,
+          (SELECT COUNT(*) FROM matches m WHERE m.loser_fighter_id = f.id) as losses
         FROM fighters f
         LEFT JOIN regions r ON f.region_id = r.id
-        LEFT JOIN cities c ON f.city_id = c.id
         WHERE f.id = $1
       `;
     }
@@ -174,7 +212,6 @@ export async function createFighter(formData: FormData) {
       birth_date: formData.get('birth_date'),
       birth_place: formData.get('birth_place'),
       region_id: formData.get('region_id'),
-      city_id: formData.get('city_id'),
       height: formData.get('height'),
       weight: formData.get('weight'),
       profile_image: formData.get('profile_image'),
@@ -195,7 +232,6 @@ export async function createFighter(formData: FormData) {
       birth_date: rawData.birth_date as string || undefined,
       birth_place: rawData.birth_place as string || undefined,
       region_id: rawData.region_id ? Number(rawData.region_id) : undefined,
-      city_id: rawData.city_id ? Number(rawData.city_id) : undefined,
       height: rawData.height ? Number(rawData.height) : undefined,
       weight: rawData.weight ? Number(rawData.weight) : undefined,
       profile_image: rawData.profile_image as string || undefined,
@@ -213,9 +249,9 @@ export async function createFighter(formData: FormData) {
     const sql = `
       INSERT INTO fighters (
         first_name, last_name, nickname, birth_date, birth_place, 
-        region_id, city_id, height, weight, profile_image, cover_image,
+        region_id, height, weight, profile_image, cover_image,
         bio, fighting_style, debut_year, ranking, is_active, is_champion
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING id
     `;
     
@@ -226,7 +262,6 @@ export async function createFighter(formData: FormData) {
       validatedData.birth_date || null,
       validatedData.birth_place || null,
       validatedData.region_id || null,
-      validatedData.city_id || null,
       validatedData.height || null,
       validatedData.weight || null,
       validatedData.profile_image || null,
@@ -239,18 +274,15 @@ export async function createFighter(formData: FormData) {
       validatedData.is_champion,
     ]);
 
-    // Mettre à jour le compteur de la région
-    if (validatedData.region_id) {
-      await query(`
-        UPDATE regions 
-        SET total_fighters = (
-          SELECT COUNT(*) FROM fighters WHERE region_id = $1 AND is_active = true
-        )
-        WHERE id = $1
-      `, [validatedData.region_id]);
-    }
+    // Le trigger PostgreSQL met à jour automatiquement le compteur de la région
+    // grâce à la fonction update_region_fighter_counts()
 
     revalidatePath('/fighters');
+    revalidatePath('/admin/fighters');
+    if (validatedData.region_id) {
+      revalidatePath(`/admin/regions/${validatedData.region_id}`);
+    }
+    
     return { 
       success: true, 
       id: result[0].id,
@@ -258,6 +290,9 @@ export async function createFighter(formData: FormData) {
     };
   } catch (error) {
     console.error('Error in createFighter:', error);
+    if (error instanceof Error) {
+      throw new Error(`Erreur lors de la création du lutteur: ${error.message}`);
+    }
     throw new Error('Erreur lors de la création du lutteur');
   }
 }
@@ -276,7 +311,6 @@ export async function updateFighter(id: number, formData: FormData) {
       birth_date: formData.get('birth_date'),
       birth_place: formData.get('birth_place'),
       region_id: formData.get('region_id'),
-      city_id: formData.get('city_id'),
       height: formData.get('height'),
       weight: formData.get('weight'),
       profile_image: formData.get('profile_image'),
@@ -296,7 +330,6 @@ export async function updateFighter(id: number, formData: FormData) {
       birth_date: rawData.birth_date as string || undefined,
       birth_place: rawData.birth_place as string || undefined,
       region_id: rawData.region_id ? Number(rawData.region_id) : undefined,
-      city_id: rawData.city_id ? Number(rawData.city_id) : undefined,
       height: rawData.height ? Number(rawData.height) : undefined,
       weight: rawData.weight ? Number(rawData.weight) : undefined,
       profile_image: rawData.profile_image as string || undefined,
@@ -315,11 +348,11 @@ export async function updateFighter(id: number, formData: FormData) {
       UPDATE fighters 
       SET 
         first_name = $1, last_name = $2, nickname = $3, birth_date = $4, 
-        birth_place = $5, region_id = $6, city_id = $7, height = $8, 
-        weight = $9, profile_image = $10, cover_image = $11, bio = $12, 
-        fighting_style = $13, debut_year = $14, ranking = $15, 
-        is_active = $16, is_champion = $17, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $18
+        birth_place = $5, region_id = $6, height = $7, 
+        weight = $8, profile_image = $9, cover_image = $10, bio = $11, 
+        fighting_style = $12, debut_year = $13, ranking = $14, 
+        is_active = $15, is_champion = $16, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $17
     `;
     
     await query(sql, [
@@ -329,7 +362,6 @@ export async function updateFighter(id: number, formData: FormData) {
       validatedData.birth_date || null,
       validatedData.birth_place || null,
       validatedData.region_id || null,
-      validatedData.city_id || null,
       validatedData.height || null,
       validatedData.weight || null,
       validatedData.profile_image || null,
@@ -343,36 +375,29 @@ export async function updateFighter(id: number, formData: FormData) {
       id,
     ]);
 
-    // Mettre à jour les compteurs des régions si nécessaire
-    if (validatedData.region_id !== existing.region_id) {
-      if (existing.region_id) {
-        await query(`
-          UPDATE regions 
-          SET total_fighters = (
-            SELECT COUNT(*) FROM fighters WHERE region_id = $1 AND is_active = true
-          )
-          WHERE id = $1
-        `, [existing.region_id]);
-      }
-      if (validatedData.region_id) {
-        await query(`
-          UPDATE regions 
-          SET total_fighters = (
-            SELECT COUNT(*) FROM fighters WHERE region_id = $1 AND is_active = true
-          )
-          WHERE id = $1
-        `, [validatedData.region_id]);
-      }
-    }
+    // Le trigger PostgreSQL met à jour automatiquement les compteurs des régions
 
     revalidatePath('/fighters');
+    revalidatePath(`/admin/fighters/${id}`);
     revalidatePath(`/fighters/${id}`);
+    if (validatedData.region_id !== existing.region_id) {
+      if (existing.region_id) {
+        revalidatePath(`/admin/regions/${existing.region_id}`);
+      }
+      if (validatedData.region_id) {
+        revalidatePath(`/admin/regions/${validatedData.region_id}`);
+      }
+    }
+    
     return { 
       success: true, 
       message: 'Lutteur modifié avec succès' 
     };
   } catch (error) {
     console.error('Error in updateFighter:', error);
+    if (error instanceof Error) {
+      throw new Error(`Erreur lors de la modification du lutteur: ${error.message}`);
+    }
     throw error;
   }
 }
@@ -392,8 +417,9 @@ export async function deleteFighter(id: number) {
         (SELECT COUNT(*) FROM matches WHERE fighter1_id = $1 OR fighter2_id = $1) as match_count
     `, [id]);
 
-    const counts = relatedData[0];
-    if (counts.match_count > 0) {
+    const counts = relatedData[0] as { achievement_count: string; transfer_count: string; match_count: string };
+    
+    if (parseInt(counts.match_count) > 0) {
       throw new Error(
         `Impossible de supprimer ce lutteur car il est lié à ${counts.match_count} match(s)`
       );
@@ -402,24 +428,23 @@ export async function deleteFighter(id: number) {
     const sql = 'DELETE FROM fighters WHERE id = $1';
     await query(sql, [id]);
 
-    // Mettre à jour le compteur de la région
+    // Le trigger PostgreSQL met à jour automatiquement le compteur de la région
+
+    revalidatePath('/fighters');
+    revalidatePath('/admin/fighters');
     if (existing.region_id) {
-      await query(`
-        UPDATE regions 
-        SET total_fighters = (
-          SELECT COUNT(*) FROM fighters WHERE region_id = $1 AND is_active = true
-        )
-        WHERE id = $1
-      `, [existing.region_id]);
+      revalidatePath(`/admin/regions/${existing.region_id}`);
     }
     
-    revalidatePath('/fighters');
     return { 
       success: true, 
       message: 'Lutteur supprimé avec succès' 
     };
   } catch (error) {
     console.error('Error in deleteFighter:', error);
+    if (error instanceof Error) {
+      throw new Error(`Erreur lors de la suppression du lutteur: ${error.message}`);
+    }
     throw new Error('Erreur lors de la suppression du lutteur');
   }
 }
@@ -473,5 +498,28 @@ export async function getFighterStats() {
       oldest_debut: 0,
       newest_debut: 0,
     };
+  }
+}
+
+export async function getFightersForSelect() {
+  try {
+    const sql = `
+      SELECT id, first_name, last_name, nickname, ranking, is_active
+      FROM fighters 
+      WHERE is_active = true
+      ORDER BY ranking ASC, last_name ASC, first_name ASC
+    `;
+    
+    return await query<{ 
+      id: number; 
+      first_name: string; 
+      last_name: string; 
+      nickname?: string; 
+      ranking: number;
+      is_active: boolean;
+    }>(sql);
+  } catch (error) {
+    console.error('Error in getFightersForSelect:', error);
+    return [];
   }
 }

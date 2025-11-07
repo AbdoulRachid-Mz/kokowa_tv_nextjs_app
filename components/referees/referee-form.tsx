@@ -306,7 +306,7 @@ export function RefereeForm({ referee, isEditing = false }: RefereeFormProps) {
                     type="button" 
                     variant="outline" 
                     className="w-full"
-                    onClick={() => router.push('/admin/referees')}
+                    onClick={() => router.push('/ad/referees')}
                   >
                     Annuler
                   </Button>

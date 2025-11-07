@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     
     if (isNaN(id)) {
       return NextResponse.json(
-        { error: 'ID invalide' },
+        { error: `ID invalide ${id}` },
         { status: 400 }
       );
     }

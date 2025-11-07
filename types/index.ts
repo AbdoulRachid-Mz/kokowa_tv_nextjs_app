@@ -16,23 +16,15 @@ export interface Region extends BaseEntity {
   total_champions: number;
 }
 
-// Ville
-export interface City extends BaseEntity {
-  name: string;
-  region_id: number;
-  description?: string;
-  region?: Region;
-}
-
 // Lutteur
 export interface Fighter extends BaseEntity {
   first_name: string;
   last_name: string;
   nickname?: string;
+  slug: string;
   birth_date?: string;
   birth_place?: string;
   region_id?: number;
-  city_id?: number;
   height?: number;
   weight?: number;
   profile_image?: string;
@@ -47,20 +39,22 @@ export interface Fighter extends BaseEntity {
   
   // Relations
   region?: Region;
-  city?: City;
   achievements?: FighterAchievement[];
 }
 
 // Palmarès des lutteurs
 export interface FighterAchievement extends BaseEntity {
   fighter_id: number;
+  region_id: number;
   title: string;
-  competition: string;
+  edition_id: number;
   year: number;
   position: '1st' | '2nd' | '3rd' | 'finalist' | 'semifinalist' | 'quarterfinalist';
   description?: string;
   medal_image?: string;
   fighter?: Fighter;
+  region?: Region;
+  edition?: CompetitionEdition;
 }
 
 // Arbitre
@@ -79,8 +73,12 @@ export interface Referee extends BaseEntity {
   
   // Relations
   region?: Region;
-  refereeAssignments?: RefereeAssignment[];
-// Assignation d'arbitre
+}
+
+// Ceinture
+export interface Belt extends BaseEntity {
+  color: string;
+  is_active: boolean;
 }
 
 // Compétition
@@ -96,6 +94,7 @@ export interface Competition extends BaseEntity {
   registration_deadline?: string;
   max_participants?: number;
   prize_pool?: number;
+  is_active?: boolean;
   
   // Relations
   region?: Region;
@@ -107,16 +106,20 @@ export interface CompetitionEdition extends BaseEntity {
   competition_id: number;
   edition_number: number;
   year: number;
-  // status?: string;
   theme?: string;
   start_date?: string;
   end_date?: string;
   winner_fighter_id?: number;
+  region_id?: number;
   total_participants: number;
+  prize_pool?: number;
+  registration_deadline?: string;
+  is_active?: boolean;
   
   // Relations
   competition?: Competition;
   winner_fighter?: Fighter;
+  region?: Region;
   fighters?: EditionFighter[];
   regions?: EditionRegion[];
   phases?: Phase[];
@@ -126,13 +129,13 @@ export interface CompetitionEdition extends BaseEntity {
 export interface EditionFighter extends BaseEntity {
   edition_id: number;
   fighter_id: number;
+  region_id: number;
   registration_date: string;
-  status: 'registered' | 'qualified' | 'disqualified' | 'withdrawn';
-  notes?: string;
-  
+  status: 'registered' | 'qualified' | 'disqualified' | 'withdrawn';  
   // Relations
   edition?: CompetitionEdition;
   fighter?: Fighter;
+  region?: Region;
 }
 
 // Région participante à une édition
@@ -141,7 +144,6 @@ export interface EditionRegion extends BaseEntity {
   region_id: number;
   registration_date: string;
   status: 'registered' | 'approved' | 'rejected';
-  notes?: string;
   
   // Relations
   edition?: CompetitionEdition;
@@ -158,6 +160,7 @@ export interface Phase extends BaseEntity {
   start_date?: string;
   end_date?: string;
   is_completed: boolean;
+  is_active?: boolean;
   
   // Relations
   edition?: CompetitionEdition;
@@ -171,6 +174,7 @@ export interface PhaseGroup extends BaseEntity {
   group_order: number;
   description?: string;
   is_completed: boolean;
+  is_active?: boolean;
   
   // Relations
   phase?: Phase;
@@ -183,18 +187,21 @@ export interface SubGroup extends BaseEntity {
   name: string;
   sub_group_order: number;
   description?: string;
-  belt1_fighter_id?: number;
-  belt2_fighter_id?: number;
-  belt1_region_id?: number;
-  belt2_region_id?: number;
+  region1_id?: number;
+  region2_id?: number;
+  belt_region1?: number;
+  belt_region2?: number;
+  main_referee_id?: number;
   is_completed: boolean;
+  is_active?: boolean;
   
   // Relations
   group?: PhaseGroup;
-  belt1_fighter?: Fighter;
-  belt2_fighter?: Fighter;
-  belt1_region?: Region;
-  belt2_region?: Region;
+  region1?: Region;
+  region2?: Region;
+  belt1?: Belt;
+  belt2?: Belt;
+  main_referee?: Referee;
   matches?: Match[];
 }
 
@@ -209,76 +216,41 @@ export interface Match extends BaseEntity {
   // Participants
   fighter1_id?: number;
   fighter2_id?: number;
-  region1_id?: number;
-  region2_id?: number;
   
   // Résultat
   winner_fighter_id?: number;
-  winner_region_id?: number;
   loser_fighter_id?: number;
-  loser_region_id?: number;
   
   // Score
-  score_fighter1: number;
-  score_fighter2: number;
-  rounds: number;
-  
-  match_result?: 'fighter1_win' | 'fighter2_win' | 'region1_win' | 'region2_win' | 'draw' | 'cancelled' | 'postponed' | 'technical_win_fighter1' | 'technical_win_fighter2';
+  match_result?: 'fighter1_win' | 'fighter2_win' | 'draw' | 'cancelled' | 'postponed';
   total_duration?: string;
   break_count: number;
   status: 'scheduled' | 'live' | 'round_break' | 'completed' | 'cancelled' | 'postponed' | 'reclamation';
-  main_referee_id?: number;
+  is_active?: boolean;
+  
+  // Informations supplémentaires
   audience_count?: number;
   video_url?: string;
   live_stream_url?: string;
-  venue?: string;
   notes?: string;
   
   // Relations
   sub_group?: SubGroup;
   fighter1?: Fighter;
   fighter2?: Fighter;
-  region1?: Region;
-  region2?: Region;
   winner_fighter?: Fighter;
-  winner_region?: Region;
   loser_fighter?: Fighter;
-  loser_region?: Region;
-  main_referee?: Referee;
-  referee_assignments?: RefereeAssignment[];
   cards?: FighterCard[];
-}
-
-// Assignation d'arbitre
-export interface RefereeAssignment extends BaseEntity {
-  referee_id: number;
-  match_id: number;
-  role: 'main_referee' | 'assistant_referee' | 'time_keeper' | 'jury';
-  assigned_at: string;
-  
-  // Relations
-  referee?: Referee;
-  match?: Match;
-}
-
-export interface RefereeFilters extends BaseFilters {
-  region_id?: number;
-  is_active?: boolean;
-  certification_level?: string;
-  experience_min?: number;
-  with_region?: boolean;
-  with_assignments?: boolean;
 }
 
 // Carton de match
 export interface FighterCard extends BaseEntity {
   fighter_id: number;
   match_id: number;
-  card_type: 'yellow' | 'red' | 'white';
+  card_type: 'yellow' | 'red';
   card_reason?: string;
-  minute_given?: number;
+  minute_given?: string;
   is_cancelled: boolean;
-  given_by?: string;
   
   // Relations
   fighter?: Fighter;
@@ -317,10 +289,116 @@ export interface User extends BaseEntity {
   bio?: string;
   phone_number?: string;
   country?: string;
-  city?: string;
   is_active: boolean;
   is_verified: boolean;
   last_login?: string;
+}
+
+// Message
+export interface Message extends BaseEntity {
+  content: string;
+  message_type: 'comment' | 'direct_message' | 'group_message' | 'match_commentary' | 'system_notification';
+  entity_type?: 'article' | 'match' | 'fighter' | 'competition' | 'user';
+  entity_id?: number;
+  author_id: number;
+  recipient_id?: number;
+  parent_message_id?: number;
+  is_read: boolean;
+  is_active?: boolean;
+  is_deleted: boolean;
+  like_count: number;
+  images?: string[];
+  video_url?: string;
+  audio_url?: string;
+  
+  // Relations
+  author?: User;
+  recipient?: User;
+  parent_message?: Message;
+}
+
+export interface Notification extends BaseEntity {
+  user_id: number;
+  message: string;
+  notification_type: 'match_update' | 'fighter_update' | 'competition_update' | 'system_notification';
+  is_read: boolean;
+  created_at: string;
+  
+  // Relations
+  user?: User;
+}
+
+export interface NotificationFilters extends BaseFilters {
+  notification_type?: 'match_update' | 'fighter_update' | 'competition_update' | 'system_notification';
+  is_read?: boolean;
+  with_user?: boolean;
+}
+
+// Article
+export interface Article extends BaseEntity {
+  title: string;
+  slug: string;
+  excerpt?: string;
+  content: string;
+  featured_image?: string;
+  author_id: number;
+  status: 'draft' | 'published' | 'archived';
+  language: 'fr' | 'ha' | 'en';
+  view_count: number;
+  like_count: number;
+  share_count: number;
+  meta_title?: string;
+  meta_description?: string;
+  published_at?: string;
+  
+  // Relations
+  author?: User;
+}
+
+// Média
+export interface Media extends BaseEntity {
+  title: string;
+  file_path: string;
+  file_type: 'image' | 'video' | 'document' | 'audio';
+  mime_type?: string;
+  file_size?: number;
+  alt_text?: string;
+  description?: string;
+  uploader_id: number;
+  is_featured: boolean;
+  entity_type?: string;
+  entity_id?: number;
+  
+  // Relations
+  uploader?: User;
+}
+
+// Vidéo
+export interface Video extends BaseEntity {
+  title: string;
+  slug: string;
+  description?: string;
+  video_url: string;
+  thumbnail_url?: string;
+  duration?: number;
+  type: 'youtube' | 'facebook' | 'tiktok' | 'rtmp' | 'upload' | 'vimeo';
+  category: 'match' | 'interview' | 'highlights' | 'training' | 'documentary' | 'ceremony';
+  view_count: number;
+  like_count: number;
+  is_live: boolean;
+  is_featured: boolean;
+  published_at?: string;
+}
+
+// Interaction
+export interface Interaction extends BaseEntity {
+  user_id: number;
+  entity_type: string;
+  entity_id: number;
+  interaction_type: 'like' | 'view' | 'share' | 'bookmark' | 'follow';
+  
+  // Relations
+  user?: User;
 }
 
 // Types pour les réponses paginées
@@ -339,61 +417,104 @@ export interface BaseFilters {
   search?: string;
   page?: number;
   limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface RegionFilters extends BaseFilters {
   code?: string;
   with_fighters?: boolean;
-  with_cities?: boolean;
   with_competitions?: boolean;
   fighter_count_min?: number;
   fighter_count_max?: number;
 }
 
-export interface CityFilters extends BaseFilters {
-  region_id?: number;
-  with_region?: boolean;
-}
-
 export interface FighterFilters extends BaseFilters {
   region_id?: number;
-  city_id?: number;
   is_active?: boolean;
   is_champion?: boolean;
   min_ranking?: number;
   max_ranking?: number;
   with_region?: boolean;
-  with_city?: boolean;
   with_achievements?: boolean;
   with_transfers?: boolean;
+}
+
+export interface FighterAchievementFilters extends BaseFilters {
+  fighter_id?: number;
+  region_id?: number;
+  edition_id?: number;
+  year?: number;
+  position?: string;
+  with_fighter?: boolean;
+  with_region?: boolean;
+  with_edition?: boolean;
+}
+
+export interface RefereeFilters extends BaseFilters {
+  region_id?: number;
+  is_active?: boolean;
+  certification_level?: string;
+  experience_min?: number;
+  with_region?: boolean;
+}
+
+export interface BeltFilters extends BaseFilters {
+  color?: string;
+  is_active?: boolean;
 }
 
 export interface CompetitionFilters extends BaseFilters {
   type?: string;
   status?: string;
+  is_active?: boolean;
   region_id?: number;
   with_region?: boolean;
   with_editions?: boolean;
-  with_phases?: boolean;
-  with_matches?: boolean;
 }
 
 export interface EditionFilters extends BaseFilters {
-  competition_id?: string;
+  competition_id?: number;
   year?: number;
-  offset?: number;
   with_competition?: boolean;
+  is_active?: boolean;
   with_fighters?: boolean;
   with_regions?: boolean;
   with_phases?: boolean;
+  region_id?: number;
 }
 
 export interface PhaseFilters extends BaseFilters {
   edition_id?: number;
-  phase_type?: 'qualification' | 'group' | 'knockout' | 'quarterfinal' | 'semifinal' | 'final';
+  phase_type?: string;
   is_completed?: boolean;
+  is_active?: boolean;
   with_edition?: boolean;
   with_groups?: boolean;
+}
+
+export interface PhaseGroupFilters extends BaseFilters {
+  phase_id?: number;
+  is_completed?: boolean;
+  is_active?: boolean;
+  with_phase?: boolean;
+  with_sub_groups?: boolean;
+}
+
+export interface SubGroupFilters extends BaseFilters {
+  group_id?: number;
+  region1_id?: number;
+  region2_id?: number;
+  belt_region1?: number;
+  belt_region2?: number;
+  main_referee_id?: number;
+  is_completed?: boolean;
+  is_active?: boolean;
+  with_group?: boolean;
+  with_matches?: boolean;
+  with_regions?: boolean;
+  with_belts?: boolean;
+  with_referee?: boolean;
 }
 
 export interface MatchFilters extends BaseFilters {
@@ -404,64 +525,57 @@ export interface MatchFilters extends BaseFilters {
   status?: string;
   date_from?: string;
   date_to?: string;
+  is_active?: boolean;
   with_sub_group?: boolean;
   with_fighters?: boolean;
-  with_regions?: boolean;
-  with_referees?: boolean;
+  with_winner?: boolean;
 }
 
-// Notification
-export interface Notification extends BaseEntity {
-  user_id: number;
-  title: string;
-  message: string;
-  type: 'system' | 'match' | 'competition' | 'fighter' | 'transfer' | 'message';
-  entity_type?: string;
-  entity_id?: number;
-  is_read: boolean;
-  read_at?: string;
-  action_url?: string;
-  priority: 'low' | 'medium' | 'high';
-  
-  // Relations
-  user?: User;
-}
-
-// Types pour les filtres de notifications
-export interface NotificationFilters extends BaseFilters {
-  user_id?: number;
-  type?: string;
-  is_read?: boolean;
-  priority?: string;
-  with_user?: boolean;
-}
-
-
-// Types pour les filtres supplémentaires
-export interface CityFilters extends BaseFilters {
+export interface EditionFighterFilters extends BaseFilters {
+  edition_id?: number;
+  fighter_id?: number;
   region_id?: number;
-  with_region?: boolean;
-}
-
-export interface ArticleFilters extends BaseFilters {
   status?: string;
-  language?: string;
-  author_id?: number;
-  with_author?: boolean;
+  with_fighter?: boolean;
+  with_region?: boolean;
+  with_edition?: boolean;
 }
 
-export interface MediaFilters extends BaseFilters {
-  file_type?: string;
-  entity_type?: string;
-  entity_id?: number;
-  with_uploader?: boolean;
+export interface EditionRegionFilters extends BaseFilters {
+  edition_id?: number;
+  region_id?: number;
+  status?: string;
+  with_region?: boolean;
+  with_edition?: boolean;
 }
 
-export interface VideoFilters extends BaseFilters {
-  type?: string;
-  category?: string;
-  is_live?: boolean;
-  is_featured?: boolean;
+export interface FighterCardFilters extends BaseFilters {
+  fighter_id?: number;
+  match_id?: number;
+  card_type?: string;
+  is_cancelled?: boolean;
+  with_fighter?: boolean;
+  with_match?: boolean;
+}
+
+export interface FighterTransferFilters extends BaseFilters {
+  fighter_id?: number;
+  from_region_id?: number;
+  to_region_id?: number;
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+  with_fighter?: boolean;
+  with_from_region?: boolean;
+  with_to_region?: boolean;
+  with_approver?: boolean;
+}
+
+export interface UserFilters extends BaseFilters {
+  role?: string;
+  is_active?: boolean;
+  is_verified?: boolean;
+  with_profile?: boolean;
 }
 
 export interface MessageFilters extends BaseFilters {
@@ -469,21 +583,43 @@ export interface MessageFilters extends BaseFilters {
   entity_type?: string;
   entity_id?: number;
   author_id?: number;
+  recipient_id?: number;
+  is_read?: boolean;
   is_active?: boolean;
+  is_deleted?: boolean;
   with_author?: boolean;
   with_recipient?: boolean;
+  with_parent?: boolean;
 }
 
-export interface PhaseGroupFilters extends BaseFilters {
-  phase_id?: number;
-  with_phase?: boolean;
-  with_sub_groups?: boolean;
+export interface ArticleFilters extends BaseFilters {
+  author_id?: number;
+  status?: 'draft' | 'published' | 'archived';
+  language?: 'fr' | 'ha' | 'en';
+  with_author?: boolean;
 }
 
-export interface SubGroupFilters extends BaseFilters {
-  group_id?: number;
-  with_group?: boolean;
-  with_matches?: boolean;
-  with_belt_fighters?: boolean;
-  with_belt_regions?: boolean;
+export interface MediaFilters extends BaseFilters {
+  file_type?: 'image' | 'video' | 'document' | 'audio';
+  uploader_id?: number;
+  entity_type?: string;
+  entity_id?: number;
+  is_featured?: boolean;
+  with_uploader?: boolean;
+}
+
+export interface VideoFilters extends BaseFilters {
+  type?: 'youtube' | 'facebook' | 'tiktok' | 'rtmp' | 'upload' | 'vimeo';
+  category?: 'match' | 'interview' | 'highlights' | 'training' | 'documentary' | 'ceremony';
+  is_live?: boolean;
+  is_featured?: boolean;
+  with_duration?: boolean;
+}
+
+export interface InteractionFilters extends BaseFilters {
+  user_id?: number;
+  entity_type?: string;
+  entity_id?: number;
+  interaction_type?: string;
+  with_user?: boolean;
 }

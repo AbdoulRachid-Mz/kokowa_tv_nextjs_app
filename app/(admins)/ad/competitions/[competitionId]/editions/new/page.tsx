@@ -19,14 +19,14 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  ArrowLeft, 
-  Save, 
-  Plus, 
+import {
+  ArrowLeft,
+  Save,
+  Plus,
   Calendar,
   Trophy,
   Users,
-  MapPin
+  MapPin,
 } from "lucide-react";
 import { Competition, CompetitionEdition, Fighter, Region } from "@/types";
 import { useForm } from "react-hook-form";
@@ -37,7 +37,10 @@ import { toast } from "sonner";
 // Schéma de validation
 const editionSchema = z.object({
   edition_number: z.number().min(1, "Le numéro d'édition est requis"),
-  year: z.number().min(2000, "L'année doit être au moins 2000").max(2100, "Année invalide"),
+  year: z
+    .number()
+    .min(2000, "L'année doit être au moins 2000")
+    .max(2100, "Année invalide"),
   theme: z.string().optional(),
   start_date: z.string().optional(),
   end_date: z.string().optional(),
@@ -50,11 +53,11 @@ export default function EditionFormPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const competitionId = params.competitionId as string;
   const editionId = params.editionId as string;
   const isEdit = !!editionId;
-  
+
   const [competition, setCompetition] = useState<Competition | null>(null);
   const [edition, setEdition] = useState<CompetitionEdition | null>(null);
   const [loading, setLoading] = useState(true);
@@ -85,7 +88,9 @@ export default function EditionFormPage() {
       try {
         // Charger la compétition
         if (competitionId) {
-          const competitionResponse = await fetch(`/api/competitions/${competitionId}`);
+          const competitionResponse = await fetch(
+            `/api/competitions/${competitionId}`
+          );
           if (competitionResponse.ok) {
             const competitionData = await competitionResponse.json();
             setCompetition(competitionData);
@@ -94,37 +99,46 @@ export default function EditionFormPage() {
 
         // Charger l'édition si en mode édition
         if (isEdit && editionId) {
-          const editionResponse = await fetch(`/api/editions/${editionId}?with_relations=true`);
+          const editionResponse = await fetch(
+            `/api/editions/${editionId}?with_relations=true`
+          );
           if (editionResponse.ok) {
             const editionData = await editionResponse.json();
             setEdition(editionData);
-            
+
             // Pré-remplir le formulaire
             reset({
               edition_number: editionData.edition_number,
               year: editionData.year,
-              theme: editionData.theme || '',
-              start_date: editionData.start_date ? new Date(editionData.start_date).toISOString().split('T')[0] : '',
-              end_date: editionData.end_date ? new Date(editionData.end_date).toISOString().split('T')[0] : '',
+              theme: editionData.theme || "",
+              start_date: editionData.start_date
+                ? new Date(editionData.start_date).toISOString().split("T")[0]
+                : "",
+              end_date: editionData.end_date
+                ? new Date(editionData.end_date).toISOString().split("T")[0]
+                : "",
               winner_fighter_id: editionData.winner_fighter_id || undefined,
             });
           }
         }
 
         // Charger les lutteurs disponibles
-        const fightersResponse = await fetch('/api/fighters?limit=100&is_active=true&with_region=true');
+        const fightersResponse = await fetch(
+          "/api/fighters?limit=100&is_active=true&with_region=true"
+        );
         if (fightersResponse.ok) {
           const fightersData = await fightersResponse.json();
           setAvailableFighters(fightersData.data || []);
         }
 
         // Charger les régions disponibles
-        const regionsResponse = await fetch('/api/regions?limit=100&with_fighters=true');
+        const regionsResponse = await fetch(
+          "/api/regions?limit=100&with_fighters=true"
+        );
         if (regionsResponse.ok) {
           const regionsData = await regionsResponse.json();
           setAvailableRegions(regionsData.data || []);
         }
-
       } catch (error) {
         console.error("Erreur lors du chargement:", error);
         toast.error("Erreur lors du chargement des données");
@@ -140,11 +154,9 @@ export default function EditionFormPage() {
   const onSubmit = async (data: EditionFormData) => {
     setSaving(true);
     try {
-      const url = isEdit 
-        ? `/api/editions/${editionId}`
-        : '/api/editions';
-      
-      const method = isEdit ? 'PUT' : 'POST';
+      const url = isEdit ? `/api/editions/${editionId}` : "/api/editions";
+
+      const method = isEdit ? "PUT" : "POST";
 
       const payload = {
         ...data,
@@ -158,27 +170,24 @@ export default function EditionFormPage() {
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         const result = await response.json();
-        
+
         toast.success(
-          isEdit 
-            ? "Édition modifiée avec succès" 
-            : "Édition créée avec succès"
+          isEdit ? "Édition modifiée avec succès" : "Édition créée avec succès"
         );
-        
+
         // Rediriger vers la page de détail
         const redirectUrl = isEdit
-          ? `/admin/editions/${editionId}`
-          : `/admin/competitions/${competitionId}`;
-          
+          ? `/ad/editions/${editionId}`
+          : `/ad/competitions/${competitionId}`;
+
         router.push(redirectUrl);
-        
       } else {
         const error = await response.json();
         throw new Error(error.message || "Erreur lors de la sauvegarde");
@@ -186,9 +195,7 @@ export default function EditionFormPage() {
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
       toast.error(
-        error instanceof Error 
-          ? error.message 
-          : "Erreur lors de la sauvegarde"
+        error instanceof Error ? error.message : "Erreur lors de la sauvegarde"
       );
     } finally {
       setSaving(false);
@@ -198,22 +205,24 @@ export default function EditionFormPage() {
   // Calculer le prochain numéro d'édition
   const getNextEditionNumber = () => {
     if (isEdit && edition) return edition.edition_number;
-    
+
     // En création, trouver le plus grand numéro d'édition existant
     if (competition?.editions && competition.editions.length > 0) {
-      const maxEdition = Math.max(...competition.editions.map(e => e.edition_number));
+      const maxEdition = Math.max(
+        ...competition.editions.map((e) => e.edition_number)
+      );
       return maxEdition + 1;
     }
-    
+
     return 1;
   };
 
   // Gestionnaire d'annulation
   const handleCancel = () => {
     if (isEdit) {
-      router.push(`/admin/editions/${editionId}`);
+      router.push(`/ad/editions/${editionId}`);
     } else {
-      router.push(`/admin/competitions/${competitionId}`);
+      router.push(`/ad/competitions/${competitionId}`);
     }
   };
 
@@ -244,11 +253,7 @@ export default function EditionFormPage() {
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleCancel}
-          >
+          <Button variant="outline" size="sm" onClick={handleCancel}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour
           </Button>
@@ -261,19 +266,12 @@ export default function EditionFormPage() {
             </Typography>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline"
-            onClick={handleCancel}
-            disabled={saving}
-          >
+          <Button variant="outline" onClick={handleCancel} disabled={saving}>
             Annuler
           </Button>
-          <Button 
-            onClick={handleSubmit(onSubmit)}
-            disabled={saving}
-          >
+          <Button onClick={handleSubmit(onSubmit)} disabled={saving}>
             <Save className="h-4 w-4 mr-2" />
             {saving ? "Sauvegarde..." : "Sauvegarder"}
           </Button>
@@ -296,9 +294,7 @@ export default function EditionFormPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Numéro d'édition */}
                   <div className="space-y-2">
-                    <Label htmlFor="edition_number">
-                      Numéro d'édition *
-                    </Label>
+                    <Label htmlFor="edition_number">Numéro d'édition *</Label>
                     <Input
                       id="edition_number"
                       type="number"
@@ -315,9 +311,7 @@ export default function EditionFormPage() {
 
                   {/* Année */}
                   <div className="space-y-2">
-                    <Label htmlFor="year">
-                      Année *
-                    </Label>
+                    <Label htmlFor="year">Année *</Label>
                     <Input
                       id="year"
                       type="number"
@@ -335,9 +329,7 @@ export default function EditionFormPage() {
 
                 {/* Thème */}
                 <div className="space-y-2">
-                  <Label htmlFor="theme">
-                    Thème de l'édition
-                  </Label>
+                  <Label htmlFor="theme">Thème de l'édition</Label>
                   <Input
                     id="theme"
                     placeholder="Ex: Édition de la Renaissance, Lutte pour la Paix..."
@@ -353,9 +345,7 @@ export default function EditionFormPage() {
                 {/* Période */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="start_date">
-                      Date de début
-                    </Label>
+                    <Label htmlFor="start_date">Date de début</Label>
                     <Input
                       id="start_date"
                       type="date"
@@ -364,9 +354,7 @@ export default function EditionFormPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="end_date">
-                      Date de fin
-                    </Label>
+                    <Label htmlFor="end_date">Date de fin</Label>
                     <Input
                       id="end_date"
                       type="date"
@@ -378,44 +366,49 @@ export default function EditionFormPage() {
             </Card>
 
             {/* Vainqueur */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5" />
-                  Vainqueur de l'Édition
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <Label htmlFor="winner_fighter_id">
-                    Lutteur vainqueur
-                  </Label>
-                  <Select
-                    onValueChange={(value) => 
-                      setValue("winner_fighter_id", value ? parseInt(value) : undefined)
-                    }
-                    defaultValue={watch("winner_fighter_id")?.toString() || ""}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un lutteur vainqueur" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Aucun vainqueur</SelectItem>
-                      {availableFighters.map((fighter) => (
-                        <SelectItem 
-                          key={fighter.id} 
-                          value={fighter.id.toString()}
-                        >
-                          {fighter.first_name} {fighter.last_name}
-                          {fighter.nickname && ` "${fighter.nickname}"`}
-                          {fighter.region && ` - ${fighter.region.name}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
+            {isEdit && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5" />
+                    Vainqueur de l'Édition
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Label htmlFor="winner_fighter_id">Lutteur vainqueur</Label>
+                    <Select
+                      onValueChange={(value) =>
+                        setValue(
+                          "winner_fighter_id",
+                          value ? parseInt(value) : undefined
+                        )
+                      }
+                      defaultValue={
+                        watch("winner_fighter_id")?.toString() || ""
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un lutteur vainqueur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Aucun vainqueur</SelectItem>
+                        {availableFighters.map((fighter) => (
+                          <SelectItem
+                            key={fighter.id}
+                            value={fighter.id.toString()}
+                          >
+                            {fighter.first_name} {fighter.last_name}
+                            {fighter.nickname && ` "${fighter.nickname}"`}
+                            {fighter.region && ` - ${fighter.region.name}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar - Informations et actions */}
@@ -440,13 +433,19 @@ export default function EditionFormPage() {
                     Type
                   </Typography>
                   <Badge variant="outline">
-                    {competition?.type ? getTypeLabel(competition.type) : "Chargement..."}
+                    {competition?.type
+                      ? getTypeLabel(competition.type)
+                      : "Chargement..."}
                   </Badge>
                 </div>
 
                 {competition?.location && (
                   <div>
-                    <Typography variant="body-sm" theme="muted" className="mb-1">
+                    <Typography
+                      variant="body-sm"
+                      theme="muted"
+                      className="mb-1"
+                    >
                       <MapPin className="h-3 w-3 inline mr-1" />
                       Localisation
                     </Typography>
@@ -458,10 +457,18 @@ export default function EditionFormPage() {
 
                 {competition?.prize_pool && (
                   <div>
-                    <Typography variant="body-sm" theme="muted" className="mb-1">
+                    <Typography
+                      variant="body-sm"
+                      theme="muted"
+                      className="mb-1"
+                    >
                       Prix total
                     </Typography>
-                    <Typography variant="body-base" weight="bold" className="text-green-600">
+                    <Typography
+                      variant="body-base"
+                      weight="bold"
+                      className="text-green-600"
+                    >
                       {competition.prize_pool.toLocaleString()} FCFA
                     </Typography>
                   </div>
@@ -475,17 +482,13 @@ export default function EditionFormPage() {
                 <CardTitle>Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button 
-                  type="submit"
-                  className="w-full"
-                  disabled={saving}
-                >
+                <Button type="submit" className="w-full" disabled={saving}>
                   <Save className="h-4 w-4 mr-2" />
                   {saving ? "Sauvegarde..." : "Sauvegarder l'édition"}
                 </Button>
-                
-                <Button 
-                  variant="outline" 
+
+                <Button
+                  variant="outline"
                   className="w-full"
                   onClick={handleCancel}
                   disabled={saving}
@@ -495,19 +498,33 @@ export default function EditionFormPage() {
 
                 {isEdit && (
                   <>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full"
-                      onClick={() => router.push(`/admin/editions/${editionId}/participants`)}
+                      onClick={() =>
+                        router.push(`/ad/editions/${editionId}/figthers`)
+                      }
                     >
                       <Users className="h-4 w-4 mr-2" />
-                      Gérer les participants
+                      Gérer les lutteurs
                     </Button>
-                    
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full"
-                      onClick={() => router.push(`/admin/editions/${editionId}/phases`)}
+                      onClick={() =>
+                        router.push(`/ad/editions/${editionId}/regions`)
+                      }
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Gérer les régions
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() =>
+                        router.push(`/ad/editions/${editionId}/phases`)
+                      }
                     >
                       <Trophy className="h-4 w-4 mr-2" />
                       Configurer les phases
@@ -524,7 +541,10 @@ export default function EditionFormPage() {
               </CardHeader>
               <CardContent>
                 <Typography variant="body-sm" className="space-y-2">
-                  <div>• Le numéro d'édition doit être unique pour cette compétition</div>
+                  <div>
+                    • Le numéro d'édition doit être unique pour cette
+                    compétition
+                  </div>
                   <div>• L'année correspond à l'année de l'événement</div>
                   <div>• Le thème aide à identifier l'édition</div>
                   <div>• Le vainqueur peut être défini plus tard</div>
@@ -541,15 +561,15 @@ export default function EditionFormPage() {
 // Fonction utilitaire pour les labels de type
 function getTypeLabel(type: string): string {
   const typeLabels: Record<string, string> = {
-    sabre_national: 'Sabre National',
-    coupe_regionale: 'Coupe Régionale',
-    halarou_bakwai: 'Halarou Bakwai',
-    aes: 'AES',
-    friendly: 'Amical',
-    ministre: 'Ministre',
-    coupe_airtel: 'Coupe Airtel',
-    other: 'Autre',
+    sabre_national: "Sabre National",
+    coupe_regionale: "Coupe Régionale",
+    halarou_bakwai: "Halarou Bakwai",
+    aes: "AES",
+    friendly: "Amical",
+    ministre: "Ministre",
+    coupe_airtel: "Coupe Airtel",
+    other: "Autre",
   };
-  
+
   return typeLabels[type] || type;
 }

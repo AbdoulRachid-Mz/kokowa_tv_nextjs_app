@@ -222,7 +222,7 @@ export async function createReferee(formData: FormData) {
       validatedData.is_active,
     ]);
 
-    revalidatePath('/admin/referees');
+    revalidatePath('/ad/referees');
     return { 
       success: true, 
       id: result[0].id,
@@ -296,7 +296,7 @@ export async function updateReferee(id: number, formData: FormData) {
       throw new Error('Arbitre non trouvé');
     }
 
-    revalidatePath('/admin/referees');
+    revalidatePath('/ad/referees');
     return {
       success: true,
       id: result[0].id,
@@ -326,7 +326,7 @@ export async function deleteReferee(id: number) {
       throw new Error('Arbitre non trouvé');
     }
 
-    revalidatePath('/admin/referees');
+    revalidatePath('/ad/referees');
     return {
       success: true,
       id: result[0].id,

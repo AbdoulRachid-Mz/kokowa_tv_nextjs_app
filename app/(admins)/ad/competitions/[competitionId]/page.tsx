@@ -154,11 +154,11 @@ export default function CompetitionDetailPage() {
   // Gestionnaires d'actions pour les éditions
   const handleViewEdition = (edition: CompetitionEdition) => {
     // Ouvrir un drawer ou naviguer vers la page détail
-    router.push(`/admin/editions/${edition.id}`);
+    router.push(`/ad/editions/${edition.id}`);
   };
 
   const handleEditEdition = (edition: CompetitionEdition) => {
-    router.push(`/admin/editions/${edition.id}/edit`);
+    router.push(`/ad/editions/${edition.id}/edit`);
   };
 
   const handleDeleteEdition = async (edition: CompetitionEdition) => {
@@ -181,7 +181,7 @@ export default function CompetitionDetailPage() {
   };
 
   const handleAddEdition = () => {
-    router.push(`/admin/competitions/${competitionId}/editions/new`);
+    router.push(`/ad/competitions/${competitionId}/editions/new`);
   };
 
   // Carte personnalisée pour les éditions
@@ -520,7 +520,7 @@ export default function CompetitionDetailPage() {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => router.push(`/admin/competitions/${competitionId}/phases`)}
+              onClick={() => router.push(`/ad/competitions/${competitionId}/phases`)}
             >
               <Trophy className="h-4 w-4 mr-2" />
               Gérer les Phases
@@ -528,7 +528,7 @@ export default function CompetitionDetailPage() {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => router.push(`/admin/competitions/${competitionId}/participants`)}
+              onClick={() => router.push(`/ad/competitions/${competitionId}/participants`)}
             >
               <Users className="h-4 w-4 mr-2" />
               Gérer les Participants
@@ -536,7 +536,7 @@ export default function CompetitionDetailPage() {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => router.push(`/admin/competitions/${competitionId}/matches`)}
+              onClick={() => router.push(`/ad/competitions/${competitionId}/matches`)}
             >
               <Award className="h-4 w-4 mr-2" />
               Voir les Matchs
