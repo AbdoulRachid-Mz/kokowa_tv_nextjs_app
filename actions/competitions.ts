@@ -3,42 +3,17 @@
 import { query, queryOne } from '@/lib/db/neon-client';
 import { competitionSchema, competitionEditionSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
-import { Competition, CompetitionEdition, PaginatedResponse } from '@/types';
+import { Competition, CompetitionEdition, CompetitionFilters, PaginatedResponse } from '@/types';
+import z from 'zod';
 
-export interface CompetitionFilters {
-  search?: string;
-  page?: number;
-  limit?: number;
-  type?: string;
-  status?: string;
-  region_id?: number;
-  with_region?: boolean;
-  with_editions?: boolean;
-  with_phases?: boolean;
-  with_matches?: boolean;
-}
-
-export async function getCompetitions(options: {
-  search?: string;
-  page?: number;
-  limit?: number;
-  type?: string;
-  status?: string;
-  region_id?: number;
-  date_from?: string;
-  date_to?: string;
-  with_region?: boolean;
-  with_editions?: boolean;
-  with_phases?: boolean;
-  with_matches?: boolean;
-}) {
+export async function getCompetitions(options: CompetitionFilters) {
   const {
     search,
     page = 1,
     limit = 20,
-    type,
     status,
     region_id,
+    edition_year,
     date_from,
     date_to,
     with_region = false,
@@ -48,33 +23,35 @@ export async function getCompetitions(options: {
   } = options;
 
   const offset = (page - 1) * limit;
+  const params: any[] = [];
 
   let whereClause = "WHERE 1=1";
-  let joinClause = "";
-  const params: any[] = [];
   const selectFields = ["c.*"];
+  const joins: string[] = [];
 
-  // Optional joins
+  // === JOINS de base ===
+  const needsEditionJoin = with_editions || with_phases || with_matches || edition_year;
+  const editionJoinType = edition_year ? "INNER JOIN" : needsEditionJoin ? "LEFT JOIN" : "";
+
+  if (editionJoinType) {
+    joins.push(`${editionJoinType} competition_editions ce ON ce.competition_id = c.id`);
+  }
+
   if (with_region) {
-    joinClause += " LEFT JOIN regions r ON c.region_id = r.id";
+    joins.push("LEFT JOIN regions r ON r.id = c.region_id");
     selectFields.push(`
       JSON_BUILD_OBJECT(
         'id', r.id,
         'name', r.name,
         'code', r.code
-      ) as region
+      ) AS region
     `);
   }
 
-  // Dynamic filters
+  // === FILTRES ===
   if (search) {
     params.push(`%${search}%`);
     whereClause += ` AND c.name ILIKE $${params.length}`;
-  }
-
-  if (type) {
-    params.push(type);
-    whereClause += ` AND c.type = $${params.length}`;
   }
 
   if (status) {
@@ -87,185 +64,14 @@ export async function getCompetitions(options: {
     whereClause += ` AND c.region_id = $${params.length}`;
   }
 
+  if (edition_year) {
+    params.push(edition_year);
+    whereClause += ` AND ce.year = $${params.length}`;
+  }
+
   if (date_from) {
     params.push(date_from);
     whereClause += ` AND c.created_at >= $${params.length}`;
-  }
-  if (with_editions || with_phases || with_matches) {
-    // Start from the topmost requested level
-    if (with_editions) {
-      joinClause += `
-        LEFT JOIN competition_editions ce ON ce.competition_id = c.id
-      `;
-      selectFields.push(`
-        COALESCE(
-          JSON_AGG(
-            DISTINCT JSON_BUILD_OBJECT(
-              'id', ce.id,
-              'edition_number', ce.edition_number,
-              'year', ce.year,
-              'theme', ce.theme,
-              'start_date', ce.start_date,
-              'end_date', ce.end_date,
-              'total_participants', ce.total_participants,
-              'winner_fighter_id', ce.winner_fighter_id,
-              'winner_fighter', JSON_BUILD_OBJECT(
-                'id', wf.id,
-                'first_name', wf.first_name,
-                'last_name', wf.last_name,
-                'nickname', wf.nickname
-              )
-            )
-          ) FILTER (WHERE ce.id IS NOT NULL), '[]'
-        ) as editions
-      `);
-      joinClause += ` LEFT JOIN fighters wf ON ce.winner_fighter_id = wf.id`;
-    }
-
-    if (with_phases) {
-      // If editions are not included, join phases directly via editions
-      if (!with_editions) {
-        joinClause += `
-          LEFT JOIN competition_editions ce ON ce.competition_id = c.id
-        `;
-      }
-      joinClause += `
-        LEFT JOIN phases p ON p.edition_id = ce.id
-      `;
-      selectFields.push(`
-        COALESCE(
-          JSON_AGG(
-            DISTINCT JSON_BUILD_OBJECT(
-              'id', p.id,
-              'name', p.name,
-              'phase_type', p.phase_type,
-              'phase_order', p.phase_order,
-              'is_completed', p.is_completed,
-              'start_date', p.start_date,
-              'end_date', p.end_date,
-              'groups', (
-                SELECT JSON_AGG(
-                  JSON_BUILD_OBJECT(
-                    'id', pg.id,
-                    'name', pg.name,
-                    'group_order', pg.group_order,
-                    'is_completed', pg.is_completed,
-                    'sub_groups', (
-                      SELECT JSON_AGG(
-                        JSON_BUILD_OBJECT(
-                          'id', sg.id,
-                          'name', sg.name,
-                          'sub_group_order', sg.sub_group_order,
-                          'belt1_fighter_id', sg.belt1_fighter_id,
-                          'belt2_fighter_id', sg.belt2_fighter_id,
-                          'belt1_region_id', sg.belt1_region_id,
-                          'belt2_region_id', sg.belt2_region_id,
-                          'belt1_region', JSON_BUILD_OBJECT(
-                            'id', br1.id,
-                            'name', br1.name,
-                            'code', br1.code
-                          ),
-                          'belt2_region', JSON_BUILD_OBJECT(
-                            'id', br2.id,
-                            'name', br2.name,
-                            'code', br2.code
-                          )
-                        )
-                      ) FROM sub_groups sg
-                      LEFT JOIN regions br1 ON sg.belt1_region_id = br1.id
-                      LEFT JOIN regions br2 ON sg.belt2_region_id = br2.id
-                      WHERE sg.group_id = pg.id
-                    )
-                  ) ORDER BY pg.group_order
-                ) FROM phase_groups pg WHERE pg.phase_id = p.id
-              )
-            ) ORDER BY p.phase_order
-          ) FILTER (WHERE p.id IS NOT NULL), '[]'
-        ) as phases
-      `);
-    }
-
-    if (with_matches) {
-      // Ensure sub_groups are joined if not already
-      if (!with_phases) {
-        if (!with_editions) {
-          joinClause += `
-            LEFT JOIN competition_editions ce ON ce.competition_id = c.id
-          `;
-        }
-        joinClause += `
-          LEFT JOIN phases p ON p.edition_id = ce.id
-          LEFT JOIN phase_groups pg ON pg.phase_id = p.id
-          LEFT JOIN sub_groups sg ON sg.group_id = pg.id
-        `;
-      } else {
-        joinClause += `
-          LEFT JOIN phase_groups pg ON pg.phase_id = p.id
-          LEFT JOIN sub_groups sg ON sg.group_id = pg.id
-        `;
-      }
-      joinClause += `
-        LEFT JOIN matches m ON m.sub_group_id = sg.id
-        LEFT JOIN fighters f1 ON m.fighter1_id = f1.id
-        LEFT JOIN fighters f2 ON m.fighter2_id = f2.id
-        LEFT JOIN regions r1 ON m.region1_id = r1.id
-        LEFT JOIN regions r2 ON m.region2_id = r2.id
-        LEFT JOIN fighters wf ON m.winner_fighter_id = wf.id
-        LEFT JOIN regions wr ON m.winner_region_id = wr.id
-      `;
-      selectFields.push(`
-        COALESCE(
-          JSON_AGG(
-            DISTINCT JSON_BUILD_OBJECT(
-              'id', m.id,
-              'match_number', m.match_number,
-              'match_date', m.match_date,
-              'start_time', m.start_time,
-              'end_time', m.end_time,
-              'fighter1', JSON_BUILD_OBJECT(
-                'id', f1.id,
-                'first_name', f1.first_name,
-                'last_name', f1.last_name,
-                'nickname', f1.nickname
-              ),
-              'fighter2', JSON_BUILD_OBJECT(
-                'id', f2.id,
-                'first_name', f2.first_name,
-                'last_name', f2.last_name,
-                'nickname', f2.nickname
-              ),
-              'region1', JSON_BUILD_OBJECT(
-                'id', r1.id,
-                'name', r1.name,
-                'code', r1.code
-              ),
-              'region2', JSON_BUILD_OBJECT(
-                'id', r2.id,
-                'name', r2.name,
-                'code', r2.code
-              ),
-              'winner_fighter', JSON_BUILD_OBJECT(
-                'id', wf.id,
-                'first_name', wf.first_name,
-                'last_name', wf.last_name,
-                'nickname', wf.nickname
-              ),
-              'winner_region', JSON_BUILD_OBJECT(
-                'id', wr.id,
-                'name', wr.name,
-                'code', wr.code
-              ),
-              'score_fighter1', m.score_fighter1,
-              'score_fighter2', m.score_fighter2,
-              'match_result', m.match_result,
-              'status', m.status,
-              'venue', m.venue,
-              'notes', m.notes
-            )
-          ) FILTER (WHERE m.id IS NOT NULL), '[]'
-        ) as matches
-      `);
-    }
   }
 
   if (date_to) {
@@ -273,9 +79,102 @@ export async function getCompetitions(options: {
     whereClause += ` AND c.created_at <= $${params.length}`;
   }
 
-  // Count query
+  // === RELATIONS ===
+  if (with_editions) {
+    selectFields.push(`
+      COALESCE(
+        (
+          SELECT JSON_AGG(JSON_BUILD_OBJECT(
+            'id', ce2.id,
+            'edition_number', ce2.edition_number,
+            'year', ce2.year,
+            'theme', ce2.theme,
+            'start_date', ce2.start_date,
+            'end_date', ce2.end_date,
+            'winner_fighter', JSON_BUILD_OBJECT(
+              'id', wf.id,
+              'first_name', wf.first_name,
+              'last_name', wf.last_name
+            )
+          ))
+          FROM competition_editions ce2
+          LEFT JOIN fighters wf ON wf.id = ce2.winner_fighter_id
+          WHERE ce2.competition_id = c.id
+        ),
+        '[]'
+      ) AS editions
+    `);
+  }
+
+  if (with_phases) {
+    joins.push(`
+      LEFT JOIN phases p ON p.edition_id = ce.id
+      LEFT JOIN phase_groups pg ON pg.phase_id = p.id
+      LEFT JOIN sub_groups sg ON sg.group_id = pg.id
+    `);
+    selectFields.push(`
+      COALESCE(
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'id', p.id,
+            'name', p.name,
+            'phase_type', p.phase_type,
+            'phase_order', p.phase_order
+          )
+        ) FILTER (WHERE p.id IS NOT NULL),
+        '[]'
+      ) AS phases
+    `);
+  }
+
+if (with_matches) {
+  // Si on n’a pas déjà ajouté les jointures des phases
+  if (!with_phases) {
+    joins.push(`
+      LEFT JOIN phases p ON p.edition_id = ce.id
+      LEFT JOIN phase_groups pg ON pg.phase_id = p.id
+      LEFT JOIN sub_groups sg ON sg.group_id = pg.id
+    `);
+  }
+
+  joins.push(`
+    LEFT JOIN matches m ON m.sub_group_id = sg.id
+    LEFT JOIN fighters f1 ON f1.id = m.fighter1_id
+    LEFT JOIN fighters f2 ON f2.id = m.fighter2_id
+  `);
+
+  selectFields.push(`
+    COALESCE(
+      JSON_AGG(
+        JSON_BUILD_OBJECT(
+          'id', m.id,
+          'match_number', m.match_number,
+          'match_date', m.match_date,
+          'status', m.status,
+          'fighter1', JSON_BUILD_OBJECT(
+            'id', f1.id, 
+            'first_name', f1.first_name, 
+            'last_name', f1.last_name,
+            'nickname', f1.nickname
+          ),
+          'fighter2', JSON_BUILD_OBJECT(
+            'id', f2.id, 
+            'first_name', f2.first_name, 
+            'last_name', f2.last_name,
+            'nickname', f2.nickname
+          )
+        )
+      ) FILTER (WHERE m.id IS NOT NULL),
+      '[]'
+    ) AS matches
+  `);
+}
+
+  // === Requêtes ===
+  const joinClause = joins.join("\n");
+
   const countSql = `
-    SELECT COUNT(DISTINCT c.id) as total
+    SELECT COUNT(DISTINCT c.id) AS total
     FROM competitions c
     ${joinClause}
     ${whereClause}
@@ -283,20 +182,25 @@ export async function getCompetitions(options: {
 
   const [{ total }] = await query<{ total: number }>(countSql, params);
 
-  // Data query
   params.push(limit, offset);
+
+  const groupByClause = `GROUP BY c.id${with_region ? ', r.id' : ''}`;
+
   const dataSql = `
     SELECT ${selectFields.join(", ")}
     FROM competitions c
     ${joinClause}
     ${whereClause}
+    ${groupByClause}
     ORDER BY c.created_at DESC
     LIMIT $${params.length - 1} OFFSET $${params.length}
   `;
 
   const data = await query(dataSql, params);
+
   return { total, data };
 }
+
 
 export async function getCompetitionById(id: number, options: { 
   with_relations?: boolean 
@@ -325,6 +229,8 @@ export async function getCompetitionById(id: number, options: {
               'start_date', ce.start_date,
               'end_date', ce.end_date,
               'total_participants', ce.total_participants,
+              'prize_pool', ce.prize_pool,
+              'registration_deadline', ce.registration_deadline,
               'winner_fighter_id', ce.winner_fighter_id,
               'winner_fighter', JSON_BUILD_OBJECT(
                 'id', f.id,
@@ -343,22 +249,25 @@ export async function getCompetitionById(id: number, options: {
               'phase_type', p.phase_type,
               'phase_order', p.phase_order,
               'is_completed', p.is_completed,
+              'start_date', p.start_date,
+              'end_date', p.end_date,
               'groups', (
                 SELECT JSON_AGG(
                   JSON_BUILD_OBJECT(
                     'id', pg.id,
                     'name', pg.name,
                     'group_order', pg.group_order,
+                    'is_completed', pg.is_completed,
                     'sub_groups', (
                       SELECT JSON_AGG(
                         JSON_BUILD_OBJECT(
                           'id', sg.id,
                           'name', sg.name,
                           'sub_group_order', sg.sub_group_order,
-                          'belt1_fighter_id', sg.belt1_fighter_id,
-                          'belt2_fighter_id', sg.belt2_fighter_id,
-                          'belt1_region_id', sg.belt1_region_id,
-                          'belt2_region_id', sg.belt2_region_id
+                          'region1_id', sg.region1_id,
+                          'region2_id', sg.region2_id,
+                          'belt_region1', sg.belt_region1,
+                          'belt_region2', sg.belt_region2
                         )
                       ) FROM sub_groups sg WHERE sg.group_id = pg.id
                     )
@@ -395,66 +304,64 @@ export async function createCompetition(
   try {
     const { with_edition = true } = options;
     
+    // Extraire et transformer les données du FormData
     const rawData = {
-      name: formData.get('name'),
-      description: formData.get('description'),
-      type: formData.get('type'),
-      location: formData.get('location'),
-      region_id: formData.get('region_id'),
-      featured_image: formData.get('featured_image'),
-      registration_deadline: formData.get('registration_deadline'),
-      max_participants: formData.get('max_participants'),
-      prize_pool: formData.get('prize_pool'),
+      name: formData.get('name') as string,
+      description: formData.get('description') as string | null,
+      region_id: formData.get('region_id') as string | null,
+      featured_image: formData.get('featured_image') as string | null,
+      status: formData.get('status') as string || 'upcoming',
+      is_active: formData.get('is_active') as string | null,
     };
 
     // Générer le slug à partir du nom
-    const slug = (rawData.name as string)
+    const slug = rawData.name
       .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Supprimer les accents
       .replace(/[^a-z0-9]/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
 
-    const cleanedData = {
-      name: rawData.name as string,
-      description: rawData.description as string || undefined,
-      type: rawData.type as any,
-      location: rawData.location as string || undefined,
-      region_id: rawData.region_id ? Number(rawData.region_id) : undefined,
-      featured_image: rawData.featured_image as string || undefined,
-      registration_deadline: rawData.registration_deadline as string || undefined,
-      max_participants: rawData.max_participants ? Number(rawData.max_participants) : undefined,
-      prize_pool: rawData.prize_pool ? Number(rawData.prize_pool) : undefined,
+    // Préparer les données pour la validation
+    const dataForValidation = {
+      name: rawData.name,
+      slug,
+      description: rawData.description || undefined,
+      region_id: rawData.region_id || undefined,
+      featured_image: rawData.featured_image || undefined,
+      status: rawData.status as 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed',
+      is_active: rawData.is_active || 'true', // Par défaut à true
     };
 
-    const validatedData = competitionSchema.parse(cleanedData);
+    console.log('Data for validation:', dataForValidation);
+
+    const validatedData = competitionSchema.parse(dataForValidation);
 
     // Commencer une transaction
-    const client = await query('BEGIN');
+    await query('BEGIN');
 
     try {
       // 1. Créer la compétition
       const competitionSql = `
         INSERT INTO competitions (
-          name, slug, description, type, location,
-          region_id, featured_image, registration_deadline, max_participants, prize_pool
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING id
+          name, slug, description, region_id, featured_image, status, is_active
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, name, slug
       `;
       
-      const competitionResult = await query<{ id: number }>(competitionSql, [
+      const competitionResult = await query<{ id: number; name: string; slug: string }>(competitionSql, [
         validatedData.name,
-        slug,
+        validatedData.slug ?? null,
         validatedData.description || null,
-        validatedData.type,
-        validatedData.location || null,
         validatedData.region_id || null,
         validatedData.featured_image || null,
-        validatedData.registration_deadline || null,
-        validatedData.max_participants || null,
-        validatedData.prize_pool || null,
+        validatedData.status,
+        validatedData.is_active,
       ]);
 
-      const competitionId = competitionResult[0].id;
+      const competition = competitionResult[0];
+      const competitionId = competition.id;
 
       // 2. Créer automatiquement une édition si demandé
       if (with_edition) {
@@ -468,7 +375,7 @@ export async function createCompetition(
         
         await query<{ id: number }>(editionSql, [
           competitionId,
-          currentYear,
+          1, // Première édition
           currentYear,
           `Édition ${currentYear} - ${validatedData.name}`
         ]);
@@ -481,18 +388,30 @@ export async function createCompetition(
       return { 
         success: true, 
         id: competitionId,
+        competition: {
+          id: competitionId,
+          name: competition.name,
+          slug: competition.slug
+        },
         message: 'Compétition créée avec succès' + (with_edition ? ' (avec édition automatique)' : '')
       };
 
     } catch (error) {
       // Rollback en cas d'erreur
       await query('ROLLBACK');
-      throw error;
+      console.error('Database error in createCompetition:', error);
+      throw new Error('Erreur base de données lors de la création de la compétition');
     }
 
   } catch (error) {
     console.error('Error in createCompetition:', error);
-    throw new Error('Erreur lors de la création de la compétition');
+    
+    if (error instanceof z.ZodError) {
+      const errorMessages = error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+      throw new Error(`Données invalides: ${errorMessages}`);
+    }
+    
+    throw new Error(error instanceof Error ? error.message : 'Erreur lors de la création de la compétition');
   }
 }
 
@@ -503,73 +422,82 @@ export async function updateCompetition(id: number, formData: FormData) {
       throw new Error('Compétition non trouvée');
     }
 
+    // Extraire et transformer les données du FormData
     const rawData = {
-      name: formData.get('name'),
-      description: formData.get('description'),
-      type: formData.get('type'),
-      location: formData.get('location'),
-      region_id: formData.get('region_id'),
-      featured_image: formData.get('featured_image'),
-      registration_deadline: formData.get('registration_deadline'),
-      max_participants: formData.get('max_participants'),
-      prize_pool: formData.get('prize_pool'),
+      name: formData.get('name') as string,
+      description: formData.get('description') as string | null,
+      region_id: formData.get('region_id') as string | null,
+      featured_image: formData.get('featured_image') as string | null,
+      status: formData.get('status') as string,
+      is_active: formData.get('is_active') as string | null,
     };
 
     // Générer le slug si le nom a changé
-    const newName = rawData.name as string;
-    const slug = newName !== existing.name 
-      ? newName
+    const slug = rawData.name !== existing.name 
+      ? rawData.name
           .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
           .replace(/[^a-z0-9]/g, '-')
           .replace(/-+/g, '-')
           .replace(/^-|-$/g, '')
       : existing.slug;
 
-    const cleanedData = {
-      name: newName,
-      description: rawData.description as string || undefined,
-      type: rawData.type as any,
-      location: rawData.location as string || undefined,
-      region_id: rawData.region_id ? Number(rawData.region_id) : undefined,
-      featured_image: rawData.featured_image as string || undefined,
-      registration_deadline: rawData.registration_deadline as string || undefined,
-      max_participants: rawData.max_participants ? Number(rawData.max_participants) : undefined,
-      prize_pool: rawData.prize_pool ? Number(rawData.prize_pool) : undefined,
+    // Préparer les données pour la validation
+    const dataForValidation = {
+      name: rawData.name,
+      slug,
+      description: rawData.description || undefined,
+      region_id: rawData.region_id || undefined,
+      featured_image: rawData.featured_image || undefined,
+      status: rawData.status as 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed',
+      is_active: rawData.is_active || 'true',
     };
 
-    const validatedData = competitionSchema.parse(cleanedData);
+    console.log('Update data for validation:', dataForValidation);
+
+    const validatedData = competitionSchema.parse(dataForValidation);
 
     const sql = `
       UPDATE competitions 
       SET 
-        name = $1, slug = $2, description = $3, type = $4, location = $5,
-        region_id = $6, featured_image = $7, registration_deadline = $8, 
-        max_participants = $9, prize_pool = $10, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $11
+        name = $1, slug = $2, description = $3, 
+        region_id = $4, featured_image = $5, status = $6, 
+        is_active = $7, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $8
+      RETURNING id, name, slug
     `;
     
-    await query(sql, [
+    const result = await query<{ id: number; name: string; slug: string }>(sql, [
       validatedData.name,
-      slug,
+      validatedData.slug ?? null,
       validatedData.description || null,
-      validatedData.type,
-      validatedData.location || null,
       validatedData.region_id || null,
       validatedData.featured_image || null,
-      validatedData.registration_deadline || null,
-      validatedData.max_participants || null,
-      validatedData.prize_pool || null,
+      validatedData.status,
+      validatedData.is_active,
       id,
     ]);
+
+    if (result.length === 0) {
+      throw new Error('Compétition non trouvée lors de la mise à jour');
+    }
 
     revalidatePath('/competitions');
     revalidatePath(`/competitions/${id}`);
     return { 
       success: true, 
+      competition: result[0],
       message: 'Compétition modifiée avec succès' 
     };
   } catch (error) {
     console.error('Error in updateCompetition:', error);
+    
+    if (error instanceof z.ZodError) {
+      const errorMessages = error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+      throw new Error(`Données invalides: ${errorMessages}`);
+    }
+    
     throw error;
   }
 }
@@ -617,16 +545,11 @@ export async function getCompetitionStats() {
         COUNT(*) FILTER (WHERE status = 'ongoing') as ongoing,
         COUNT(*) FILTER (WHERE status = 'completed') as completed,
         COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled,
-        COUNT(*) FILTER (WHERE type = 'sabre_national') as sabre_national,
-        COUNT(*) FILTER (WHERE type = 'coupe_regionale') as coupe_regionale,
-        COUNT(*) FILTER (WHERE type = 'halarou_bakwai') as halarou_bakwai,
-        COUNT(*) FILTER (WHERE type = 'aes') as aes,
-        COUNT(*) FILTER (WHERE type = 'friendly') as friendly,
-        COUNT(*) FILTER (WHERE type = 'ministre') as ministre,
-        COUNT(*) FILTER (WHERE type = 'coupe_airtel') as coupe_airtel,
-        COUNT(*) FILTER (WHERE type = 'other') as other,
-        SUM(prize_pool) as total_prize_pool,
-        (SELECT COUNT(*) FROM competition_editions) as total_editions
+        COUNT(*) FILTER (WHERE status = 'postponed') as postponed,
+        COUNT(*) FILTER (WHERE is_active = true) as active,
+        COUNT(*) FILTER (WHERE is_active = false) as inactive,
+        (SELECT COUNT(*) FROM competition_editions) as total_editions,
+        (SELECT COUNT(*) FROM edition_fighters) as total_participants
       FROM competitions
     `;
     
@@ -636,16 +559,11 @@ export async function getCompetitionStats() {
       ongoing: string;
       completed: string;
       cancelled: string;
-      sabre_national: string;
-      coupe_regionale: string;
-      halarou_bakwai: string;
-      aes: string;
-      friendly: string;
-      ministre: string;
-      coupe_airtel: string;
-      other: string;
-      total_prize_pool: string;
+      postponed: string;
+      active: string;
+      inactive: string;
       total_editions: string;
+      total_participants: string;
     }>(sql);
     
     return {
@@ -654,18 +572,13 @@ export async function getCompetitionStats() {
       ongoing: parseInt(result?.ongoing ?? '0'),
       completed: parseInt(result?.completed ?? '0'),
       cancelled: parseInt(result?.cancelled ?? '0'),
-      by_type: {
-        sabre_national: parseInt(result?.sabre_national ?? '0'),
-        coupe_regionale: parseInt(result?.coupe_regionale ?? '0'),
-        halarou_bakwai: parseInt(result?.halarou_bakwai ?? '0'),
-        aes: parseInt(result?.aes ?? '0'),
-        friendly: parseInt(result?.friendly ?? '0'),
-        ministre: parseInt(result?.ministre ?? '0'),
-        coupe_airtel: parseInt(result?.coupe_airtel ?? '0'),
-        other: parseInt(result?.other ?? '0'),
+      postponed: parseInt(result?.postponed ?? '0'),
+      by_active: {
+        active: parseInt(result?.active ?? '0'),
+        inactive: parseInt(result?.inactive ?? '0'),
       },
-      total_prize_pool: parseFloat(result?.total_prize_pool ?? '0'),
       total_editions: parseInt(result?.total_editions ?? '0'),
+      total_participants: parseInt(result?.total_participants ?? '0'),
     };
   } catch (error) {
     console.error('Error in getCompetitionStats:', error);
@@ -675,25 +588,19 @@ export async function getCompetitionStats() {
       ongoing: 0,
       completed: 0,
       cancelled: 0,
-      by_type: {
-        sabre_national: 0,
-        coupe_regionale: 0,
-        halarou_bakwai: 0,
-        aes: 0,
-        friendly: 0,
-        ministre: 0,
-        coupe_airtel: 0,
-        other: 0,
+      postponed: 0,
+      by_active: {
+        active: 0,
+        inactive: 0,
       },
-      total_prize_pool: 0,
       total_editions: 0,
+      total_participants: 0,
     };
   }
 }
-
 export async function updateCompetitionStatus(id: number, status: string) {
   try {
-    const validStatuses = ['upcoming', 'ongoing', 'completed', 'cancelled'];
+    const validStatuses = ['upcoming', 'ongoing', 'completed', 'cancelled', 'postponed'];
     if (!validStatuses.includes(status)) {
       throw new Error('Statut invalide');
     }
@@ -715,5 +622,68 @@ export async function updateCompetitionStatus(id: number, status: string) {
   } catch (error) {
     console.error('Error in updateCompetitionStatus:', error);
     throw new Error('Erreur lors de la mise à jour du statut');
+  }
+}
+
+// =============================================
+// ACTIONS POUR LES ÉDITIONS DE COMPÉTITION
+// =============================================
+
+export async function createCompetitionEdition(competitionId: number, formData: FormData) {
+  try {
+    const rawData = {
+      edition_number: formData.get('edition_number'),
+      year: formData.get('year'),
+      theme: formData.get('theme'),
+      start_date: formData.get('start_date'),
+      end_date: formData.get('end_date'),
+      prize_pool: formData.get('prize_pool'),
+      registration_deadline: formData.get('registration_deadline'),
+      region_id: formData.get('region_id'),
+    };
+
+    const cleanedData = {
+      competition_id: competitionId,
+      edition_number: Number(rawData.edition_number),
+      year: Number(rawData.year),
+      theme: rawData.theme as string || undefined,
+      start_date: rawData.start_date as string || undefined,
+      end_date: rawData.end_date as string || undefined,
+      prize_pool: rawData.prize_pool ? Number(rawData.prize_pool) : undefined,
+      registration_deadline: rawData.registration_deadline as string || undefined,
+      region_id: rawData.region_id ? Number(rawData.region_id) : undefined,
+    };
+
+    const validatedData = competitionEditionSchema.parse(cleanedData);
+
+    const sql = `
+      INSERT INTO competition_editions (
+        competition_id, edition_number, year, theme, start_date, end_date,
+        prize_pool, registration_deadline, region_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id
+    `;
+    
+    const result = await query<{ id: number }>(sql, [
+      validatedData.competition_id,
+      validatedData.edition_number,
+      validatedData.year,
+      validatedData.theme || null,
+      validatedData.start_date || null,
+      validatedData.end_date || null,
+      validatedData.prize_pool || null,
+      validatedData.registration_deadline || null,
+      validatedData.region_id || null,
+    ]);
+
+    revalidatePath(`/competitions/${competitionId}`);
+    return { 
+      success: true, 
+      id: result[0].id,
+      message: 'Édition créée avec succès'
+    };
+  } catch (error) {
+    console.error('Error in createCompetitionEdition:', error);
+    throw new Error('Erreur lors de la création de l\'édition');
   }
 }

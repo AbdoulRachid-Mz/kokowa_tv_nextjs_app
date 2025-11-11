@@ -33,7 +33,6 @@ export default function RegionsPage() {
     entityType: 'regions',
     defaultFilters: {
       with_fighters: true,
-      with_cities: true,
       limit: '20',
     },
   });
@@ -99,15 +98,6 @@ export default function RegionsPage() {
   // Filtres disponibles pour les régions
   const availableFilters = [
     {
-      key: 'sort',
-      label: 'Trier par',
-      options: [
-        { value: 'name', label: 'Nom' },
-        { value: 'fighters', label: 'Nombre de lutteurs' },
-        { value: 'champions', label: 'Nombre de champions' },
-      ],
-    },
-    {
       key: 'fighter_count_min',
       label: 'Lutteurs min',
       options: [
@@ -140,7 +130,7 @@ export default function RegionsPage() {
       onRefresh={onRefresh}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
-      renderStats={renderStats}
+      // renderStats={renderStats}
       availableFilters={availableFilters}
       renderCard={(region, viewMode) => (
         <EntityCards.Region

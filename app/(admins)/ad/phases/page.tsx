@@ -29,19 +29,23 @@ export default function PhasesPage() {
     onExport,
     onRefresh,
   } = useEntityList<Phase>({
-    entityType: 'phases',
+    entityType: "phases",
     defaultFilters: {
       with_edition: true,
       with_groups: true,
-      limit: '20',
+      limit: "20",
     },
   });
 
   // Statistiques pour les phases
   const renderStats = () => {
-    const totalGroups = data.reduce((sum, phase) => sum + (phase?.groups?.length || 0), 0);
-    const completedPhases = data.filter(phase => phase.is_completed).length;
-    const averageGroups = data.length > 0 ? Math.round(totalGroups / data.length) : 0;
+    const totalGroups = data.reduce(
+      (sum, phase) => sum + (phase?.groups?.length || 0),
+      0
+    );
+    const completedPhases = data.filter((phase) => phase.is_completed).length;
+    const averageGroups =
+      data.length > 0 ? Math.round(totalGroups / data.length) : 0;
 
     const stats = [
       {
@@ -84,7 +88,9 @@ export default function PhasesPage() {
                     {stat.value}
                   </Typography>
                 </div>
-                <div className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}>
+                <div
+                  className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}
+                >
                   <stat.icon className={`h-6 w-6 ${stat.color}`} />
                 </div>
               </div>
@@ -98,36 +104,36 @@ export default function PhasesPage() {
   // Filtres disponibles pour les phases
   const availableFilters = [
     {
-      key: 'sort',
-      label: 'Trier par',
+      key: "sort",
+      label: "Trier par",
       options: [
-        { value: 'name', label: 'Nom' },
-        { value: 'phase_order', label: 'Ordre' },
-        { value: 'phase_type', label: 'Type' },
+        { value: "name", label: "Nom" },
+        { value: "phase_order", label: "Ordre" },
+        { value: "phase_type", label: "Type" },
       ],
     },
-    {
-      key: 'phase_type',
-      label: 'Type de Phase',
-      options: [
-        { value: 'all', label: 'Tous' },
-        { value: 'qualification', label: 'Qualification' },
-        { value: 'group', label: 'Groupe' },
-        { value: 'knockout', label: 'Élimination directe' },
-        { value: 'quarterfinal', label: 'Quart de finale' },
-        { value: 'semifinal', label: 'Demi-finale' },
-        { value: 'final', label: 'Finale' },
-      ],
-    },
-    {
-      key: 'is_completed',
-      label: 'Statut',
-      options: [
-        { value: 'all', label: 'Tous' },
-        { value: 'true', label: 'Terminé' },
-        { value: 'false', label: 'En cours' },
-      ],
-    },
+    // {
+    //   key: 'phase_type',
+    //   label: 'Type de Phase',
+    //   options: [
+    //     { value: 'all', label: 'Tous' },
+    //     { value: 'qualification', label: 'Qualification' },
+    //     { value: 'group', label: 'Groupe' },
+    //     { value: 'knockout', label: 'Élimination directe' },
+    //     { value: 'quarterfinal', label: 'Quart de finale' },
+    //     { value: 'semifinal', label: 'Demi-finale' },
+    //     { value: 'final', label: 'Finale' },
+    //   ],
+    // },
+    // {
+    //   key: 'is_completed',
+    //   label: 'Statut',
+    //   options: [
+    //     { value: 'all', label: 'Tous' },
+    //     { value: 'true', label: 'Terminé' },
+    //     { value: 'false', label: 'En cours' },
+    //   ],
+    // },
   ];
 
   return (

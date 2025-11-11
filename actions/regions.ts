@@ -14,8 +14,9 @@ export async function getRegions(
       page = 1,
       limit = 20,
       code,
-      with_fighters = true,
-      with_competitions = false,
+      with_fighters = 1,
+      with_coach = 1,
+      with_competitions = 0,
       fighter_count_min,
       fighter_count_max,
     } = filters;
@@ -47,6 +48,24 @@ export async function getRegions(
       params.push(fighter_count_max);
     }
 
+    // Jointure avec les coaches si demandée
+    if (with_coach) {
+      selectFields.push(`
+        (SELECT JSON_BUILD_OBJECT(
+          'id', c.id,
+          'first_name', c.first_name,
+          'last_name', c.last_name,
+          'nickname', c.nickname,
+          'profile_image', c.profile_image,
+          'license_number', c.license_number,
+          'certification_level', c.certification_level,
+          'experience_years', c.experience_years,
+          'specialties', c.specialties,
+          'is_active', c.is_active
+        ) FROM coaches c WHERE c.region_id = r.id AND c.is_active = true LIMIT 1) as coach
+      `);
+    }
+
     // Jointure avec les lutteurs si demandée
     if (with_fighters) {
       selectFields.push(`
@@ -71,9 +90,8 @@ export async function getRegions(
           JSON_BUILD_OBJECT(
             'id', c.id,
             'name', c.name,
-            'type', c.type,
             'status', c.status,
-            'location', c.location
+            'featured_image', c.featured_image
           ) ORDER BY c.created_at DESC
         ) FROM competitions c WHERE c.region_id = r.id LIMIT 5) as competitions
       `);
@@ -152,7 +170,6 @@ export async function getRegionById(id: number, options: { with_relations?: bool
             JSON_BUILD_OBJECT(
               'id', c.id,
               'name', c.name,
-              'type', c.type,
               'status', c.status
             ) ORDER BY c.created_at DESC
           ) FROM competitions c WHERE c.region_id = r.id LIMIT 10) as competitions
@@ -206,7 +223,7 @@ export async function createRegion(formData: FormData) {
     ]);
 
     revalidatePath('/regions');
-    revalidatePath('/admin/regions');
+    revalidatePath('/ad/regions');
     return { 
       success: true, 
       id: result[0].id,
@@ -225,7 +242,7 @@ export async function updateRegion(id: number, formData: FormData) {
   try {
     const existing = await getRegionById(id, { with_relations: false });
     if (!existing) {
-      throw new Error('Région non trouvée');
+      throw new Error(`Région non trouvée: ${id}`);
     }
 
     const rawData = {
@@ -253,10 +270,10 @@ export async function updateRegion(id: number, formData: FormData) {
       id,
     ]);
 
-    revalidatePath('/regions');
-    revalidatePath('/admin/regions');
-    revalidatePath(`/regions/${id}`);
-    revalidatePath(`/admin/regions/${id}`);
+    // revalidatePath('/regions');
+    revalidatePath('/ad/regions');
+    // revalidatePath(`/regions/${id}`);
+    revalidatePath(`/ad/regions/${id}`);
     
     return { 
       success: true, 
@@ -307,7 +324,9 @@ export async function deleteRegion(id: number) {
     await query(sql, [id]);
     
     revalidatePath('/regions');
-    revalidatePath('/admin/regions');
+    revalidatePath('/ad/regions');
+    revalidatePath(`/regions/${id}`);
+    revalidatePath(`/ad/regions/${id}`);
     
     return { 
       success: true, 

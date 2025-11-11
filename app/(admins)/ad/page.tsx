@@ -27,7 +27,14 @@ export default function AdminPage() {
     const loadStats = async () => {
       try {
         const statsData = await getCompetitionStats();
-        setStats(statsData);
+        setStats({
+          total_competitions: statsData.total_competitions,
+          upcoming: statsData.upcoming,
+          ongoing: statsData.ongoing,
+          completed: statsData.completed,
+          total_prize_pool: 0, // default value since it's missing in response
+          total_editions: statsData.total_editions,
+        });
       } catch (error) {
         console.error("Erreur chargement stats:", error);
       } finally {

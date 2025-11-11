@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCompetitions, createCompetition } from '@/actions/competitions';
 import { competitionSchema } from '@/validation/schemas';
+import z from 'zod';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,15 +11,14 @@ export async function GET(request: NextRequest) {
       search: searchParams.get('search') || undefined,
       page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20,
-      type: searchParams.get('type') || undefined,
-      status: searchParams.get('status') || undefined,
+      status: searchParams.get('status') === 'all' ? undefined : searchParams.get('status') || undefined,
       region_id: searchParams.get('region_id') ? parseInt(searchParams.get('region_id')!) : undefined,
       date_from: searchParams.get('date_from') || undefined,
       date_to: searchParams.get('date_to') || undefined,
-      with_region: searchParams.get('with_region') !== 'false',
-      with_editions: searchParams.get('with_editions') === 'true',
-      with_phases: searchParams.get('with_phases') === 'true',
-      with_matches: searchParams.get('with_matches') === 'true',
+      with_region: searchParams.get('with_region') !== '0' || Boolean('false'),
+      with_editions: searchParams.get('with_editions') === "1" || Boolean('true'),
+      with_phases: searchParams.get('with_phases') === "1" || Boolean('true'),
+      with_matches: searchParams.get('with_matches') === "1" || Boolean('true'),
     };
 
     const result = await getCompetitions(filters);
@@ -33,13 +33,33 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// app/api/competitions/route.ts
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const contentType = request.headers.get('content-type') || '';
+    let body: any;
+
+    if (contentType.includes('application/json')) {
+      body = await request.json();
+    } else if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      body = Object.fromEntries(formData.entries());
+    } else {
+      // fallback: try JSON first, then form-data
+      try {
+        body = await request.json();
+      } catch {
+        const formData = await request.formData();
+        body = Object.fromEntries(formData.entries());
+      }
+    }
+
+    console.log('Request body:', body);
     
+    // Valider les données
     const validatedData = competitionSchema.parse(body);
-    
-    // Simuler FormData pour l'action serveur
+
+    // Convertir en FormData pour l'action serveur
     const formData = new FormData();
     Object.entries(validatedData).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -48,21 +68,31 @@ export async function POST(request: NextRequest) {
     });
 
     const result = await createCompetition(formData);
-    
+
     return NextResponse.json(result);
   } catch (error) {
     console.error('API Error POST /api/competitions:', error);
-    
-    if (error instanceof Error && error.name === 'ZodError') {
+
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Données invalides', details: error.message },
+        { 
+          error: 'Données invalides', 
+          details: error.issues.map(issue => ({
+            field: issue.path.join('.'),
+            message: issue.message
+          }))
+        },
         { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
-      { error: 'Erreur lors de la création de la compétition' },
+      { 
+        error: 'Erreur lors de la création de la compétition',
+        message: error instanceof Error ? error.message : 'Erreur inconnue'
+      },
       { status: 500 }
     );
   }
 }
+

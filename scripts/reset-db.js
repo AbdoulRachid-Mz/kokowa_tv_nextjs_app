@@ -31,6 +31,7 @@ async function resetDatabase() {
     await client.query('DROP TABLE IF EXISTS fighter_achievements CASCADE');
     await client.query('DROP TABLE IF EXISTS fighter_transfers CASCADE');
     await client.query('DROP TABLE IF EXISTS belt CASCADE');
+    await client.query('DROP TABLE IF EXISTS coaches CASCADE');
     await client.query('DROP TABLE IF EXISTS competitions CASCADE');
     await client.query('DROP TABLE IF EXISTS referees CASCADE');
     await client.query('DROP TABLE IF EXISTS fighters CASCADE');

@@ -37,7 +37,7 @@ export async function getFighters(
     }
 
     // Filtres supplémentaires
-    if (region_id) {
+    if (region_id !== undefined) {
       whereClause += ` AND f.region_id = $${params.length + 1}`;
       params.push(region_id);
     }
@@ -82,7 +82,6 @@ export async function getFighters(
           JSON_BUILD_OBJECT(
             'id', fa.id,
             'title', fa.title,
-            'competition', fa.competition,
             'year', fa.year,
             'position', fa.position,
             'description', fa.description,
@@ -163,11 +162,12 @@ export async function getFighterById(id: number, options: {
             JSON_BUILD_OBJECT(
               'id', fa.id,
               'title', fa.title,
-              'competition', fa.competition,
               'year', fa.year,
               'position', fa.position,
               'description', fa.description,
-              'medal_image', fa.medal_image
+              'medal_image', fa.medal_image,
+              'region_id', fa.region_id,
+              'edition_id', fa.edition_id
             ) ORDER BY fa.year DESC
           ) FROM fighter_achievements fa WHERE fa.fighter_id = f.id) as achievements,
           (SELECT JSON_AGG(
@@ -178,7 +178,9 @@ export async function getFighterById(id: number, options: {
               'to_region_id', ft.to_region_id,
               'transfer_fee', ft.transfer_fee,
               'contract_duration', ft.contract_duration,
-              'status', ft.status
+              'status', ft.status,
+              'is_permanent', ft.is_permanent,
+              'transfer_reason', ft.transfer_reason
             ) ORDER BY ft.transfer_date DESC
           ) FROM fighter_transfers ft WHERE ft.fighter_id = f.id) as transfers,
           (SELECT COUNT(*) FROM matches m WHERE (m.fighter1_id = f.id OR m.fighter2_id = f.id) AND m.status = 'completed') as total_matches,
@@ -203,49 +205,9 @@ export async function getFighterById(id: number, options: {
   }
 }
 
-export async function createFighter(formData: FormData) {
+// lib/actions/fighters.ts
+export async function createFighter(validatedData: any) {
   try {
-    const rawData = {
-      first_name: formData.get('first_name'),
-      last_name: formData.get('last_name'),
-      nickname: formData.get('nickname'),
-      birth_date: formData.get('birth_date'),
-      birth_place: formData.get('birth_place'),
-      region_id: formData.get('region_id'),
-      height: formData.get('height'),
-      weight: formData.get('weight'),
-      profile_image: formData.get('profile_image'),
-      cover_image: formData.get('cover_image'),
-      bio: formData.get('bio'),
-      fighting_style: formData.get('fighting_style'),
-      debut_year: formData.get('debut_year'),
-      ranking: formData.get('ranking'),
-      is_active: formData.get('is_active'),
-      is_champion: formData.get('is_champion'),
-    };
-
-    // Nettoyage des données
-    const cleanedData = {
-      first_name: rawData.first_name as string,
-      last_name: rawData.last_name as string,
-      nickname: rawData.nickname as string || undefined,
-      birth_date: rawData.birth_date as string || undefined,
-      birth_place: rawData.birth_place as string || undefined,
-      region_id: rawData.region_id ? Number(rawData.region_id) : undefined,
-      height: rawData.height ? Number(rawData.height) : undefined,
-      weight: rawData.weight ? Number(rawData.weight) : undefined,
-      profile_image: rawData.profile_image as string || undefined,
-      cover_image: rawData.cover_image as string || undefined,
-      bio: rawData.bio as string || undefined,
-      fighting_style: rawData.fighting_style as string || undefined,
-      debut_year: rawData.debut_year ? Number(rawData.debut_year) : undefined,
-      ranking: rawData.ranking ? Number(rawData.ranking) : 999,
-      is_active: rawData.is_active === 'true',
-      is_champion: rawData.is_champion === 'true',
-    };
-
-    const validatedData = fighterSchema.parse(cleanedData);
-
     const sql = `
       INSERT INTO fighters (
         first_name, last_name, nickname, birth_date, birth_place, 
@@ -274,28 +236,23 @@ export async function createFighter(formData: FormData) {
       validatedData.is_champion,
     ]);
 
-    // Le trigger PostgreSQL met à jour automatiquement le compteur de la région
-    // grâce à la fonction update_region_fighter_counts()
-
-    revalidatePath('/fighters');
-    revalidatePath('/admin/fighters');
+    revalidatePath("/fighters");
+    revalidatePath("/ad/fighters");
     if (validatedData.region_id) {
       revalidatePath(`/admin/regions/${validatedData.region_id}`);
     }
-    
+
     return { 
       success: true, 
       id: result[0].id,
-      message: 'Lutteur créé avec succès'
+      message: "Lutteur créé avec succès",
     };
   } catch (error) {
-    console.error('Error in createFighter:', error);
-    if (error instanceof Error) {
-      throw new Error(`Erreur lors de la création du lutteur: ${error.message}`);
-    }
-    throw new Error('Erreur lors de la création du lutteur');
+    console.error("Error in createFighter:", error);
+    throw new Error(`Erreur lors de la création du lutteur: ${(error as Error).message}`);
   }
 }
+
 
 export async function updateFighter(id: number, formData: FormData) {
   try {

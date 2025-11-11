@@ -30,10 +30,10 @@ export default function FightersPage() {
     onExport,
     onRefresh,
   } = useEntityList<Fighter>({
-    entityType: 'fighters',
+    entityType: "fighters",
     defaultFilters: {
-      is_active: 'active',
-      limit: '20',
+      is_active: "active",
+      limit: "20",
     },
   });
 
@@ -48,13 +48,13 @@ export default function FightersPage() {
       },
       {
         label: "Champions",
-        value: data.filter(f => f.is_champion).length,
+        value: data.filter((f) => f.is_champion).length,
         icon: Award,
         color: "text-yellow-600",
       },
       {
         label: "Actifs",
-        value: data.filter(f => f.is_active).length,
+        value: data.filter((f) => f.is_active).length,
         icon: TrendingUp,
         color: "text-green-600",
       },
@@ -74,7 +74,9 @@ export default function FightersPage() {
                     {stat.value}
                   </Typography>
                 </div>
-                <div className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}>
+                <div
+                  className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}
+                >
                   <stat.icon className={`h-6 w-6 ${stat.color}`} />
                 </div>
               </div>

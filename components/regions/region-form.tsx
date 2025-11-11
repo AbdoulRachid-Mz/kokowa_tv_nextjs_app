@@ -19,18 +19,25 @@ export function RegionForm({ region, isEdit = false }: RegionFormProps) {
   const [formData, setFormData] = useState({
     name: region?.name || "",
     code: region?.code || "",
+    stadium_name: region?.stadium_name || "",
+    stadium_image: region?.stadium_image || "",
     description: region?.description || "",
     color: region?.color || "#3b82f6",
   });
-  const [flagImage, setFlagImage] = useState(region?.flag_image || "");
+  const [stadiumImage, setStadiumImage] = useState(
+    region?.stadium_image || undefined
+  );
+  const [flagImage, setFlagImage] = useState(region?.flag_image || undefined);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
@@ -41,27 +48,46 @@ export function RegionForm({ region, isEdit = false }: RegionFormProps) {
 
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('code', formData.code);
-      if (formData.description) formDataToSend.append('description', formData.description);
-      if (formData.color) formDataToSend.append('color', formData.color);
-      if (flagImage) formDataToSend.append('flag_image', flagImage);
+      formDataToSend.append("name", formData.name);
+      formDataToSend.append("code", formData.code);
+      if (formData.description)
+        formDataToSend.append("description", formData.description);
+      if (formData.color) formDataToSend.append("color", formData.color);
+      if (flagImage) formDataToSend.append("flag_image", flagImage);
 
       let result;
       if (isEdit && region) {
-        result = await updateRegion(region.id, formDataToSend);
+        result = await fetch(`/api/regions/${region.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: formData.name,
+            code: formData.code,
+            description: formData.description,
+            color: formData.color,
+            flag_image: flagImage,
+          }),
+        }).then((res) => res.json());
       } else {
-        result = await createRegion(formDataToSend);
+        result = await fetch("/api/regions", {
+          method: "POST",
+          body: formDataToSend,
+        }).then((res) => res.json());
       }
 
       if (result.success) {
-        router.push('/ad/regions');
+        router.push("/ad/regions");
         router.refresh();
       } else {
         setErrors({ submit: result.message || "Une erreur est survenue" });
       }
     } catch (error) {
-      setErrors({ submit: error instanceof Error ? error.message : "Erreur lors de l'enregistrement" });
+      setErrors({
+        submit:
+          error instanceof Error
+            ? error.message
+            : "Erreur lors de l'enregistrement",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -89,31 +115,77 @@ export function RegionForm({ region, isEdit = false }: RegionFormProps) {
                   value={flagImage}
                   onChange={setFlagImage}
                   maxSizeMB={2}
+                  isAutoUpload={false}
+                  isRounded={false}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <Typography variant="body-sm" weight="medium" className="mb-2">
+                  Stade
+                </Typography>
+                <AdvancedUpload
+                  value={stadiumImage}
+                  onChange={setStadiumImage}
+                  maxSizeMB={2}
+                  isAutoUpload={false}
                   isRounded={false}
                   className="w-full"
                 />
               </div>
 
               {/* Nom */}
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium mb-2">
-                  Nom de la région *
-                </label>
-                <Input
-                  id="name"
-                  name="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Ex: Dakar"
-                  className={errors.name ? "border-red-500" : ""}
-                />
-                {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+              <div className="flex items-center justify-center">
+                <div>
+                  <label
+                    htmlFor="name"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    Nom de la région *
+                  </label>
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="Ex: Dakar"
+                    className={errors.name ? "border-red-500" : ""}
+                  />
+                  {errors.name && (
+                    <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                  )}
+                </div>
+                <div>
+                  <label
+                    htmlFor="name"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    Nom de stade*
+                  </label>
+                  <Input
+                    id="stadium_name"
+                    name="stadium_name"
+                    type="text"
+                    value={formData.stadium_name}
+                    onChange={handleChange}
+                    placeholder="Ex: Dakar"
+                    className={errors.stadium_name ? "border-red-500" : ""}
+                  />
+                  {errors.stadium_name && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.stadium_name}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Code */}
               <div>
-                <label htmlFor="code" className="block text-sm font-medium mb-2">
+                <label
+                  htmlFor="code"
+                  className="block text-sm font-medium mb-2"
+                >
                   Code *
                 </label>
                 <Input
@@ -126,12 +198,17 @@ export function RegionForm({ region, isEdit = false }: RegionFormProps) {
                   maxLength={10}
                   className={errors.code ? "border-red-500" : ""}
                 />
-                {errors.code && <p className="text-red-500 text-sm mt-1">{errors.code}</p>}
+                {errors.code && (
+                  <p className="text-red-500 text-sm mt-1">{errors.code}</p>
+                )}
               </div>
 
               {/* Couleur */}
               <div>
-                <label htmlFor="color" className="block text-sm font-medium mb-2">
+                <label
+                  htmlFor="color"
+                  className="block text-sm font-medium mb-2"
+                >
                   Couleur
                 </label>
                 <div className="flex gap-4 items-center">
@@ -153,7 +230,10 @@ export function RegionForm({ region, isEdit = false }: RegionFormProps) {
 
               {/* Description */}
               <div>
-                <label htmlFor="description" className="block text-sm font-medium mb-2">
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-medium mb-2"
+                >
                   Description
                 </label>
                 <textarea
@@ -176,11 +256,12 @@ export function RegionForm({ region, isEdit = false }: RegionFormProps) {
                 >
                   Annuler
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Enregistrement..." : isEdit ? "Modifier" : "Créer"}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting
+                    ? "Enregistrement..."
+                    : isEdit
+                    ? "Modifier"
+                    : "Créer"}
                 </Button>
               </div>
 

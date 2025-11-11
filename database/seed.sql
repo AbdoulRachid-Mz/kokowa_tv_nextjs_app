@@ -2,7 +2,6 @@
 -- DÉBUT DU SCRIPT DE SEED
 -- =============================================
 
-
 -- =============================================
 -- NETTOYAGE DES DONNÉES EXISTANTES
 -- =============================================
@@ -19,6 +18,7 @@ TRUNCATE TABLE
     fighter_transfers, 
     fighters, 
     referees, 
+    coaches,  -- AJOUT DE LA TABLE COACHS
     competitions, 
     regions, 
     messages, 
@@ -34,12 +34,13 @@ RESTART IDENTITY CASCADE;
 -- INSERTION DES CEINTURES (BELT)
 -- (NOUVELLE TABLE)
 -- =============================================
-CREATE TABLE IF NOT EXISTS belt (
-    id SERIAL PRIMARY KEY,
-    color VARCHAR(20) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Supprimer la création de table si elle existe déjà (déjà dans database.sql)
+-- CREATE TABLE IF NOT EXISTS belt (
+--     id SERIAL PRIMARY KEY,
+--     color VARCHAR(20) NOT NULL,
+--     is_active BOOLEAN DEFAULT TRUE,
+--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- );
 
 INSERT INTO belt (color, is_active) VALUES
 ('Rouge', true),
@@ -47,7 +48,6 @@ INSERT INTO belt (color, is_active) VALUES
 ('Jaune', true),
 ('Bleu', true),
 ('Noir', true);
-
 
 -- =============================================
 -- INSERTION DES UTILISATEURS
@@ -72,15 +72,24 @@ INSERT INTO users (username, email, password_hash, role, first_name, last_name, 
 -- =============================================
 -- INSERTION DES RÉGIONS
 -- =============================================
-INSERT INTO regions (name, code, description, flag_image, color, total_fighters, total_champions) VALUES
-('Niamey', 'NIM', 'Région de la capitale', 'niamey-flag.png', '#FF0000', 8, 2),
-('Dosso', 'DOS', 'Région de Dosso', 'dosso-flag.png', '#00FF00', 6, 1),
-('Tahoua', 'TAH', 'Région de Tahoua', 'tahoua-flag.png', '#0000FF', 7, 1),
-('Tillabéri', 'TIL', 'Région de Tillabéri', 'tillaberi-flag.png', '#FFFF00', 5, 0),
-('Maradi', 'MAR', 'Région de Maradi', 'maradi-flag.png', '#FF00FF', 6, 1),
-('Zinder', 'ZIN', 'Région de Zinder', 'zinder-flag.png', '#00FFFF', 7, 2),
-('Agadez', 'AGA', 'Région d''Agadez', 'agadez-flag.png', '#FFA500', 4, 0),
-('Diffa', 'DIF', 'Région de Diffa', 'diffa-flag.png', '#800080', 3, 0);
+INSERT INTO regions (name, code, description, flag_image, color, total_fighters, total_champions, stadium_name, stadium_image) VALUES
+('Niamey', 'NIM', 'Région de la capitale', 'niamey-flag.png', '#FF0000', 8, 2, 'Stade Général Seyni Kountché', 'niamey-stadium.jpg'),
+('Dosso', 'DOS', 'Région de Dosso', 'dosso-flag.png', '#00FF00', 6, 1, 'Stade de Dosso', 'dosso-stadium.jpg'),
+('Tahoua', 'TAH', 'Région de Tahoua', 'tahoua-flag.png', '#0000FF', 7, 1, 'Stade de Tahoua', 'tahoua-stadium.jpg'),
+('Tillabéri', 'TIL', 'Région de Tillabéri', 'tillaberi-flag.png', '#FFFF00', 5, 0, 'Stade de Tillabéri', 'tillaberi-stadium.jpg'),
+('Maradi', 'MAR', 'Région de Maradi', 'maradi-flag.png', '#FF00FF', 6, 1, 'Stade de Maradi', 'maradi-stadium.jpg'),
+('Zinder', 'ZIN', 'Région de Zinder', 'zinder-flag.png', '#00FFFF', 7, 2, 'Stade de Zinder', 'zinder-stadium.jpg'),
+('Agadez', 'AGA', 'Région d''Agadez', 'agadez-flag.png', '#FFA500', 4, 0, 'Stade d''Agadez', 'agadez-stadium.jpg'),
+('Diffa', 'DIF', 'Région de Diffa', 'diffa-flag.png', '#800080', 3, 0, 'Stade de Diffa', 'diffa-stadium.jpg');
+
+-- =============================================
+-- INSERTION DES COACHS
+-- =============================================
+INSERT INTO coaches (first_name, last_name, nickname, region_id, birth_date, profile_image, license_number, certification_level, experience_years, specialties, is_active, social_links) VALUES
+('Harouna', 'Mamane', 'Le Stratège', 1, '1975-04-12', 'harouna-mamane.jpg', 'COACH001', 'National', 20, 'Technique, Préparation physique', true, '{}'),
+('Amina', 'Souley', 'La Mentore', 2, '1980-08-25', 'amina-souley.jpg', 'COACH002', 'Régional', 15, 'Stratégie, Psychologie sportive', true, '{}'),
+('Boubacar', 'Diallo', 'L''Expérimenté', 3, '1970-11-30', 'boubacar-diallo.jpg', 'COACH003', 'International', 25, 'Tactique, Gestion du stress', true, '{}'),
+('Fatima', 'Issa', 'La Passionnée', 4, '1985-03-18', 'fatima-issa.jpg', 'COACH004', 'Régional', 10, 'Jeunes talents, Développement', true, '{}');
 
 -- =============================================
 -- INSERTION DES LUTTEURS
@@ -107,8 +116,6 @@ INSERT INTO fighters (first_name, last_name, nickname, birth_date, birth_place, 
 -- Jeunes espoirs
 ('Yahaya', 'Oumarou', 'La Flèche', '1998-01-15', 'Maradi', 5, 1.77, 86.0, NULL, NULL, 'Nouveau talent prometteur', 'Rapide', 2016, 0, true, false, '{}'),
 ('Mansour', 'Idriss', 'Le Jeune Lion', '1999-03-20', 'Tahoua', 3, 1.81, 91.0, NULL, NULL, 'Future star du sabre', 'Technique', 2017, 0, true, false, '{}');
-
-
 
 -- =============================================
 -- INSERTION DES ARBITRES
@@ -142,7 +149,6 @@ INSERT INTO competitions (name, slug, description, region_id, status, featured_i
 ('Tournoi Amical International', 'tournoi-amical-international', 'Rencontre amicale reportée', 1, 'postponed', 'amical-international.jpg', true);
 
 -- =============================================
--- =============================================
 -- INSERTION DES ÉDITIONS DE COMPÉTITION (ID explicite)
 -- =============================================
 INSERT INTO competition_editions (
@@ -155,11 +161,6 @@ INSERT INTO competition_editions (
 (4, 43, 2023, 'Édition Historique', '2023-12-10', '2023-12-20', 1, true, 6, 64, 4500000.00, '2023-11-15'),
 (5, 5, 2023, 'Coupe des Sponsors', '2023-09-01', '2023-09-05', 1, true, 1, 32, 2000000.00, '2023-08-01');
 
-
--- =============================================
--- INSERTION DES PALMARÈS DES LUTTEURS
--- Remplacement de 'competition' par 'edition_id' et ajout de 'region_id'
--- =============================================
 -- =============================================
 -- INSERTION DES PALMARÈS DES LUTTEURS
 -- =============================================
@@ -174,6 +175,7 @@ INSERT INTO fighter_achievements (
 (3, 6, 'Troisième', 4, 2023, '3rd', 'Belle performance', 'bronze-2023.jpg'),
 (4, 3, 'Vainqueur Régional', 2, 2023, '1st', 'Champion régional', 'gold-tahoua.jpg'),
 (5, 2, 'Finaliste Jeune', 4, 2023, '2nd', 'Excellent parcours jeune', 'silver-aes.jpg');
+
 -- =============================================
 -- INSCRIPTION DES RÉGIONS AUX ÉDITIONS
 -- Suppression de la colonne obsolète 'notes'
@@ -211,7 +213,6 @@ INSERT INTO edition_fighters (edition_id, fighter_id, region_id, registration_da
 (1, 1, 1, '2024-05-10', 'registered'),
 (1, 2, 5, '2024-05-10', 'qualified'),
 (1, 3, 6, '2024-05-11', 'registered');
-
 
 -- =============================================
 -- INSERTION DES PHASES
@@ -251,6 +252,7 @@ INSERT INTO matches (sub_group_id, match_number, match_date, start_time, end_tim
 
 -- Matchs terminés
 (2, 3, '2024-03-19 19:00:00', '19:00:00', '19:25:00', false, 5, 6, 5, 6, 'fighter1_win', '00:25:00', 2, 'completed', 3000, 'https://youtube.com/match3', NULL, 'Victoire technique');
+
 -- =============================================
 -- INSERTION DES CARTONS
 -- =============================================
@@ -314,11 +316,6 @@ INSERT INTO interactions (user_id, entity_type, entity_id, interaction_type) VAL
 (7, 'video', 1, 'like'),
 (6, 'fighter', 1, 'follow'),
 (7, 'fighter', 2, 'follow');
-
--- =============================================
--- RÉACTIVER LES CONTRAINTES
--- =============================================
--- SET session_replication_role = 'origin';
 
 -- =============================================
 -- MISE À JOUR DES COMPTEURS AUTOMATIQUES

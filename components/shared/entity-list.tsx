@@ -42,7 +42,9 @@ export interface EntityListProps<T> {
   description?: string;
   entityType:
     | "fighter"
+    | "transfer"
     | "region"
+    | "coach"
     | "competition"
     | "edition"
     | "referee"
@@ -119,306 +121,408 @@ export function EntityList<T>({
   const totalPages = Math.ceil(total / limit);
 
   // Filtres spécifiques par type d'entité
- // Filtres spécifiques par type d'entité
-const getEntitySpecificFilters = () => {
-  const baseFilters = [
-    {
-      key: "limit",
-      label: "Éléments par page",
-      options: [
-        { value: "10", label: "10" },
-        { value: "20", label: "20" },
-        { value: "50", label: "50" },
-        { value: "100", label: "100" },
-      ],
-    },
-  ];
-
-  switch (entityType) {
-    case "fighter":
-      return [
-        ...baseFilters,
-        {
-          key: "is_active",
-          label: "Statut",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "active", label: "Actifs" },
-            { value: "inactive", label: "Inactifs" },
-          ],
-        },
-        {
-          key: "is_champion",
-          label: "Champion",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "champion", label: "Champions" },
-            { value: "not_champion", label: "Non champions" },
-          ],
-        },
-        {
-          key: "region_id",
-          label: "Région",
-          options: [
-            { value: "all", label: "Toutes régions" },
-            // Les options seront chargées dynamiquement
-          ],
-        },
-      ];
-
-    case "region":
-      return [
-        ...baseFilters,
-        {
-          key: "sort",
-          label: "Trier par",
-          options: [
-            { value: "name", label: "Nom" },
-            { value: "fighters", label: "Nombre de lutteurs" },
-            { value: "champions", label: "Nombre de champions" },
-          ],
-        },
-      ];
+  const getEntitySpecificFilters = () => {
+    const baseFilters = [
+      {
+        key: "limit",
+        label: "Éléments par page",
+        options: [
+          { value: "10", label: "10" },
+          { value: "20", label: "20" },
+          { value: "50", label: "50" },
+          { value: "100", label: "100" },
+        ],
+      },
+    ];
 
 
-    case "competition":
-      return [
-        ...baseFilters,
-        {
-          key: "status",
-          label: "Statut",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "upcoming", label: "À venir" },
-            { value: "ongoing", label: "En cours" },
-            { value: "completed", label: "Terminées" },
-          ],
-        },
-        {
-          key: "type",
-          label: "Type",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "sabre_national", label: "Sabre National" },
-            { value: "coupe_regionale", label: "Coupe Régionale" },
-            { value: "halarou_bakwai", label: "Halarou Bakwai" },
-            { value: "aes", label: "AES" },
-            { value: "friendly", label: "Amical" },
-            { value: "ministre", label: "Ministre" },
-            { value: "coupe_airtel", label: "Coupe Airtel" },
-            { value: "other", label: "Autre" },
-          ],
-        },
-      ];
+    switch (entityType) {
+      case "fighter":
+        return [
+          ...baseFilters,
+          {
+            key: "is_active",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "active", label: "Actifs" },
+              { value: "inactive", label: "Inactifs" },
+            ],
+          },
+          {
+            key: "is_champion",
+            label: "Champion",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "champion", label: "Champions" },
+              { value: "not_champion", label: "Non champions" },
+            ],
+          },
+          {
+            key: "region_id",
+            label: "Région",
+            options: [
+              { value: "all", label: "Toutes régions" },
+              // Les options seront chargées dynamiquement
+            ],
+          },
+        ];
 
-    case "edition":
-      return [
-        ...baseFilters,
-        {
-          key: "year",
-          label: "Année",
-          options: [
-            { value: "all", label: "Toutes années" },
-            { value: "2024", label: "2024" },
-            { value: "2023", label: "2023" },
-            { value: "2022", label: "2022" },
-          ],
-        },
-        {
-          key: "competition_id",
-          label: "Compétition",
-          options: [
-            { value: "all", label: "Toutes compétitions" },
-          ],
-        },
-      ];
+      case "region":
+        return [
+          ...baseFilters,
+          {
+            key: "sort",
+            label: "Trier par",
+            options: [
+              { value: "name", label: "Nom" },
+              { value: "fighters", label: "Nombre de lutteurs" },
+              { value: "champions", label: "Nombre de champions" },
+            ],
+          },
+        ];
 
-    case "phase":
-      return [
-        ...baseFilters,
-        {
-          key: "phase_type",
-          label: "Type de Phase",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "qualification", label: "Qualification" },
-            { value: "group", label: "Groupe" },
-            { value: "knockout", label: "Élimination directe" },
-            { value: "quarterfinal", label: "Quart de finale" },
-            { value: "semifinal", label: "Demi-finale" },
-            { value: "final", label: "Finale" },
-          ],
-        },
-        {
-          key: "is_completed",
-          label: "Statut",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "true", label: "Terminé" },
-            { value: "false", label: "En cours" },
-          ],
-        },
-      ];
+      case "coach":
+        return [
+          ...baseFilters,
+          {
+            key: "is_active",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "active", label: "Actifs" },
+              { value: "inactive", label: "Inactifs" },
+            ],
+          },
+          {
+            key: "certification_level",
+            label: "Niveau Certification",
+            options: [
+              { value: "all", label: "Tous niveaux" },
+              { value: "regional", label: "Régional" },
+              { value: "national", label: "National" },
+              { value: "international", label: "International" },
+            ],
+          },
+          {
+            key: "experience_min",
+            label: "Années d'expérience",
+            options: [
+              { value: "all", label: "Toutes" },
+              { value: "0", label: "0-2 ans" },
+              { value: "3", label: "3-5 ans" },
+              { value: "6", label: "6-10 ans" },
+              { value: "11", label: "11+ ans" },
+            ],
+          },
+          {
+            key: "region_id",
+            label: "Région",
+            options: [{ value: "all", label: "Toutes régions" }],
+          },
+        ];
 
-    case "phase-groups":
-      return [
-        ...baseFilters,
-        {
-          key: "is_completed",
-          label: "Statut",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "true", label: "Terminé" },
-            { value: "false", label: "En cours" },
-          ],
-        },
-      ];
+      case "transfer":
+        return [
+          ...baseFilters,
+          {
+            key: "status",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "pending", label: "En attente" },
+              { value: "approved", label: "Approuvé" },
+              { value: "rejected", label: "Rejeté" },
+              { value: "cancelled", label: "Annulé" },
+            ],
+          },
+          {
+            key: "from_region_id",
+            label: "Région d’origine",
+            options: [{ value: "all", label: "Toutes régions" }],
+          },
+          {
+            key: "to_region_id",
+            label: "Région de destination",
+            options: [{ value: "all", label: "Toutes régions" }],
+          },
+          {
+            key: "with_fighter",
+            label: "Avec lutteur",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "true", label: "Oui" },
+              { value: "false", label: "Non" },
+            ],
+          },
+          {
+            key: "with_regions",
+            label: "Avec régions",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "true", label: "Oui" },
+              { value: "false", label: "Non" },
+            ],
+          },
+          {
+            key: "with_approver",
+            label: "Avec approbateur",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "true", label: "Oui" },
+              { value: "false", label: "Non" },
+            ],
+          },
+        ];
 
-    case "sub-groups":
-      return [
-        ...baseFilters,
-        {
-          key: "is_completed",
-          label: "Statut",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "true", label: "Terminé" },
-            { value: "false", label: "En cours" },
-          ],
-        },
-      ];
+      case "article":
+        return [
+          ...baseFilters,
+          {
+            key: "status",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "draft", label: "Brouillon" },
+              { value: "published", label: "Publié" },
+              { value: "archived", label: "Archivé" },
+            ],
+          },
+          {
+            key: "language",
+            label: "Langue",
+            options: [
+              { value: "all", label: "Toutes" },
+              { value: "fr", label: "Français" },
+              { value: "ha", label: "Haoussa" },
+              { value: "en", label: "Anglais" },
+            ],
+          },
+        ];
 
-    case "match":
-      return [
-        ...baseFilters,
-        {
-          key: "status",
-          label: "Statut",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "scheduled", label: "Programmé" },
-            { value: "live", label: "En direct" },
-            { value: "completed", label: "Terminé" },
-            { value: "cancelled", label: "Annulé" },
-          ],
-        },
-      ];
+      case "competition":
+        return [
+          ...baseFilters,
+          {
+            key: "status",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "upcoming", label: "À venir" },
+              { value: "ongoing", label: "En cours" },
+              { value: "completed", label: "Terminées" },
+              { value: "cancelled", label: "Annulées" },
+              { value: "postponed", label: "Reportés" },
+            ],
+          },
+        ];
 
-    case "referee":
-      return [
-        ...baseFilters,
-        {
-          key: "is_active",
-          label: "Statut",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "active", label: "Actifs" },
-            { value: "inactive", label: "Inactifs" },
-          ],
-        },
-        {
-          key: "certification_level",
-          label: "Niveau Certification",
-          options: [
-            { value: "all", label: "Tous niveaux" },
-            { value: "national", label: "National" },
-            { value: "regional", label: "Régional" },
-            { value: "international", label: "International" },
-          ],
-        },
-      ];
+      case "edition":
+        return [
+          ...baseFilters,
+          {
+            key: "year",
+            label: "Année",
+            options: [
+              { value: "all", label: "Toutes années" },
+              { value: "2024", label: "2024" },
+              { value: "2023", label: "2023" },
+              { value: "2022", label: "2022" },
+            ],
+          },
+          {
+            key: "competition_id",
+            label: "Compétition",
+            options: [{ value: "all", label: "Toutes compétitions" }],
+          },
+        ];
 
-    case "article":
-      return [
-        ...baseFilters,
-        {
-          key: "status",
-          label: "Statut",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "draft", label: "Brouillon" },
-            { value: "published", label: "Publié" },
-            { value: "archived", label: "Archivé" },
-          ],
-        },
-        {
-          key: "language",
-          label: "Langue",
-          options: [
-            { value: "all", label: "Toutes" },
-            { value: "fr", label: "Français" },
-            { value: "ha", label: "Haoussa" },
-            { value: "en", label: "Anglais" },
-          ],
-        },
-      ];
+      case "phase":
+        return [
+          ...baseFilters,
+          {
+            key: "phase_type",
+            label: "Type de Phase",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "qualification", label: "Qualification" },
+              { value: "group", label: "Groupe" },
+              { value: "knockout", label: "Élimination directe" },
+              { value: "quarterfinal", label: "Quart de finale" },
+              { value: "semifinal", label: "Demi-finale" },
+              { value: "final", label: "Finale" },
+            ],
+          },
+          {
+            key: "is_completed",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "true", label: "Terminé" },
+              { value: "false", label: "En cours" },
+            ],
+          },
+        ];
 
-    case "media":
-      return [
-        ...baseFilters,
-        {
-          key: "file_type",
-          label: "Type de fichier",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "image", label: "Image" },
-            { value: "video", label: "Vidéo" },
-            { value: "document", label: "Document" },
-            { value: "audio", label: "Audio" },
-          ],
-        },
-      ];
+      case "phase-groups":
+        return [
+          ...baseFilters,
+          {
+            key: "is_completed",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "true", label: "Terminé" },
+              { value: "false", label: "En cours" },
+            ],
+          },
+        ];
 
-    case "video":
-      return [
-        ...baseFilters,
-        {
-          key: "category",
-          label: "Catégorie",
-          options: [
-            { value: "all", label: "Toutes" },
-            { value: "match", label: "Match" },
-            { value: "interview", label: "Interview" },
-            { value: "highlights", label: "Highlights" },
-            { value: "training", label: "Entraînement" },
-            { value: "documentary", label: "Documentaire" },
-            { value: "ceremony", label: "Cérémonie" },
-          ],
-        },
-        {
-          key: "type",
-          label: "Plateforme",
-          options: [
-            { value: "all", label: "Toutes" },
-            { value: "youtube", label: "YouTube" },
-            { value: "facebook", label: "Facebook" },
-            { value: "tiktok", label: "TikTok" },
-            { value: "upload", label: "Upload" },
-          ],
-        },
-      ];
+      case "sub-groups":
+        return [
+          ...baseFilters,
+          {
+            key: "is_completed",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "true", label: "Terminé" },
+              { value: "false", label: "En cours" },
+            ],
+          },
+        ];
 
-    case "message":
-      return [
-        ...baseFilters,
-        {
-          key: "message_type",
-          label: "Type de message",
-          options: [
-            { value: "all", label: "Tous" },
-            { value: "comment", label: "Commentaire" },
-            { value: "direct_message", label: "Message direct" },
-            { value: "group_message", label: "Message groupe" },
-            { value: "match_commentary", label: "Commentaire match" },
-            { value: "system_notification", label: "Notification système" },
-          ],
-        },
-      ];
+      case "match":
+        return [
+          ...baseFilters,
+          {
+            key: "status",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "scheduled", label: "Programmé" },
+              { value: "live", label: "En direct" },
+              { value: "completed", label: "Terminé" },
+              { value: "cancelled", label: "Annulé" },
+            ],
+          },
+        ];
 
-    default:
-      return baseFilters;
-  }
-};
+      case "referee":
+        return [
+          ...baseFilters,
+          {
+            key: "is_active",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "active", label: "Actifs" },
+              { value: "inactive", label: "Inactifs" },
+            ],
+          },
+          {
+            key: "certification_level",
+            label: "Niveau Certification",
+            options: [
+              { value: "all", label: "Tous niveaux" },
+              { value: "national", label: "National" },
+              { value: "regional", label: "Régional" },
+              { value: "international", label: "International" },
+            ],
+          },
+        ];
+
+      case "article":
+        return [
+          ...baseFilters,
+          {
+            key: "status",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "draft", label: "Brouillon" },
+              { value: "published", label: "Publié" },
+              { value: "archived", label: "Archivé" },
+            ],
+          },
+          {
+            key: "language",
+            label: "Langue",
+            options: [
+              { value: "all", label: "Toutes" },
+              { value: "fr", label: "Français" },
+              { value: "ha", label: "Haoussa" },
+              { value: "en", label: "Anglais" },
+            ],
+          },
+        ];
+
+      case "media":
+        return [
+          ...baseFilters,
+          {
+            key: "file_type",
+            label: "Type de fichier",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "image", label: "Image" },
+              { value: "video", label: "Vidéo" },
+              { value: "document", label: "Document" },
+              { value: "audio", label: "Audio" },
+            ],
+          },
+        ];
+
+      case "video":
+        return [
+          ...baseFilters,
+          {
+            key: "category",
+            label: "Catégorie",
+            options: [
+              { value: "all", label: "Toutes" },
+              { value: "match", label: "Match" },
+              { value: "interview", label: "Interview" },
+              { value: "highlights", label: "Highlights" },
+              { value: "training", label: "Entraînement" },
+              { value: "documentary", label: "Documentaire" },
+              { value: "ceremony", label: "Cérémonie" },
+            ],
+          },
+          {
+            key: "type",
+            label: "Plateforme",
+            options: [
+              { value: "all", label: "Toutes" },
+              { value: "youtube", label: "YouTube" },
+              { value: "facebook", label: "Facebook" },
+              { value: "tiktok", label: "TikTok" },
+              { value: "upload", label: "Upload" },
+            ],
+          },
+        ];
+
+      case "message":
+        return [
+          ...baseFilters,
+          {
+            key: "message_type",
+            label: "Type de message",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "comment", label: "Commentaire" },
+              { value: "direct_message", label: "Message direct" },
+              { value: "group_message", label: "Message groupe" },
+              { value: "match_commentary", label: "Commentaire match" },
+              { value: "system_notification", label: "Notification système" },
+            ],
+          },
+        ];
+
+      default:
+        return baseFilters;
+    }
+  };
 
   const entityFilters = [...getEntitySpecificFilters(), ...availableFilters];
 
@@ -427,7 +531,7 @@ const getEntitySpecificFilters = () => {
       {/* En-tête avec titre et actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <Typography variant="h3" weight="bold" gradient animated>
+          <Typography variant="body-lg" weight="bold" gradient animated>
             {title}
           </Typography>
           {description && (
@@ -501,16 +605,16 @@ const getEntitySpecificFilters = () => {
 
             {/* Filtres */}
             <div className="flex flex-wrap gap-2">
-              {entityFilters.map((filter, idx) => (
+              {entityFilters.map((filter) => (
                 <Select
-                  key={filter.key+idx}
-                  value={filters[filter.key] || "all"}
+                  key={filter.key}
+                  value={filters[filter.key] ?? "all"}
                   onValueChange={(value) =>
                     onFilterChange({ ...filters, [filter.key]: value })
                   }
                 >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder={filter.label} />
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder={filter.label || filter.key} />
                   </SelectTrigger>
                   <SelectContent>
                     {filter.options.map((option) => (

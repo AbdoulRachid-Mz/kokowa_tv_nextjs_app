@@ -1,3 +1,5 @@
+import { User } from "./auth";
+
 // Types de base avec timestamps
 export interface BaseEntity {
   id: number;
@@ -11,9 +13,14 @@ export interface Region extends BaseEntity {
   code: string;
   description?: string;
   flag_image?: string;
+  stadium_name?: string,
+  stadium_image?: string,
   color?: string;
   total_fighters: number;
   total_champions: number;
+
+  fighters?: Fighter[];
+  coach?: Coach[]
 }
 
 // Lutteur
@@ -40,6 +47,9 @@ export interface Fighter extends BaseEntity {
   // Relations
   region?: Region;
   achievements?: FighterAchievement[];
+  total_matches?: number;
+  total_wins?: number;
+  total_losses?: number;
 }
 
 // Palmarès des lutteurs
@@ -257,41 +267,24 @@ export interface FighterCard extends BaseEntity {
   match?: Match;
 }
 
-// Transfert de lutteur
-export interface FighterTransfer extends BaseEntity {
+// types/index.ts - Ajouter ces types
+export interface FighterTransfer {
+  id: number;
   fighter_id: number;
+  fighter?: Fighter;
   from_region_id: number;
+  from_region?: Region;
   to_region_id: number;
+  to_region?: Region;
   transfer_date: string;
   transfer_reason?: string;
   transfer_fee?: number;
-  contract_duration?: number;
+  contract_duration?: number; // en mois
   is_permanent: boolean;
-  status: 'pending' | 'approved' | 'rejected' | 'completed';
   approved_by_user_id?: number;
-  
-  // Relations
-  fighter?: Fighter;
-  from_region?: Region;
-  to_region?: Region;
-  approved_by?: User;
-}
-
-// Utilisateur
-export interface User extends BaseEntity {
-  username: string;
-  email: string;
-  password_hash: string;
-  role: 'admin' | 'editor' | 'user' | 'moderator' | 'fighter_manager';
-  first_name?: string;
-  last_name?: string;
-  profile_picture?: string;
-  bio?: string;
-  phone_number?: string;
-  country?: string;
-  is_active: boolean;
-  is_verified: boolean;
-  last_login?: string;
+  approved_by_user?: User;
+  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  created_at: string;
 }
 
 // Message
@@ -424,6 +417,7 @@ export interface BaseFilters {
 export interface RegionFilters extends BaseFilters {
   code?: string;
   with_fighters?: boolean;
+  with_coach?: boolean;
   with_competitions?: boolean;
   fighter_count_min?: number;
   fighter_count_max?: number;
@@ -459,18 +453,57 @@ export interface RefereeFilters extends BaseFilters {
   with_region?: boolean;
 }
 
+// Coach
+export interface Coach extends BaseEntity {
+  first_name: string;
+  last_name: string;
+  nickname?: string;
+  region_id: number;
+  birth_date?: string;
+  profile_image?: string;
+  license_number?: string;
+  certification_level?: string;
+  experience_years?: number;
+  specialties?: string;
+  is_active: boolean;
+  social_links?: any;
+
+  // Relations
+  region?: Region;
+}
+export interface CoachFilters extends BaseFilters {
+  region_id?: number;
+  is_active?: boolean;
+  certification_level?: string;
+  experience_min?: number;
+  with_region?: boolean;
+}
+
+
+
 export interface BeltFilters extends BaseFilters {
   color?: string;
   is_active?: boolean;
 }
 
 export interface CompetitionFilters extends BaseFilters {
-  type?: string;
-  status?: string;
-  is_active?: boolean;
+  search?: string;
+  page?: number;
+  limit?: number;
+  status?: 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed' | string;
   region_id?: number;
+  is_active?: boolean;
+  
+  // NOUVEAUX FILTRES BASÉS SUR COMPETITION_EDITIONS
+  edition_year?: number; 
+
+  date_from?: string; // Basé sur c.created_at (ou c.start_date si disponible)
+  date_to?: string;
+  
   with_region?: boolean;
   with_editions?: boolean;
+  with_phases?: boolean;
+  with_matches?: boolean;
 }
 
 export interface EditionFilters extends BaseFilters {
@@ -486,9 +519,12 @@ export interface EditionFilters extends BaseFilters {
 
 export interface PhaseFilters extends BaseFilters {
   edition_id?: number;
-  phase_type?: string;
-  is_completed?: boolean;
+  search?: string;
+  page?: number;
+  limit?: number;
   is_active?: boolean;
+  phase_type?: 'qualification' | 'group' | 'knockout' | 'quarterfinal' | 'semifinal' | 'final';
+  is_completed?: boolean;
   with_edition?: boolean;
   with_groups?: boolean;
 }
@@ -558,7 +594,7 @@ export interface FighterCardFilters extends BaseFilters {
   with_match?: boolean;
 }
 
-export interface FighterTransferFilters extends BaseFilters {
+export interface FighterTransferFilters {
   fighter_id?: number;
   from_region_id?: number;
   to_region_id?: number;
@@ -566,9 +602,13 @@ export interface FighterTransferFilters extends BaseFilters {
   date_from?: string;
   date_to?: string;
   with_fighter?: boolean;
-  with_from_region?: boolean;
-  with_to_region?: boolean;
+  with_regions?: boolean;
   with_approver?: boolean;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface UserFilters extends BaseFilters {

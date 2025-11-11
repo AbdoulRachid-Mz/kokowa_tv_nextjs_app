@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { RegionForm } from "@/components/regions/region-form";
 import { api } from "@/lib/api";
+import { number } from "zod";
 
 interface Region {
   id: number;
@@ -19,6 +20,7 @@ export default function EditRegionPage() {
   const params = useParams();
   const id = params.regionId as string;
   const [formData, setFormData] = useState({
+    id: Number(id),
     name: "",
     code: "",
     description: "",
@@ -32,6 +34,7 @@ export default function EditRegionPage() {
       try {
         const region = await api.get<Region>(`/api/regions/${id}`);
         setFormData({
+          id: region.id,
           name: region.name,
           code: region.code || "",
           description: region.description || "",
@@ -60,7 +63,7 @@ export default function EditRegionPage() {
       </div>
     );
   }
-
+  console.log(formData)
   return (
     <RegionForm region={formData} isEdit={true} />
   );

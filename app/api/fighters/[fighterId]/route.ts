@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     
     const fighter = await getFighterById(id, { with_relations: withRelations });
     
-    return NextResponse.json(fighter);
+    return NextResponse.json({fighter});
   } catch (error) {
     console.error(`API Error GET /api/fighters/${"params.id"}:`, error);
     

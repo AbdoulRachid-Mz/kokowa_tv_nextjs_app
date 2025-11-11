@@ -9,6 +9,8 @@ import {
   Competition,
   CompetitionEdition,
   Referee,
+  Coach,
+  FighterTransfer,
 } from "@/types";
 import {
   MapPin,
@@ -20,8 +22,13 @@ import {
   Star,
   Swords,
   Clock,
+  Edit,
+  Eye,
+  ArrowRight,
+  DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 // Carte pour les Lutteurs
 interface FighterCardProps {
@@ -30,6 +37,13 @@ interface FighterCardProps {
   onEdit?: (fighter: Fighter) => void;
   onView?: (fighter: Fighter) => void;
 }
+
+// interface CoachCardProps {
+//   coach: Coach;
+//   viewMode: 'grid' | 'list';
+//   onEdit: (coach: Coach) => void;
+//   onView: (coach: Coach) => void;
+// }
 
 export function FighterCard({
   fighter,
@@ -602,10 +616,439 @@ export function RefereeCard({
   );
 }
 
+interface CoachCardProps {
+  coach: Coach;
+  viewMode: "grid" | "list";
+  onEdit: (coach: Coach) => void;
+  onView: (coach: Coach) => void;
+}
+
+export const CoachCard = ({
+  coach,
+  viewMode,
+  onEdit,
+  onView,
+}: CoachCardProps) => {
+  if (viewMode === "list") {
+    return (
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="relative w-12 h-12 rounded-full overflow-hidden">
+                <Image
+                  src={coach.profile_image || "/placeholder-profile.jpg"}
+                  alt={`${coach.first_name} ${coach.last_name}`}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div>
+                <Typography variant="h4" weight="medium">
+                  {coach.first_name} {coach.last_name}
+                </Typography>
+                {coach.nickname && (
+                  <Typography variant="body-sm" theme="muted">
+                    "{coach.nickname}"
+                  </Typography>
+                )}
+                <div className="flex items-center space-x-2 mt-1">
+                  {coach.region && (
+                    <div className="flex items-center space-x-1">
+                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                      <Typography variant="body-sm" theme="muted">
+                        {coach.region.name}
+                      </Typography>
+                    </div>
+                  )}
+                  {coach.certification_level && (
+                    <Badge variant="secondary" className="text-xs">
+                      {coach.certification_level}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {coach.experience_years && (
+                <div className="text-right">
+                  <Typography variant="body-sm" weight="medium">
+                    {coach.experience_years} ans
+                  </Typography>
+                  <Typography variant="body-sm" theme="muted">
+                    d'expérience
+                  </Typography>
+                </div>
+              )}
+              <div className="flex space-x-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onView(coach)}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onEdit(coach)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Vue grid
+  return (
+    <Card className="hover:shadow-lg transition-shadow">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center space-x-3">
+            <div className="relative w-12 h-12 rounded-full overflow-hidden">
+              <Image
+                src={coach.profile_image || "/placeholder-profile.jpg"}
+                alt={`${coach.first_name} ${coach.last_name}`}
+                fill
+                className="object-cover"
+              />
+            </div>
+            <div>
+              <CardTitle className="text-lg">
+                {coach.first_name} {coach.last_name}
+              </CardTitle>
+              {coach.nickname && (
+                <Typography variant="body-sm" theme="muted">
+                  "{coach.nickname}"
+                </Typography>
+              )}
+            </div>
+          </div>
+          <Badge variant={coach.is_active ? "default" : "outline"}>
+            {coach.is_active ? "Actif" : "Inactif"}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-2">
+        <div className="space-y-2">
+          {coach.region && (
+            <div className="flex items-center space-x-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <Typography variant="body-sm">{coach.region.name}</Typography>
+            </div>
+          )}
+          {coach.certification_level && (
+            <div className="flex items-center space-x-2">
+              <Award className="h-4 w-4 text-muted-foreground" />
+              <Typography variant="body-sm">
+                {coach.certification_level}
+              </Typography>
+            </div>
+          )}
+          {coach.experience_years && (
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Typography variant="body-sm">
+                {coach.experience_years} ans d'expérience
+              </Typography>
+            </div>
+          )}
+          {coach.specialties && (
+            <Typography
+              variant="body-sm"
+              theme="muted"
+              className="line-clamp-2"
+            >
+              {coach.specialties}
+            </Typography>
+          )}
+        </div>
+        <div className="flex justify-between items-center mt-4">
+          <Typography variant="body-sm" theme="muted">
+            Licence: {coach.license_number}
+          </Typography>
+          <div className="flex space-x-1">
+            <Button variant="outline" size="sm" onClick={() => onView(coach)}>
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => onEdit(coach)}>
+              <Edit className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+interface TransferCardProps {
+  transfer: FighterTransfer;
+  viewMode: "grid" | "list";
+  onEdit: (transfer: FighterTransfer) => void;
+  onView: (transfer: FighterTransfer) => void;
+}
+
+export const TransferCard = ({
+  transfer,
+  viewMode,
+  onEdit,
+  onView,
+}: TransferCardProps) => {
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case "approved":
+      case "completed":
+        return "default";
+      case "pending":
+        return "secondary";
+      case "rejected":
+        return "destructive";
+      default:
+        return "outline";
+    }
+  };
+
+  if (viewMode === "list") {
+    return (
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4 flex-1">
+              {/* Lutteur */}
+              {transfer.fighter && (
+                <div className="flex items-center space-x-3 min-w-0 flex-1">
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                    <Image
+                      src={
+                        transfer.fighter.profile_image ||
+                        "/placeholder-profile.jpg"
+                      }
+                      alt={`${transfer.fighter.first_name} ${transfer.fighter.last_name}`}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <Typography
+                      variant="h4"
+                      weight="medium"
+                      className="truncate"
+                    >
+                      {transfer.fighter.first_name} {transfer.fighter.last_name}
+                    </Typography>
+                    {transfer.fighter.nickname && (
+                      <Typography
+                        variant="body-sm"
+                        theme="muted"
+                        className="truncate"
+                      >
+                        "{transfer.fighter.nickname}"
+                      </Typography>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Transfert */}
+              <div className="flex items-center space-x-4 mx-4">
+                {transfer.from_region && (
+                  <Typography variant="body-sm" weight="medium">
+                    {transfer.from_region.name}
+                  </Typography>
+                )}
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                {transfer.to_region && (
+                  <Typography variant="body-sm" weight="medium">
+                    {transfer.to_region.name}
+                  </Typography>
+                )}
+              </div>
+
+              {/* Informations supplémentaires */}
+              <div className="flex items-center space-x-6 text-sm text-muted-foreground">
+                <div className="flex items-center space-x-1">
+                  <Calendar className="h-3 w-3" />
+                  <span>
+                    {new Date(transfer.transfer_date).toLocaleDateString()}
+                  </span>
+                </div>
+                {transfer.transfer_fee && (
+                  <div className="flex items-center space-x-1">
+                    <DollarSign className="h-3 w-3" />
+                    <span>{transfer.transfer_fee.toLocaleString()} FCFA</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 ml-4">
+              <Badge
+                variant={getStatusVariant(transfer.status)}
+                className="capitalize"
+              >
+                {transfer.status}
+              </Badge>
+              <div className="flex space-x-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onView(transfer)}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onEdit(transfer)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Vue grid
+  return (
+    <Card className="hover:shadow-lg transition-shadow h-full">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center space-x-3">
+            {transfer.fighter && (
+              <>
+                <div className="relative w-10 h-10 rounded-full overflow-hidden">
+                  <Image
+                    src={
+                      transfer.fighter.profile_image ||
+                      "/placeholder-profile.jpg"
+                    }
+                    alt={`${transfer.fighter.first_name} ${transfer.fighter.last_name}`}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div>
+                  <CardTitle className="text-base">
+                    {transfer.fighter.first_name} {transfer.fighter.last_name}
+                  </CardTitle>
+                  {transfer.fighter.nickname && (
+                    <Typography variant="body-sm" theme="muted">
+                      "{transfer.fighter.nickname}"
+                    </Typography>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          <Badge
+            variant={getStatusVariant(transfer.status)}
+            className="capitalize"
+          >
+            {transfer.status}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-2">
+        <div className="space-y-3">
+          {/* Transfert */}
+          <div className="flex items-center justify-center space-x-3 py-2">
+            {transfer.from_region && (
+              <div className="text-center">
+                <Typography variant="body-sm" weight="medium">
+                  {transfer.from_region.name}
+                </Typography>
+                <Typography variant="body-base" theme="muted">
+                  Origine
+                </Typography>
+              </div>
+            )}
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            {transfer.to_region && (
+              <div className="text-center">
+                <Typography variant="body-sm" weight="medium">
+                  {transfer.to_region.name}
+                </Typography>
+                <Typography variant="body-base" theme="muted">
+                  Destination
+                </Typography>
+              </div>
+            )}
+          </div>
+
+          {/* Informations */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Date:</span>
+              <span>
+                {new Date(transfer.transfer_date).toLocaleDateString()}
+              </span>
+            </div>
+
+            {transfer.transfer_fee && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Frais:</span>
+                <span className="font-medium">
+                  {transfer.transfer_fee.toLocaleString()} FCFA
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Type:</span>
+              <span>{transfer.is_permanent ? "Permanent" : "Temporaire"}</span>
+            </div>
+          </div>
+
+          {transfer.transfer_reason && (
+            <Typography
+              variant="body-sm"
+              theme="muted"
+              className="line-clamp-2 border-t pt-2"
+            >
+              {transfer.transfer_reason}
+            </Typography>
+          )}
+        </div>
+
+        <div className="flex justify-between items-center mt-4">
+          <Typography variant="body-base" theme="muted">
+            {new Date(transfer.created_at).toLocaleDateString()}
+          </Typography>
+          <div className="flex space-x-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onView(transfer)}
+            >
+              <Eye className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEdit(transfer)}
+            >
+              <Edit className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 // Export des composants de cartes
 export const EntityCards = {
   Fighter: FighterCard,
   Region: RegionCard,
   Competition: CompetitionCard,
   Referee: RefereeCard, // AJOUT
+  Coach: CoachCard, // AJOUT
+  Transfer: TransferCard // AJOUT
 };

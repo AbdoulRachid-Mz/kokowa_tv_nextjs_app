@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS regions (
     code VARCHAR(10) UNIQUE NOT NULL,
     description TEXT,
     flag_image VARCHAR(255),
+    stadium_name VARCHAR(100) NOT NULL,
+    stadium_image VARCHAR(255) NOT NULL,
     color VARCHAR(30),
     total_fighters INTEGER DEFAULT 0,
     total_champions INTEGER DEFAULT 0,
@@ -93,6 +95,48 @@ CREATE TABLE IF NOT EXISTS referees (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (region_id) REFERENCES regions (id)
 );
+
+-- =============================================
+-- GESTION DES COACHS
+-- =============================================
+CREATE TABLE IF NOT EXISTS coaches (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    nickname VARCHAR(100),
+    region_id INTEGER NOT NULL,
+    birth_date DATE,
+    profile_image VARCHAR(255),
+    license_number VARCHAR(50) UNIQUE,
+    certification_level VARCHAR(50),
+    experience_years INTEGER,
+    specialties TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    social_links JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (region_id) REFERENCES regions (id)
+);
+
+-- Trigger to auto-update updated_at
+-- CREATE TRIGGER update_coaches_updated_at BEFORE
+-- UPDATE ON coaches FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger
+    WHERE tgname = 'update_coaches_updated_at'
+  ) THEN
+    CREATE TRIGGER update_coaches_updated_at
+    BEFORE UPDATE ON coaches
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+END $$;
+
+
 -- =============================================
 -- GESTION DES COMPÉTITIONS (NOUVELLE STRUCTURE)
 -- =============================================
@@ -128,6 +172,7 @@ CREATE TABLE IF NOT EXISTS competition_editions (
     start_date DATE,
     end_date DATE,
     winner_fighter_id INTEGER,
+    winner_region_id INTEGER,
     is_active BOOLEAN DEFAULT TRUE,
     region_id INTEGER,
     total_participants INTEGER DEFAULT 0,
@@ -141,7 +186,8 @@ CREATE TABLE IF NOT EXISTS competition_editions (
         competition_id,
         edition_number
     ),
-    FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE
+    FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE,
+    FOREIGN KEY (winner_region_id) REFERENCES regions (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS fighter_achievements (

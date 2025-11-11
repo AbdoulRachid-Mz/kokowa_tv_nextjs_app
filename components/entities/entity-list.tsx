@@ -42,6 +42,7 @@ export interface EntityListProps<T> {
   entityType:
     | "fighter"
     | "region"
+    | 'transfers'
     | "competition"
     | "edition"
     | "referee"

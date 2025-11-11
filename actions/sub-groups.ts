@@ -1,18 +1,10 @@
+// lib/actions/sub-groups.ts - VERSION CORRIGÉE
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { subGroupSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
-import { SubGroup, PaginatedResponse } from '@/types';
-export interface SubGroupFilters {
-  group_id?: number;
-  search?: string;
-  page?: number;
-  limit?: number;
-  with_group?: boolean;
-  with_matches?: boolean;
-  with_belts?: boolean;
-}
+import { SubGroup, SubGroupFilters, PaginatedResponse } from '@/types';
 
 export async function getSubGroups(
   filters: SubGroupFilters = {}
@@ -25,7 +17,7 @@ export async function getSubGroups(
       limit = 20,
       with_group = true,
       with_matches = false,
-      with_belts = true,
+      with_regions = true,
     } = filters;
 
     let whereClause = 'WHERE 1=1';
@@ -40,9 +32,8 @@ export async function getSubGroups(
     }
 
     if (search) {
-      whereClause += ` AND (sg.name ILIKE $${params.length + 1} OR sg.description ILIKE $${params.length + 2})`;
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm);
+      whereClause += ` AND (sg.name ILIKE $${params.length + 1} OR sg.description ILIKE $${params.length + 1})`;
+      params.push(`%${search}%`);
     }
 
     // Jointures et relations
@@ -65,38 +56,47 @@ export async function getSubGroups(
       `);
     }
 
-    if (with_belts) {
+    if (with_regions) {
       selectFields.push(`
-        JSON_BUILD_OBJECT(
-          'id', f1.id,
-          'first_name', f1.first_name,
-          'last_name', f1.last_name,
-          'nickname', f1.nickname
-        ) as belt1_fighter,
-        JSON_BUILD_OBJECT(
-          'id', f2.id,
-          'first_name', f2.first_name,
-          'last_name', f2.last_name,
-          'nickname', f2.nickname
-        ) as belt2_fighter,
         JSON_BUILD_OBJECT(
           'id', r1.id,
           'name', r1.name,
           'code', r1.code
-        ) as belt1_region,
+        ) as region1,
         JSON_BUILD_OBJECT(
           'id', r2.id,
           'name', r2.name,
           'code', r2.code
-        ) as belt2_region
+        ) as region2
       `);
       joins.push(`
-        LEFT JOIN fighters f1 ON sg.belt1_fighter_id = f1.id
-        LEFT JOIN fighters f2 ON sg.belt2_fighter_id = f2.id
-        LEFT JOIN regions r1 ON sg.belt1_region_id = r1.id
-        LEFT JOIN regions r2 ON sg.belt2_region_id = r2.id
+        LEFT JOIN regions r1 ON sg.region1_id = r1.id
+        LEFT JOIN regions r2 ON sg.region2_id = r2.id
       `);
     }
+
+    // Jointures pour les ceintures
+    selectFields.push(`
+      JSON_BUILD_OBJECT(
+        'id', b1.id,
+        'color', b1.color
+      ) as belt1,
+      JSON_BUILD_OBJECT(
+        'id', b2.id,
+        'color', b2.color
+      ) as belt2,
+      JSON_BUILD_OBJECT(
+        'id', ref.id,
+        'first_name', ref.first_name,
+        'last_name', ref.last_name,
+        'nickname', ref.nickname
+      ) as main_referee
+    `);
+    joins.push(`
+      LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
+      LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
+      LEFT JOIN referees ref ON sg.main_referee_id = ref.id
+    `);
 
     if (with_matches) {
       selectFields.push(`
@@ -108,12 +108,8 @@ export async function getSubGroups(
             'status', m.status,
             'fighter1_id', m.fighter1_id,
             'fighter2_id', m.fighter2_id,
-            'region1_id', m.region1_id,
-            'region2_id', m.region2_id,
-            'score_fighter1', m.score_fighter1,
-            'score_fighter2', m.score_fighter2,
             'winner_fighter_id', m.winner_fighter_id,
-            'winner_region_id', m.winner_region_id
+            'match_result', m.match_result
           ) ORDER BY m.match_number, m.match_date
         ) FROM matches m WHERE m.sub_group_id = sg.id) as matches
       `);
@@ -195,27 +191,29 @@ export async function getSubGroupById(id: number, options: {
             )
           ) as group,
           JSON_BUILD_OBJECT(
-            'id', f1.id,
-            'first_name', f1.first_name,
-            'last_name', f1.last_name,
-            'nickname', f1.nickname
-          ) as belt1_fighter,
-          JSON_BUILD_OBJECT(
-            'id', f2.id,
-            'first_name', f2.first_name,
-            'last_name', f2.last_name,
-            'nickname', f2.nickname
-          ) as belt2_fighter,
-          JSON_BUILD_OBJECT(
             'id', r1.id,
             'name', r1.name,
             'code', r1.code
-          ) as belt1_region,
+          ) as region1,
           JSON_BUILD_OBJECT(
             'id', r2.id,
             'name', r2.name,
             'code', r2.code
-          ) as belt2_region,
+          ) as region2,
+          JSON_BUILD_OBJECT(
+            'id', b1.id,
+            'color', b1.color
+          ) as belt1,
+          JSON_BUILD_OBJECT(
+            'id', b2.id,
+            'color', b2.color
+          ) as belt2,
+          JSON_BUILD_OBJECT(
+            'id', ref.id,
+            'first_name', ref.first_name,
+            'last_name', ref.last_name,
+            'nickname', ref.nickname
+          ) as main_referee,
           (SELECT JSON_AGG(
             JSON_BUILD_OBJECT(
               'id', m.id,
@@ -224,12 +222,8 @@ export async function getSubGroupById(id: number, options: {
               'status', m.status,
               'fighter1_id', m.fighter1_id,
               'fighter2_id', m.fighter2_id,
-              'region1_id', m.region1_id,
-              'region2_id', m.region2_id,
-              'score_fighter1', m.score_fighter1,
-              'score_fighter2', m.score_fighter2,
               'winner_fighter_id', m.winner_fighter_id,
-              'winner_region_id', m.winner_region_id,
+              'match_result', m.match_result,
               'fighter1', JSON_BUILD_OBJECT(
                 'id', mf1.id,
                 'first_name', mf1.first_name,
@@ -241,32 +235,21 @@ export async function getSubGroupById(id: number, options: {
                 'first_name', mf2.first_name,
                 'last_name', mf2.last_name,
                 'nickname', mf2.nickname
-              ),
-              'region1', JSON_BUILD_OBJECT(
-                'id', mr1.id,
-                'name', mr1.name,
-                'code', mr1.code
-              ),
-              'region2', JSON_BUILD_OBJECT(
-                'id', mr2.id,
-                'name', mr2.name,
-                'code', mr2.code
               )
             ) ORDER BY m.match_number, m.match_date
           ) FROM matches m
           LEFT JOIN fighters mf1 ON m.fighter1_id = mf1.id
           LEFT JOIN fighters mf2 ON m.fighter2_id = mf2.id
-          LEFT JOIN regions mr1 ON m.region1_id = mr1.id
-          LEFT JOIN regions mr2 ON m.region2_id = mr2.id
           WHERE m.sub_group_id = sg.id) as matches
         FROM sub_groups sg
         LEFT JOIN phase_groups pg ON sg.group_id = pg.id
         LEFT JOIN phases p ON pg.phase_id = p.id
         LEFT JOIN competition_editions ce ON p.edition_id = ce.id
-        LEFT JOIN fighters f1 ON sg.belt1_fighter_id = f1.id
-        LEFT JOIN fighters f2 ON sg.belt2_fighter_id = f2.id
-        LEFT JOIN regions r1 ON sg.belt1_region_id = r1.id
-        LEFT JOIN regions r2 ON sg.belt2_region_id = r2.id
+        LEFT JOIN regions r1 ON sg.region1_id = r1.id
+        LEFT JOIN regions r2 ON sg.region2_id = r2.id
+        LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
+        LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
+        LEFT JOIN referees ref ON sg.main_referee_id = ref.id
         WHERE sg.id = $1
       `;
     }
@@ -291,10 +274,11 @@ export async function createSubGroup(formData: FormData) {
       name: formData.get('name'),
       sub_group_order: formData.get('sub_group_order'),
       description: formData.get('description'),
-      belt1_fighter_id: formData.get('belt1_fighter_id'),
-      belt2_fighter_id: formData.get('belt2_fighter_id'),
-      belt1_region_id: formData.get('belt1_region_id'),
-      belt2_region_id: formData.get('belt2_region_id'),
+      region1_id: formData.get('region1_id'),
+      region2_id: formData.get('region2_id'),
+      belt_region1: formData.get('belt_region1'),
+      belt_region2: formData.get('belt_region2'),
+      main_referee_id: formData.get('main_referee_id'),
     };
 
     const cleanedData = {
@@ -302,10 +286,11 @@ export async function createSubGroup(formData: FormData) {
       name: rawData.name as string,
       sub_group_order: Number(rawData.sub_group_order),
       description: rawData.description as string || undefined,
-      belt1_fighter_id: rawData.belt1_fighter_id ? Number(rawData.belt1_fighter_id) : undefined,
-      belt2_fighter_id: rawData.belt2_fighter_id ? Number(rawData.belt2_fighter_id) : undefined,
-      belt1_region_id: rawData.belt1_region_id ? Number(rawData.belt1_region_id) : undefined,
-      belt2_region_id: rawData.belt2_region_id ? Number(rawData.belt2_region_id) : undefined,
+      region1_id: rawData.region1_id ? Number(rawData.region1_id) : undefined,
+      region2_id: rawData.region2_id ? Number(rawData.region2_id) : undefined,
+      belt_region1: rawData.belt_region1 ? Number(rawData.belt_region1) : undefined,
+      belt_region2: rawData.belt_region2 ? Number(rawData.belt_region2) : undefined,
+      main_referee_id: rawData.main_referee_id ? Number(rawData.main_referee_id) : undefined,
     };
 
     const validatedData = subGroupSchema.parse(cleanedData);
@@ -313,8 +298,8 @@ export async function createSubGroup(formData: FormData) {
     const sql = `
       INSERT INTO sub_groups (
         group_id, name, sub_group_order, description,
-        belt1_fighter_id, belt2_fighter_id, belt1_region_id, belt2_region_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        region1_id, region2_id, belt_region1, belt_region2, main_referee_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING id
     `;
     
@@ -323,10 +308,11 @@ export async function createSubGroup(formData: FormData) {
       validatedData.name,
       validatedData.sub_group_order,
       validatedData.description || null,
-      validatedData.belt1_fighter_id || null,
-      validatedData.belt2_fighter_id || null,
-      validatedData.belt1_region_id || null,
-      validatedData.belt2_region_id || null,
+      validatedData.region1_id || null,
+      validatedData.region2_id || null,
+      validatedData.belt_region1 || null,
+      validatedData.belt_region2 || null,
+      validatedData.main_referee_id || null,
     ]);
 
     revalidatePath('/phase-groups');
@@ -354,10 +340,11 @@ export async function updateSubGroup(id: number, formData: FormData) {
       name: formData.get('name'),
       sub_group_order: formData.get('sub_group_order'),
       description: formData.get('description'),
-      belt1_fighter_id: formData.get('belt1_fighter_id'),
-      belt2_fighter_id: formData.get('belt2_fighter_id'),
-      belt1_region_id: formData.get('belt1_region_id'),
-      belt2_region_id: formData.get('belt2_region_id'),
+      region1_id: formData.get('region1_id'),
+      region2_id: formData.get('region2_id'),
+      belt_region1: formData.get('belt_region1'),
+      belt_region2: formData.get('belt_region2'),
+      main_referee_id: formData.get('main_referee_id'),
     };
 
     const cleanedData = {
@@ -365,10 +352,11 @@ export async function updateSubGroup(id: number, formData: FormData) {
       name: rawData.name as string,
       sub_group_order: Number(rawData.sub_group_order),
       description: rawData.description as string || undefined,
-      belt1_fighter_id: rawData.belt1_fighter_id ? Number(rawData.belt1_fighter_id) : undefined,
-      belt2_fighter_id: rawData.belt2_fighter_id ? Number(rawData.belt2_fighter_id) : undefined,
-      belt1_region_id: rawData.belt1_region_id ? Number(rawData.belt1_region_id) : undefined,
-      belt2_region_id: rawData.belt2_region_id ? Number(rawData.belt2_region_id) : undefined,
+      region1_id: rawData.region1_id ? Number(rawData.region1_id) : undefined,
+      region2_id: rawData.region2_id ? Number(rawData.region2_id) : undefined,
+      belt_region1: rawData.belt_region1 ? Number(rawData.belt_region1) : undefined,
+      belt_region2: rawData.belt_region2 ? Number(rawData.belt_region2) : undefined,
+      main_referee_id: rawData.main_referee_id ? Number(rawData.main_referee_id) : undefined,
     };
 
     const validatedData = subGroupSchema.parse(cleanedData);
@@ -377,8 +365,8 @@ export async function updateSubGroup(id: number, formData: FormData) {
       UPDATE sub_groups 
       SET 
         group_id = $1, name = $2, sub_group_order = $3, description = $4,
-        belt1_fighter_id = $5, belt2_fighter_id = $6, belt1_region_id = $7, belt2_region_id = $8
-      WHERE id = $9
+        region1_id = $5, region2_id = $6, belt_region1 = $7, belt_region2 = $8, main_referee_id = $9
+      WHERE id = $10
     `;
     
     await query(sql, [
@@ -386,10 +374,11 @@ export async function updateSubGroup(id: number, formData: FormData) {
       validatedData.name,
       validatedData.sub_group_order,
       validatedData.description || null,
-      validatedData.belt1_fighter_id || null,
-      validatedData.belt2_fighter_id || null,
-      validatedData.belt1_region_id || null,
-      validatedData.belt2_region_id || null,
+      validatedData.region1_id || null,
+      validatedData.region2_id || null,
+      validatedData.belt_region1 || null,
+      validatedData.belt_region2 || null,
+      validatedData.main_referee_id || null,
       id,
     ]);
 
@@ -442,10 +431,8 @@ export async function deleteSubGroup(id: number) {
 
 export async function assignBeltsToSubGroup(
   subGroupId: number,
-  belt1_fighter_id?: number,
-  belt2_fighter_id?: number,
-  belt1_region_id?: number,
-  belt2_region_id?: number
+  belt_region1?: number,
+  belt_region2?: number
 ) {
   try {
     const existing = await getSubGroupById(subGroupId, { with_relations: false });
@@ -456,16 +443,13 @@ export async function assignBeltsToSubGroup(
     const sql = `
       UPDATE sub_groups 
       SET 
-        belt1_fighter_id = $1, belt2_fighter_id = $2, 
-        belt1_region_id = $3, belt2_region_id = $4
-      WHERE id = $5
+        belt_region1 = $1, belt_region2 = $2
+      WHERE id = $3
     `;
     
     await query(sql, [
-      belt1_fighter_id || null,
-      belt2_fighter_id || null,
-      belt1_region_id || null,
-      belt2_region_id || null,
+      belt_region1 || null,
+      belt_region2 || null,
       subGroupId,
     ]);
 

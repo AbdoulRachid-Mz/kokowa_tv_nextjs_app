@@ -5,8 +5,22 @@ export const regionSchema = z.object({
   name: z.string().min(1, 'Le nom est requis').max(100, 'Le nom est trop long'),
   code: z.string().min(1, 'Le code est requis').max(10, 'Le code est trop long'),
   description: z.string().optional(),
-  flag_image: z.string().url('URL invalide').optional().or(z.literal('')),
+  flag_image: z.string().nullable().optional(),
   color: z.string().regex(/^#[0-9A-F]{6}$/i, 'Couleur hexadécimale invalide').optional(),
+});
+
+export const coachSchema = z.object({
+  first_name: z.string().min(1, "Le prénom est requis").max(100),
+  last_name: z.string().min(1, "Le nom est requis").max(100),
+  nickname: z.string().max(100).optional(),
+  birth_date: z.string().optional(),
+  region_id: z.number().int().positive().optional(),
+  profile_image: z.string().url().optional().or(z.literal("")),
+  license_number: z.string().min(1, "Le numéro de licence est requis").max(50),
+  certification_level: z.string().max(50).optional(),
+  experience_years: z.number().int().min(0).max(50).optional(),
+  specialties: z.string().max(500).optional(),
+  is_active: z.boolean().default(true),
 });
 
 // Schema pour les lutteurs
@@ -19,8 +33,8 @@ export const fighterSchema = z.object({
   region_id: z.number().int().positive('Région invalide').optional(),
   height: z.number().min(0.5, 'Taille invalide').max(3.0, 'Taille invalide').optional(),
   weight: z.number().min(20, 'Poids invalide').max(200, 'Poids invalide').optional(),
-  profile_image: z.string().url('URL invalide').optional().or(z.literal('')),
-  cover_image: z.string().url('URL invalide').optional().or(z.literal('')),
+  profile_image: z.string().url('URL invalide').nullable().optional(),
+  cover_image: z.string().nullable().optional(),
   bio: z.string().max(1000, 'La biographie est trop longue').optional(),
   fighting_style: z.string().max(500, 'Le style de combat est trop long').optional(),
   debut_year: z.number().int().min(1900, 'Année invalide').max(new Date().getFullYear(), 'Année invalide').optional(),
@@ -39,7 +53,7 @@ export const fighterAchievementSchema = z.object({
   year: z.number().int().min(1900, 'Année invalide').max(new Date().getFullYear(), 'Année invalide'),
   position: z.enum(['1st', '2nd', '3rd', 'finalist', 'semifinalist', 'quarterfinalist']),
   description: z.string().optional(),
-  medal_image: z.string().url('URL invalide').optional().or(z.literal('')),
+  medal_image: z.string().url('URL invalide').nullable().optional(),
 });
 
 // Schema pour les arbitres
@@ -49,7 +63,7 @@ export const refereeSchema = z.object({
   nickname: z.string().max(100, 'Le surnom est trop long').optional(),
   birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').optional(),
   region_id: z.number().int().positive('Région invalide').optional(),
-  profile_image: z.string().url('URL invalide').optional().or(z.literal('')),
+  profile_image: z.string().url('URL invalide').nullable().optional(),
   license_number: z.string().max(50, 'Le numéro de licence est trop long').optional(),
   certification_level: z.string().max(50, 'Le niveau de certification est trop long').optional(),
   experience_years: z.number().int().min(0, 'Années d\'expérience invalides').optional(),
@@ -57,20 +71,19 @@ export const refereeSchema = z.object({
   social_links: z.any().optional(),
 });
 
-// Schema pour les compétitions
+
 export const competitionSchema = z.object({
-  name: z.string().min(1, 'Le nom est requis').max(255, 'Le nom est trop long'),
-  slug: z.string().min(1, 'Le slug est requis').max(255, 'Le slug est trop long'),
+  name: z.string().min(1, "Le nom est requis"),
+  slug: z.string().optional(),
   description: z.string().optional(),
-  type: z.enum(['sabre_national', 'coupe_regionale', 'halarou_bakwai', 'aes', 'friendly', 'ministre', 'coupe_airtel', 'other']),
-  location: z.string().max(255, 'Le lieu est trop long').optional(),
-  region_id: z.number().int().positive('Région invalide').optional(),
-  featured_image: z.string().url('URL invalide').optional().or(z.literal('')),
-  registration_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').optional(),
-  max_participants: z.number().int().min(2, 'Minimum 2 participants').optional(),
-  prize_pool: z.number().min(0, 'Le prix doit être positif').optional(),
-  is_active: z.boolean().default(true),
   status: z.enum(['upcoming', 'ongoing', 'completed', 'cancelled', 'postponed']).default('upcoming'),
+  featured_image: z.string().optional(),
+  is_active: z.union([z.boolean(), z.string()]).transform(val => 
+    typeof val === 'string' ? val === 'true' : val
+  ).default(true),
+  region_id: z.union([z.number(), z.string()]).transform(val => 
+    typeof val === 'string' ? (val ? Number(val) : undefined) : val
+  ).optional().nullable(),
 });
 
 // Schema pour les éditions de compétition
@@ -79,13 +92,15 @@ export const competitionEditionSchema = z.object({
   edition_number: z.number().int().min(1, 'Le numéro d\'édition doit être positif'),
   year: z.number().int().min(1900, 'Année invalide').max(new Date().getFullYear() + 5, 'Année invalide'),
   theme: z.string().max(255, 'Le thème est trop long').optional(),
-  is_active: z.boolean().default(false),
+  is_active: z.boolean().default(true), // ✅ align with SQL default
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').optional(),
   end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').optional(),
   winner_fighter_id: z.number().int().positive('Lutteur gagnant invalide').optional(),
+  winner_region_id: z.number().int().positive('Région gagnante invalide').optional(),
   region_id: z.number().int().positive('Région invalide').optional(),
   prize_pool: z.number().min(0, 'Le prix doit être positif').optional(),
   registration_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').optional(),
+  total_participants: z.number().int().min(0, 'Nombre de participants invalide').default(0), // ✅ added
 });
 
 // Schema pour les phases
@@ -136,7 +151,7 @@ export const beltSchema = z.object({
 export const matchSchema = z.object({
   sub_group_id: z.number().int().positive('Sous-groupe invalide'),
   match_number: z.number().int().min(1, 'Le numéro de match doit être positif').optional(),
-  match_date: z.string().datetime('Format de date/heure invalide'),
+  match_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)'),
   start_time: z.string().regex(/^\d{2}:\d{2}:\d{2}$/, 'Format d\'heure invalide (HH:MM:SS)').optional(),
   end_time: z.string().regex(/^\d{2}:\d{2}:\d{2}$/, 'Format d\'heure invalide (HH:MM:SS)').optional(),
 
@@ -204,16 +219,16 @@ export const fighterCardSchema = z.object({
 });
 
 // Schema pour les transferts
+// validation/schemas.ts - Ajouter ce schéma
 export const fighterTransferSchema = z.object({
-  fighter_id: z.number().int().positive('Lutteur invalide'),
-  from_region_id: z.number().int().positive('Région d\'origine invalide'),
-  to_region_id: z.number().int().positive('Région de destination invalide'),
-  transfer_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)'),
-  transfer_reason: z.string().optional(),
-  transfer_fee: z.number().min(0, 'Frais de transfert invalides').optional(),
-  contract_duration: z.number().int().min(1, 'Durée de contrat invalide').optional(),
+  fighter_id: z.number().int().positive("L'ID du lutteur est requis"),
+  from_region_id: z.number().int().positive("La région d'origine est requise"),
+  to_region_id: z.number().int().positive("La région de destination est requise"),
+  transfer_date: z.string().min(1, "La date de transfert est requise"),
+  transfer_reason: z.string().max(500).optional(),
+  transfer_fee: z.number().min(0).optional(),
+  contract_duration: z.number().int().min(1).max(240).optional(), // 1-240 mois (20 ans)
   is_permanent: z.boolean().default(true),
-  approved_by_user_id: z.number().int().positive('Utilisateur approuvant invalide').optional(),
   status: z.enum(['pending', 'approved', 'rejected', 'completed']).default('pending'),
 });
 
@@ -311,6 +326,7 @@ export const interactionSchema = z.object({
 
 // Types dérivés des schemas
 export type RegionInput = z.infer<typeof regionSchema>;
+export type CoachInput = z.infer<typeof coachSchema>;
 export type FighterInput = z.infer<typeof fighterSchema>;
 export type FighterAchievementInput = z.infer<typeof fighterAchievementSchema>;
 export type RefereeInput = z.infer<typeof refereeSchema>;

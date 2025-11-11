@@ -9,17 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AdvancedUpload } from "@/components/ui/advanced-upload";
 import { StatsCard } from "@/components/ui/stats-card";
-import { 
-  ArrowLeft, 
-  Edit, 
-  MapPin, 
-  Calendar, 
-  Award, 
+import {
+  ArrowLeft,
+  Edit,
+  MapPin,
+  Calendar,
+  Award,
   Clock,
   User,
   Mail,
   Phone,
-  Shield
+  Shield,
 } from "lucide-react";
 
 export default function RefereeDetailPage() {
@@ -39,7 +39,7 @@ export default function RefereeDetailPage() {
           setReferee(data);
         }
       } catch (error) {
-        console.error('Erreur lors du chargement:', error);
+        console.error("Erreur lors du chargement:", error);
       } finally {
         setLoading(false);
       }
@@ -77,7 +77,7 @@ export default function RefereeDetailPage() {
     return (
       <div className="container mx-auto py-6">
         <Typography variant="h2">Arbitre non trouvé</Typography>
-        <Button onClick={() => router.push('/admin/referees')}>
+        <Button onClick={() => router.push("/admin/referees")}>
           Retour à la liste
         </Button>
       </div>
@@ -92,7 +92,7 @@ export default function RefereeDetailPage() {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => router.push('/admin/referees')}
+            onClick={() => router.push("/admin/referees")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -129,7 +129,7 @@ export default function RefereeDetailPage() {
                 value={referee.profile_image || ""}
                 onChange={(url) => {
                   // Mettre à jour l'image de profil
-                  console.log('Nouvelle image:', url);
+                  console.log("Nouvelle image:", url);
                 }}
                 isRounded={true}
                 className="max-w-xs"
@@ -165,7 +165,9 @@ export default function RefereeDetailPage() {
                     Date de naissance
                   </Typography>
                   <Typography variant="body-base" weight="medium">
-                    {referee.birth_date ? new Date(referee.birth_date).toLocaleDateString('fr-FR') : 'Non spécifiée'}
+                    {referee.birth_date
+                      ? new Date(referee.birth_date).toLocaleDateString("fr-FR")
+                      : "Non spécifiée"}
                   </Typography>
                 </div>
                 <div className="space-y-2">
@@ -235,7 +237,6 @@ export default function RefereeDetailPage() {
             variant={referee.is_active ? "success" : "danger"}
             size="sm"
           />
-
           {/* Expérience */}
           <StatsCard
             title="Expérience"
@@ -245,7 +246,6 @@ export default function RefereeDetailPage() {
             variant="primary"
             size="sm"
           />
-
           {/* Certification */}
           <StatsCard
             title="Certification"
@@ -255,8 +255,7 @@ export default function RefereeDetailPage() {
             variant="secondary"
             size="sm"
           />
-
-          {/* Dernières assignations */}
+          // Dernières assignations
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -265,29 +264,9 @@ export default function RefereeDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {referee.refereeAssignments && referee.refereeAssignments.length > 0 ? (
-                <div className="space-y-3">
-                  {referee.refereeAssignments.slice(0, 5).map((assignment: any) => (
-                    <div key={assignment.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                      <div>
-                        <Typography variant="body-sm" weight="medium">
-                          Match #{assignment.match_id}
-                        </Typography>
-                        <Typography variant="caption2" theme="muted">
-                          {assignment.role}
-                        </Typography>
-                      </div>
-                      <Typography variant="caption2" theme="muted">
-                        {new Date(assignment.assigned_at).toLocaleDateString('fr-FR')}
-                      </Typography>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <Typography variant="body-sm" theme="muted">
-                  Aucune assignation récente
-                </Typography>
-              )}
+              <Typography variant="body-sm" theme="muted">
+                Aucune assignation récente
+              </Typography>
               <Button variant="outline" className="w-full mt-4" size="sm">
                 Voir toutes les assignations
               </Button>

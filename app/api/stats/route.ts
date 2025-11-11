@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
         active_fighters: fightersStats.active_fighters,
         champions: fightersStats.champions,
         upcoming_competitions: competitionsStats.upcoming,
-        total_prize_pool: competitionsStats.total_prize_pool,
       }
     };
 

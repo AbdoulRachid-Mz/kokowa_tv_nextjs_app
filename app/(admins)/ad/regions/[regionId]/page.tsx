@@ -1,4 +1,3 @@
-// app/admin/regions/[id]/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -7,27 +6,21 @@ import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EntityList } from "@/components/shared/entity-list";
-import { CityDialog } from "@/components/regions/city-dialog";
-import { FighterDialog } from "@/components/regions/fighter-dialog";
 import { api } from "@/lib/api";
-import { City, Fighter } from "@/types";
-import Image from "next/image";
+import { Fighter, Region } from "@/types";
 import { FighterCard } from "@/components/entities/entity-cards";
+import { FighterDialog } from "@/components/regions/fighter-dialog";
+import Link from "next/link";
 
 export default function RegionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const regionId = parseInt(params.regionId as string);
 
-  const [region, setRegion] = useState<any>(null);
-  const [cities, setCities] = useState<any[]>([]);
-  const [fighters, setFighters] = useState<any[]>([]);
+  const [region, setRegion] = useState<Region | null>(null);
+  const [fighters, setFighters] = useState<Fighter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cityDialogOpen, setCityDialogOpen] = useState(false);
   const [fighterDialogOpen, setFighterDialogOpen] = useState(false);
-  const [selectedCity, setSelectedCity] = useState<any>(null);
 
   useEffect(() => {
     loadRegionData();
@@ -36,15 +29,9 @@ export default function RegionDetailPage() {
   const loadRegionData = async () => {
     try {
       setLoading(true);
-      const [regionData, citiesData, fightersData] = await Promise.all([
-        api.get(`/api/regions/${regionId}`),
-        api.get(`/api/cities?region_id=${regionId}`),
-        api.get(`/api/fighters?region_id=${regionId}`),
-      ]);
-
-      setRegion(regionData);
-      setCities((citiesData as { data?: City[] }).data || []);
-      setFighters((fightersData as { data?: Fighter[] }).data || []);
+      const regionData = await api.get(`/api/regions/${regionId}`);
+      setRegion(regionData as Region);
+      setFighters((regionData as Region).fighters || []);
     } catch (error) {
       console.error("Erreur chargement région:", error);
     } finally {
@@ -52,34 +39,13 @@ export default function RegionDetailPage() {
     }
   };
 
-  const handleEditCity = (city: any) => {
-    setSelectedCity(city);
-    setCityDialogOpen(true);
-  };
-
-  const handleAddCity = () => {
-    setSelectedCity(null);
-    setCityDialogOpen(true);
-  };
-
-  const handleCityDialogClose = () => {
-    setCityDialogOpen(false);
-    setSelectedCity(null);
-    loadRegionData(); // Recharger les données
-  };
-
   const handleFighterDialogClose = () => {
     setFighterDialogOpen(false);
-    loadRegionData(); // Recharger les données
+    loadRegionData(); // recharger les données après ajout/modif
   };
 
-  if (loading) {
-    return <div>Chargement...</div>;
-  }
-
-  if (!region) {
-    return <div>Région non trouvée</div>;
-  }
+  if (loading) return <div>Chargement...</div>;
+  if (!region) return <div>Région non trouvée</div>;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -139,7 +105,7 @@ export default function RegionDetailPage() {
             <CardTitle>Statistiques</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="text-center">
                 <Typography variant="h4" weight="bold">
                   {fighters.length}
@@ -158,14 +124,6 @@ export default function RegionDetailPage() {
               </div>
               <div className="text-center">
                 <Typography variant="h4" weight="bold">
-                  {cities.length}
-                </Typography>
-                <Typography variant="body-sm" theme="muted">
-                  Villes
-                </Typography>
-              </div>
-              <div className="text-center">
-                <Typography variant="h4" weight="bold">
                   {new Date(region.created_at).getFullYear()}
                 </Typography>
                 <Typography variant="body-sm" theme="muted">
@@ -177,96 +135,34 @@ export default function RegionDetailPage() {
         </Card>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="cities" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="cities">Villes ({cities.length})</TabsTrigger>
-          <TabsTrigger value="fighters">
-            Lutteurs ({fighters.length})
-          </TabsTrigger>
-        </TabsList>
+      {/* Liste des lutteurs */}
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <Typography variant="h3">Lutteurs</Typography>
+          <Link href={`/fighters/create`}>
+            Ajouter un lutteur
+          </Link>
+        </div>
 
-        <TabsContent value="cities">
-          <EntityList
-            title="Villes de la région"
-            entityType="city"
-            data={cities}
-            total={cities.length}
-            loading={loading}
-            page={1}
-            limit={10}
-            onPageChange={() => {}}
-            onLimitChange={() => {}}
-            searchTerm=""
-            onSearchChange={() => {}}
-            filters={{}}
-            onFilterChange={() => {}}
-            onAdd={handleAddCity}
-            renderCard={(city: any, viewMode) => (
-              <Card key={city.id}>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <Typography variant="h6" className="mb-1">
-                        {city.name}
-                      </Typography>
-                      {city.description && (
-                        <Typography variant="body-sm" theme="muted">
-                          {city.description}
-                        </Typography>
-                      )}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditCity(city)}
-                    >
-                      Modifier
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          />
-        </TabsContent>
-
-        <TabsContent value="fighters">
-          <EntityList
-            title="Lutteurs de la région"
-            entityType="fighter"
-            data={fighters}
-            total={fighters.length}
-            loading={loading}
-            page={1}
-            limit={10}
-            onPageChange={() => {}}
-            onLimitChange={() => {}}
-            searchTerm=""
-            onSearchChange={() => {}}
-            filters={{}}
-            onFilterChange={() => {}}
-            onAdd={() => setFighterDialogOpen(true)}
-            renderCard={(fighter: any, viewMode) => (
+        {fighters.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {fighters.map((fighter) => (
               <FighterCard
-                fighter={fighter}
                 key={fighter.id}
-                viewMode={viewMode}
+                viewMode="grid"
+                fighter={fighter}
                 onView={() => router.push(`/ad/fighters/${fighter.id}`)}
               />
-            )}
-          />
-        </TabsContent>
-      </Tabs>
+            ))}
+          </div>
+        ) : (
+          <Typography theme="muted">
+            Aucun lutteur enregistré pour cette région.
+          </Typography>
+        )}
+      </div>
 
-      {/* Dialogs */}
-      <CityDialog
-        open={cityDialogOpen}
-        onOpenChange={setCityDialogOpen}
-        regionId={regionId}
-        city={selectedCity}
-        onSuccess={handleCityDialogClose}
-      />
-
+      {/* Dialog pour lutteur */}
       <FighterDialog
         open={fighterDialogOpen}
         onOpenChange={setFighterDialogOpen}

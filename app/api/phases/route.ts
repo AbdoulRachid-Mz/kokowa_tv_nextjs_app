@@ -8,13 +8,18 @@ export async function GET(request: NextRequest) {
     const filters = {
       edition_id: searchParams.has('edition_id') ? Number(searchParams.get('edition_id')) : undefined,
       search: searchParams.get('search') || undefined,
+      phase_type: searchParams.get('phase_type') || undefined,
+      is_active: searchParams.get('is_active') === 'true',
       page: searchParams.has('page') ? Number(searchParams.get('page')) : 1,
       limit: searchParams.has('limit') ? Number(searchParams.get('limit')) : 20,
       with_edition: searchParams.get('with_edition') !== 'false',
       with_groups: searchParams.get('with_groups') === 'true',
     };
 
-    const result = await getPhases(filters);
+    const result = await getPhases({
+      ...filters,
+      phase_type: filters.phase_type as "qualification" | "group" | "knockout" | "quarterfinal" | "semifinal" | "final" | undefined
+    });
     return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json(

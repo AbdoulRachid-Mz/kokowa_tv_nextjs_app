@@ -1,26 +1,6 @@
-"use client"
+"use client";
 
-import type React from "react"
-import {
-  BarChart3,
-  Users,
-  Shield,
-  Trophy,
-  Calendar,
-  Swords,
-  Award,
-  Repeat,
-  MapPin,
-  Globe,
-  MessageSquare,
-  Newspaper,
-  Video,
-  FileImage,
-  Bell,
-  Activity,
-  Database,
-  Settings,
-} from "lucide-react"
+import type React from "react";
 import {
   EnhancedDashboard,
   SidebarHeader,
@@ -28,22 +8,31 @@ import {
   SidebarItem,
   SidebarFooter,
   DashboardHeader,
-} from "@/components/dashboard/enhanced-dashboard"
+} from "@/components/dashboard/enhanced-dashboard";
 // import { useUser } from "@/contexts/user-context"
-import { PageSkeleton } from "@/components/ui/page-skeleton"
-import { useAuthContext } from "@/contexts/auth-context"
-import { overviewItems, regionItems, fighterItems, refereeItems, competitionItems, contentItems, communicationItems, systemItems } from "@/constants/admin-items"
+import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { useAuthContext } from "@/contexts/auth-context";
+import {
+  overviewItems,
+  regionItems,
+  fighterItems,
+  refereeItems,
+  competitionItems,
+  contentItems,
+  communicationItems,
+  systemItems,
+} from "@/constants/admin-items";
 // === LAYOUT ===
 
 export default function AdminLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const { user, loading } = useAuthContext()
+  const { user, loading } = useAuthContext();
 
   if (loading) {
-    return <PageSkeleton type="dashboard" />
+    return <PageSkeleton type="dashboard" />;
   }
 
   const AdminSidebar = (
@@ -114,7 +103,7 @@ export default function AdminLayout({
         }}
       />
     </div>
-  )
+  );
 
   const AdminHeader = (
     <DashboardHeader
@@ -122,7 +111,7 @@ export default function AdminLayout({
       description="Tableau de bord du système de lutte"
       showSidebarTrigger={true}
     />
-  )
+  );
 
   return (
     <EnhancedDashboard
@@ -132,5 +121,5 @@ export default function AdminLayout({
     >
       {children}
     </EnhancedDashboard>
-  )
+  );
 }

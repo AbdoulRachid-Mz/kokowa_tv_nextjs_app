@@ -17,7 +17,9 @@ import {
   PhaseGroupFilters,
   SubGroupFilters,
   NotificationFilters,
-  UserFilters
+  UserFilters,
+  CoachFilters,
+  FighterTransferFilters
 } from '@/types';
 
 // Types pour les filtres par entité
@@ -43,6 +45,8 @@ export interface UseEntityListProps<T> {
   entityType: 
     | 'fighters' 
     | 'regions' 
+    | 'coaches' 
+    | 'transfers' 
     | 'competitions' 
     | 'editions' 
     | 'matches' 
@@ -105,23 +109,50 @@ export function useEntityList<T>({
         if (fighterFilters.with_transfers) params.with_transfers = 'true';
         break;
 
+        case 'transfers':
+  const transferFilters = filters as FighterTransferFilters;
+  if (transferFilters.fighter_id) params.fighter_id = transferFilters.fighter_id.toString();
+  if (transferFilters.from_region_id) params.from_region_id = transferFilters.from_region_id.toString();
+  if (transferFilters.to_region_id) params.to_region_id = transferFilters.to_region_id.toString();
+  if (transferFilters.status) params.status = transferFilters.status;
+  if (transferFilters.date_from) params.date_from = transferFilters.date_from;
+  if (transferFilters.date_to) params.date_to = transferFilters.date_to;
+  if (transferFilters.with_fighter) params.with_fighter = 'true';
+  if (transferFilters.with_regions) params.with_regions = 'true';
+  if (transferFilters.with_approver) params.with_approver = 'true';
+  break;
+
       case 'regions':
         const regionFilters = filters as RegionFilters;
         if (regionFilters.code) params.code = regionFilters.code;
         if (regionFilters.with_fighters) params.with_fighters = 'true';
         if (regionFilters.with_competitions) params.with_competitions = 'true';
+        if (regionFilters.with_coach) params.with_coach = 'true';
         if (regionFilters.fighter_count_min) params.fighter_count_min = regionFilters.fighter_count_min.toString();
         if (regionFilters.fighter_count_max) params.fighter_count_max = regionFilters.fighter_count_max.toString();
         break;
 
+      case 'coaches':
+        const coachFilters = filters as CoachFilters;
+        if (coachFilters.region_id) params.region_id = coachFilters.region_id.toString();
+        if (coachFilters.is_active !== undefined) params.is_active = coachFilters.is_active.toString();
+        if (coachFilters.certification_level) params.certification_level = coachFilters.certification_level;
+        if (coachFilters.experience_min) params.experience_min = coachFilters.experience_min.toString();
+        if (coachFilters.with_region) params.with_region = 'true';
+        break;
+
       case 'competitions':
         const competitionFilters = filters as CompetitionFilters;
-        if (competitionFilters.type) params.type = competitionFilters.type;
         if (competitionFilters.status) params.status = competitionFilters.status;
         if (competitionFilters.region_id) params.region_id = competitionFilters.region_id.toString();
         if (competitionFilters.with_region) params.with_region = 'true';
         if (competitionFilters.with_editions) params.with_editions = 'true';
         if (competitionFilters.is_active !== undefined) params.is_active = competitionFilters.is_active.toString();
+        if (competitionFilters.edition_year) params.edition_year = competitionFilters.edition_year.toString();
+        if (competitionFilters.date_from) params.date_from = competitionFilters.date_from;
+        if (competitionFilters.date_to) params.date_to = competitionFilters.date_to;
+        if (competitionFilters.with_phases) params.with_phases = 'true';
+        if (competitionFilters.with_matches) params.with_matches = 'true';
         break;
 
       case 'editions':
@@ -138,7 +169,10 @@ export function useEntityList<T>({
       case 'phases':
         const phaseFilters = filters as PhaseFilters;
         if (phaseFilters.edition_id) params.edition_id = phaseFilters.edition_id.toString();
+        if (phaseFilters.search) params.search = phaseFilters.search;
         if (phaseFilters.phase_type) params.phase_type = phaseFilters.phase_type;
+        if (phaseFilters.page) params.page = phaseFilters.page.toString();
+        if (phaseFilters.limit) params.limit = phaseFilters.limit.toString();
         if (phaseFilters.is_completed !== undefined) params.is_completed = phaseFilters.is_completed.toString();
         if (phaseFilters.with_edition) params.with_edition = 'true';
         if (phaseFilters.with_groups) params.with_groups = 'true';
@@ -408,7 +442,7 @@ export function useEntityList<T>({
     
     // Utilitaires
     refetch: fetchData,
-    totalPages: Math.ceil(total / limit),
+    totalPages: Math.ceil(total / limit) || total,
     hasData: data.length > 0,
     isEmpty: !loading && data.length === 0,
   };

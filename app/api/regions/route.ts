@@ -28,8 +28,9 @@ export async function GET(request: NextRequest) {
       limit,
       page,
       search,
-      with_fighters: false,
-      with_competitions: false,
+      with_fighters: searchParams.get("with_fighters") === "1" || Boolean("true"),
+      with_coach: searchParams.get("with_coach") === "1" || Boolean("true"),
+      with_competitions: searchParams.get("with_competitions") === "1" || Boolean("true"),
     });
 
     return NextResponse.json({
@@ -60,6 +61,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(newRegion, { status: 201 });
   } catch (error) {
     console.error('Error creating region:', error);
-    return NextResponse.json({ error: 'Failed to create region' }, { status: 500 });
+    return NextResponse.json({ error: 'echec de création de région' }, { status: 500 });
   }
 }
