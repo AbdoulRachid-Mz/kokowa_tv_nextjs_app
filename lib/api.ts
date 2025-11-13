@@ -29,11 +29,19 @@ class ApiService {
 
   private async request<T>(config: AxiosRequestConfig): Promise<T> {
     try {
+      // Déterminer le Content-Type en fonction du type de données
+      const isFormData = config.data instanceof FormData;
+      
       const headers = {
-        "Content-Type": "application/json",
+        // Ne pas définir Content-Type pour FormData - le navigateur le fera automatiquement
         ...(this.token && { Authorization: `Bearer ${this.token}` }),
         ...config.headers,
       };
+
+      // Si ce n'est pas FormData, utiliser application/json par défaut
+      if (!isFormData && !(headers as any)['Content-Type']) {
+        (headers as any)['Content-Type'] = 'application/json';
+      }
 
       const response: AxiosResponse<T> = await axios({
         baseURL: API_BASE_URL,
@@ -71,7 +79,7 @@ class ApiService {
 
   public async put<T>(
     url: string,
-    data?: object,
+    data?: any,
     config?: AxiosRequestConfig
   ): Promise<T> {
     return this.request<T>({ method: "PUT", url, data, ...config });
@@ -83,7 +91,7 @@ class ApiService {
 
   public async patch<T>(
     url: string,
-    data?: object,
+    data?: any,
     config?: AxiosRequestConfig
   ): Promise<T> {
     return this.request<T>({ method: "PATCH", url, data, ...config });

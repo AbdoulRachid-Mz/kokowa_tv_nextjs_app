@@ -18,10 +18,10 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url);
-    const with_competition = searchParams.get('with_competition') === 'true';
-    const with_fighters = searchParams.get('with_fighters') === 'true';
-    const with_regions = searchParams.get('with_regions') === 'true';
-    const with_phases = searchParams.get('with_phases') === 'true';
+    const with_competition = searchParams.get('with_competition') !== 'false';
+    const with_fighters = searchParams.get('with_fighters') !== 'false';
+    const with_regions = searchParams.get('with_regions') !== 'false';
+    const with_phases = searchParams.get('with_phases') !== 'false';
 
     const edition = await getEditionById(EId, {
       with_relations: with_competition || with_fighters || with_regions || with_phases,

@@ -17,9 +17,6 @@ export interface EditionFilters {
   with_phases?: boolean;
 }
 
-// import { query } from "@/lib/neon-client";
-
-// actions/editions.ts - VERSION COMPLÈTE CORRIGÉE
 export async function getEditions(options: {
   competition_id?: string;
   year?: number;
@@ -58,9 +55,82 @@ export async function getEditions(options: {
         JSON_BUILD_OBJECT(
           'id', c.id,
           'name', c.name,
-          'type', c.type,
-          'slug', c.slug
+          'slug', c.slug,
+          'status', c.status,
+          'featured_image', c.featured_image,
+          'is_active', c.is_active,
+          'region_id', c.region_id
         ) as competition
+      `);
+    }
+
+    if (with_fighters) {
+      selectFields.push(`
+        (SELECT JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'id', ef.id,
+            'fighter_id', ef.fighter_id,
+            'region_id', ef.region_id,
+            'status', ef.status,
+            'registration_date', ef.registration_date,
+            'fighter', JSON_BUILD_OBJECT(
+              'id', f.id,
+              'first_name', f.first_name,
+              'last_name', f.last_name,
+              'nickname', f.nickname,
+              'ranking', f.ranking,
+              'profile_image', f.profile_image,
+              'is_active', f.is_active,
+              'is_champion', f.is_champion
+            )
+          ) ORDER BY f.ranking
+        ) FROM edition_fighters ef
+        JOIN fighters f ON ef.fighter_id = f.id
+        WHERE ef.edition_id = ce.id) as fighters
+      `);
+    }
+
+    if (with_regions) {
+      selectFields.push(`
+        (SELECT JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'id', er.id,
+            'region_id', er.region_id,
+            'status', er.status,
+            'registration_date', er.registration_date,
+            'region', JSON_BUILD_OBJECT(
+              'id', r.id,
+              'name', r.name,
+              'code', r.code,
+              'color', r.color,
+              'flag_image', r.flag_image,
+              'stadium_name', r.stadium_name,
+              'stadium_image', r.stadium_image,
+              'total_fighters', r.total_fighters,
+              'total_champions', r.total_champions
+            )
+          ) ORDER BY r.name
+        ) FROM edition_regions er
+        JOIN regions r ON er.region_id = r.id
+        WHERE er.edition_id = ce.id) as regions
+      `);
+    }
+
+    if (with_phases) {
+      selectFields.push(`
+        (SELECT JSON_AGG(
+          JSON_BUILD_OBJECT(
+            'id', p.id,
+            'name', p.name,
+            'phase_type', p.phase_type,
+            'phase_order', p.phase_order,
+            'is_completed', p.is_completed,
+            'is_active', p.is_active,
+            'description', p.description,
+            'start_date', p.start_date,
+            'end_date', p.end_date
+          ) ORDER BY p.phase_order
+        ) FROM phases p WHERE p.edition_id = ce.id) as phases
       `);
     }
 
@@ -145,13 +215,18 @@ export async function getEditionById(id: number, options: {
           JSON_BUILD_OBJECT(
             'id', c.id,
             'name', c.name,
-            'type', c.type,
-            'slug', c.slug
+            'slug', c.slug,
+            'status', c.status,
+            'featured_image', c.featured_image,
+            'is_active', c.is_active,
+            'region_id', c.region_id,
+            'description', c.description
           ) as competition,
           (SELECT JSON_AGG(
             JSON_BUILD_OBJECT(
               'id', ef.id,
               'fighter_id', ef.fighter_id,
+              'region_id', ef.region_id,
               'status', ef.status,
               'registration_date', ef.registration_date,
               'fighter', JSON_BUILD_OBJECT(
@@ -159,7 +234,16 @@ export async function getEditionById(id: number, options: {
                 'first_name', f.first_name,
                 'last_name', f.last_name,
                 'nickname', f.nickname,
-                'ranking', f.ranking
+                'ranking', f.ranking,
+                'profile_image', f.profile_image,
+                'is_active', f.is_active,
+                'is_champion', f.is_champion,
+                'birth_date', f.birth_date,
+                'birth_place', f.birth_place,
+                'height', f.height,
+                'weight', f.weight,
+                'fighting_style', f.fighting_style,
+                'debut_year', f.debut_year
               )
             ) ORDER BY f.ranking
           ) FROM edition_fighters ef
@@ -174,7 +258,14 @@ export async function getEditionById(id: number, options: {
               'region', JSON_BUILD_OBJECT(
                 'id', r.id,
                 'name', r.name,
-                'code', r.code
+                'code', r.code,
+                'color', r.color,
+                'flag_image', r.flag_image,
+                'stadium_name', r.stadium_name,
+                'stadium_image', r.stadium_image,
+                'total_fighters', r.total_fighters,
+                'total_champions', r.total_champions,
+                'description', r.description
               )
             ) ORDER BY r.name
           ) FROM edition_regions er
@@ -186,9 +277,26 @@ export async function getEditionById(id: number, options: {
               'name', p.name,
               'phase_type', p.phase_type,
               'phase_order', p.phase_order,
-              'is_completed', p.is_completed
+              'is_completed', p.is_completed,
+              'is_active', p.is_active,
+              'description', p.description,
+              'start_date', p.start_date,
+              'end_date', p.end_date
             ) ORDER BY p.phase_order
-          ) FROM phases p WHERE p.edition_id = ce.id) as phases
+          ) FROM phases p WHERE p.edition_id = ce.id) as phases,
+          (SELECT JSON_BUILD_OBJECT(
+            'id', wf.id,
+            'first_name', wf.first_name,
+            'last_name', wf.last_name,
+            'nickname', wf.nickname,
+            'profile_image', wf.profile_image
+          ) FROM fighters wf WHERE wf.id = ce.winner_fighter_id) as winner_fighter,
+          (SELECT JSON_BUILD_OBJECT(
+            'id', wr.id,
+            'name', wr.name,
+            'code', wr.code,
+            'flag_image', wr.flag_image
+          ) FROM regions wr WHERE wr.id = ce.winner_region_id) as winner_region
         FROM competition_editions ce
         LEFT JOIN competitions c ON ce.competition_id = c.id
         WHERE ce.id = $1

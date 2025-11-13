@@ -177,42 +177,47 @@ export async function getPhaseGroupById(id: number, options: {
               'id', sg.id,
               'name', sg.name,
               'sub_group_order', sg.sub_group_order,
-              'belt1_fighter_id', sg.belt1_fighter_id,
-              'belt2_fighter_id', sg.belt2_fighter_id,
-              'belt1_region_id', sg.belt1_region_id,
-              'belt2_region_id', sg.belt2_region_id,
+              'region1_id', sg.region1_id,
+              'region2_id', sg.region2_id,
+              'belt_region1', sg.belt_region1,
+              'belt_region2', sg.belt_region2,
+              'main_referee_id', sg.main_referee_id,
               'is_completed', sg.is_completed,
-              'belt1_fighter', JSON_BUILD_OBJECT(
-                'id', f1.id,
-                'first_name', f1.first_name,
-                'last_name', f1.last_name,
-                'nickname', f1.nickname
-              ),
-              'belt2_fighter', JSON_BUILD_OBJECT(
-                'id', f2.id,
-                'first_name', f2.first_name,
-                'last_name', f2.last_name,
-                'nickname', f2.nickname
-              ),
-              'belt1_region', JSON_BUILD_OBJECT(
+              'is_active', sg.is_active,
+              'region1', JSON_BUILD_OBJECT(
                 'id', r1.id,
                 'name', r1.name,
                 'code', r1.code
               ),
-              'belt2_region', JSON_BUILD_OBJECT(
+              'region2', JSON_BUILD_OBJECT(
                 'id', r2.id,
                 'name', r2.name,
                 'code', r2.code
+              ),
+              'belt1', JSON_BUILD_OBJECT(
+                'id', b1.id,
+                'color', b1.color
+              ),
+              'belt2', JSON_BUILD_OBJECT(
+                'id', b2.id,
+                'color', b2.color
+              ),
+              'main_referee', JSON_BUILD_OBJECT(
+                'id', ref.id,
+                'first_name', ref.first_name,
+                'last_name', ref.last_name,
+                'nickname', ref.nickname
               ),
               'matches_count', (
                 SELECT COUNT(*) FROM matches m WHERE m.sub_group_id = sg.id
               )
             ) ORDER BY sg.sub_group_order
           ) FROM sub_groups sg
-          LEFT JOIN fighters f1 ON sg.belt1_fighter_id = f1.id
-          LEFT JOIN fighters f2 ON sg.belt2_fighter_id = f2.id
-          LEFT JOIN regions r1 ON sg.belt1_region_id = r1.id
-          LEFT JOIN regions r2 ON sg.belt2_region_id = r2.id
+          LEFT JOIN regions r1 ON sg.region1_id = r1.id
+          LEFT JOIN regions r2 ON sg.region2_id = r2.id
+          LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
+          LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
+          LEFT JOIN referees ref ON sg.main_referee_id = ref.id
           WHERE sg.group_id = pg.id) as sub_groups
         FROM phase_groups pg
         LEFT JOIN phases p ON pg.phase_id = p.id

@@ -33,19 +33,22 @@ export default function PhaseGroupsPage() {
     onExport,
     onRefresh,
   } = useEntityList<PhaseGroup>({
-    entityType: 'phase-groups',
+    entityType: "phase-groups",
     defaultFilters: {
       with_phase: true,
       with_sub_groups: true,
-      limit: '20',
+      limit: "20",
     },
   });
 
   const renderStats = () => {
-    const totalSubGroups = data.reduce((sum, group) => sum + (group.sub_groups?.length || 0), 0);
-    const completedGroups = data.filter(group => group.is_completed).length;
-    const groupsWithMatches = data.filter(group => 
-      group.sub_groups?.some(sg => sg?.matches && sg.matches.length > 0)
+    const totalSubGroups = data.reduce(
+      (sum, group) => sum + (group.sub_groups?.length || 0),
+      0
+    );
+    const completedGroups = data.filter((group) => group.is_completed).length;
+    const groupsWithMatches = data.filter((group) =>
+      group.sub_groups?.some((sg) => sg?.matches && sg.matches.length > 0)
     ).length;
 
     const stats = [
@@ -89,7 +92,9 @@ export default function PhaseGroupsPage() {
                     {stat.value}
                   </Typography>
                 </div>
-                <div className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}>
+                <div
+                  className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}
+                >
                   <stat.icon className={`h-6 w-6 ${stat.color}`} />
                 </div>
               </div>
@@ -102,29 +107,29 @@ export default function PhaseGroupsPage() {
 
   const availableFilters = [
     {
-      key: 'phase_id',
-      label: 'Phase',
+      key: "phase_id",
+      label: "Phase",
       options: [
-        { value: 'all', label: 'Toutes phases' },
+        { value: "all", label: "Toutes phases" },
         // Les phases seront chargées dynamiquement
       ],
     },
     {
-      key: 'is_completed',
-      label: 'Statut',
+      key: "is_completed",
+      label: "Statut",
       options: [
-        { value: 'all', label: 'Tous' },
-        { value: 'true', label: 'Terminé' },
-        { value: 'false', label: 'En cours' },
+        { value: "all", label: "Tous" },
+        { value: "true", label: "Terminé" },
+        { value: "false", label: "En cours" },
       ],
     },
     {
-      key: 'sort',
-      label: 'Trier par',
+      key: "sort",
+      label: "Trier par",
       options: [
-        { value: 'group_order', label: 'Ordre' },
-        { value: 'name', label: 'Nom' },
-        { value: 'sub_groups_count', label: 'Nombre sous-groupes' },
+        { value: "group_order", label: "Ordre" },
+        { value: "name", label: "Nom" },
+        { value: "sub_groups_count", label: "Nombre sous-groupes" },
       ],
     },
   ];
@@ -141,63 +146,88 @@ export default function PhaseGroupsPage() {
     router.push(`/admin/phase-groups/${group.id}/matches`);
   };
 
-  const renderGroupCard = (group: PhaseGroup, viewMode: 'grid' | 'list') => {
-    const isListView = viewMode === 'list';
+  const renderGroupCard = (group: PhaseGroup, viewMode: "grid" | "list") => {
+    const isListView = viewMode === "list";
     const subGroupsCount = group.sub_groups?.length || 0;
-    const totalMatches = group.sub_groups?.reduce((sum, sg) => sum + (sg.matches?.length || 0), 0) || 0;
+    const totalMatches =
+      group.sub_groups?.reduce(
+        (sum, sg) => sum + (sg.matches?.length || 0),
+        0
+      ) || 0;
 
     return (
-      <Card className={cn(
-        "hover:shadow-lg transition-all duration-300 cursor-pointer group border-l-4",
-        isListView && "flex",
-        group.is_completed ? "border-l-green-500" : "border-l-orange-500"
-      )}>
-        <div className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}>
+      <Card
+        className={cn(
+          "hover:shadow-lg transition-all duration-300 cursor-pointer group border-l-4",
+          isListView && "flex",
+          group.is_completed ? "border-l-green-500" : "border-l-orange-500"
+        )}
+      >
+        <div
+          className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}
+        >
           <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
-            <div className={cn(
-              "w-12 h-12 rounded-lg flex items-center justify-center text-white",
-              group.is_completed ? "bg-gradient-to-br from-green-500 to-emerald-600" : "bg-gradient-to-br from-orange-500 to-red-600"
-            )}>
+            <div
+              className={cn(
+                "w-12 h-12 rounded-lg flex items-center justify-center text-white",
+                group.is_completed
+                  ? "bg-gradient-to-br from-green-500 to-emerald-600"
+                  : "bg-gradient-to-br from-orange-500 to-red-600"
+              )}
+            >
               <Folder className="h-6 w-6" />
             </div>
           </div>
 
-          <div className={cn("flex-1", isListView && "flex items-center justify-between")}>
+          <div
+            className={cn(
+              "flex-1",
+              isListView && "flex items-center justify-between"
+            )}
+          >
             <div className={cn(isListView && "flex items-center gap-6")}>
               <div>
                 <CardTitle className="text-lg group-hover:text-primary transition-colors">
                   {group.name}
                 </CardTitle>
-                
+
                 <div className="flex items-center gap-2 mb-2">
                   <Badge variant={group.is_completed ? "default" : "secondary"}>
                     {group.is_completed ? "Terminé" : "En cours"}
                   </Badge>
-                  
+
                   <Badge variant="outline">
                     {subGroupsCount} sous-groupe(s)
                   </Badge>
 
                   {totalMatches > 0 && (
-                    <Badge variant="outline">
-                      {totalMatches} match(s)
-                    </Badge>
+                    <Badge variant="outline">{totalMatches} match(s)</Badge>
                   )}
                 </div>
 
                 <div className="space-y-1 text-sm">
-                  <Typography variant="body-sm" className="text-muted-foreground">
+                  <Typography
+                    variant="body-sm"
+                    className="text-muted-foreground"
+                  >
                     Phase: {group.phase?.name} • Ordre: {group.group_order}
                   </Typography>
-                  
+
                   {group.phase?.edition && (
-                    <Typography variant="body-sm" className="text-muted-foreground">
-                      Édition {group.phase.edition.edition_number} - {group.phase.edition.year}
+                    <Typography
+                      variant="body-sm"
+                      className="text-muted-foreground"
+                    >
+                      Édition {group.phase.edition.edition_number} -{" "}
+                      {group.phase.edition.year}
                     </Typography>
                   )}
-                  
+
                   {group.description && (
-                    <Typography variant="body-sm" className="text-muted-foreground line-clamp-2">
+                    <Typography
+                      variant="body-sm"
+                      className="text-muted-foreground line-clamp-2"
+                    >
                       {group.description}
                     </Typography>
                   )}
@@ -206,7 +236,11 @@ export default function PhaseGroupsPage() {
 
               {isListView && (
                 <div className="text-right">
-                  <Typography variant="h4" weight="bold" className="text-primary">
+                  <Typography
+                    variant="h4"
+                    weight="bold"
+                    className="text-primary"
+                  >
                     {group.group_order}
                   </Typography>
                   <Typography variant="caption2" theme="muted">
@@ -216,9 +250,11 @@ export default function PhaseGroupsPage() {
               )}
             </div>
 
-            <div className={cn("flex gap-2 mt-3", isListView && "mt-0 flex-col")}>
-              <Button 
-                variant="outline" 
+            <div
+              className={cn("flex gap-2 mt-3", isListView && "mt-0 flex-col")}
+            >
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -227,8 +263,8 @@ export default function PhaseGroupsPage() {
               >
                 Matchs
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -237,7 +273,7 @@ export default function PhaseGroupsPage() {
               >
                 Voir
               </Button>
-              <Button 
+              <Button
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -282,7 +318,13 @@ export default function PhaseGroupsPage() {
 }
 
 // Composant CardTitle manquant
-const CardTitle = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+const CardTitle = ({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => (
   <Typography variant="h4" weight="medium" className={className}>
     {children}
   </Typography>

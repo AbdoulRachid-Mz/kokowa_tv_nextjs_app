@@ -55,7 +55,7 @@ export interface EntityListProps<T> {
     | "video"
     | "message"
     | "phase-groups"
-    | "sub-groups"
+    | "sub-group"
     | "notification";
   data: T[];
   total: number;
@@ -378,7 +378,7 @@ export function EntityList<T>({
           },
         ];
 
-      case "sub-groups":
+      case "sub-group":
         return [
           ...baseFilters,
           {

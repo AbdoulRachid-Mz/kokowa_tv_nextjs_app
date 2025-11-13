@@ -623,7 +623,7 @@ export default function PhaseGroupDetailPage() {
           <EntityList
             title="Sous-groupes du Groupe"
             description={`Gérez les sous-groupes de ${group.name}`}
-            entityType="sub-groups"
+            entityType="sub-group"
             data={subGroupsList.data}
             total={subGroupsList.total}
             loading={subGroupsList.loading}

@@ -188,13 +188,13 @@ export function useEntityList<T>({
         break;
 
       case 'sub-groups':
-        const subGroupFilters = filters as SubGroupFilters;
-        if (subGroupFilters.group_id) params.group_id = subGroupFilters.group_id.toString();
-        if (subGroupFilters.with_group) params.with_group = 'true';
-        if (subGroupFilters.with_matches) params.with_matches = 'true';
-        if (subGroupFilters.with_regions) params.with_regions = 'true';
-        if (subGroupFilters.is_active !== undefined) params.is_active = subGroupFilters.is_active.toString();
-        break;
+  const subGroupFilters = filters as SubGroupFilters;
+  if (subGroupFilters.group_id) params.group_id = subGroupFilters.group_id.toString();
+  if (subGroupFilters.with_group) params.with_group = 'true';
+  if (subGroupFilters.with_matches) params.with_matches = 'true';
+  if (subGroupFilters.with_regions) params.with_regions = 'true';
+  if (subGroupFilters.with_belts) params.with_belts = 'true';
+  break;
 
       case 'matches':
         const matchFilters = filters as MatchFilters;

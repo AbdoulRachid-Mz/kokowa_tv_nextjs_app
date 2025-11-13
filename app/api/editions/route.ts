@@ -20,10 +20,10 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || undefined;
     const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1;
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20;
-    const with_competition = searchParams.get('with_competition') === 'true';
-    const with_fighters = searchParams.get('with_fighters') === 'true';
-    const with_regions = searchParams.get('with_regions') === 'true';
-    const with_phases = searchParams.get('with_phases') === 'true';
+    const with_competition = searchParams.get('with_competition') !== 'false';
+    const with_fighters = searchParams.get('with_fighters') !== 'false';
+    const with_regions = searchParams.get('with_regions') !== 'false';
+    const with_phases = searchParams.get('with_phases') !== 'false';
     const stats = searchParams.get('stats') === 'true';
     const id = searchParams.get('id') || undefined;
 
@@ -50,6 +50,10 @@ export async function GET(request: NextRequest) {
     const options: any = {
       with_competition,
       limit,
+      year,
+with_fighters,
+with_regions,
+with_phases,
       offset: (page - 1) * limit,
     };
 

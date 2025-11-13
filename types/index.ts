@@ -663,3 +663,57 @@ export interface InteractionFilters extends BaseFilters {
   interaction_type?: string;
   with_user?: boolean;
 }
+
+// types/index.ts - Ajouter ces types
+export interface StatsFilters {
+  entity?: string;
+  statId?: string;
+  date_from?: string;
+  date_to?: string;
+  region_id?: number;
+  edition_id?: number;
+  competition_id?: number;
+  year?: number;
+  group_by?: 'day' | 'week' | 'month' | 'year' | 'region' | 'status';
+  limit?: number;
+}
+
+export interface StatsResponse {
+  entity: string;
+  statId?: string;
+  period?: {
+    date_from?: string;
+    date_to?: string;
+  };
+  data: any;
+  metadata?: {
+    total: number;
+    average?: number;
+    min?: number;
+    max?: number;
+    grouped_by?: string;
+  };
+}
+
+export interface GlobalStats {
+  summary: {
+    total_fighters: number;
+    total_regions: number;
+    total_coaches: number;
+    total_referees: number;
+    total_competitions: number;
+    total_matches: number;
+    total_transfers: number;
+    total_users: number;
+  };
+  recent_activity: {
+    new_fighters: number;
+    new_matches: number;
+    new_transfers: number;
+    active_competitions: number;
+  };
+  regions_stats: {
+    most_fighters: { region_id: number; region_name: string; count: number }[];
+    most_champions: { region_id: number; region_name: string; count: number }[];
+  };
+}

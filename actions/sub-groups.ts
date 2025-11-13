@@ -193,12 +193,38 @@ export async function getSubGroupById(id: number, options: {
           JSON_BUILD_OBJECT(
             'id', r1.id,
             'name', r1.name,
-            'code', r1.code
+            'code', r1.code,
+            'fighters', (
+              SELECT JSON_AGG(
+                JSON_BUILD_OBJECT(
+                  'id', f.id,
+                  'first_name', f.first_name,
+                  'last_name', f.last_name,
+                  'nickname', f.nickname,
+                  'profile_image', f.profile_image
+                )
+              )
+              FROM fighters f
+              WHERE f.region_id = r1.id AND f.is_active = true
+            )
           ) as region1,
           JSON_BUILD_OBJECT(
             'id', r2.id,
             'name', r2.name,
-            'code', r2.code
+            'code', r2.code,
+            'fighters', (
+              SELECT JSON_AGG(
+                JSON_BUILD_OBJECT(
+                  'id', f.id,
+                  'first_name', f.first_name,
+                  'last_name', f.last_name,
+                  'nickname', f.nickname,
+                  'profile_image', f.profile_image
+                )
+              )
+              FROM fighters f
+              WHERE f.region_id = r2.id AND f.is_active = true
+            )
           ) as region2,
           JSON_BUILD_OBJECT(
             'id', b1.id,

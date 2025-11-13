@@ -11,6 +11,7 @@ import {
   Referee,
   Coach,
   FighterTransfer,
+  SubGroup,
 } from "@/types";
 import {
   MapPin,
@@ -1043,6 +1044,207 @@ export const TransferCard = ({
   );
 };
 
+interface SubGroupCardProps {
+  subGroup: SubGroup;
+  viewMode: "grid" | "list";
+  onEdit: (subGroup: SubGroup) => void;
+  onView: (subGroup: SubGroup) => void;
+}
+
+export const SubGroupCard = ({
+  subGroup,
+  viewMode,
+  onEdit,
+  onView,
+}: SubGroupCardProps) => {
+  if (viewMode === "list") {
+    return (
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4 flex-1">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3">
+                  <Typography variant="h4" weight="medium">
+                    {subGroup.name}
+                  </Typography>
+                  <Badge variant="outline">
+                    Ordre: {subGroup.sub_group_order}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center space-x-4 mt-2">
+                  {subGroup.region1 && subGroup.region2 && (
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                      <Typography variant="body-sm">
+                        {subGroup.region1.name} vs {subGroup.region2.name}
+                      </Typography>
+                    </div>
+                  )}
+
+                  <div className="flex items-center space-x-2">
+                    <Users className="h-3 w-3 text-muted-foreground" />
+                    <Typography variant="body-sm">
+                      {subGroup.matches?.length || 0} match(s)
+                    </Typography>
+                  </div>
+
+                  {subGroup.group && (
+                    <Typography variant="body-sm" theme="muted">
+                      {subGroup.group.name}
+                    </Typography>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 ml-4">
+              <Badge variant={subGroup.is_active ? "default" : "outline"}>
+                {subGroup.is_active ? "Active" : "Inactive"}
+              </Badge>
+              <Badge variant={subGroup.is_completed ? "default" : "secondary"}>
+                {subGroup.is_completed ? "Terminée" : "En cours"}
+              </Badge>
+              <div className="flex space-x-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onView(subGroup)}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onEdit(subGroup)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Vue grid
+  return (
+    <Card className="hover:shadow-lg transition-shadow h-full">
+      <CardHeader className="p-4 pb-2">
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-base">{subGroup.name}</CardTitle>
+            <Typography variant="body-sm" theme="muted" className="mt-1">
+              Ordre: {subGroup.sub_group_order}
+            </Typography>
+          </div>
+          <div className="flex gap-1">
+            <Badge variant={subGroup.is_active ? "default" : "outline"}>
+              {subGroup.is_active ? "Active" : "Inactive"}
+            </Badge>
+            <Badge variant={subGroup.is_completed ? "default" : "secondary"}>
+              {subGroup.is_completed ? "Terminée" : "En cours"}
+            </Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-2">
+        <div className="space-y-3">
+          {/* Régions */}
+          {subGroup.region1 && subGroup.region2 && (
+            <div className="text-center py-2">
+              <div className="flex items-center justify-center space-x-3">
+                <div className="text-center">
+                  <Typography variant="body-sm" weight="medium">
+                    {subGroup.region1.name}
+                  </Typography>
+                  {subGroup.belt1 && (
+                    <Typography variant="body-base" theme="muted">
+                      Ceinture {subGroup.belt1.color}
+                    </Typography>
+                  )}
+                </div>
+                <div className="text-muted-foreground">VS</div>
+                <div className="text-center">
+                  <Typography variant="body-sm" weight="medium">
+                    {subGroup.region2.name}
+                  </Typography>
+                  {subGroup.belt2 && (
+                    <Typography variant="body-base" theme="muted">
+                      Ceinture {subGroup.belt2.color}
+                    </Typography>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Informations */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Matchs:</span>
+              <span className="font-medium">
+                {subGroup.matches?.length || 0}
+              </span>
+            </div>
+
+            {subGroup.group && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Groupe:</span>
+                <span>{subGroup.group.name}</span>
+              </div>
+            )}
+
+            {subGroup.main_referee && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Arbitre:</span>
+                <span className="truncate max-w-[120px]">
+                  {subGroup.main_referee.first_name}{" "}
+                  {subGroup.main_referee.last_name}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {subGroup.description && (
+            <Typography
+              variant="body-sm"
+              theme="muted"
+              className="line-clamp-2 border-t pt-2"
+            >
+              {subGroup.description}
+            </Typography>
+          )}
+        </div>
+
+        <div className="flex justify-between items-center mt-4">
+          <Typography variant="body-base" theme="muted">
+            {subGroup.group?.phase?.edition?.year}
+          </Typography>
+          <div className="flex space-x-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onView(subGroup)}
+            >
+              <Eye className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEdit(subGroup)}
+            >
+              <Edit className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 // Export des composants de cartes
 export const EntityCards = {
   Fighter: FighterCard,
@@ -1050,5 +1252,6 @@ export const EntityCards = {
   Competition: CompetitionCard,
   Referee: RefereeCard, // AJOUT
   Coach: CoachCard, // AJOUT
-  Transfer: TransferCard // AJOUT
+  Transfer: TransferCard, // AJOUT
+  SubGroup: SubGroupCard,
 };
