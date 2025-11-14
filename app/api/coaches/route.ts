@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       is_active: searchParams.get('is_active') ? searchParams.get('is_active') === 'true' : undefined,
       certification_level: searchParams.get('certification_level') || undefined,
       experience_min: searchParams.get('experience_min') ? parseInt(searchParams.get('experience_min')!) : undefined,
-      with_region: searchParams.has('with_region'),
+      with_region: searchParams.has('with_region') !== Boolean("false"),
     };
 
     const result = await getCoaches(filters);

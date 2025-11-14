@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
       is_champion: searchParams.get('is_champion') === '1',
       min_ranking: searchParams.get('min_ranking') ? parseInt(searchParams.get('min_ranking')!) : undefined,
       max_ranking: searchParams.get('max_ranking') ? parseInt(searchParams.get('max_ranking')!) : undefined,
-      with_region: searchParams.get('with_region') === '1' || Boolean("true"),
-      with_achievements: searchParams.get('with_achievements') === '1' || Boolean("true"),
+      with_region: searchParams.get('with_region') !== "false",
+      with_achievements: searchParams.get('with_achievements') !== "false",
     });
 
     return NextResponse.json({

@@ -16,10 +16,10 @@ export async function getCompetitions(options: CompetitionFilters) {
     edition_year,
     date_from,
     date_to,
-    with_region = false,
-    with_editions = true,
-    with_phases = false,
-    with_matches = false,
+    with_region ,
+    with_editions,
+    with_phases ,
+    with_matches ,
   } = options;
 
   const offset = (page - 1) * limit;
