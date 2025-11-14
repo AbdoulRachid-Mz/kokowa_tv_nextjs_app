@@ -3,6 +3,7 @@ import { getFighters } from '@/actions/fighters';
 import { getCompetitions } from '@/actions/competitions';
 import { getRegions } from '@/actions/regions';
 import { getEditions } from '@/actions/editions';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 async function getStats() {
   try {
@@ -68,6 +69,7 @@ export default async function HomePage() {
               <Link href="/regions" className="text-gray-700 hover:text-orange-600 font-medium">
                 Régions
               </Link>
+              <ThemeToggle />
             </nav>
           </div>
         </div>

@@ -151,10 +151,9 @@ export const beltSchema = z.object({
 export const matchSchema = z.object({
   sub_group_id: z.number().int().positive('Sous-groupe invalide'),
   match_number: z.number().int().min(1, 'Le numéro de match doit être positif').optional(),
-  match_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)'),
+  match_date: z.string().datetime('Format de date/heure invalide').default(() => new Date().toISOString()),
   start_time: z.string().regex(/^\d{2}:\d{2}:\d{2}$/, 'Format d\'heure invalide (HH:MM:SS)').optional(),
   end_time: z.string().regex(/^\d{2}:\d{2}:\d{2}$/, 'Format d\'heure invalide (HH:MM:SS)').optional(),
-
   // Participants
   fighter1_id: z.number().int().positive('Lutteur 1 invalide').optional(),
   fighter2_id: z.number().int().positive('Lutteur 2 invalide').optional(),
@@ -248,23 +247,22 @@ export const userSchema = z.object({
   is_verified: z.boolean().default(false),
 });
 
-// Schema pour les messages
 export const messageSchema = z.object({
-  content: z.string().min(1, 'Le contenu est requis'),
+  content: z.string().min(1, 'Contenu requis'),
   message_type: z.enum(['comment', 'direct_message', 'group_message', 'match_commentary', 'system_notification']).default('comment'),
   entity_type: z.enum(['article', 'match', 'fighter', 'competition', 'user']).optional(),
   entity_id: z.number().int().positive('ID d\'entité invalide').optional(),
   author_id: z.number().int().positive('Auteur invalide'),
   recipient_id: z.number().int().positive('Destinataire invalide').optional(),
-  parent_message_id: z.number().int().positive('Message parent invalide').optional(),
+  parent_message_id: z.number().int().positive('ID message parent invalide').optional(),
   is_read: z.boolean().default(false),
   is_active: z.boolean().default(true),
   is_deleted: z.boolean().default(false),
-  like_count: z.number().int().min(0, 'Nombre de likes invalide').default(0),
+  like_count: z.number().int().nonnegative().default(0),
   images: z.array(z.string()).optional(),
-  video_url: z.string().url('URL vidéo invalide').optional().or(z.literal('')),
-  audio_url: z.string().url('URL audio invalide').optional().or(z.literal('')),
-});
+  video_url: z.string().url('URL vidéo invalide').optional(),
+  audio_url: z.string().url('URL audio invalide').optional(),
+})
 
 // Schema pour les articles
 export const articleSchema = z.object({
@@ -299,29 +297,58 @@ export const mediaSchema = z.object({
   entity_id: z.number().int().positive('ID d\'entité invalide').optional(),
 });
 
-// Schema pour les vidéos
 export const videoSchema = z.object({
-  title: z.string().min(1, 'Le titre est requis').max(255, 'Le titre est trop long'),
-  slug: z.string().min(1, 'Le slug est requis').max(255, 'Le slug est trop long'),
+  title: z.string().min(1, 'Titre requis').max(255, 'Titre trop long'),
+  slug: z.string().min(1, 'Slug requis').max(255, 'Slug trop long'),
   description: z.string().optional(),
-  video_url: z.string().url('URL vidéo invalide').min(1, 'L\'URL de la vidéo est requise'),
-  thumbnail_url: z.string().url('URL de miniature invalide').optional().or(z.literal('')),
-  duration: z.number().int().min(0, 'Durée invalide').optional(),
+  video_url: z.string().url('URL vidéo invalide'),
+  thumbnail_url: z.string().url('URL miniature invalide').optional(),
+  duration: z.number().int().nonnegative('Durée invalide').optional(),
   type: z.enum(['youtube', 'facebook', 'tiktok', 'rtmp', 'upload', 'vimeo']),
   category: z.enum(['match', 'interview', 'highlights', 'training', 'documentary', 'ceremony']),
-  view_count: z.number().int().min(0, 'Nombre de vues invalide').default(0),
-  like_count: z.number().int().min(0, 'Nombre de likes invalide').default(0),
+  view_count: z.number().int().nonnegative().default(0),
+  like_count: z.number().int().nonnegative().default(0),
   is_live: z.boolean().default(false),
   is_featured: z.boolean().default(false),
-  published_at: z.string().datetime('Format de date/heure invalide').optional(),
+  published_at: z.string().datetime('Date de publication invalide').optional(),
 });
 
 // Schema pour les interactions
 export const interactionSchema = z.object({
-  user_id: z.number().int().positive('Utilisateur invalide'),
-  entity_type: z.string().min(1, 'Le type d\'entité est requis').max(50, 'Le type d\'entité est trop long'),
+  user_id: z.number().int().positive('ID utilisateur invalide'),
+  entity_type: z.string().min(1, 'Type d\'entité requis'),
   entity_id: z.number().int().positive('ID d\'entité invalide'),
   interaction_type: z.enum(['like', 'view', 'share', 'bookmark', 'follow']),
+});
+
+// Schema pour les notifications
+export const notificationSchema = z.object({
+  user_id: z.number().int().positive('ID utilisateur invalide'),
+  title: z.string().min(1, 'Titre requis').max(255, 'Titre trop long'),
+  message: z.string().min(1, 'Message requis'),
+  notification_type: z.enum(['match_update', 'fighter_update', 'competition_update', 'system_notification', 'achievement', 'message']),
+  entity_type: z.enum(['article', 'match', 'fighter', 'competition', 'user', 'message']).optional(),
+  entity_id: z.number().int().positive('ID d\'entité invalide').optional(),
+  is_read: z.boolean().default(false),
+  action_url: z.string().url('URL d\'action invalide').optional(),
+  priority: z.enum(['low', 'medium', 'high']).default('medium'),
+  expires_at: z.string().datetime('Date d\'expiration invalide').optional(),
+});
+
+// Schema pour les paramètres d'application
+export const appSettingSchema = z.object({
+  setting_key: z.string().min(1, 'Clé requise').max(100, 'Clé trop longue'),
+  setting_value: z.union([z.string(), z.number(), z.boolean(), z.record(z.string(), z.any())]),
+  setting_type: z.enum(['string', 'number', 'boolean', 'json', 'array']).default('string'),
+  category: z.string().max(50, 'Catégorie trop longue').default('general'),
+  description: z.string().optional(),
+  is_public: z.boolean().default(false),
+  is_editable: z.boolean().default(true),
+});
+
+// Schema pour la mise à jour des settings
+export const appSettingUpdateSchema = z.object({
+  setting_value: z.union([z.string(), z.number(), z.boolean(), z.record(z.string(), z.any())]).optional(),
 });
 
 // Types dérivés des schemas
@@ -347,3 +374,5 @@ export type ArticleInput = z.infer<typeof articleSchema>;
 export type MediaInput = z.infer<typeof mediaSchema>;
 export type VideoInput = z.infer<typeof videoSchema>;
 export type InteractionInput = z.infer<typeof interactionSchema>;
+export type NotificationInput = z.infer<typeof notificationSchema>;
+export type AppSettinInput = z.infer<typeof appSettingSchema>;

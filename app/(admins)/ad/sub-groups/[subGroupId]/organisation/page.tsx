@@ -40,8 +40,29 @@ export default function SubGroupOrganizationPage() {
       setMatches(subGroupData.matches || []);
 
       // Les lutteurs sont déjà inclus dans la réponse, pas besoin de recharger
-      setRegion1Fighters(subGroupData.region1?.fighters || []);
-      setRegion2Fighters(subGroupData.region2?.fighters || []);
+      // Récupérer les lutteurs de l'édition pour chaque région via paramètre region_id
+      const editionId = subGroupData.group?.phase?.edition?.id;
+      if (editionId) {
+        const region1Id = subGroupData.region1?.id;
+        const region2Id = subGroupData.region2?.id;
+
+        if (region1Id) {
+          const fightersRegion1 = await api.get<any>(`/api/editions/${editionId}/fighters?region_id=${region1Id}`);
+          setRegion1Fighters(fightersRegion1.data.map((e: any) => e.fighter) || []);
+        } else {
+          setRegion1Fighters([]);
+        }
+
+        if (region2Id) {
+          const fightersRegion2 = await api.get<any>(`/api/editions/${editionId}/fighters?region_id=${region2Id}`);
+          setRegion2Fighters(fightersRegion2.data.map((e: any) => e.fighter) || []);
+        } else {
+          setRegion2Fighters([]);
+        }
+      } else {
+        setRegion1Fighters([]);
+        setRegion2Fighters([]);
+      }
     } catch (error) {
       console.error("Erreur chargement sous-groupe:", error);
       setSubGroup(null);
@@ -49,6 +70,8 @@ export default function SubGroupOrganizationPage() {
       setLoading(false);
     }
   };
+
+  console.log(region1Fighters, region2Fighters)
 
   // Fonction pour obtenir les lutteurs disponibles (sans match)
   const getAvailableFighters = (
@@ -112,36 +135,6 @@ const handleEditMatch = async (match: Match) => {
   }
 };
 
-  // const handleEditMatch = async (match: Match) => {
-  //   try {
-  //     const formData = new FormData();
-  //     formData.append("status", match.status || "scheduled");
-  //     formData.append(
-  //       "winner_fighter_id",
-  //       match.winner_fighter_id?.toString() || ""
-  //     );
-  //     formData.append("match_result", match.match_result || "");
-  //     formData.append("total_duration", match.total_duration || "");
-  //     formData.append("notes", match.notes || "");
-
-  //     const response = await api.put(`/api/matches/${match.id}`, formData);
-
-  //     if (
-  //       response &&
-  //       typeof response === "object" &&
-  //       "success" in response &&
-  //       response.success
-  //     ) {
-  //       loadSubGroup(); // Recharger les données après édition
-  //     } else {
-  //       alert("Erreur lors de la mise à jour du match");
-  //     }
-  //   } catch (error) {
-  //     console.error("Erreur édition match:", error);
-  //     alert("Erreur lors de l'édition du match");
-  //   }
-  // };
-
     const handleDeleteMatch = async (matchId: number) => {
     if (!confirm("Êtes-vous sûr de vouloir supprimer ce match ?")) return;
 
@@ -186,21 +179,21 @@ const handleEditMatch = async (match: Match) => {
   );
 
   return (
-    <div className="mx-auto py-2 space-y-2">
+    <div className="mx-auto space-y-1">
       {/* En-tête de la rencontre */}
       <Card>
-        <CardContent className="p-2">
+        <CardContent className="p-1">
           <div className="flex flex-col lg:flex-row items-center justify-between space-y-2 lg:space-y-0">
             <div className="text-center lg:text-left">
-              <Typography variant="h3" weight="bold" className="mb-2">
+              <Typography variant="h5" weight="bold" className="mb-2">
                 {subGroup.name}
               </Typography>
-              <Typography variant="body-lg" theme="muted" className="mb-3">
+              {/* <Typography variant="body-lg" theme="muted" className="mb-3">
                 {subGroup.description}
-              </Typography>
+              </Typography> */}
 
               {/* Informations de la rencontre */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
                 <div className="flex items-center space-x-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <Typography variant="body-sm">
@@ -238,9 +231,9 @@ const handleEditMatch = async (match: Match) => {
       </Card>
 
       {/* Grille d'organisation */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Colonne Région 1 */}
-        <div className="space-y-4 col-span-3">
+        <div className="space-y-2 col-span-3">
           <RegionColumn
             region={subGroup.region1}
             fighters={availableRegion1Fighters}
@@ -436,7 +429,7 @@ function MatchesColumn({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4 max-h-[600px] overflow-y-auto">
+        <div className="space-y-2 max-h-[600px] overflow-y-auto">
           {matches.length === 0 &&
           availableRegion1Fighters.length === 0 &&
           availableRegion2Fighters.length === 0 ? (

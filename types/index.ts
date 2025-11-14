@@ -144,7 +144,7 @@ export interface EditionFighter extends BaseEntity {
   status: 'registered' | 'qualified' | 'disqualified' | 'withdrawn';  
   // Relations
   edition?: CompetitionEdition;
-  fighter?: Fighter;
+  fighter: Fighter;
   region?: Region;
 }
 
@@ -157,7 +157,7 @@ export interface EditionRegion extends BaseEntity {
   
   // Relations
   edition?: CompetitionEdition;
-  region?: Region;
+  region: Region;
 }
 
 // Phase de compétition
@@ -322,8 +322,10 @@ export interface Notification extends BaseEntity {
 }
 
 export interface NotificationFilters extends BaseFilters {
-  notification_type?: 'match_update' | 'fighter_update' | 'competition_update' | 'system_notification';
+  user_id?: number;
+  notification_type?: 'match_update' | 'fighter_update' | 'competition_update' | 'system_notification' | 'achievement' | 'message';
   is_read?: boolean;
+  priority?: 'low' | 'medium' | 'high';
   with_user?: boolean;
 }
 
@@ -408,6 +410,7 @@ export interface PaginatedResponse<T> {
 // Types pour les filtres
 export interface BaseFilters {
   search?: string;
+  relations?: boolean;
   page?: number;
   limit?: number;
   sortBy?: string;
@@ -515,6 +518,7 @@ export interface EditionFilters extends BaseFilters {
   with_regions?: boolean;
   with_phases?: boolean;
   region_id?: number;
+  offset?: number;
 }
 
 export interface PhaseFilters extends BaseFilters {
@@ -572,16 +576,18 @@ export interface EditionFighterFilters extends BaseFilters {
   fighter_id?: number;
   region_id?: number;
   status?: string;
-  with_fighter?: boolean;
+  with_fighter: boolean;
   with_region?: boolean;
   with_edition?: boolean;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
 }
 
 export interface EditionRegionFilters extends BaseFilters {
   edition_id?: number;
   region_id?: number;
   status?: string;
-  with_region?: boolean;
+  with_region: boolean;
   with_edition?: boolean;
 }
 
@@ -630,6 +636,7 @@ export interface MessageFilters extends BaseFilters {
   with_author?: boolean;
   with_recipient?: boolean;
   with_parent?: boolean;
+  parent_message_id?: number;
 }
 
 export interface ArticleFilters extends BaseFilters {
@@ -716,4 +723,65 @@ export interface GlobalStats {
     most_fighters: { region_id: number; region_name: string; count: number }[];
     most_champions: { region_id: number; region_name: string; count: number }[];
   };
+}
+
+// App Settings
+export interface AppSetting extends BaseEntity {
+  setting_key: string;
+  setting_value: string | number | boolean | any;
+  setting_type: 'string' | 'number' | 'boolean' | 'json' | 'array';
+  category: string;
+  description?: string;
+  is_public: boolean;
+  is_editable: boolean;
+}
+
+export interface AppSettingFilters extends BaseFilters {
+  category?: string;
+  is_public?: boolean;
+  is_editable?: boolean;
+}
+
+// Types pour les valeurs des settings avec typage fort
+export interface AppSettings {
+  // General
+  app_name: string;
+  app_description: string;
+  app_version: string;
+  
+  // System
+  maintenance_mode: boolean;
+  
+  // Auth
+  registration_enabled: boolean;
+  
+  // Media
+  max_file_size: number;
+  allowed_file_types: string[];
+  
+  // Localization
+  default_language: string;
+  supported_languages: string[];
+  
+  // Matches
+  match_duration: number;
+  max_breaks_per_match: number;
+  
+  // Ranking
+  ranking_points_win: number;
+  ranking_points_draw: number;
+  
+  // Social
+  social_links: {
+    facebook?: string;
+    twitter?: string;
+    instagram?: string;
+    youtube?: string;
+  };
+  
+  // Contact
+  contact_email: string;
+  
+  // Analytics
+  analytics_tracking_id: string;
 }

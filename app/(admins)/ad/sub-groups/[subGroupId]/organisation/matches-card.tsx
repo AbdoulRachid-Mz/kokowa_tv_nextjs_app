@@ -7,9 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Typography } from "@/components/ui/typography";
 import { Match } from "@/types";
-import { MoreVertical, Clock, Users } from "lucide-react";
+import {
+  MoreVertical,
+  Clock,
+  Users,
+  Trophy,
+  Minus,
+  Square,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MatchDrawer } from "./match-drawer";
+import { FighterDrawer } from "./fighter-drawer";
+import { getBeltColor } from "@/utils/getBeltColor";
+import { cn } from "@/lib/utils";
 
 interface MatchCardProps {
   match: Match;
@@ -19,7 +29,30 @@ interface MatchCardProps {
 
 export function MatchCard({ match, onDelete, onEdit }: MatchCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
+  const [fighter1DrawerOpen, setFighter1DrawerOpen] = useState(false);
+  const [fighter2DrawerOpen, setFighter2DrawerOpen] = useState(false);
+
+  // Fonction pour compter les cartons par lutteur
+  const getFighterCards = (fighterId: number) => {
+    if (!match.cards) return { yellow: 0, red: 0 };
+
+    const fighterCards = match.cards.filter(
+      (card) => card.fighter_id === fighterId && !card.is_cancelled
+    );
+
+    return {
+      yellow: fighterCards.filter((card) => card.card_type === "yellow").length,
+      red: fighterCards.filter((card) => card.card_type === "red").length,
+    };
+  };
+
+  const fighter1Cards = match.fighter1
+    ? getFighterCards(match.fighter1.id)
+    : { yellow: 0, red: 0 };
+  const fighter2Cards = match.fighter2
+    ? getFighterCards(match.fighter2.id)
+    : { yellow: 0, red: 0 };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -29,6 +62,10 @@ export function MatchCard({ match, onDelete, onEdit }: MatchCardProps) {
         return "destructive";
       case "scheduled":
         return "secondary";
+      case "cancelled":
+        return "outline";
+      case "postponed":
+        return "outline";
       default:
         return "outline";
     }
@@ -67,32 +104,44 @@ export function MatchCard({ match, onDelete, onEdit }: MatchCardProps) {
   return (
     <>
       <Card
-        className={`transition-all duration-200 cursor-pointer ${
-          isHovered ? "shadow-md border-primary/20" : ""
-        }`}
+        className={cn(
+          "transition-all duration-200 cursor-pointer border-2",
+          isHovered && "shadow-md",
+          isHovered && match.status === "scheduled" && "border-default",
+          isHovered && match.status === "live" && "border-destructive",
+          isHovered && match.status === "round_break" && "border-secondary",
+          isHovered && match.status === "completed" && "border-primary2",
+          isHovered && match.status === "cancelled" && "border-outline",
+          isHovered && match.status === "postponed" && "border-outline",
+          isHovered && match.status === "reclamation" && "border-outline",
+          match.status === "cancelled" && "opacity-60"
+        )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        onClick={() => setDrawerOpen(true)}
+        onClick={() => setMatchDrawerOpen(true)}
       >
-        <CardContent className="p-4">
+        <CardContent className="p-2">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-2">
               <Typography variant="body-sm" weight="medium">
                 Match #{match.match_number}
               </Typography>
-              <Badge variant={getStatusVariant(match.status)} className="text-xs">
+              <Badge
+                variant={getStatusVariant(match.status)}
+                className="text-xs"
+              >
                 {getStatusText(match.status)}
               </Badge>
             </div>
 
             {isHovered && (
               <Button
-                variant="ghost"
+                variant="default"
                 size="sm"
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 rounded-full"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setDrawerOpen(true);
+                  setMatchDrawerOpen(true);
                 }}
               >
                 <MoreVertical className="h-3 w-3" />
@@ -103,25 +152,72 @@ export function MatchCard({ match, onDelete, onEdit }: MatchCardProps) {
           {/* Participants */}
           <div className="grid grid-cols-2 gap-4 mb-3">
             {/* Fighter 1 */}
-            <div className={`text-center p-2 rounded-lg`}>
+            <div
+              className={`text-center p-2 rounded-lg cursor-pointer ${
+                match.match_result === "fighter1_win"
+                  ? "bg-green-50 border border-green-200"
+                  : match.status === "cancelled"
+                  ? "bg-gray-100"
+                  : "bg-muted/30"
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setFighter1DrawerOpen(true);
+              }}
+            >
               {match.fighter1 ? (
                 <>
-                  <Avatar
-                    className={`w-12 h-12 mx-auto mb-2 border-2 ${
-                      match.winner_fighter_id === match.fighter1.id 
-                        ? "border-green-500" 
-                        : "border-gray-300"
-                    }`}
-                  >
-                    <AvatarImage
-                      src={match.fighter1.profile_image}
-                      alt={`${match.fighter1.first_name} ${match.fighter1.last_name}`}
-                    />
-                    <AvatarFallback>
-                      {match.fighter1.first_name[0]}
-                      {match.fighter1.last_name[0]}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative inline-block mx-auto mb-2">
+                    <Avatar
+                      className="w-12 h-12"
+                      style={{
+                        border: `2px solid ${getBeltColor(
+                          match.sub_group?.belt_region1,
+                          "#10b981"
+                        )}`,
+                      }}
+                    >
+                      <AvatarImage
+                        src={match.fighter1.profile_image}
+                        alt={`${match.fighter1.first_name} ${match.fighter1.last_name}`}
+                      />
+                      <AvatarFallback>
+                        {match.fighter1.first_name[0]}
+                        {match.fighter1.last_name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    {/* Badge victoire */}
+                    {match.match_result === "fighter1_win" && (
+                      <div className="absolute -bottom-1 -right-1 bg-green-500 text-white rounded-full p-1">
+                        <Trophy className="w-3 h-3" />
+                      </div>
+                    )}
+
+                    {/* Badge match nul */}
+                    {match.match_result === "draw" && (
+                      <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-1">
+                        <Minus className="w-3 h-3" />
+                      </div>
+                    )}
+
+                    {/* Badges cartons */}
+                    {(fighter1Cards.yellow > 0 || fighter1Cards.red > 0) && (
+                      <div className="absolute -top-1 -right-1 flex gap-1">
+                        {fighter1Cards.yellow > 0 && (
+                          <div className="bg-yellow-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center">
+                            {fighter1Cards.yellow}
+                          </div>
+                        )}
+                        {fighter1Cards.red > 0 && (
+                          <div className="bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center">
+                            {fighter1Cards.red}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <Typography
                     variant="body-sm"
                     weight="medium"
@@ -133,11 +229,24 @@ export function MatchCard({ match, onDelete, onEdit }: MatchCardProps) {
                   >
                     {match.fighter1.first_name} {match.fighter1.last_name}
                   </Typography>
-                  {match.fighter1.ranking && (
-                    <Typography variant="body-base" theme="muted">
-                      Classement: {match.fighter1.ranking || "N/A"}
+
+                  {match.fighter1.nickname && (
+                    <Typography
+                      variant="body-base"
+                      theme="muted"
+                      className="truncate"
+                    >
+                      "{match.fighter1.nickname}"
                     </Typography>
                   )}
+
+                  <Typography
+                    variant="body-base"
+                    theme="muted"
+                    className="mt-1"
+                  >
+                    Cliquer pour gérer
+                  </Typography>
                 </>
               ) : (
                 <Typography variant="body-sm" theme="muted" className="italic">
@@ -147,25 +256,72 @@ export function MatchCard({ match, onDelete, onEdit }: MatchCardProps) {
             </div>
 
             {/* Fighter 2 */}
-            <div className={`text-center p-2 rounded-lg`}>
+            <div
+              className={`text-center p-2 rounded-lg cursor-pointer ${
+                match.match_result === "fighter2_win"
+                  ? "bg-green-50 border border-green-200"
+                  : match.status === "cancelled"
+                  ? "bg-gray-100"
+                  : "bg-muted/30"
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setFighter2DrawerOpen(true);
+              }}
+            >
               {match.fighter2 ? (
                 <>
-                  <Avatar
-                    className={`w-12 h-12 mx-auto mb-2 border-2 ${
-                      match.winner_fighter_id === match.fighter2.id 
-                        ? "border-green-500" 
-                        : "border-gray-300"
-                    }`}
-                  >
-                    <AvatarImage
-                      src={match.fighter2.profile_image}
-                      alt={`${match.fighter2.first_name} ${match.fighter2.last_name}`}
-                    />
-                    <AvatarFallback>
-                      {match.fighter2.first_name[0]}
-                      {match.fighter2.last_name[0]}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative inline-block mx-auto mb-2">
+                    <Avatar
+                      className="w-12 h-12"
+                      style={{
+                        border: `2px solid ${getBeltColor(
+                          match.sub_group?.belt_region2,
+                          "#f59e0b"
+                        )}`,
+                      }}
+                    >
+                      <AvatarImage
+                        src={match.fighter2.profile_image}
+                        alt={`${match.fighter2.first_name} ${match.fighter2.last_name}`}
+                      />
+                      <AvatarFallback>
+                        {match.fighter2.first_name[0]}
+                        {match.fighter2.last_name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    {/* Badge victoire */}
+                    {match.match_result === "fighter2_win" && (
+                      <div className="absolute -bottom-1 -right-1 bg-green-500 text-white rounded-full p-1">
+                        <Trophy className="w-3 h-3" />
+                      </div>
+                    )}
+
+                    {/* Badge match nul */}
+                    {match.match_result === "draw" && (
+                      <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-1">
+                        <Minus className="w-3 h-3" />
+                      </div>
+                    )}
+
+                    {/* Badges cartons */}
+                    {(fighter2Cards.yellow > 0 || fighter2Cards.red > 0) && (
+                      <div className="absolute -top-1 -right-1 flex gap-1">
+                        {fighter2Cards.yellow > 0 && (
+                          <div className="bg-yellow-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center">
+                            {fighter2Cards.yellow}
+                          </div>
+                        )}
+                        {fighter2Cards.red > 0 && (
+                          <div className="bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center">
+                            {fighter2Cards.red}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <Typography
                     variant="body-sm"
                     weight="medium"
@@ -177,11 +333,24 @@ export function MatchCard({ match, onDelete, onEdit }: MatchCardProps) {
                   >
                     {match.fighter2.first_name} {match.fighter2.last_name}
                   </Typography>
-                  {match.fighter2.ranking && (
-                    <Typography variant="body-base" theme="muted">
-                      Classement: {match.fighter2.ranking || "N/A"}
+
+                  {match.fighter2.nickname && (
+                    <Typography
+                      variant="body-base"
+                      theme="muted"
+                      className="truncate"
+                    >
+                      "{match.fighter2.nickname}"
                     </Typography>
                   )}
+
+                  <Typography
+                    variant="body-base"
+                    theme="muted"
+                    className="mt-1"
+                  >
+                    Cliquer pour gérer
+                  </Typography>
                 </>
               ) : (
                 <Typography variant="body-sm" theme="muted" className="italic">
@@ -204,32 +373,65 @@ export function MatchCard({ match, onDelete, onEdit }: MatchCardProps) {
                 </div>
               )}
 
-              {match.audience_count && (
+              {match.break_count > 0 && (
                 <div className="flex items-center space-x-1">
-                  <Users className="h-3 w-3" />
-                  <span>{match.audience_count} spectateurs</span>
+                  <Square className="h-3 w-3" />
+                  <span>{match.break_count} pause(s)</span>
                 </div>
               )}
             </div>
 
             {match.match_result && (
               <Badge variant="outline" className="text-xs">
-                {match.match_result === "fighter1_win" && "Victoire Lutteur 1"}
-                {match.match_result === "fighter2_win" && "Victoire Lutteur 2"}
+                {match.match_result === "fighter1_win" && "Victoire 1"}
+                {match.match_result === "fighter2_win" && "Victoire 2"}
                 {match.match_result === "draw" && "Match nul"}
+                {match.match_result === "cancelled" && "Annulé"}
+                {match.match_result === "postponed" && "Reporté"}
               </Badge>
             )}
           </div>
         </CardContent>
       </Card>
 
+      {/* Drawers */}
       <MatchDrawer
         match={match}
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
+        open={matchDrawerOpen}
+        onOpenChange={setMatchDrawerOpen}
         onDelete={onDelete}
         onEdit={onEdit}
+        onFighterClick={(fighterType) => {
+          setMatchDrawerOpen(false);
+          if (fighterType === "fighter1") {
+            setFighter1DrawerOpen(true);
+          } else {
+            setFighter2DrawerOpen(true);
+          }
+        }}
       />
+
+      {match.fighter1 && (
+        <FighterDrawer
+          match={match}
+          fighter={match.fighter1}
+          fighterType="fighter1"
+          open={fighter1DrawerOpen}
+          onOpenChange={setFighter1DrawerOpen}
+          onUpdateMatch={async (updatedMatch) => await onEdit(updatedMatch)}
+        />
+      )}
+
+      {match.fighter2 && (
+        <FighterDrawer
+          match={match}
+          fighter={match.fighter2}
+          fighterType="fighter2"
+          open={fighter2DrawerOpen}
+          onOpenChange={setFighter2DrawerOpen}
+          onUpdateMatch={async (updatedMatch) => await onEdit(updatedMatch)}
+        />
+      )}
     </>
   );
 }

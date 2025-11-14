@@ -28,10 +28,11 @@ export async function GET(request: NextRequest) {
       limit,
       page,
       search,
-      with_fighters: searchParams.get("with_fighters") === "1" || Boolean("true"),
-      with_coach: searchParams.get("with_coach") === "1" || Boolean("true"),
-      with_competitions: searchParams.get("with_competitions") === "1" || Boolean("true"),
+      with_fighters: searchParams.get("with_fighters") !== "false",
+      with_coach: searchParams.get("with_coach") !== 'false',
+      with_competitions: searchParams.get("with_competitions") !== "false",
     });
+
 
     return NextResponse.json({
       data: regions.data,

@@ -423,11 +423,11 @@ export async function createMatch(formData: FormData) {
     const cleanedData = {
       sub_group_id: Number(rawData.sub_group_id),
       match_number: rawData.match_number ? Number(rawData.match_number) : undefined,
-      match_date: rawData.match_date as string,
-      start_time: rawData.start_time as string || undefined,
+      match_date: (rawData.match_date as string) || new Date().toISOString().split('T')[0],
+      start_time: (rawData.start_time as string) || '00:00:00',
       fighter1_id: rawData.fighter1_id ? Number(rawData.fighter1_id) : undefined,
       fighter2_id: rawData.fighter2_id ? Number(rawData.fighter2_id) : undefined,
-      notes: rawData.notes as string || undefined,
+      notes: rawData.notes ? (rawData.notes as string).trim() || 'Aucune note' : 'Aucune note',
     };
 
     const validatedData = matchSchema.parse(cleanedData);
@@ -465,7 +465,8 @@ export async function createMatch(formData: FormData) {
 
     revalidatePath('/matches');
     revalidatePath(`/editions/${editionId}`);
-    revalidatePath(`/sub-groups/${validatedData.sub_group_id}`);
+    revalidatePath(`/ad/sub-groups/${validatedData.sub_group_id}`);
+    revalidatePath(`/ad/sub-groups/${validatedData.sub_group_id}/organisation`);
     
     return { 
       success: true, 
@@ -488,7 +489,7 @@ export async function updateMatch(id: number, formData: FormData) {
     const rawData = {
       sub_group_id: formData.get('sub_group_id'),
       match_number: formData.get('match_number'),
-      match_date: formData.get('match_date'),
+      match_date: formData.get('match_date') as string || new Date().toISOString().split('T')[0],
       start_time: formData.get('start_time'),
       end_time: formData.get('end_time'),
       fighter1_id: formData.get('fighter1_id'),
@@ -524,6 +525,8 @@ export async function updateMatch(id: number, formData: FormData) {
       live_stream_url: rawData.live_stream_url as string || undefined,
       notes: rawData.notes as string || undefined,
     };
+
+    console.log(cleanedData)
 
     const validatedData = matchSchema.parse(cleanedData);
 
@@ -576,7 +579,8 @@ export async function updateMatch(id: number, formData: FormData) {
     revalidatePath('/matches');
     revalidatePath(`/editions/${editionId}`);
     revalidatePath(`/matches/${id}`);
-    revalidatePath(`/sub-groups/${validatedData.sub_group_id}`);
+    revalidatePath(`/ad/sub-groups/${validatedData.sub_group_id}`);
+    revalidatePath(`/ad/sub-groups/${validatedData.sub_group_id}/organisation`);
     
     return { 
       success: true, 

@@ -575,6 +575,62 @@ CREATE TABLE IF NOT EXISTS interactions (
         interaction_type
     )
 );
+
+
+-- =============================================
+-- CONFIGURATION DE L'APPLICATION
+-- =============================================
+CREATE TABLE IF NOT EXISTS app_settings (
+    id SERIAL PRIMARY KEY,
+    setting_key VARCHAR(100) UNIQUE NOT NULL,
+    setting_value TEXT,
+    setting_type VARCHAR(20) CHECK (
+        setting_type IN (
+            'string',
+            'number',
+            'boolean',
+            'json',
+            'array'
+        )
+    ) DEFAULT 'string',
+    category VARCHAR(50) DEFAULT 'general',
+    description TEXT,
+    is_public BOOLEAN DEFAULT FALSE,
+    is_editable BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Trigger pour updated_at
+CREATE TRIGGER update_app_settings_updated_at 
+BEFORE UPDATE ON app_settings 
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Index pour les performances
+CREATE INDEX idx_app_settings_key ON app_settings (setting_key);
+CREATE INDEX idx_app_settings_category ON app_settings (category);
+CREATE INDEX idx_app_settings_public ON app_settings (is_public);
+
+-- Données par défaut
+INSERT INTO app_settings (setting_key, setting_value, setting_type, category, description, is_public, is_editable) VALUES
+('app_name', 'Lutte Traditionnelle', 'string', 'general', 'Nom de l''application', TRUE, TRUE),
+('app_description', 'Plateforme de gestion des compétitions de lutte traditionnelle', 'string', 'general', 'Description de l''application', TRUE, TRUE),
+('app_version', '1.0.0', 'string', 'general', 'Version de l''application', TRUE, FALSE),
+('maintenance_mode', 'false', 'boolean', 'system', 'Mode maintenance', TRUE, TRUE),
+('registration_enabled', 'true', 'boolean', 'auth', 'Inscription des utilisateurs activée', TRUE, TRUE),
+('max_file_size', '10485760', 'number', 'media', 'Taille maximale des fichiers uploadés (en bytes)', FALSE, TRUE),
+('allowed_file_types', '["image/jpeg", "image/png", "image/gif", "video/mp4"]', 'json', 'media', 'Types de fichiers autorisés', FALSE, TRUE),
+('default_language', 'fr', 'string', 'localization', 'Langue par défaut', TRUE, TRUE),
+('supported_languages', '["fr", "ha", "en"]', 'json', 'localization', 'Langues supportées', TRUE, TRUE),
+('match_duration', '300', 'number', 'matches', 'Durée par défaut d''un match (en secondes)', FALSE, TRUE),
+('max_breaks_per_match', '3', 'number', 'matches', 'Nombre maximum de pauses par match', FALSE, TRUE),
+('ranking_points_win', '3', 'number', 'ranking', 'Points de classement pour une victoire', FALSE, TRUE),
+('ranking_points_draw', '1', 'number', 'ranking', 'Points de classement pour un match nul', FALSE, TRUE),
+('social_links', '{"facebook": "", "twitter": "", "instagram": "", "youtube": ""}', 'json', 'social', 'Liens vers les réseaux sociaux', TRUE, TRUE),
+('contact_email', 'contact@lutte-traditionnelle.com', 'string', 'contact', 'Email de contact', TRUE, TRUE),
+('analytics_tracking_id', '', 'string', 'analytics', 'ID de suivi Google Analytics', FALSE, TRUE)
+ON CONFLICT (setting_key) DO NOTHING;
+
 -- =============================================
 -- INDEX POUR LES PERFORMANCES
 -- =============================================

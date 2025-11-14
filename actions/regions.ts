@@ -14,9 +14,9 @@ export async function getRegions(
       page = 1,
       limit = 20,
       code,
-      with_fighters = 1,
-      with_coach = 1,
-      with_competitions = 0,
+      with_fighters,
+      with_coach,
+      with_competitions,
       fighter_count_min,
       fighter_count_max,
     } = filters;

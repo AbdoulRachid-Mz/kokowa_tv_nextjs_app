@@ -3,32 +3,10 @@
 import { query, queryOne } from '@/lib/db/neon-client';
 import { competitionEditionSchema, editionFighterSchema, editionRegionSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
-import { CompetitionEdition, EditionFighter, EditionRegion, PaginatedResponse } from '@/types';
+import { CompetitionEdition, EditionFighter, EditionFilters, EditionRegion, PaginatedResponse } from '@/types';
 
-export interface EditionFilters {
-  competition_id?: number;
-  year?: number;
-  search?: string;
-  page?: number;
-  limit?: number;
-  with_competition?: boolean;
-  with_fighters?: boolean;
-  with_regions?: boolean;
-  with_phases?: boolean;
-}
 
-export async function getEditions(options: {
-  competition_id?: string;
-  year?: number;
-  search?: string;
-  page?: number;
-  limit?: number;
-  offset?: number;
-  with_competition?: boolean;
-  with_fighters?: boolean;
-  with_regions?: boolean;
-  with_phases?: boolean;
-} = {}) {
+export async function getEditions(options: EditionFilters = {}) {
   try {
     const {
       competition_id,
@@ -463,7 +441,6 @@ export async function deleteEdition(id: number) {
   }
 }
 
-
 export interface EditionParticipantsFilters {
   search?: string;
   page?: number;
@@ -475,6 +452,31 @@ export interface EditionParticipantsFilters {
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
 }
+
+// // Lutteur participant à une édition
+// export interface EditionFighter extends BaseEntity {
+//   edition_id: number;
+//   fighter_id: number;
+//   region_id: number;
+//   registration_date: string;
+//   status: 'registered' | 'qualified' | 'disqualified' | 'withdrawn';  
+//   // Relations
+//   edition?: CompetitionEdition;
+//   fighter?: Fighter;
+//   region?: Region;
+// }
+
+// // Région participante à une édition
+// export interface EditionRegion extends BaseEntity {
+//   edition_id: number;
+//   region_id: number;
+//   registration_date: string;
+//   status: 'registered' | 'approved' | 'rejected';
+  
+//   // Relations
+//   edition?: CompetitionEdition;
+//   region?: Region;
+// }
 
 // Récupérer les lutteurs participants d'une édition
 export async function getEditionFighters(
@@ -848,7 +850,6 @@ export async function removeRegionFromEdition(editionId: number, regionId: numbe
     throw new Error('Erreur lors du retrait de la région de l\'édition');
   }
 }
-
 
 export async function getEditionsStats() {
   try {
