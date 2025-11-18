@@ -15,16 +15,46 @@ export async function getEditions(options: EditionFilters = {}) {
       page = 1,
       limit = 20,
       offset = 0,
-      with_competition = false,
+      with_competition = true,
       with_fighters = false,
       with_regions = false,
-      with_phases = false,
+      with_phases = true,
+      is_active,
+      with_groups = true,
+      with_subGroups = true,
+      with_matches = true
     } = options;
 
+    const baseParams: any[] = [];
     let whereClause = "WHERE 1=1";
     let joinClause = "";
-    const params: any[] = [];
     const selectFields = ["ce.*"];
+
+    // Filtres de base
+    if (competition_id) {
+      baseParams.push(competition_id);
+      whereClause += ` AND ce.competition_id = $${baseParams.length}`;
+    }
+
+    if (year) {
+      baseParams.push(year);
+      whereClause += ` AND ce.year = $${baseParams.length}`;
+    }
+
+    if (typeof is_active === 'boolean') {
+      baseParams.push(is_active);
+      whereClause += ` AND ce.is_active = $${baseParams.length}`;
+    }
+
+    if (search) {
+      baseParams.push(`%${search}%`);
+      whereClause += ` AND (
+        ce.theme ILIKE $${baseParams.length} 
+        OR CAST(ce.year AS TEXT) ILIKE $${baseParams.length}
+        OR CAST(ce.edition_number AS TEXT) ILIKE $${baseParams.length}
+        ${with_competition ? `OR c.name ILIKE $${baseParams.length}` : ''}
+      )`;
+    }
 
     // Jointures optionnelles
     if (with_competition) {
@@ -42,98 +72,205 @@ export async function getEditions(options: EditionFilters = {}) {
       `);
     }
 
+    // Paramètres pour la requête DATA
+    const dataParams = [...baseParams];
+
+    // Fighters avec filtre is_active
     if (with_fighters) {
+      const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
+      dataParams.push(isActiveFlag);
+      const isActiveIdx = dataParams.length;
+
       selectFields.push(`
-        (SELECT JSON_AGG(
-          JSON_BUILD_OBJECT(
-            'id', ef.id,
-            'fighter_id', ef.fighter_id,
-            'region_id', ef.region_id,
-            'status', ef.status,
-            'registration_date', ef.registration_date,
-            'fighter', JSON_BUILD_OBJECT(
-              'id', f.id,
-              'first_name', f.first_name,
-              'last_name', f.last_name,
-              'nickname', f.nickname,
-              'ranking', f.ranking,
-              'profile_image', f.profile_image,
-              'is_active', f.is_active,
-              'is_champion', f.is_champion
-            )
-          ) ORDER BY f.ranking
-        ) FROM edition_fighters ef
-        JOIN fighters f ON ef.fighter_id = f.id
-        WHERE ef.edition_id = ce.id) as fighters
+        COALESCE(
+          (SELECT JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', ef.id,
+              'fighter_id', ef.fighter_id,
+              'region_id', ef.region_id,
+              'status', ef.status,
+              'registration_date', ef.registration_date,
+              'fighter', JSON_BUILD_OBJECT(
+                'id', f.id,
+                'first_name', f.first_name,
+                'last_name', f.last_name,
+                'nickname', f.nickname,
+                'ranking', f.ranking,
+                'profile_image', f.profile_image,
+                'is_active', f.is_active,
+                'is_champion', f.is_champion
+              )
+            ) ORDER BY f.ranking
+          ) FROM edition_fighters ef
+          JOIN fighters f ON ef.fighter_id = f.id
+          WHERE ef.edition_id = ce.id
+            AND ($${isActiveIdx}::boolean IS FALSE OR f.is_active = true)
+          ),
+          '[]'::json
+        ) as fighters
       `);
     }
 
+    // Regions avec filtre is_active
     if (with_regions) {
+      const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
+      dataParams.push(isActiveFlag);
+      const isActiveIdx = dataParams.length;
+
       selectFields.push(`
-        (SELECT JSON_AGG(
-          JSON_BUILD_OBJECT(
-            'id', er.id,
-            'region_id', er.region_id,
-            'status', er.status,
-            'registration_date', er.registration_date,
-            'region', JSON_BUILD_OBJECT(
-              'id', r.id,
-              'name', r.name,
-              'code', r.code,
-              'color', r.color,
-              'flag_image', r.flag_image,
-              'stadium_name', r.stadium_name,
-              'stadium_image', r.stadium_image,
-              'total_fighters', r.total_fighters,
-              'total_champions', r.total_champions
-            )
-          ) ORDER BY r.name
-        ) FROM edition_regions er
-        JOIN regions r ON er.region_id = r.id
-        WHERE er.edition_id = ce.id) as regions
+        COALESCE(
+          (SELECT JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', er.id,
+              'region_id', er.region_id,
+              'status', er.status,
+              'registration_date', er.registration_date,
+              'region', JSON_BUILD_OBJECT(
+                'id', r.id,
+                'name', r.name,
+                'code', r.code,
+                'color', r.color,
+                'flag_image', r.flag_image,
+                'stadium_name', r.stadium_name,
+                'stadium_image', r.stadium_image,
+                'total_fighters', r.total_fighters,
+                'total_champions', r.total_champions
+              )
+            ) ORDER BY r.name
+          ) FROM edition_regions er
+          JOIN regions r ON er.region_id = r.id
+          WHERE er.edition_id = ce.id
+          ),
+          '[]'::json
+        ) as regions
       `);
     }
 
+    // Phases avec relations complètes
     if (with_phases) {
+      const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
+      const groupsFlag = with_groups === true;
+      const subGroupsFlag = with_subGroups === true;
+      const matchesFlag = with_matches === true;
+      
+      dataParams.push(isActiveFlag, groupsFlag, subGroupsFlag, matchesFlag);
+      
+      const [isActiveIdx, groupsIdx, subGroupsIdx, matchesIdx] = [
+        dataParams.length - 3,
+        dataParams.length - 2,
+        dataParams.length - 1,
+        dataParams.length
+      ];
+
       selectFields.push(`
-        (SELECT JSON_AGG(
-          JSON_BUILD_OBJECT(
-            'id', p.id,
-            'name', p.name,
-            'phase_type', p.phase_type,
-            'phase_order', p.phase_order,
-            'is_completed', p.is_completed,
-            'is_active', p.is_active,
-            'description', p.description,
-            'start_date', p.start_date,
-            'end_date', p.end_date
-          ) ORDER BY p.phase_order
-        ) FROM phases p WHERE p.edition_id = ce.id) as phases
+        COALESCE(
+          (SELECT JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', p.id,
+              'name', p.name,
+              'phase_type', p.phase_type,
+              'phase_order', p.phase_order,
+              'is_completed', p.is_completed,
+              'is_active', p.is_active,
+              'description', p.description,
+              'start_date', p.start_date,
+              'end_date', p.end_date,
+              'groups', (
+                CASE 
+                  WHEN $${groupsIdx}::boolean THEN (
+                    SELECT COALESCE(
+                      JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                          'id', pg.id,
+                          'name', pg.name,
+                          'group_order', pg.group_order,
+                          'description', pg.description,
+                          'is_completed', pg.is_completed,
+                          'is_active', pg.is_active,
+                          'sub_groups', (
+                            CASE 
+                              WHEN $${subGroupsIdx}::boolean THEN (
+                                SELECT COALESCE(
+                                  JSON_AGG(
+                                    JSON_BUILD_OBJECT(
+                                      'id', sg.id,
+                                      'name', sg.name,
+                                      'sub_group_order', sg.sub_group_order,
+                                      'description', sg.description,
+                                      'region1_id', sg.region1_id,
+                                      'region2_id', sg.region2_id,
+                                      'belt_region1', sg.belt_region1,
+                                      'belt_region2', sg.belt_region2,
+                                      'main_referee_id', sg.main_referee_id,
+                                      'is_completed', sg.is_completed,
+                                      'is_active', sg.is_active,
+                                      'matches', (
+                                        CASE 
+                                          WHEN $${matchesIdx}::boolean THEN (
+                                            SELECT COALESCE(
+                                              JSON_AGG(
+                                                JSON_BUILD_OBJECT(
+                                                  'id', m.id,
+                                                  'match_number', m.match_number,
+                                                  'match_date', m.match_date,
+                                                  'start_time', m.start_time,
+                                                  'end_time', m.end_time,
+                                                  'fighter1_id', m.fighter1_id,
+                                                  'fighter2_id', m.fighter2_id,
+                                                  'winner_fighter_id', m.winner_fighter_id,
+                                                  'loser_fighter_id', m.loser_fighter_id,
+                                                  'match_result', m.match_result,
+                                                  'total_duration', m.total_duration,
+                                                  'break_count', m.break_count,
+                                                  'status', m.status,
+                                                  'audience_count', m.audience_count,
+                                                  'video_url', m.video_url,
+                                                  'live_stream_url', m.live_stream_url,
+                                                  'notes', m.notes
+                                                ) ORDER BY m.match_number
+                                              ),
+                                              '[]'::json
+                                            )
+                                            FROM matches m
+                                            WHERE m.sub_group_id = sg.id
+                                              AND ($${isActiveIdx}::boolean IS FALSE OR m.is_active = true)
+                                          )
+                                          ELSE '[]'::json
+                                        END
+                                      )
+                                    ) ORDER BY sg.sub_group_order
+                                  ),
+                                  '[]'::json
+                                )
+                                FROM sub_groups sg
+                                WHERE sg.group_id = pg.id
+                                  AND ($${isActiveIdx}::boolean IS FALSE OR sg.is_active = true)
+                              )
+                              ELSE '[]'::json
+                            END
+                          )
+                        ) ORDER BY pg.group_order
+                      ),
+                      '[]'::json
+                    )
+                    FROM phase_groups pg
+                    WHERE pg.phase_id = p.id
+                      AND ($${isActiveIdx}::boolean IS FALSE OR pg.is_active = true)
+                  )
+                  ELSE '[]'::json
+                END
+              )
+            ) ORDER BY p.phase_order
+          ) FROM phases p 
+          WHERE p.edition_id = ce.id
+            AND ($${isActiveIdx}::boolean IS FALSE OR p.is_active = true)
+          ),
+          '[]'::json
+        ) as phases
       `);
     }
 
-    // Filtres dynamiques
-    if (competition_id) {
-      params.push(competition_id);
-      whereClause += ` AND ce.competition_id = $${params.length}`;
-    }
-
-    if (year) {
-      params.push(year);
-      whereClause += ` AND ce.year = $${params.length}`;
-    }
-
-    if (search) {
-      params.push(`%${search}%`);
-      whereClause += ` AND (
-        ce.theme ILIKE $${params.length} 
-        OR CAST(ce.year AS TEXT) ILIKE $${params.length}
-        OR CAST(ce.edition_number AS TEXT) ILIKE $${params.length}
-        ${with_competition ? `OR c.name ILIKE $${params.length}` : ''}
-      )`;
-    }
-
-    // Count
+    // Count (utilise seulement baseParams)
     const countSql = `
       SELECT COUNT(DISTINCT ce.id) as total
       FROM competition_editions ce
@@ -141,14 +278,14 @@ export async function getEditions(options: EditionFilters = {}) {
       ${whereClause}
     `;
 
-    const countResult = await query<{ total: number }>(countSql, params);
+    const countResult = await query<{ total: number }>(countSql, baseParams);
     const total = countResult[0]?.total || 0;
 
     // Data
     const validatedLimit = Math.max(1, Math.min(100, limit));
     const validatedOffset = offset || (page - 1) * validatedLimit;
     
-    params.push(validatedLimit, validatedOffset);
+    dataParams.push(validatedLimit, validatedOffset);
     
     const dataSql = `
       SELECT ${selectFields.join(", ")}
@@ -156,10 +293,10 @@ export async function getEditions(options: EditionFilters = {}) {
       ${joinClause}
       ${whereClause}
       ORDER BY ce.year DESC, ce.edition_number DESC
-      LIMIT $${params.length - 1} OFFSET $${params.length}
+      LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}
     `;
 
-    const data = await query(dataSql, params);
+    const data = await query(dataSql, dataParams);
     
     return {
       data,
@@ -178,15 +315,55 @@ export async function getEditions(options: EditionFilters = {}) {
 }
 
 export async function getEditionById(id: number, options: { 
-  with_relations?: boolean 
+  with_relations?: boolean;
+  relations?: {
+    with_phases?: boolean;
+    with_regions?: boolean;
+    with_fighters?: boolean;
+    with_groups?: boolean;
+    with_subGroups?: boolean;
+    with_matches?: boolean;
+  };
+  is_active?: boolean;
 } = {}) {
   try {
-    const { with_relations = true } = options;
+    const { 
+      with_relations = true,
+      relations = {
+        with_phases: true, 
+        with_regions: false, 
+        with_fighters: false,
+        with_groups: true,
+        with_subGroups: true,
+        with_matches: true
+      },
+      is_active 
+    } = options;
     
-    let sql = 'SELECT * FROM competition_editions WHERE id = $1';
+    // Extraire les relations avec des valeurs par défaut
+    const {
+      with_phases = true,
+      with_regions = true,
+      with_fighters = true,
+      with_groups = true,
+      with_subGroups = true,
+      with_matches = true
+    } = relations;
+    
     const params: any[] = [id];
+    let whereClause = 'WHERE ce.id = $1';
+    
+    // Ajouter le filtre is_active si spécifié
+    if (typeof is_active === 'boolean') {
+      params.push(is_active);
+      whereClause += ` AND ce.is_active = $${params.length}`;
+    }
+
+    let sql = `SELECT * FROM competition_editions ce ${whereClause}`;
 
     if (with_relations) {
+      const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
+      
       sql = `
         SELECT 
           ce.*,
@@ -200,68 +377,174 @@ export async function getEditionById(id: number, options: {
             'region_id', c.region_id,
             'description', c.description
           ) as competition,
-          (SELECT JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'id', ef.id,
-              'fighter_id', ef.fighter_id,
-              'region_id', ef.region_id,
-              'status', ef.status,
-              'registration_date', ef.registration_date,
-              'fighter', JSON_BUILD_OBJECT(
-                'id', f.id,
-                'first_name', f.first_name,
-                'last_name', f.last_name,
-                'nickname', f.nickname,
-                'ranking', f.ranking,
-                'profile_image', f.profile_image,
-                'is_active', f.is_active,
-                'is_champion', f.is_champion,
-                'birth_date', f.birth_date,
-                'birth_place', f.birth_place,
-                'height', f.height,
-                'weight', f.weight,
-                'fighting_style', f.fighting_style,
-                'debut_year', f.debut_year
-              )
-            ) ORDER BY f.ranking
-          ) FROM edition_fighters ef
-          JOIN fighters f ON ef.fighter_id = f.id
-          WHERE ef.edition_id = ce.id) as fighters,
-          (SELECT JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'id', er.id,
-              'region_id', er.region_id,
-              'status', er.status,
-              'registration_date', er.registration_date,
-              'region', JSON_BUILD_OBJECT(
-                'id', r.id,
-                'name', r.name,
-                'code', r.code,
-                'color', r.color,
-                'flag_image', r.flag_image,
-                'stadium_name', r.stadium_name,
-                'stadium_image', r.stadium_image,
-                'total_fighters', r.total_fighters,
-                'total_champions', r.total_champions,
-                'description', r.description
-              )
-            ) ORDER BY r.name
-          ) FROM edition_regions er
-          JOIN regions r ON er.region_id = r.id
-          WHERE er.edition_id = ce.id) as regions,
-          (SELECT JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'id', p.id,
-              'name', p.name,
-              'phase_type', p.phase_type,
-              'phase_order', p.phase_order,
-              'is_completed', p.is_completed,
-              'is_active', p.is_active,
-              'description', p.description,
-              'start_date', p.start_date,
-              'end_date', p.end_date
-            ) ORDER BY p.phase_order
-          ) FROM phases p WHERE p.edition_id = ce.id) as phases,
+          ${with_fighters ? `
+          COALESCE(
+            (SELECT JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'id', ef.id,
+                'fighter_id', ef.fighter_id,
+                'region_id', ef.region_id,
+                'status', ef.status,
+                'registration_date', ef.registration_date,
+                'fighter', JSON_BUILD_OBJECT(
+                  'id', f.id,
+                  'first_name', f.first_name,
+                  'last_name', f.last_name,
+                  'nickname', f.nickname,
+                  'ranking', f.ranking,
+                  'profile_image', f.profile_image,
+                  'is_active', f.is_active,
+                  'is_champion', f.is_champion,
+                  'birth_date', f.birth_date,
+                  'birth_place', f.birth_place,
+                  'height', f.height,
+                  'weight', f.weight,
+                  'fighting_style', f.fighting_style,
+                  'debut_year', f.debut_year
+                )
+              ) ORDER BY f.ranking
+            ) FROM edition_fighters ef
+            JOIN fighters f ON ef.fighter_id = f.id
+            WHERE ef.edition_id = ce.id
+              AND (${isActiveFlag} IS FALSE OR f.is_active = true)
+            ),
+            '[]'::json
+          ) as fighters,
+          ` : `'[]'::json as fighters,`}
+          ${with_regions ? `
+          COALESCE(
+            (SELECT JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'id', er.id,
+                'region_id', er.region_id,
+                'status', er.status,
+                'registration_date', er.registration_date,
+                'region', JSON_BUILD_OBJECT(
+                  'id', r.id,
+                  'name', r.name,
+                  'code', r.code,
+                  'color', r.color,
+                  'flag_image', r.flag_image,
+                  'stadium_name', r.stadium_name,
+                  'stadium_image', r.stadium_image,
+                  'total_fighters', r.total_fighters,
+                  'total_champions', r.total_champions,
+                  'description', r.description
+                )
+              ) ORDER BY r.name
+            ) FROM edition_regions er
+            JOIN regions r ON er.region_id = r.id
+            WHERE er.edition_id = ce.id
+            ),
+            '[]'::json
+          ) as regions,
+          ` : `'[]'::json as regions,`}
+          ${with_phases ? `
+          COALESCE(
+            (SELECT JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'id', p.id,
+                'name', p.name,
+                'phase_type', p.phase_type,
+                'phase_order', p.phase_order,
+                'is_completed', p.is_completed,
+                'is_active', p.is_active,
+                'description', p.description,
+                'start_date', p.start_date,
+                'end_date', p.end_date,
+                'groups', (
+                  CASE 
+                    WHEN ${with_groups} THEN (
+                      SELECT COALESCE(
+                        JSON_AGG(
+                          JSON_BUILD_OBJECT(
+                            'id', pg.id,
+                            'name', pg.name,
+                            'group_order', pg.group_order,
+                            'description', pg.description,
+                            'is_completed', pg.is_completed,
+                            'is_active', pg.is_active,
+                            'sub_groups', (
+                              CASE 
+                                WHEN ${with_subGroups} THEN (
+                                  SELECT COALESCE(
+                                    JSON_AGG(
+                                      JSON_BUILD_OBJECT(
+                                        'id', sg.id,
+                                        'name', sg.name,
+                                        'sub_group_order', sg.sub_group_order,
+                                        'description', sg.description,
+                                        'region1_id', sg.region1_id,
+                                        'region2_id', sg.region2_id,
+                                        'belt_region1', sg.belt_region1,
+                                        'belt_region2', sg.belt_region2,
+                                        'main_referee_id', sg.main_referee_id,
+                                        'is_completed', sg.is_completed,
+                                        'is_active', sg.is_active,
+                                        'matches', (
+                                          CASE 
+                                            WHEN ${with_matches} THEN (
+                                              SELECT COALESCE(
+                                                JSON_AGG(
+                                                  JSON_BUILD_OBJECT(
+                                                    'id', m.id,
+                                                    'match_number', m.match_number,
+                                                    'match_date', m.match_date,
+                                                    'start_time', m.start_time,
+                                                    'end_time', m.end_time,
+                                                    'fighter1_id', m.fighter1_id,
+                                                    'fighter2_id', m.fighter2_id,
+                                                    'winner_fighter_id', m.winner_fighter_id,
+                                                    'loser_fighter_id', m.loser_fighter_id,
+                                                    'match_result', m.match_result,
+                                                    'total_duration', m.total_duration,
+                                                    'break_count', m.break_count,
+                                                    'status', m.status,
+                                                    'audience_count', m.audience_count,
+                                                    'video_url', m.video_url,
+                                                    'live_stream_url', m.live_stream_url,
+                                                    'notes', m.notes
+                                                  ) ORDER BY m.match_number
+                                                ),
+                                                '[]'::json
+                                              )
+                                              FROM matches m
+                                              WHERE m.sub_group_id = sg.id
+                                                AND (${isActiveFlag} IS FALSE OR m.is_active = true)
+                                            )
+                                            ELSE '[]'::json
+                                          END
+                                        )
+                                      ) ORDER BY sg.sub_group_order
+                                    ),
+                                    '[]'::json
+                                  )
+                                  FROM sub_groups sg
+                                  WHERE sg.group_id = pg.id
+                                    AND (${isActiveFlag} IS FALSE OR sg.is_active = true)
+                                )
+                                ELSE '[]'::json
+                              END
+                            )
+                          ) ORDER BY pg.group_order
+                        ),
+                        '[]'::json
+                      )
+                      FROM phase_groups pg
+                      WHERE pg.phase_id = p.id
+                        AND (${isActiveFlag} IS FALSE OR pg.is_active = true)
+                    )
+                    ELSE '[]'::json
+                  END
+                )
+              ) ORDER BY p.phase_order
+            ) FROM phases p 
+            WHERE p.edition_id = ce.id
+              AND (${isActiveFlag} IS FALSE OR p.is_active = true)
+            ),
+            '[]'::json
+          ) as phases,
+          ` : `'[]'::json as phases,`}
           (SELECT JSON_BUILD_OBJECT(
             'id', wf.id,
             'first_name', wf.first_name,
@@ -277,7 +560,7 @@ export async function getEditionById(id: number, options: {
           ) FROM regions wr WHERE wr.id = ce.winner_region_id) as winner_region
         FROM competition_editions ce
         LEFT JOIN competitions c ON ce.competition_id = c.id
-        WHERE ce.id = $1
+        ${whereClause}
       `;
     }
 

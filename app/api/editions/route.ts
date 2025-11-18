@@ -21,9 +21,12 @@ export async function GET(request: NextRequest) {
     const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1;
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20;
     const with_competition = searchParams.get('with_competition') !== 'false';
-    const with_fighters = searchParams.get('with_fighters') !== 'false';
-    const with_regions = searchParams.get('with_regions') !== 'false';
+    const with_fighters = searchParams.get('with_fighters') === 'true';
+    const with_regions = searchParams.get('with_regions') === 'true';
     const with_phases = searchParams.get('with_phases') !== 'false';
+    const with_groups = searchParams.get('with_groups') !== 'false';
+    const with_subGroups = searchParams.get('with_subGroups') !== 'false';
+    const with_matches = searchParams.get('with_matches') !== 'false';
     const stats = searchParams.get('stats') === 'true';
     const id = searchParams.get('id') || undefined;
 

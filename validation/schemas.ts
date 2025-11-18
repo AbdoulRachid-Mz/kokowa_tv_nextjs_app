@@ -147,20 +147,29 @@ export const beltSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
-// Schema pour les matchs
+// validation/schemas.ts - CORRECTION
 export const matchSchema = z.object({
   sub_group_id: z.number().int().positive('Sous-groupe invalide'),
-  match_number: z.number().int().min(1, 'Le numéro de match doit être positif').optional(),
-  match_date: z.string().datetime('Format de date/heure invalide').default(() => new Date().toISOString()),
-  start_time: z.string().regex(/^\d{2}:\d{2}:\d{2}$/, 'Format d\'heure invalide (HH:MM:SS)').optional(),
-  end_time: z.string().regex(/^\d{2}:\d{2}:\d{2}$/, 'Format d\'heure invalide (HH:MM:SS)').optional(),
+  match_number: z.number().int().min(1, 'Le numéro de match doit être positif').optional().or(z.literal('')),
+  match_date: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)')
+    .default(() => new Date().toISOString().split('T')[0]),
+  start_time: z.string()
+    .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/, 'Format d\'heure invalide (HH:MM ou HH:MM:SS)')
+    .optional()
+    .or(z.literal('')),
+  end_time: z.string()
+    .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/, 'Format d\'heure invalide (HH:MM ou HH:MM:SS)')
+    .optional()
+    .or(z.literal('')),
+  
   // Participants
-  fighter1_id: z.number().int().positive('Lutteur 1 invalide').optional(),
-  fighter2_id: z.number().int().positive('Lutteur 2 invalide').optional(),
+  fighter1_id: z.number().int().positive('Lutteur 1 invalide').optional().or(z.literal('')),
+  fighter2_id: z.number().int().positive('Lutteur 2 invalide').optional().or(z.literal('')),
 
   // Résultats
-  winner_fighter_id: z.number().int().positive('Lutteur gagnant invalide').optional(),
-  loser_fighter_id: z.number().int().positive('Lutteur perdant invalide').optional(),
+  winner_fighter_id: z.number().int().positive('Lutteur gagnant invalide').optional().or(z.literal('')),
+  loser_fighter_id: z.number().int().positive('Lutteur perdant invalide').optional().or(z.literal('')),
   is_active: z.boolean().default(true),
 
   // Résultat du match
@@ -173,7 +182,7 @@ export const matchSchema = z.object({
   ]).optional(),
 
   // Durée et statut
-  total_duration: z.string().optional(),
+  total_duration: z.string().optional().or(z.literal('')),
   break_count: z.number().int().min(0, 'Nombre de pauses invalide').default(0),
   status: z.enum([
     'scheduled',
@@ -186,7 +195,7 @@ export const matchSchema = z.object({
   ]).default('scheduled'),
 
   // Informations supplémentaires
-  audience_count: z.number().int().min(0, 'Nombre de spectateurs invalide').optional(),
+  audience_count: z.number().int().min(0, 'Nombre de spectateurs invalide').optional().or(z.literal('')),
   video_url: z.string().url('URL vidéo invalide').optional().or(z.literal('')),
   live_stream_url: z.string().url('URL stream invalide').optional().or(z.literal('')),
   notes: z.string().optional(),

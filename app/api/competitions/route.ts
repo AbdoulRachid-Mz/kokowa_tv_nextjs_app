@@ -15,10 +15,10 @@ export async function GET(request: NextRequest) {
       region_id: searchParams.get('region_id') ? parseInt(searchParams.get('region_id')!) : undefined,
       date_from: searchParams.get('date_from') || undefined,
       date_to: searchParams.get('date_to') || undefined,
-      with_region: searchParams.get('with_region') !== "false",
-      with_editions: searchParams.get('with_editions') !== "false",
-      with_phases: searchParams.get('with_phases') !== "false",
-      with_matches: searchParams.get('with_matches') !== "false",
+      with_region: searchParams.get('with_region') === "true",
+      with_editions: searchParams.get('with_editions') === "true",
+      with_phases: searchParams.get('with_phases') === "true",
+      with_matches: searchParams.get('with_matches') === "true",
     };
 
     const result = await getCompetitions(filters);

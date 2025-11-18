@@ -10,8 +10,10 @@ export async function GET(request: NextRequest) {
       search: searchParams.get('search') || undefined,
       page: searchParams.has('page') ? Number(searchParams.get('page')) : 1,
       limit: searchParams.has('limit') ? Number(searchParams.get('limit')) : 20,
+      is_active: searchParams.get('is_active') !== 'true',
       with_phase: searchParams.get('with_phase') !== 'false',
-      with_sub_groups: searchParams.get('with_sub_groups') === 'true',
+      with_subGroups: searchParams.get('with_subGroups') !== 'false',
+      with_matches: searchParams.get('with_matches') !== 'false',
     };
 
     const result = await getPhaseGroups(filters);

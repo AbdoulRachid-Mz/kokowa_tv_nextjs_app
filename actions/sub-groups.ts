@@ -16,7 +16,7 @@ export async function getSubGroups(
       page = 1,
       limit = 20,
       with_group = true,
-      with_matches = false,
+      with_matches = true,
       with_regions = true,
     } = filters;
 
@@ -163,120 +163,223 @@ export async function getSubGroups(
 }
 
 export async function getSubGroupById(id: number, options: { 
-  with_relations?: boolean 
+  with_relations?: boolean;
+  relations?: {
+    with_group?: boolean;
+    with_phase?: boolean;
+    with_edition?: boolean;
+    with_regions?: boolean;
+    with_fighters?: boolean;
+    with_belts?: boolean;
+    with_referee?: boolean;
+    with_matches?: boolean;
+  };
+  is_active?: boolean;
 } = {}) {
   try {
-    const { with_relations = true } = options;
+    const { 
+      with_relations = true,
+      relations = {
+        with_group: true,
+        with_phase: true,
+        with_edition: true,
+        with_regions: true,
+        with_fighters: true,
+        with_belts: true,
+        with_referee: true,
+        with_matches: true
+      },
+      is_active 
+    } = options;
     
-    let sql = 'SELECT * FROM sub_groups WHERE id = $1';
+    // Extraire les relations avec des valeurs par défaut
+    const {
+      with_group = true,
+      with_phase = true,
+      with_edition = true,
+      with_regions = true,
+      with_fighters = true,
+      with_belts = true,
+      with_referee = true,
+      with_matches = true
+    } = relations;
+    
     const params: any[] = [id];
+    let whereClause = 'WHERE sg.id = $1';
+    
+    // Ajouter le filtre is_active si spécifié
+    if (typeof is_active === 'boolean') {
+      params.push(is_active);
+      whereClause += ` AND sg.is_active = $${params.length}`;
+    }
+
+    let sql = `SELECT * FROM sub_groups sg ${whereClause}`;
 
     if (with_relations) {
+      const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
+      
       sql = `
         SELECT 
           sg.*,
+          ${with_group ? `
           JSON_BUILD_OBJECT(
             'id', pg.id,
             'name', pg.name,
             'group_order', pg.group_order,
+            ${with_phase ? `
             'phase', JSON_BUILD_OBJECT(
               'id', p.id,
               'name', p.name,
               'phase_type', p.phase_type,
+              ${with_edition ? `
               'edition', JSON_BUILD_OBJECT(
                 'id', ce.id,
                 'edition_number', ce.edition_number,
                 'year', ce.year
               )
+              ` : `'edition', NULL`}
             )
+            ` : `'phase', NULL`}
           ) as group,
-          JSON_BUILD_OBJECT(
-            'id', r1.id,
-            'name', r1.name,
-            'code', r1.code,
-            'fighters', (
-              SELECT JSON_AGG(
-                JSON_BUILD_OBJECT(
-                  'id', f.id,
-                  'first_name', f.first_name,
-                  'last_name', f.last_name,
-                  'nickname', f.nickname,
-                  'profile_image', f.profile_image
+          ` : `'group', NULL,`}
+          ${with_regions ? `
+          CASE 
+            WHEN sg.region1_id IS NOT NULL THEN
+              JSON_BUILD_OBJECT(
+                'id', r1.id,
+                'name', r1.name,
+                'code', r1.code,
+                ${with_fighters ? `
+                'fighters', COALESCE(
+                  (SELECT JSON_AGG(
+                    JSON_BUILD_OBJECT(
+                      'id', f.id,
+                      'first_name', f.first_name,
+                      'last_name', f.last_name,
+                      'nickname', f.nickname,
+                      'profile_image', f.profile_image
+                    )
+                  ) FROM fighters f
+                  WHERE f.region_id = r1.id
+                    AND (${isActiveFlag} IS FALSE OR f.is_active = true)
+                  ),
+                  '[]'::json
                 )
+                ` : `'fighters', '[]'::json`}
               )
-              FROM fighters f
-              WHERE f.region_id = r1.id AND f.is_active = true
-            )
-          ) as region1,
-          JSON_BUILD_OBJECT(
-            'id', r2.id,
-            'name', r2.name,
-            'code', r2.code,
-            'fighters', (
-              SELECT JSON_AGG(
-                JSON_BUILD_OBJECT(
-                  'id', f.id,
-                  'first_name', f.first_name,
-                  'last_name', f.last_name,
-                  'nickname', f.nickname,
-                  'profile_image', f.profile_image
+            ELSE NULL
+          END as region1,
+          CASE 
+            WHEN sg.region2_id IS NOT NULL THEN
+              JSON_BUILD_OBJECT(
+                'id', r2.id,
+                'name', r2.name,
+                'code', r2.code,
+                ${with_fighters ? `
+                'fighters', COALESCE(
+                  (SELECT JSON_AGG(
+                    JSON_BUILD_OBJECT(
+                      'id', f.id,
+                      'first_name', f.first_name,
+                      'last_name', f.last_name,
+                      'nickname', f.nickname,
+                      'profile_image', f.profile_image
+                    )
+                  ) FROM fighters f
+                  WHERE f.region_id = r2.id
+                    AND (${isActiveFlag} IS FALSE OR f.is_active = true)
+                  ),
+                  '[]'::json
                 )
+                ` : `'fighters', '[]'::json`}
               )
-              FROM fighters f
-              WHERE f.region_id = r2.id AND f.is_active = true
-            )
-          ) as region2,
-          JSON_BUILD_OBJECT(
-            'id', b1.id,
-            'color', b1.color
-          ) as belt1,
-          JSON_BUILD_OBJECT(
-            'id', b2.id,
-            'color', b2.color
-          ) as belt2,
-          JSON_BUILD_OBJECT(
-            'id', ref.id,
-            'first_name', ref.first_name,
-            'last_name', ref.last_name,
-            'nickname', ref.nickname
-          ) as main_referee,
-          (SELECT JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'id', m.id,
-              'match_number', m.match_number,
-              'match_date', m.match_date,
-              'status', m.status,
-              'fighter1_id', m.fighter1_id,
-              'fighter2_id', m.fighter2_id,
-              'winner_fighter_id', m.winner_fighter_id,
-              'match_result', m.match_result,
-              'fighter1', JSON_BUILD_OBJECT(
-                'id', mf1.id,
-                'first_name', mf1.first_name,
-                'last_name', mf1.last_name,
-                'nickname', mf1.nickname
-              ),
-              'fighter2', JSON_BUILD_OBJECT(
-                'id', mf2.id,
-                'first_name', mf2.first_name,
-                'last_name', mf2.last_name,
-                'nickname', mf2.nickname
+            ELSE NULL
+          END as region2,
+          ` : `'region1', NULL, 'region2', NULL,`}
+          ${with_belts ? `
+          CASE 
+            WHEN sg.belt_region1 IS NOT NULL THEN
+              JSON_BUILD_OBJECT(
+                'id', b1.id,
+                'color', b1.color
               )
-            ) ORDER BY m.match_number, m.match_date
-          ) FROM matches m
-          LEFT JOIN fighters mf1 ON m.fighter1_id = mf1.id
-          LEFT JOIN fighters mf2 ON m.fighter2_id = mf2.id
-          WHERE m.sub_group_id = sg.id) as matches
+            ELSE NULL
+          END as belt1,
+          CASE 
+            WHEN sg.belt_region2 IS NOT NULL THEN
+              JSON_BUILD_OBJECT(
+                'id', b2.id,
+                'color', b2.color
+              )
+            ELSE NULL
+          END as belt2,
+          ` : `'belt1', NULL, 'belt2', NULL,`}
+          ${with_referee ? `
+          CASE 
+            WHEN sg.main_referee_id IS NOT NULL THEN
+              JSON_BUILD_OBJECT(
+                'id', ref.id,
+                'first_name', ref.first_name,
+                'last_name', ref.last_name,
+                'nickname', ref.nickname
+              )
+            ELSE NULL
+          END as main_referee,
+          ` : `'main_referee', NULL,`}
+          ${with_matches ? `
+          COALESCE(
+            (SELECT JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'id', m.id,
+                'match_number', m.match_number,
+                'match_date', m.match_date,
+                'status', m.status,
+                'fighter1_id', m.fighter1_id,
+                'fighter2_id', m.fighter2_id,
+                'winner_fighter_id', m.winner_fighter_id,
+                'match_result', m.match_result,
+                ${with_fighters ? `
+                'fighter1', CASE 
+                  WHEN m.fighter1_id IS NOT NULL THEN
+                    JSON_BUILD_OBJECT(
+                      'id', mf1.id,
+                      'first_name', mf1.first_name,
+                      'last_name', mf1.last_name,
+                      'nickname', mf1.nickname
+                    )
+                  ELSE NULL
+                END,
+                'fighter2', CASE 
+                  WHEN m.fighter2_id IS NOT NULL THEN
+                    JSON_BUILD_OBJECT(
+                      'id', mf2.id,
+                      'first_name', mf2.first_name,
+                      'last_name', mf2.last_name,
+                      'nickname', mf2.nickname
+                    )
+                  ELSE NULL
+                END
+                ` : `'fighter1', NULL, 'fighter2', NULL`}
+              ) ORDER BY m.match_number, m.match_date
+            ) FROM matches m
+            ${with_fighters ? 'LEFT JOIN fighters mf1 ON m.fighter1_id = mf1.id' : ''}
+            ${with_fighters ? 'LEFT JOIN fighters mf2 ON m.fighter2_id = mf2.id' : ''}
+            WHERE m.sub_group_id = sg.id
+              AND (${isActiveFlag} IS FALSE OR m.is_active = true)
+            ),
+            '[]'::json
+          ) as matches
+          ` : `'[]'::json as matches`}
         FROM sub_groups sg
-        LEFT JOIN phase_groups pg ON sg.group_id = pg.id
-        LEFT JOIN phases p ON pg.phase_id = p.id
-        LEFT JOIN competition_editions ce ON p.edition_id = ce.id
-        LEFT JOIN regions r1 ON sg.region1_id = r1.id
-        LEFT JOIN regions r2 ON sg.region2_id = r2.id
-        LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
-        LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
-        LEFT JOIN referees ref ON sg.main_referee_id = ref.id
-        WHERE sg.id = $1
+        ${with_group ? 'LEFT JOIN phase_groups pg ON sg.group_id = pg.id' : ''}
+        ${with_group && with_phase ? 'LEFT JOIN phases p ON pg.phase_id = p.id' : ''}
+        ${with_group && with_phase && with_edition ? 'LEFT JOIN competition_editions ce ON p.edition_id = ce.id' : ''}
+        ${with_regions ? 'LEFT JOIN regions r1 ON sg.region1_id = r1.id' : ''}
+        ${with_regions ? 'LEFT JOIN regions r2 ON sg.region2_id = r2.id' : ''}
+        ${with_belts ? 'LEFT JOIN belt b1 ON sg.belt_region1 = b1.id' : ''}
+        ${with_belts ? 'LEFT JOIN belt b2 ON sg.belt_region2 = b2.id' : ''}
+        ${with_referee ? 'LEFT JOIN referees ref ON sg.main_referee_id = ref.id' : ''}
+        ${whereClause}
       `;
     }
 

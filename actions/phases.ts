@@ -18,37 +18,38 @@ export async function getPhases(
       limit = 20,
       phase_type,
       is_active,
-      with_edition = true,
-      with_groups = false,
+      with_edition,
+      with_groups,
+      with_subGroups,
+      with_matches
     } = filters;
 
+    const baseParams: any[] = [];
     let whereClause = 'WHERE 1=1';
     let joinClause = '';
-    const params: any[] = [];
     const selectFields: string[] = ['p.*'];
 
-    // Filtres de base
+    // --- FILTRES DE BASE ---
     if (edition_id) {
-      params.push(edition_id);
-      whereClause += ` AND p.edition_id = $${params.length}`;
+      baseParams.push(edition_id);
+      whereClause += ` AND p.edition_id = $${baseParams.length}`;
     }
 
     if (search) {
-      params.push(`%${search}%`, `%${search}%`);
-      whereClause += ` AND (p.name ILIKE $${params.length - 1} OR p.description ILIKE $${params.length})`;
+      baseParams.push(`%${search}%`, `%${search}%`);
+      whereClause += ` AND (p.name ILIKE $${baseParams.length - 1} OR p.description ILIKE $${baseParams.length})`;
     }
-
-    if (is_active) {
-      params.push(is_active);
-      whereClause += ` AND p.is_active = $${params.length}`;
+    if (typeof is_active === 'boolean') {
+      baseParams.push(is_active);
+      whereClause += ` AND p.is_active = $${baseParams.length}`;
     }
 
     if (phase_type) {
-      params.push(phase_type);
-      whereClause += ` AND p.phase_type = $${params.length}`;
+      baseParams.push(phase_type);
+      whereClause += ` AND p.phase_type = $${baseParams.length}`;
     }
 
-    // Jointures et relations
+    // --- JOINTURES ET RELATIONS ---
     if (with_edition) {
       joinClause += `
         LEFT JOIN competition_editions ce ON p.edition_id = ce.id
@@ -70,7 +71,23 @@ export async function getPhases(
       `);
     }
 
+    // --- PARAMÈTRES POUR LA REQUÊTE DATA ---
+    const dataParams = [...baseParams];
+
+    // --- GROUPES, SOUS-GROUPES ET MATCHES ---
     if (with_groups) {
+      // Ajouter les flags aux paramètres data seulement
+      const isActiveFlag = typeof is_active === 'boolean' ? is_active : null;
+      const subGroupsFlag = with_subGroups === true;
+      const matchesFlag = with_matches === true;
+      
+      dataParams.push(isActiveFlag, subGroupsFlag, matchesFlag);
+      
+      // Calculer les index (ils seront à la fin du tableau dataParams)
+      const isActiveIdx = dataParams.length - 2;
+      const subGroupsIdx = dataParams.length - 1;
+      const matchesIdx = dataParams.length;
+
       selectFields.push(`
         COALESCE(
           (SELECT JSON_AGG(
@@ -82,44 +99,111 @@ export async function getPhases(
               'is_completed', pg.is_completed,
               'is_active', pg.is_active,
               'sub_groups_count', (
-                SELECT COUNT(*) FROM sub_groups sg WHERE sg.group_id = pg.id
+                SELECT COUNT(*) FROM sub_groups sg 
+                WHERE sg.group_id = pg.id
+                  AND ($${isActiveIdx}::boolean IS NULL OR sg.is_active = $${isActiveIdx}::boolean)
+              ),
+              'sub_groups', (
+                CASE 
+                  WHEN $${subGroupsIdx}::boolean THEN (
+                    SELECT COALESCE(
+                      JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                          'id', sg.id,
+                          'name', sg.name,
+                          'sub_group_order', sg.sub_group_order,
+                          'description', sg.description,
+                          'region1_id', sg.region1_id,
+                          'region2_id', sg.region2_id,
+                          'belt_region1', sg.belt_region1,
+                          'belt_region2', sg.belt_region2,
+                          'main_referee_id', sg.main_referee_id,
+                          'is_completed', sg.is_completed,
+                          'is_active', sg.is_active,
+                          'matches', (
+                            CASE 
+                              WHEN $${matchesIdx}::boolean THEN (
+                                SELECT COALESCE(
+                                  JSON_AGG(
+                                    JSON_BUILD_OBJECT(
+                                      'id', m.id,
+                                      'match_number', m.match_number,
+                                      'match_date', m.match_date,
+                                      'start_time', m.start_time,
+                                      'end_time', m.end_time,
+                                      'fighter1_id', m.fighter1_id,
+                                      'fighter2_id', m.fighter2_id,
+                                      'winner_fighter_id', m.winner_fighter_id,
+                                      'loser_fighter_id', m.loser_fighter_id,
+                                      'match_result', m.match_result,
+                                      'total_duration', m.total_duration,
+                                      'break_count', m.break_count,
+                                      'status', m.status,
+                                      'audience_count', m.audience_count,
+                                      'video_url', m.video_url,
+                                      'live_stream_url', m.live_stream_url,
+                                      'notes', m.notes
+                                    ) ORDER BY m.match_number
+                                  ),
+                                  '[]'::json
+                                )
+                                FROM matches m
+                                WHERE m.sub_group_id = sg.id
+                                  AND ($${isActiveIdx}::boolean IS NULL OR m.is_active = $${isActiveIdx}::boolean)
+                              )
+                              ELSE '[]'::json
+                            END
+                          )
+                        ) ORDER BY sg.sub_group_order
+                      ),
+                      '[]'::json
+                    )
+                    FROM sub_groups sg
+                    WHERE sg.group_id = pg.id
+                      AND ($${isActiveIdx}::boolean IS NULL OR sg.is_active = $${isActiveIdx}::boolean)
+                  )
+                  ELSE '[]'::json
+                END
               )
             ) ORDER BY pg.group_order
-          ) FROM phase_groups pg WHERE pg.phase_id = p.id),
+          ) FROM phase_groups pg 
+          WHERE pg.phase_id = p.id 
+            AND ($${isActiveIdx}::boolean IS NULL OR pg.is_active = $${isActiveIdx}::boolean)
+          ),
           '[]'::json
         ) as groups
       `);
     }
 
-    // Requête pour le total
+    // --- TOTAL COUNT (utilise seulement baseParams) ---
     const countSql = `
       SELECT COUNT(*) as total
       FROM phases p
       ${joinClause}
       ${whereClause}
     `;
-
-    const countResult = await query<{ total: string }>(countSql, params);
+    const countResult = await query<{ total: string }>(countSql, baseParams);
     const total = parseInt(countResult[0]?.total ?? '0');
 
-    // Pagination
+    // --- PAGINATION ---
     const validatedPage = Math.max(1, page);
     const validatedLimit = Math.max(1, Math.min(100, limit));
     const offset = (validatedPage - 1) * validatedLimit;
     const totalPages = Math.ceil(total / validatedLimit);
 
-    // Requête principale
-    params.push(validatedLimit, offset);
+    // Ajouter pagination aux paramètres data
+    dataParams.push(validatedLimit, offset);
+    
     const dataSql = `
       SELECT ${selectFields.join(', ')}
       FROM phases p
       ${joinClause}
       ${whereClause}
       ORDER BY p.phase_order ASC
-      LIMIT $${params.length - 1} OFFSET $${params.length}
+      LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}
     `;
 
-    const data = await query<Phase>(dataSql, params);
+    const data = await query<Phase>(dataSql, dataParams);
 
     return {
       data,
@@ -137,15 +221,27 @@ export async function getPhases(
 }
 
 export async function getPhaseById(id: number, options: { 
-  with_relations?: boolean 
+  with_relations?: boolean,
+  is_active?: boolean
 } = {}) {
   try {
-    const { with_relations = true } = options;
+    const { with_relations = true, is_active } = options;
     
-    let sql = 'SELECT * FROM phases WHERE id = $1';
     const params: any[] = [id];
+    let whereClause = 'WHERE p.id = $1';
+    
+    // Ajouter le filtre is_active si spécifié
+    if (typeof is_active === 'boolean') {
+      params.push(is_active);
+      whereClause += ` AND p.is_active = $${params.length}`;
+    }
+
+    let sql = `SELECT * FROM phases p ${whereClause}`;
 
     if (with_relations) {
+      // Utiliser directement les valeurs booléennes pour les conditions
+      const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
+      
       sql = `
         SELECT 
           p.*,
@@ -215,7 +311,70 @@ export async function getPhaseById(id: number, options: {
                             'nickname', ref.nickname
                           )
                         ELSE NULL
-                      END
+                      END,
+                      'matches', COALESCE(
+                        (SELECT JSON_AGG(
+                          JSON_BUILD_OBJECT(
+                            'id', m.id,
+                            'match_number', m.match_number,
+                            'match_date', m.match_date,
+                            'start_time', m.start_time,
+                            'end_time', m.end_time,
+                            'fighter1_id', m.fighter1_id,
+                            'fighter2_id', m.fighter2_id,
+                            'winner_fighter_id', m.winner_fighter_id,
+                            'loser_fighter_id', m.loser_fighter_id,
+                            'match_result', m.match_result,
+                            'total_duration', m.total_duration,
+                            'break_count', m.break_count,
+                            'status', m.status,
+                            'audience_count', m.audience_count,
+                            'video_url', m.video_url,
+                            'live_stream_url', m.live_stream_url,
+                            'notes', m.notes,
+                            'fighter1', CASE 
+                              WHEN m.fighter1_id IS NOT NULL THEN 
+                                JSON_BUILD_OBJECT(
+                                  'id', f1.id,
+                                  'first_name', f1.first_name,
+                                  'last_name', f1.last_name,
+                                  'nickname', f1.nickname,
+                                  'profile_image', f1.profile_image
+                                )
+                              ELSE NULL
+                            END,
+                            'fighter2', CASE 
+                              WHEN m.fighter2_id IS NOT NULL THEN 
+                                JSON_BUILD_OBJECT(
+                                  'id', f2.id,
+                                  'first_name', f2.first_name,
+                                  'last_name', f2.last_name,
+                                  'nickname', f2.nickname,
+                                  'profile_image', f2.profile_image
+                                )
+                              ELSE NULL
+                            END,
+                            'winner', CASE 
+                              WHEN m.winner_fighter_id IS NOT NULL THEN 
+                                JSON_BUILD_OBJECT(
+                                  'id', fw.id,
+                                  'first_name', fw.first_name,
+                                  'last_name', fw.last_name,
+                                  'nickname', fw.nickname,
+                                  'profile_image', fw.profile_image
+                                )
+                              ELSE NULL
+                            END
+                          ) ORDER BY m.match_number
+                        ) FROM matches m
+                        LEFT JOIN fighters f1 ON m.fighter1_id = f1.id
+                        LEFT JOIN fighters f2 ON m.fighter2_id = f2.id
+                        LEFT JOIN fighters fw ON m.winner_fighter_id = fw.id
+                        WHERE m.sub_group_id = sg.id
+                          AND (${isActiveFlag} IS FALSE OR m.is_active = true)
+                        ),
+                        '[]'::json
+                      )
                     ) ORDER BY sg.sub_group_order
                   ) FROM sub_groups sg
                   LEFT JOIN regions r1 ON sg.region1_id = r1.id
@@ -223,17 +382,22 @@ export async function getPhaseById(id: number, options: {
                   LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
                   LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
                   LEFT JOIN referees ref ON sg.main_referee_id = ref.id
-                  WHERE sg.group_id = pg.id),
+                  WHERE sg.group_id = pg.id
+                    AND (${isActiveFlag} IS FALSE OR sg.is_active = true)
+                  ),
                   '[]'::json
                 )
               ) ORDER BY pg.group_order
-            ) FROM phase_groups pg WHERE pg.phase_id = p.id),
+            ) FROM phase_groups pg 
+            WHERE pg.phase_id = p.id 
+              AND (${isActiveFlag} IS FALSE OR pg.is_active = true)
+            ),
             '[]'::json
           ) as groups
         FROM phases p
         LEFT JOIN competition_editions ce ON p.edition_id = ce.id
         LEFT JOIN competitions c ON ce.competition_id = c.id
-        WHERE p.id = $1
+        ${whereClause}
       `;
     }
 

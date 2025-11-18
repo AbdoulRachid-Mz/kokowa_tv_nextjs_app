@@ -5,6 +5,25 @@ import { query, queryOne } from '@/lib/db/neon-client';
 import { messageSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
 import { Message, MessageFilters, PaginatedResponse } from '@/types';
+import { connectionManager } from '@/lib/realtime/connection-manager';
+
+// Fonction utilitaire pour émettre des événements message
+async function emitMessageEvent(entityType: string, entityId: number, eventType: string, data: any) {
+  try {
+    // Pour les commentaires de match
+    if (entityType === 'match') {
+      connectionManager.broadcastToMatch(entityId, eventType, data);
+    }
+    // Pour les commentaires d'édition
+    else if (entityType === 'competition') {
+      connectionManager.broadcastToEdition(entityId, eventType, data);
+    }
+
+    console.log(`Event ${eventType} emitted for ${entityType} ${entityId}`);
+  } catch (error) {
+    console.error('Error emitting message event:', error);
+  }
+}
 
 export async function getMessages(
   filters: MessageFilters = {}
@@ -267,9 +286,14 @@ export async function createMessage(formData: FormData) {
       validatedData.audio_url || null,
     ]);
 
-    // Si c'est un commentaire sur une entité, revalider le cache de cette entité
+     // Émettre l'événement si c'est un commentaire sur une entité
     if (validatedData.entity_type && validatedData.entity_id) {
-      revalidatePath(`/${validatedData.entity_type}/${validatedData.entity_id}`);
+      await emitMessageEvent(
+        validatedData.entity_type, 
+        validatedData.entity_id, 
+        'new_message', 
+        { message: result[0].id }
+      );
     }
 
     revalidatePath('/messages');

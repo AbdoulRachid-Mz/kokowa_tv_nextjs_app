@@ -4,6 +4,7 @@ import { getCompetitions } from '@/actions/competitions';
 import { getRegions } from '@/actions/regions';
 import { getEditions } from '@/actions/editions';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { LiveMatchTracker } from '@/components/shared/live-match-tracker';
 
 async function getStats() {
   try {
@@ -74,6 +75,8 @@ export default async function HomePage() {
           </div>
         </div>
       </header>
+
+      <LiveMatchTracker matchId={2} editionId={2} />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16 text-center">

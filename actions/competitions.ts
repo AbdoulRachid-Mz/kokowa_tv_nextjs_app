@@ -206,7 +206,7 @@ export async function getCompetitionById(id: number, options: {
   with_relations?: boolean 
 } = {}) {
   try {
-    const { with_relations = true } = options;
+    const { with_relations = false } = options;
     
     let sql = 'SELECT * FROM competitions WHERE id = $1';
     const params: any[] = [id];

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMatchById, updateMatch, deleteMatch } from '@/actions/matchs';
+import { getMatchById, updateMatch, deleteMatch } from '@/actions/matches';
 
 export async function GET(
   request: NextRequest,
@@ -16,7 +16,26 @@ export async function GET(
       );
     }
 
-    const match = await getMatchById(id);
+    // Build options from query parameters
+    const url = new URL(request.url);
+    const options = {
+      with_relations: url.searchParams.get('with_relations') !== 'false',
+      relations: {
+        with_sub_group: url.searchParams.get('with_sub_group') !== 'false',
+        with_group: url.searchParams.get('with_group') !== 'false',
+        with_phase: url.searchParams.get('with_phase') !== 'false',
+        with_edition: url.searchParams.get('with_edition') !== 'false',
+        with_regions: url.searchParams.get('with_regions') !== 'false',
+        with_belts: url.searchParams.get('with_belts') !== 'false',
+        with_referee: url.searchParams.get('with_referee') !== 'false',
+        with_fighters: url.searchParams.get('with_fighters') !== 'false',
+        with_winner_loser: url.searchParams.get('with_winner_loser') !== 'false',
+        with_cards: url.searchParams.get('with_cards') !== 'false',
+      },
+      is_active: url.searchParams.has('is_active') ? url.searchParams.get('is_active') === 'true' : undefined,
+    };
+
+    const match = await getMatchById(id, options);
     
     return NextResponse.json({
       success: true,

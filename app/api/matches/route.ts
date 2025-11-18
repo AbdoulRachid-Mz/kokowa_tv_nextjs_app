@@ -1,6 +1,6 @@
 // app/api/matches/route.ts - VERSION CORRIGÉE
 import { NextRequest, NextResponse } from 'next/server';
-import { getMatches, createMatch } from '@/actions/matchs'; // Note: correction du nom d'import
+import { getMatches, createMatch } from '@/actions/matches'; // Note: correction du nom d'import
 import { MatchFilters } from '@/types';
 
 export async function GET(request: NextRequest) {

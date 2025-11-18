@@ -519,6 +519,9 @@ export interface EditionFilters extends BaseFilters {
   with_phases?: boolean;
   region_id?: number;
   offset?: number;
+  with_groups?: boolean;
+with_subGroups?: boolean;
+with_matches?: boolean;
 }
 
 export interface PhaseFilters extends BaseFilters {
@@ -531,6 +534,8 @@ export interface PhaseFilters extends BaseFilters {
   is_completed?: boolean;
   with_edition?: boolean;
   with_groups?: boolean;
+  with_subGroups?: boolean;
+  with_matches?: boolean;
 }
 
 export interface PhaseGroupFilters extends BaseFilters {
@@ -538,7 +543,8 @@ export interface PhaseGroupFilters extends BaseFilters {
   is_completed?: boolean;
   is_active?: boolean;
   with_phase?: boolean;
-  with_sub_groups?: boolean;
+  with_subGroups?: boolean;
+  with_matches?: boolean;
 }
 
 export interface SubGroupFilters extends BaseFilters {
