@@ -17,7 +17,12 @@ export const GET = publicHandler(async (request: NextRequest, context: ApiContex
     }, { status: 400 });
   }
 
-  const result = await getMobileCompetitionById(id);
+  const { searchParams } = new URL(request.url);
+  
+  // Récupérer le paramètre with_editions
+  const withEditions = searchParams.get('with_editions') !== 'false';
+
+  const result = await getMobileCompetitionById(id, withEditions);
   
   if (!result.success) {
     return Response.json(result, { 
