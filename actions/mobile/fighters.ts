@@ -1,0 +1,592 @@
+'use server';
+
+import { query } from '@/lib/db/neon-client';
+
+export async function getMobileFighters() {
+  try {
+    const sql = `
+      SELECT 
+        f.id,
+        f.first_name as "firstName",
+        f.last_name as "lastName",
+        f.nickname,
+        f.slug,
+        f.birth_date as "birthDate",
+        f.birth_place as "birthPlace",
+        f.region_id as "regionId",
+        f.height,
+        f.weight,
+        f.profile_image as "profileImage",
+        f.cover_image as "coverImage",
+        f.bio,
+        f.fighting_style as "fightingStyle",
+        f.debut_year as "debutYear",
+        f.ranking,
+        f.is_active as "isActive",
+        f.is_champion as "isChampion",
+        f.social_links as "socialLinks",  -- Ce champ est déjà un objet JavaScript
+        f.created_at as "createdAt",
+        f.updated_at as "updatedAt",
+        
+        r.name as "regionName",
+        r.code as "regionCode",
+        r.color as "regionColor",
+        r.flag_image as "regionFlagImage"
+        
+      FROM fighters f
+      LEFT JOIN regions r ON f.region_id = r.id
+      WHERE f.is_active = true
+      ORDER BY f.ranking ASC, f.last_name ASC, f.first_name ASC
+    `;
+
+    const fighters = await query(sql);
+
+    // CORRECTION : socialLinks est déjà un objet, pas besoin de JSON.parse
+    const fightersWithDecodedSocialLinks = fighters.map(fighter => ({
+      ...fighter,
+      socialLinks: fighter.socialLinks || []  // Utiliser directement l'objet ou un tableau vide
+    }));
+
+    return {
+      success: true,
+      data: {
+        fighters: fightersWithDecodedSocialLinks,
+        count: fighters.length,
+        timestamp: new Date().toISOString()
+      },
+      message: 'Lutteurs récupérés avec succès'
+    };
+  } catch (error) {
+    console.error('Error in getMobileFighters:', error);
+    return {
+      success: false,
+      error: {
+        code: 500,
+        message: 'Erreur lors de la récupération des lutteurs',
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+}
+
+export async function getMobileFighterById(fighterId: number) {
+  try {
+    // Vérifier que le lutteur existe
+    const existsSql = "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
+    const existsResult = await query(existsSql, [fighterId]);
+    
+    if (existsResult.length === 0) {
+      return {
+        success: false,
+        error: {
+          code: 404,
+          message: 'Lutteur non trouvé',
+          timestamp: new Date().toISOString()
+        }
+      };
+    }
+
+    // Récupérer les informations de base du lutteur
+    const fighterInfo = await getFighterInfo(fighterId);
+    
+    // Récupérer les données associées
+    const achievements = await getFighterAchievements(fighterId);
+    const transfers = await getFighterTransfers(fighterId);
+    const cards = await getFighterCards(fighterId);
+    const region = await getFighterRegion(fighterInfo.regionId);
+    const stats = await calculateFighterStats(fighterId);
+
+    return {
+      success: true,
+      data: {
+        fighter: fighterInfo,
+        region: region,
+        stats: stats,
+        achievements: achievements,
+        transfers: transfers,
+        cards: cards
+      },
+      message: 'Détails du lutteur récupérés avec succès'
+    };
+  } catch (error) {
+    console.error('Error in getMobileFighterById:', error);
+    return {
+      success: false,
+      error: {
+        code: 500,
+        message: 'Erreur lors de la récupération des détails du lutteur',
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+}
+
+// Fonctions auxiliaires
+async function getFighterInfo(fighterId: number) {
+  const sql = `
+    SELECT 
+      f.id,
+      f.first_name as "firstName",
+      f.last_name as "lastName",
+      f.nickname,
+      f.slug,
+      f.birth_date as "birthDate",
+      f.birth_place as "birthPlace",
+      f.region_id as "regionId",
+      f.height,
+      f.weight,
+      f.profile_image as "profileImage",
+      f.cover_image as "coverImage",
+      f.bio,
+      f.fighting_style as "fightingStyle",
+      f.debut_year as "debutYear",
+      f.ranking,
+      f.is_active as "isActive",
+      f.is_champion as "isChampion",
+      f.social_links as "socialLinks",  -- Déjà un objet
+      f.created_at as "createdAt",
+      f.updated_at as "updatedAt",
+      
+      r.name as "regionName",
+      r.code as "regionCode",
+      r.color as "regionColor",
+      r.flag_image as "regionFlagImage"
+      
+    FROM fighters f
+    LEFT JOIN regions r ON f.region_id = r.id
+    WHERE f.id = $1
+  `;
+
+  const result = await query(sql, [fighterId]);
+  const fighter = result[0];
+  
+  // CORRECTION : socialLinks est déjà un objet
+  if (!fighter.socialLinks) {
+    fighter.socialLinks = [];
+  }
+
+  return fighter;
+}
+
+// Les autres fonctions restent inchangées...
+async function getFighterRegion(regionId: number) {
+  if (!regionId) return {};
+  
+  const sql = `
+    SELECT 
+      id, name, code, color, flag_image as "flagImage",
+      stadium_name as "stadiumName", stadium_image as "stadiumImage",
+      total_fighters as "totalFighters", total_champions as "totalChampions"
+    FROM regions 
+    WHERE id = $1
+  `;
+
+  const result = await query(sql, [regionId]);
+  return result[0] || {};
+}
+
+async function getFighterAchievements(fighterId: number) {
+  const sql = `
+    SELECT 
+      fa.id,
+      fa.title,
+      fa.year,
+      fa.position,
+      fa.description,
+      fa.medal_image as "medalImage",
+      fa.created_at as "createdAt",
+      
+      ce.id as "editionId",
+      ce.theme as "editionTheme",
+      ce.year as "editionYear",
+      
+      r.id as "regionId",
+      r.name as "regionName",
+      r.code as "regionCode"
+      
+    FROM fighter_achievements fa
+    JOIN competition_editions ce ON fa.edition_id = ce.id
+    JOIN regions r ON fa.region_id = r.id
+    WHERE fa.fighter_id = $1
+    ORDER BY fa.year DESC, 
+      CASE fa.position 
+        WHEN '1st' THEN 1
+        WHEN '2nd' THEN 2
+        WHEN '3rd' THEN 3
+        WHEN 'finalist' THEN 4
+        WHEN 'semifinalist' THEN 5
+        WHEN 'quarterfinalist' THEN 6
+        ELSE 7
+      END
+  `;
+
+  return await query(sql, [fighterId]);
+}
+
+async function getFighterTransfers(fighterId: number) {
+  const sql = `
+    SELECT 
+      ft.id,
+      ft.transfer_date as "transferDate",
+      ft.transfer_reason as "transferReason",
+      ft.transfer_fee as "transferFee",
+      ft.contract_duration as "contractDuration",
+      ft.is_permanent as "isPermanent",
+      ft.status,
+      ft.created_at as "createdAt",
+      
+      fr.id as "fromRegionId",
+      fr.name as "fromRegionName",
+      fr.code as "fromRegionCode",
+      fr.color as "fromRegionColor",
+      
+      tr.id as "toRegionId",
+      tr.name as "toRegionName",
+      tr.code as "toRegionCode",
+      tr.color as "toRegionColor"
+      
+    FROM fighter_transfers ft
+    JOIN regions fr ON ft.from_region_id = fr.id
+    JOIN regions tr ON ft.to_region_id = tr.id
+    WHERE ft.fighter_id = $1
+    ORDER BY ft.transfer_date DESC
+  `;
+
+  return await query(sql, [fighterId]);
+}
+
+async function getFighterCards(fighterId: number) {
+  const sql = `
+    SELECT 
+      fc.id,
+      fc.match_id as "matchId",
+      fc.card_type as "cardType",
+      fc.card_reason as "cardReason",
+      fc.minute_given as "minuteGiven",
+      fc.is_cancelled as "isCancelled",
+      fc.created_at as "createdAt",
+      
+      m.match_number as "matchNumber",
+      m.match_date as "matchDate",
+      
+      CASE 
+        WHEN m.fighter1_id = $1 THEN f2.id
+        ELSE f1.id
+      END as "opponentId",
+      CASE 
+        WHEN m.fighter1_id = $1 THEN f2.nickname
+        ELSE f1.nickname
+      END as "opponentNickname"
+      
+    FROM fighter_cards fc
+    JOIN matches m ON fc.match_id = m.id
+    JOIN fighters f1 ON m.fighter1_id = f1.id
+    JOIN fighters f2 ON m.fighter2_id = f2.id
+    WHERE fc.fighter_id = $1 AND fc.is_cancelled = FALSE
+    ORDER BY m.match_date DESC, fc.minute_given
+  `;
+
+  return await query(sql, [fighterId]);
+}
+
+async function getAllMatchesForFighter(fighterId: number) {
+  const sql = `
+    SELECT 
+      m.id,
+      m.match_number as "matchNumber",
+      m.match_date as "matchDate",
+      m.start_time as "startTime",
+      m.end_time as "endTime",
+      m.status,
+      m.match_result as "matchResult",
+      m.total_duration as "totalDuration",
+      m.break_count as "breakCount",
+      m.audience_count as "audienceCount",
+      m.video_url as "videoUrl",
+      m.live_stream_url as "liveStreamUrl",
+      m.notes,
+      m.created_at as "createdAt",
+      m.updated_at as "updatedAt",
+      
+      m.fighter1_id as "fighter1Id",
+      f1.first_name as "fighter1FirstName",
+      f1.last_name as "fighter1LastName",
+      f1.nickname as "fighter1Nickname",
+      f1.profile_image as "fighter1ProfileImage",
+      f1.region_id as "fighter1RegionId",
+      r1.name as "fighter1RegionName",
+      r1.color as "fighter1RegionColor",
+      r1.code as "fighter1RegionCode",
+      
+      m.fighter2_id as "fighter2Id",
+      f2.first_name as "fighter2FirstName",
+      f2.last_name as "fighter2LastName",
+      f2.nickname as "fighter2Nickname",
+      f2.profile_image as "fighter2ProfileImage",
+      f2.region_id as "fighter2RegionId",
+      r2.name as "fighter2RegionName",
+      r2.color as "fighter2RegionColor",
+      r2.code as "fighter2RegionCode",
+      
+      m.winner_fighter_id as "winnerFighterId",
+      m.loser_fighter_id as "loserFighterId",
+      
+      sg.id as "subGroupId",
+      sg.name as "subGroupName",
+      
+      pg.name as "groupName",
+      p.name as "phaseName",
+      p.phase_type as "phaseType",
+      ce.theme as "editionTheme",
+      ce.year as "editionYear"
+
+    FROM matches m
+    JOIN fighters f1 ON m.fighter1_id = f1.id
+    JOIN fighters f2 ON m.fighter2_id = f2.id
+    JOIN regions r1 ON f1.region_id = r1.id
+    JOIN regions r2 ON f2.region_id = r2.id
+    JOIN sub_groups sg ON m.sub_group_id = sg.id
+    JOIN phase_groups pg ON sg.group_id = pg.id
+    JOIN phases p ON pg.phase_id = p.id
+    JOIN competition_editions ce ON p.edition_id = ce.id
+    WHERE (m.fighter1_id = $1 OR m.fighter2_id = $1)
+    ORDER BY 
+      CASE 
+        WHEN m.status IN ('live', 'round_break') THEN 0
+        WHEN m.status = 'scheduled' THEN 1
+        WHEN m.status = 'completed' THEN 2
+        ELSE 3
+      END,
+      m.match_date DESC,
+      m.start_time DESC
+  `;
+
+  const matches = await query(sql, [fighterId]);
+  
+  // Enrichir les données des matchs
+  return Promise.all(matches.map(match => enrichMatchData(match, fighterId)));
+}
+
+async function enrichMatchData(match: any, fighterId: number) {
+  // Récupérer les cartons pour ce match
+  const cards = await getCardsForMatch(match.id);
+
+  // Déterminer le rôle du lutteur dans ce match
+  const isFighter1 = match.fighter1Id === fighterId;
+  const opponent = isFighter1 ? {
+    id: match.fighter2Id,
+    firstName: match.fighter2FirstName,
+    lastName: match.fighter2LastName,
+    nickname: match.fighter2Nickname,
+    profileImage: match.fighter2ProfileImage,
+    region: {
+      id: match.fighter2RegionId,
+      name: match.fighter2RegionName,
+      color: match.fighter2RegionColor,
+      code: match.fighter2RegionCode
+    }
+  } : {
+    id: match.fighter1Id,
+    firstName: match.fighter1FirstName,
+    lastName: match.fighter1LastName,
+    nickname: match.fighter1Nickname,
+    profileImage: match.fighter1ProfileImage,
+    region: {
+      id: match.fighter1RegionId,
+      name: match.fighter1RegionName,
+      color: match.fighter1RegionColor,
+      code: match.fighter1RegionCode
+    }
+  };
+
+  // Déterminer le résultat pour ce lutteur
+  const isWinner = match.winnerFighterId && (
+    (isFighter1 && match.winnerFighterId === match.fighter1Id) ||
+    (!isFighter1 && match.winnerFighterId === match.fighter2Id)
+  );
+
+  return {
+    ...match,
+    opponent: opponent,
+    result: {
+      isWinner: isWinner,
+      resultType: match.matchResult
+    },
+    context: {
+      subGroup: {
+        id: match.subGroupId,
+        name: match.subGroupName
+      },
+      group: {
+        name: match.groupName
+      },
+      phase: {
+        name: match.phaseName,
+        type: match.phaseType
+      },
+      edition: {
+        theme: match.editionTheme,
+        year: match.editionYear
+      }
+    },
+    cards: cards
+  };
+}
+
+async function getCardsForMatch(matchId: number) {
+  const sql = `
+    SELECT 
+      fc.id,
+      fc.fighter_id as "fighterId",
+      fc.card_type as "cardType",
+      fc.card_reason as "cardReason",
+      fc.minute_given as "minuteGiven",
+      fc.is_cancelled as "isCancelled"
+    FROM fighter_cards fc
+    WHERE fc.match_id = $1 AND fc.is_cancelled = FALSE
+    ORDER BY fc.minute_given
+  `;
+
+  return await query(sql, [matchId]);
+}
+
+async function calculateFighterStats(fighterId: number) {
+  // Compter les matchs
+  const matchesSql = `
+    SELECT 
+      COUNT(*) as "totalMatches",
+      SUM(CASE WHEN winner_fighter_id = $1 THEN 1 ELSE 0 END) as "wins",
+      SUM(CASE WHEN winner_fighter_id != $1 AND winner_fighter_id IS NOT NULL THEN 1 ELSE 0 END) as "losses"
+    FROM matches 
+    WHERE (fighter1_id = $1 OR fighter2_id = $1) 
+    AND status = 'completed'
+  `;
+
+  const matchResult = await query(matchesSql, [fighterId]);
+  const matchStats = matchResult[0];
+
+  // Compter les cartons
+  const cardsSql = `
+    SELECT 
+      COUNT(*) as "totalCards",
+      SUM(CASE WHEN card_type = 'yellow' THEN 1 ELSE 0 END) as "yellowCards",
+      SUM(CASE WHEN card_type = 'red' THEN 1 ELSE 0 END) as "redCards"
+    FROM fighter_cards 
+    WHERE fighter_id = $1 AND is_cancelled = FALSE
+  `;
+
+  const cardsResult = await query(cardsSql, [fighterId]);
+  const cardStats = cardsResult[0];
+
+  // Calculer le temps total de combat
+  const timeSql = `
+    SELECT SUM(EXTRACT(EPOCH FROM total_duration)) as "totalSeconds" 
+    FROM matches 
+    WHERE (fighter1_id = $1 OR fighter2_id = $1) 
+    AND status = 'completed' AND total_duration IS NOT NULL
+  `;
+
+  const timeResult = await query(timeSql, [fighterId]);
+  const totalSeconds = parseInt(timeResult[0]?.totalSeconds || '0');
+
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  // Calculer le ratio de victoires
+  const totalMatches = parseInt(matchStats.totalMatches || '0');
+  const wins = parseInt(matchStats.wins || '0');
+  const winRate = totalMatches > 0 ? (wins / totalMatches * 100) : 0;
+
+  return {
+    totalMatches: totalMatches,
+    wins: wins,
+    losses: parseInt(matchStats.losses || '0'),
+    winRate: Math.round(winRate * 10) / 10,
+    yellowCards: parseInt(cardStats.yellowCards || '0'),
+    redCards: parseInt(cardStats.redCards || '0'),
+    totalCards: parseInt(cardStats.totalCards || '0'),
+    totalFightTime: {
+      hours: hours,
+      minutes: minutes,
+      totalMinutes: totalMinutes,
+      formatted: hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+    },
+    averageFightTime: totalMatches > 0 ? {
+      minutes: Math.round(totalMinutes / totalMatches),
+      formatted: `${Math.round(totalMinutes / totalMatches)}m`
+    } : { minutes: 0, formatted: '0m' }
+  };
+}
+
+export async function getMobileFighterMatches(fighterId: number) {
+  try {
+    // Vérifier que le lutteur existe
+    const existsSql = "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
+    const existsResult = await query(existsSql, [fighterId]);
+    
+    if (existsResult.length === 0) {
+      return {
+        success: false,
+        error: {
+          code: 404,
+          message: 'Lutteur non trouvé',
+          timestamp: new Date().toISOString()
+        }
+      };
+    }
+
+    // Récupérer tous les matchs du lutteur
+    const matches = await getAllMatchesForFighter(fighterId);
+
+    // Grouper par statut
+    const liveMatches = matches.filter(m => ['live', 'round_break'].includes(m.status));
+    const scheduledMatches = matches.filter(m => m.status === 'scheduled');
+    const completedMatches = matches.filter(m => m.status === 'completed');
+    const otherMatches = matches.filter(m => !['live', 'round_break', 'scheduled', 'completed'].includes(m.status));
+
+    // Grouper par année
+    const matchesByYear: Record<string, any[]> = {};
+    matches.forEach(match => {
+      const year = new Date(match.matchDate).getFullYear().toString();
+      if (!matchesByYear[year]) {
+        matchesByYear[year] = [];
+      }
+      matchesByYear[year].push(match);
+    });
+
+    return {
+      success: true,
+      data: {
+        matches: {
+          all: matches,
+          grouped: {
+            live: liveMatches,
+            scheduled: scheduledMatches,
+            completed: completedMatches,
+            other: otherMatches,
+            byYear: matchesByYear
+          }
+        },
+        summary: {
+          total: matches.length,
+          live: liveMatches.length,
+          scheduled: scheduledMatches.length,
+          completed: completedMatches.length,
+          other: otherMatches.length
+        }
+      },
+      message: 'Matchs du lutteur récupérés avec succès'
+    };
+  } catch (error) {
+    console.error('Error in getMobileFighterMatches:', error);
+    return {
+      success: false,
+      error: {
+        code: 500,
+        message: 'Erreur lors de la récupération des matchs du lutteur',
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+}

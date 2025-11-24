@@ -4,13 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AdvancedUpload } from "../ui/advanced-upload";
 import { ImageIcon } from "lucide-react";
-
-interface Region {
-  id: number;
-  name: string;
-  code?: string;
-}
-
+import { Region } from "@/types";
 interface FighterFormData {
   id?: number;
   first_name: string;
@@ -68,6 +62,7 @@ export default function FighterForm({
   >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingRegions, setLoadingRegions] = useState(true);
+  const total_fighters = regions.map((r) => r?.total_fighters || 0);
 
   // Initialiser les données si on est en mode édition
   useEffect(() => {
@@ -196,7 +191,7 @@ export default function FighterForm({
         if (onSuccess) {
           onSuccess();
         } else {
-          router.push("/fighters");
+          router.back();
         }
       } else {
         throw new Error(result.message || "Erreur inconnue");
@@ -216,14 +211,14 @@ export default function FighterForm({
   };
 
   return (
-    <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold mb-6">
+    <div className="max-w-5xl mx-auto bg-white p-4 rounded-lg shadow-md">
+      <h1 className="text-2xl font-bold mb-4">
         {fighter ? "Modifier le Lutteur" : "Ajouter un Lutteur"}
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="relative w-full mb-10">
-         {/* Photo de profil */}
+          {/* Photo de profil */}
           <div className="">
             <AdvancedUpload
               value={formData.profile_image || ""}
@@ -235,12 +230,12 @@ export default function FighterForm({
               isRounded
               maxWidthOrHeight={200}
               className="absolute left-10 -bottom-10 z-20 shadow-md rounded-full"
-            //   emptyPreview={
-            //     <div className="text-center text-muted-foreground">
-            //       <ImageIcon className="h-10 w-10 mx-auto mb-2" />
-            //       <p className="text-sm">Photo de profil</p>
-            //     </div>
-            //   }
+              //   emptyPreview={
+              //     <div className="text-center text-muted-foreground">
+              //       <ImageIcon className="h-10 w-10 mx-auto mb-2" />
+              //       <p className="text-sm">Photo de profil</p>
+              //     </div>
+              //   }
             />
           </div>
           {/* Image de couverture */}
@@ -270,7 +265,7 @@ export default function FighterForm({
           </div>
           {/* Prénom */}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label
               htmlFor="first_name"
@@ -321,23 +316,57 @@ export default function FighterForm({
           </div>
         </div>
 
-        {/* Surnom */}
-        <div>
-          <label htmlFor="nickname" className="block text-sm font-medium mb-1">
-            Surnom
-          </label>
-          <input
-            id="nickname"
-            name="nickname"
-            type="text"
-            value={formData.nickname || ""}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded px-3 py-2"
-            placeholder="Surnom (optionnel)"
-          />
+        {/* Région */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Surnom */}
+          <div>
+            <label
+              htmlFor="nickname"
+              className="block text-sm font-medium mb-1"
+            >
+              Surnom
+            </label>
+            <input
+              id="nickname"
+              name="nickname"
+              type="text"
+              value={formData.nickname || ""}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded px-3 py-2"
+              placeholder="Surnom (optionnel)"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="region_id"
+              className="block text-sm font-medium mb-1"
+            >
+              Région
+            </label>
+            <select
+              id="region_id"
+              name="region_id"
+              value={formData.region_id || ""}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded px-3 py-2"
+              disabled={loadingRegions}
+            >
+              <option value="">Sélectionnez une région</option>
+              {regions.map((region) => (
+                <option key={region.id} value={region.id}>
+                  {region.name} {region.code ? `(${region.code})` : ""}
+                </option>
+              ))}
+            </select>
+            {loadingRegions && (
+              <p className="text-gray-500 text-sm mt-1">
+                Chargement des régions...
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Date de naissance */}
           <div>
             <label
@@ -376,39 +405,7 @@ export default function FighterForm({
           </div>
         </div>
 
-        {/* Région */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label
-              htmlFor="region_id"
-              className="block text-sm font-medium mb-1"
-            >
-              Région
-            </label>
-            <select
-              id="region_id"
-              name="region_id"
-              value={formData.region_id || ""}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              disabled={loadingRegions}
-            >
-              <option value="">Sélectionnez une région</option>
-              {regions.map((region) => (
-                <option key={region.id} value={region.id}>
-                  {region.name} {region.code ? `(${region.code})` : ""}
-                </option>
-              ))}
-            </select>
-            {loadingRegions && (
-              <p className="text-gray-500 text-sm mt-1">
-                Chargement des régions...
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Taille */}
           <div>
             <label htmlFor="height" className="block text-sm font-medium mb-1">
@@ -448,7 +445,7 @@ export default function FighterForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Année de début */}
           <div>
             <label
@@ -486,26 +483,27 @@ export default function FighterForm({
               placeholder="Position dans le classement"
             />
           </div>
+
+          {/* Style de combat */}
+          <div>
+            <label
+              htmlFor="fighting_style"
+              className="block text-sm font-medium mb-1"
+            >
+              Style de combat
+            </label>
+            <input
+              id="fighting_style"
+              name="fighting_style"
+              type="text"
+              value={formData.fighting_style || ""}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded px-3 py-2"
+              placeholder="Description du style de combat"
+            />
+          </div>
         </div>
 
-        {/* Style de combat */}
-        <div>
-          <label
-            htmlFor="fighting_style"
-            className="block text-sm font-medium mb-1"
-          >
-            Style de combat
-          </label>
-          <input
-            id="fighting_style"
-            name="fighting_style"
-            type="text"
-            value={formData.fighting_style || ""}
-            onChange={handleChange}
-            className="w-full border border-gray-300 rounded px-3 py-2"
-            placeholder="Description du style de combat"
-          />
-        </div>
         {/* Biographie */}
         <div>
           <label htmlFor="bio" className="block text-sm font-medium mb-1">
@@ -531,7 +529,7 @@ export default function FighterForm({
               type="checkbox"
               checked={formData.is_active}
               onChange={handleChange}
-              className="h-4 w-4 text-orange-600 border-gray-300 rounded"
+              className="h-6 w-6 text-primary border-gray-300 rounded"
             />
             <label
               htmlFor="is_active"
@@ -548,7 +546,7 @@ export default function FighterForm({
               type="checkbox"
               checked={formData.is_champion}
               onChange={handleChange}
-              className="h-4 w-4 text-orange-600 border-gray-300 rounded"
+              className="h-6 w-6 text-primary border-gray-300 rounded"
             />
             <label
               htmlFor="is_champion"
@@ -560,7 +558,7 @@ export default function FighterForm({
         </div>
 
         {/* Boutons */}
-        <div className="flex justify-end gap-3 pt-6 border-t">
+        <div className="flex justify-end gap-3 pt-4 border-t">
           <button
             type="button"
             onClick={() => router.push("/lutteurs")}

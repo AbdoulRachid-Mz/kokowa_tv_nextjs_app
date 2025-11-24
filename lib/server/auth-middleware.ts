@@ -1,3 +1,4 @@
+// lib/server/auth-middleware
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth } from '../firebase-admin';
 

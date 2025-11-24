@@ -15,10 +15,13 @@ export async function POST(request: NextRequest) {
 
     await updateLastLogin(uid);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: 'Dernière connexion mise à jour'
+    });
 
   } catch (error) {
-    console.error('API Error POST /api/auth/update-last-login:', error);
+    console.error('Error updating last login:', error);
     return NextResponse.json(
       { error: 'Erreur lors de la mise à jour' },
       { status: 500 }

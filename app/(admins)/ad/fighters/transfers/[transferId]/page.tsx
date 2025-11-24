@@ -223,11 +223,11 @@ export default function TransferDetailPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Info
                       label="Approuvé par"
-                      value={`${transfer.approved_by_user.displayName}`}
+                      value={`${transfer.approved_by_user.username}`}
                     />
                     <Info
                       label="Nom d'utilisateur"
-                      value={transfer.approved_by_user.displayName}
+                      value={transfer.approved_by_user.username}
                     />
                   </div>
                 </div>

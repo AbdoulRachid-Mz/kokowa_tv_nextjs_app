@@ -1,3 +1,6 @@
+// import { UserStats } from "@/app/(user)/profile/page";
+import { User, UserGlobalStats } from ".";
+
 export interface UserInterface {
   uid: string;
   email: string | null;
@@ -10,7 +13,8 @@ export interface UserInterface {
 
 export interface UserDocument {
   id?: number;
-  user_id: string;
+  auth_id: string;
+  fcm_token?: string;
   email: string;
   username: string;
   first_name?: string;
@@ -23,8 +27,6 @@ export interface UserDocument {
   last_login?: string;
   created_at: string;
   updated_at: string;
-  region_id?: number;
-  city_id?: number;
   bio?: string;
   permissions?: string[];
 }
@@ -58,4 +60,41 @@ export interface ResetPasswordCredentials {
 export interface ConfirmResetPasswordCredentials {
   oobCode: string;
   newPassword: string;
+}
+
+export interface UserStats {
+  total_matches: number;
+  total_wins: number;
+  total_losses: number;
+  total_comments: number;
+  total_likes: number;
+  total_shares: number;
+  achievements_count: number;
+}
+// types/index.ts - Ajouter ces interfaces
+export interface UserProfile extends User {
+  stats?: UserStats;
+  recent_activity?: ActivityItem[];
+  achievements?: Achievement[];
+}
+
+export interface ActivityItem {
+  id: number;
+  type: 'comment' | 'like' | 'follow' | 'match' | 'achievement';
+  title: string;
+  description: string;
+  timestamp: string;
+  entity_id?: number;
+  entity_type?: string;
+}
+
+export interface Achievement {
+  id: number;
+  title: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  unlocked_at?: string;
+  progress?: number;
+  total_required?: number;
 }

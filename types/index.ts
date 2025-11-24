@@ -1,4 +1,4 @@
-import { User } from "./auth";
+// import { User } from "./auth";
 
 // Types de base avec timestamps
 export interface BaseEntity {
@@ -623,12 +623,36 @@ export interface FighterTransferFilters {
   sortOrder?: 'asc' | 'desc';
 }
 
-export interface UserFilters extends BaseFilters {
-  role?: string;
-  is_active?: boolean;
-  is_verified?: boolean;
-  with_profile?: boolean;
+// Archive types
+export interface ArchiveFighterAchievement extends BaseEntity {
+  fighter_id: number;
+  region_id: number;
+  title: string;
+  edition_id: number;
+  year: number;
+  position: '1st' | '2nd' | '3rd' | 'finalist' | 'semifinalist' | 'quarterfinalist';
+  description?: string;
+  medal_image?: string;
+  archived_at: string;
+  archive_reason?: string;
+  original_id: number;
 }
+
+export interface ArchiveFighterAchievementFilters extends BaseFilters {
+  fighter_id?: number;
+  region_id?: number;
+  edition_id?: number;
+  year?: number;
+  position?: string;
+  archive_reason?: string;
+  date_from?: string;
+  date_to?: string;
+  with_fighter?: boolean;
+  with_region?: boolean;
+  with_edition?: boolean;
+}
+
+
 
 export interface MessageFilters extends BaseFilters {
   message_type?: string;
@@ -791,3 +815,173 @@ export interface AppSettings {
   // Analytics
   analytics_tracking_id: string;
 }
+
+// types/index.ts - Ajouter ces types
+
+export interface User extends BaseEntity {
+  auth_id: string;
+  fcm_token?: string;
+  username: string;
+  email: string;
+  password_hash: string;
+  role: 'admin' | 'editor' | 'user' | 'moderator' | 'fighter_manager';
+  first_name?: string;
+  last_name?: string;
+  profile_picture?: string;
+  bio?: string;
+  phone_number?: string;
+  country?: string;
+  is_active: boolean;
+  is_verified: boolean;
+  last_login?: string;
+  
+  // Relations
+  permissions?: string[];
+  interactions?: Interaction[];
+  messages?: Message[];
+}
+
+export interface UserFilters extends BaseFilters {
+  role?: string;
+  is_active?: boolean;
+  is_verified?: boolean;
+  country?: string;
+  date_from?: string;
+  date_to?: string;
+  with_profile?: boolean;
+  with_permissions?: boolean;
+  with_interactions?: Boolean;
+  with_messages?: Boolean;
+}
+
+export interface CreateUserData {
+  auth_id: string;
+  username: string;
+  email: string;
+  password_hash: string;
+  role?: string;
+  first_name?: string;
+  last_name?: string;
+  profile_picture?: string;
+  bio?: string;
+  phone_number?: string;
+  country?: string;
+}
+
+export interface UpdateUserData {
+  username?: string;
+  email?: string;
+  role?: string;
+  first_name?: string;
+  last_name?: string;
+  profile_picture?: string;
+  bio?: string;
+  phone_number?: string;
+  country?: string;
+  is_active?: boolean;
+  is_verified?: boolean;
+}
+// types/index.ts – User-centric statistics types
+
+// 1. Global user counters
+export interface UserGlobalStats {
+  totalUsers: number;
+  totalActive: number;
+  totalVerified: number;
+  totalByRole: Record<User['role'], number>;
+}
+
+// 2. Daily / monthly registration trend
+export interface UserRegistrationTrend {
+  date: string; // YYYY-MM-DD
+  newUsers: number;
+  cumulative: number;
+}
+
+// 3. User activity snapshot
+export interface UserActivityStats {
+  lastDayActive: number;
+  last7DaysActive: number;
+  last30DaysActive: number;
+  neverLoggedIn: number;
+}
+
+// 4. Country distribution
+export interface UserCountryStats {
+  country: string;
+  userCount: number;
+  percentage: number;
+}
+
+// 5. Content produced by users
+export interface UserContentStats {
+  totalArticles: number;
+  totalMedia: number;
+  totalVideos: number;
+  totalMessages: number;
+}
+
+// 6. Interaction breakdown
+export interface UserInteractionStats {
+  totalLikes: number;
+  totalViews: number;
+  totalShares: number;
+  totalBookmarks: number;
+  totalFollows: number;
+}
+
+// 7. Notification funnel
+export interface UserNotificationStats {
+  totalSent: number;
+  totalRead: number;
+  readRate: number; // 0-100
+  byType: Record<Notification['notification_type'], { sent: number; read: number }>;
+}
+
+// 8. Transfer approvals (fighter_manager activity)
+export interface UserTransferStats {
+  totalTransfersApproved: number;
+  totalTransfersRejected: number;
+  totalPending: number;
+}
+
+// 9. Role-specific KPIs
+export interface RoleKPI {
+  role: User['role'];
+  userCount: number;
+  avgContentPerUser: number;
+  avgInteractionsPerUser: number;
+}
+
+// 10. Top contributors
+export interface TopUserContributor {
+  user: User;
+  articlesCount: number;
+  mediaCount: number;
+  interactionsCount: number;
+}
+
+// 11. Filters dedicated to user stats
+export interface UserStatsFilters {
+  dateFrom?: string;
+  dateTo?: string;
+  role?: User['role'];
+  country?: string;
+  groupBy?: 'day' | 'week' | 'month' | 'year' | 'role' | 'country';
+}
+
+// 12. Wrapper for API response
+export interface UserStatsResponse {
+  global: UserGlobalStats;
+  registrationTrend: UserRegistrationTrend[];
+  activity: UserActivityStats;
+  countries: UserCountryStats[];
+  content: UserContentStats;
+  interactions: UserInteractionStats;
+  notifications: UserNotificationStats;
+  transfers: UserTransferStats;
+  roleKPIs: RoleKPI[];
+  topContributors: TopUserContributor[];
+  generatedAt: string;
+}
+

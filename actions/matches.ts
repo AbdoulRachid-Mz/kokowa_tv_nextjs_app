@@ -1009,4 +1009,4 @@ export async function updateLiveMatchData(id: number, updates: {
     console.error('Error in updateLiveMatchData:', error);
     throw new Error('Erreur lors de la mise à jour des données du match');
   }
-}                                                                                          
+}

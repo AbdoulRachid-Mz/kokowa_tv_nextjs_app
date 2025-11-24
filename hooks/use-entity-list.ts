@@ -19,7 +19,9 @@ import {
   NotificationFilters,
   UserFilters,
   CoachFilters,
-  FighterTransferFilters
+  FighterTransferFilters,
+  ArchiveFighterAchievementFilters,
+  InteractionFilters
 } from '@/types';
 
 // Types pour les filtres par entité
@@ -44,6 +46,7 @@ export type EntityFilters =
 export interface UseEntityListProps<T> {
   entityType: 
     | 'fighters' 
+    | 'archives' 
     | 'regions' 
     | 'coaches' 
     | 'transfers' 
@@ -56,6 +59,7 @@ export interface UseEntityListProps<T> {
     | 'media'
     | 'videos'
     | 'messages'
+    | 'interactions'
     | 'phase-groups'
     | 'sub-groups'
     | 'notifications'
@@ -97,6 +101,19 @@ export function useEntityList<T>({
 
     // Paramètres spécifiques selon le type d'entité
     switch (entityType) {
+      case 'users':
+  const userFilters = filters as UserFilters;
+  if (userFilters.role) params.role = userFilters.role;
+  if (userFilters.is_active !== undefined) params.is_active = userFilters.is_active.toString();
+  if (userFilters.is_verified !== undefined) params.is_verified = userFilters.is_verified.toString();
+  if (userFilters.country) params.country = userFilters.country;
+  if (userFilters.date_from) params.date_from = userFilters.date_from;
+  if (userFilters.date_to) params.date_to = userFilters.date_to;
+  if (userFilters.with_profile) params.with_profile = 'true';
+  if (userFilters.with_permissions) params.with_permissions = 'true';
+  if (userFilters.with_interactions) params.with_interactions = 'false';
+  if (userFilters.with_messages) params.with_messages = 'false';
+  break;
       case 'fighters':
         const fighterFilters = filters as FighterFilters;
         if (fighterFilters.region_id) params.region_id = fighterFilters.region_id.toString();
@@ -107,6 +124,20 @@ export function useEntityList<T>({
         if (fighterFilters.with_region) params.with_region = 'true';
         if (fighterFilters.with_achievements) params.with_achievements = 'true';
         if (fighterFilters.with_transfers) params.with_transfers = 'true';
+        break;
+      case 'archives':
+        const archiveFilters = filters as ArchiveFighterAchievementFilters;
+        if (archiveFilters.fighter_id) params.fighter_id = archiveFilters.fighter_id.toString();
+        if (archiveFilters.region_id) params.region_id = archiveFilters.region_id.toString();
+        if (archiveFilters.edition_id) params.edition_id = archiveFilters.edition_id.toString();
+        if (archiveFilters.year) params.year = archiveFilters.year.toString();
+        if (archiveFilters.position) params.position = archiveFilters.position;
+        if (archiveFilters.archive_reason) params.archive_reason = archiveFilters.archive_reason;
+        if (archiveFilters.date_from) params.date_from = archiveFilters.date_from;
+        if (archiveFilters.date_to) params.date_to = archiveFilters.date_to;
+        if (archiveFilters.with_fighter) params.with_fighter = 'true';
+        if (archiveFilters.with_region) params.with_region = 'true';
+        if (archiveFilters.with_edition) params.with_edition = 'true';
         break;
 
         case 'transfers':
@@ -190,10 +221,18 @@ export function useEntityList<T>({
       case 'sub-groups':
   const subGroupFilters = filters as SubGroupFilters;
   if (subGroupFilters.group_id) params.group_id = subGroupFilters.group_id.toString();
+  if (subGroupFilters.region1_id) params.region1_id = subGroupFilters.region1_id.toString();
+  if (subGroupFilters.region2_id) params.region2_id = subGroupFilters.region2_id.toString();
+  if (subGroupFilters.belt_region1) params.belt_region1 = subGroupFilters.belt_region1.toString();
+  if (subGroupFilters.belt_region2) params.belt_region2 = subGroupFilters.belt_region2.toString();
+  if (subGroupFilters.main_referee_id) params.main_referee_id = subGroupFilters.main_referee_id.toString();
+  if (subGroupFilters.is_completed !== undefined) params.is_completed = subGroupFilters.is_completed.toString();
+  if (subGroupFilters.is_active !== undefined) params.is_active = subGroupFilters.is_active.toString();
   if (subGroupFilters.with_group) params.with_group = 'true';
   if (subGroupFilters.with_matches) params.with_matches = 'true';
   if (subGroupFilters.with_regions) params.with_regions = 'true';
   if (subGroupFilters.with_belts) params.with_belts = 'true';
+  if (subGroupFilters.with_referee) params.with_referee = 'true';
   break;
 
       case 'matches':
@@ -207,6 +246,15 @@ export function useEntityList<T>({
         if (matchFilters.date_to) params.date_to = matchFilters.date_to;
         if (matchFilters.with_sub_group) params.with_sub_group = 'true';
         if (matchFilters.with_fighters) params.with_fighters = 'true';
+        break;
+        
+      case "interactions":
+        const interactionFilters = filters as InteractionFilters;
+        if (interactionFilters.user_id) params.user_id = interactionFilters.user_id.toString();
+        if (interactionFilters.entity_type) params.entity_type = interactionFilters.entity_type;
+        if (interactionFilters.entity_id) params.entity_id = interactionFilters.entity_id.toString();
+        if (interactionFilters.interaction_type) params.interaction_type = interactionFilters.interaction_type;
+        if (interactionFilters.with_user) params.with_user = 'true';
         break;
 
       case 'referees':
@@ -258,14 +306,6 @@ export function useEntityList<T>({
         if (notificationFilters.notification_type) params.notification_type = notificationFilters.notification_type;
         if (notificationFilters.is_read !== undefined) params.is_read = notificationFilters.is_read.toString();
         if (notificationFilters.with_user) params.with_user = 'true';
-        break;
-
-      case 'users':
-        const userFilters = filters as UserFilters;
-        if (userFilters.role) params.role = userFilters.role;
-        if (userFilters.is_active !== undefined) params.is_active = userFilters.is_active.toString();
-        if (userFilters.is_verified !== undefined) params.is_verified = userFilters.is_verified.toString();
-        if (userFilters.with_profile) params.with_profile = 'true';
         break;
     }
 

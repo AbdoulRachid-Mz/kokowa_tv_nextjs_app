@@ -1,206 +1,241 @@
 "use client"
-
 import { User, onAuthStateChanged } from 'firebase/auth';
-import { useEffect, useState } from 'react';
-import { createUserInDatabase, getCompleteUserData } from '@/lib/server/auth-utils';
-import { useLocalStorage } from './use-local-storage';
+import { useEffect, useState, useCallback } from 'react';
 import { UserDocument, UserInterface } from '@/types/user';
 import { auth } from '@/configs/firebase/config';
-import { AuthService } from '@/lib/firebase/auth-service';
+import { 
+  firebaseSignUpWithEmail, 
+  firebaseSignInWithEmail, 
+  firebaseSignInWithGoogle,
+  firebaseSignOut,
+  firebaseSendPasswordResetEmail
+} from '@/utils/firebase-auth-utils';
 
 export function useAuth() {
   const [user, setUser] = useState<UserInterface | null>(null);
   const [userDocument, setUserDocument] = useState<UserDocument | null>(null);
   const [loading, setLoading] = useState(true);
-  const { setItem, removeItem } = useLocalStorage();
+  const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (!firebaseUser) {
-        setUser(null);
-        setUserDocument(null);
-        setLoading(false);
-        removeItem('user');
-        removeItem('userDocument');
-        return;
-      }
-
-      const formattedUser = formatUser(firebaseUser);
-      await fetchUserDocument(formattedUser);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const formatUser = (user: User): UserInterface => ({
+  // Formater l'utilisateur Firebase
+  const formatUser = useCallback((user: User): UserInterface => ({
     uid: user.uid,
     email: user.email,
     displayName: user.displayName,
     emailVerified: user.emailVerified,
     phoneNumber: user.phoneNumber,
     photoURL: user.photoURL,
-  });
+  }), []);
 
-  const fetchUserDocument = async (user: UserInterface) => {
+  // Vérifier et récupérer l'utilisateur depuis l'API
+  const checkAndFetchUser = useCallback(async (user: UserInterface) => {
     try {
-      const userData = await getCompleteUserData(user.uid);
+      setLoading(true);
       
-      if (userData) {
-        const completeUser = { 
-          ...user, 
-          userDocument: userData 
-        };
-        
-        setUser(completeUser);
-        setUserDocument(userData);
-        setItem('user', JSON.stringify(completeUser));
-        setItem('userDocument', JSON.stringify(userData));
-        
-        // Mettre à jour la dernière connexion
-        await updateLastLogin(user.uid);
+      const response = await fetch('/api/auth/session', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          setUser(user);
+          setUserDocument(data.user);
+          return;
+        }
+      }
+
+      await createUserInDatabaseOnly(user);
+      
+      // Recharger la session
+      const retryResponse = await fetch('/api/auth/session', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (retryResponse.ok) {
+        const data = await retryResponse.json();
+        setUser(user);
+        setUserDocument(data.user);
       } else {
-        console.warn('User exists in Firebase but not in PostgreSQL');
         setUser(user);
         setUserDocument(null);
       }
-      
-      setLoading(false);
     } catch (error) {
-      console.error("Error fetching user document:", error);
-      setLoading(false);
-    }
-  };
-
-  // Connexion avec email/mot de passe
-  const signIn = async (email: string, password: string): Promise<void> => {
-    try {
-      const response = await AuthService.signIn(email, password);
-      if (!response.success) {
-        throw new Error(response.error || 'Erreur de connexion');
-      }
-      const formattedUser = formatUser(response.user! as User);
-      await fetchUserDocument(formattedUser);
-    } catch (error: any) {
-      console.error('Sign in error:', error);
-      throw new Error(getAuthErrorMessage(error.code));
-    }
-  };
-
-  // Inscription avec email/mot de passe
-  const signUp = async (email: string, password: string, userData?: any): Promise<void> => {
-    try {
-      const response = await AuthService.signUp(email, password, userData);
-      if (!response.success) {
-        throw new Error(response.error || 'Erreur lors de la création du compte');
-      }
-      const formattedUser = formatUser(response.user! as User);
-      await fetchUserDocument(formattedUser);
-    } catch (error: any) {
-      console.error('Sign up error:', error);
-      throw new Error(getAuthErrorMessage(error.code));
-    }
-  };
-
-  // Connexion avec Google
-  const signInWithGoogle = async (): Promise<void> => {
-    try {
-      const response = await AuthService.signInWithGoogle();
-      if (!response.success) {
-        throw new Error(response.error || 'Erreur de connexion Google');
-      }
-      const formattedUser = formatUser(response.user! as User);
-      await fetchUserDocument(formattedUser);
-    } catch (error: any) {
-      console.error('Google sign in error:', error);
-      throw new Error(getAuthErrorMessage(error.code));
-    }
-  };
-
-  // Reset password
-  const resetPassword = async (email: string): Promise<void> => {
-    try {
-      const response = await AuthService.sendPasswordResetEmail(email);
-      if (!response.success) {
-        throw new Error(response.error || 'Erreur lors de l\'envoi de l\'email');
-      }
-    } catch (error: any) {
-      console.error('Reset password error:', error);
-      throw new Error(getAuthErrorMessage(error.code));
-    }
-  };
-
-  // Confirmer la réinitialisation du mot de passe
-  const confirmPasswordReset = async (oobCode: string, newPassword: string): Promise<void> => {
-    try {
-      const response = await AuthService.confirmPasswordReset(oobCode, newPassword);
-      if (!response.success) {
-        throw new Error(response.error || 'Erreur lors de la réinitialisation');
-      }
-    } catch (error: any) {
-      console.error('Confirm password reset error:', error);
-      throw new Error(getAuthErrorMessage(error.code));
-    }
-  };
-
-  // Vérifier le code de réinitialisation
-  const verifyPasswordResetCode = async (oobCode: string): Promise<string> => {
-    try {
-      const response = await AuthService.verifyPasswordResetCode(oobCode);
-      if (!response.success) {
-        throw new Error(response.error || 'Code de réinitialisation invalide');
-      }
-      return response.email!;
-    } catch (error: any) {
-      console.error('Verify password reset code error:', error);
-      throw new Error(getAuthErrorMessage(error.code));
-    }
-  };
-
-  // Déconnexion
-  const signOutUser = async (): Promise<void> => {
-    try {
-      const response = await AuthService.signOut();
-      if (!response.success) {
-        throw new Error(response.error || 'Erreur lors de la déconnexion');
-      }
-      setUser(null);
+      console.error("Error checking user session:", error);
+      setUser(user);
       setUserDocument(null);
-      removeItem('user');
-      removeItem('userDocument');
-    } catch (error: any) {
-      console.error('Sign out error:', error);
-      throw new Error('Erreur lors de la déconnexion');
+    } finally {
+      setLoading(false);
+      setInitialized(true);
     }
-  };
+  }, []);
 
-  const reloadUser = async (): Promise<void> => {
-    if (auth.currentUser) {
-      await auth.currentUser.reload();
-      const formattedUser = formatUser(auth.currentUser);
-      await fetchUserDocument(formattedUser);
-    }
-  };
-
-  const updateLastLogin = async (uid: string): Promise<void> => {
+  // Créer l'utilisateur uniquement dans la base de données
+  const createUserInDatabaseOnly = async (user: UserInterface) => {
     try {
-      await fetch('/api/auth/update-last-login', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ uid }),
+        body: JSON.stringify({
+          email: user.email,
+          username: user.email?.split('@')[0] || `user_${user.uid.slice(0, 8)}`,
+          first_name: user.displayName?.split(' ')[0] || '',
+          last_name: user.displayName?.split(' ').slice(1).join(' ') || '',
+          phone_number: user.phoneNumber || '',
+          firebase_uid: user.uid,
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error);
+      }
+
+      return await response.json();
     } catch (error) {
-      console.error('Error updating last login:', error);
+      console.error('Error creating user in database:', error);
+      throw error;
+    }
+  };
+
+  // Écouter les changements d'authentification
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        setUser(null);
+        setUserDocument(null);
+        setLoading(false);
+        setInitialized(true);
+        
+        // Nettoyer la session côté serveur
+        await fetch('/api/auth/session', { method: 'DELETE' });
+        return;
+      }
+
+      const formattedUser = formatUser(firebaseUser);
+      await checkAndFetchUser(formattedUser);
+    });
+
+    return () => unsubscribe();
+  }, [formatUser, checkAndFetchUser]);
+
+  // Recharger l'utilisateur
+  const reloadUser = async (): Promise<void> => {
+    if (auth.currentUser) {
+      try {
+        await auth.currentUser.reload();
+        const formattedUser = formatUser(auth.currentUser);
+        await checkAndFetchUser(formattedUser);
+      } catch (error) {
+        console.error('Error reloading user:', error);
+        throw new Error('Erreur lors du rechargement de l\'utilisateur');
+      }
+    }
+  };
+
+  // Méthodes d'authentification
+  const signIn = async (email: string, password: string): Promise<void> => {
+    try {
+      const response = await firebaseSignInWithEmail(email, password);
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+    } catch (error: any) {
+      throw new Error(error.message);
+    }
+  };
+
+  const signUp = async (email: string, password: string, userData?: any): Promise<void> => {
+    try {
+      // 1. Créer l'utilisateur Firebase
+      const firebaseResponse = await firebaseSignUpWithEmail(email, password);
+      if (firebaseResponse.error) {
+        throw new Error(firebaseResponse.error.message);
+      }
+
+      const firebaseUser = firebaseResponse.data;
+      
+      // 2. Créer l'utilisateur dans PostgreSQL via l'API
+      const apiResponse = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          username: userData?.username || email.split('@')[0],
+          first_name: userData?.first_name || '',
+          last_name: userData?.last_name || '',
+          phone_number: userData?.phone_number || '',
+          firebase_uid: firebaseUser.uid,
+        }),
+      });
+
+      if (!apiResponse.ok) {
+        const errorData = await apiResponse.json();
+        // Rollback: supprimer l'utilisateur Firebase
+        await firebaseUser.delete();
+        throw new Error(errorData.error || 'Erreur lors de la création du compte');
+      }
+    } catch (error: any) {
+      throw new Error(error.message);
+    }
+  };
+
+  const signInWithGoogle = async (): Promise<void> => {
+    try {
+      const response = await firebaseSignInWithGoogle();
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+    } catch (error: any) {
+      throw new Error(error.message);
+    }
+  };
+
+  const signOutUser = async (): Promise<void> => {
+    try {
+      const response = await firebaseSignOut();
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+      setUser(null);
+      setUserDocument(null);
+      
+      // Nettoyer la session côté serveur
+      await fetch('/api/auth/session', { method: 'DELETE' });
+    } catch (error: any) {
+      throw new Error(error.message);
+    }
+  };
+
+  const resetPassword = async (email: string): Promise<void> => {
+    try {
+      const response = await firebaseSendPasswordResetEmail(email);
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+    } catch (error: any) {
+      throw new Error(error.message);
     }
   };
 
   // Vérifications de permissions
-  const hasRole = (role: string): boolean => {
+  const hasRole = useCallback((role: string): boolean => {
     return userDocument?.role === role;
-  };
+  }, [userDocument]);
 
-  const hasPermission = (permission: string): boolean => {
+  const hasPermission = useCallback((permission: string): boolean => {
     if (!userDocument) return false;
     
     const rolePermissions: Record<string, string[]> = {
@@ -212,60 +247,29 @@ export function useAuth() {
     };
 
     return rolePermissions[userDocument.role]?.includes(permission) || false;
-  };
+  }, [userDocument]);
 
-  const canManageFighters = (): boolean => {
-    return hasPermission('manage_fighters');
-  };
-
-  const canManageCompetitions = (): boolean => {
-    return hasPermission('manage_competitions');
-  };
-
-  const canManageUsers = (): boolean => {
-    return hasPermission('manage_users');
-  };
-
-  // Fonction utilitaire pour les messages d'erreur
-  const getAuthErrorMessage = (errorCode: string): string => {
-    const errorMessages: Record<string, string> = {
-      'auth/invalid-email': 'Adresse email invalide',
-      'auth/user-disabled': 'Ce compte a été désactivé',
-      'auth/user-not-found': 'Aucun compte trouvé avec cette adresse email',
-      'auth/wrong-password': 'Mot de passe incorrect',
-      'auth/email-already-in-use': 'Un compte existe déjà avec cette adresse email',
-      'auth/weak-password': 'Le mot de passe est trop faible',
-      'auth/operation-not-allowed': 'Cette opération n\'est pas autorisée',
-      'auth/account-exists-with-different-credential': 'Un compte existe déjà avec des identifiants différents',
-      'auth/popup-closed-by-user': 'La fenêtre de connexion a été fermée',
-      'auth/cancelled-popup-request': 'La connexion a été annulée',
-      'auth/expired-action-code': 'Le lien de réinitialisation a expiré',
-      'auth/invalid-action-code': 'Lien de réinitialisation invalide',
-    };
-
-    return errorMessages[errorCode] || 'Une erreur est survenue lors de l\'authentification';
-  };
+  // États dérivés
+  const isAdmin = hasRole('admin');
+  // console.log(user, 
+  //   userDocument)
 
   return { 
     user, 
     userDocument,
-    loading,
+    loading: loading || !initialized,
     signIn,
     signUp,
     signInWithGoogle,
     signOut: signOutUser,
     resetPassword,
-    confirmPasswordReset,
-    verifyPasswordResetCode,
     reloadUser,
-    // Permissions
     hasRole,
     hasPermission,
-    canManageFighters,
-    canManageCompetitions,
-    canManageUsers,
-    // États dérivés
-    isAdmin: hasRole('admin'),
+    isAdmin,
+    canManageFighters: () => hasPermission('manage_fighters'),
+    canManageCompetitions: () => hasPermission('manage_competitions'),
+    canManageUsers: () => hasPermission('manage_users'),
     isEditor: hasRole('editor'),
     isModerator: hasRole('moderator'),
     isFighterManager: hasRole('fighter_manager')

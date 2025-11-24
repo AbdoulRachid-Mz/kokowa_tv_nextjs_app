@@ -244,6 +244,8 @@ export const fighterTransferSchema = z.object({
 export const userSchema = z.object({
   username: z.string().min(1, 'Le nom d\'utilisateur est requis').max(50, 'Le nom d\'utilisateur est trop long'),
   email: z.string().email('Email invalide').max(100, 'L\'email est trop long'),
+  auth_id: z.string().max(255).optional(),
+  fcm_token: z.string().optional(),
   password_hash: z.string().min(1, 'Le hash du mot de passe est requis').max(255, 'Le hash est trop long'),
   role: z.enum(['admin', 'editor', 'user', 'moderator', 'fighter_manager']).default('user'),
   first_name: z.string().max(50, 'Le prénom est trop long').optional(),

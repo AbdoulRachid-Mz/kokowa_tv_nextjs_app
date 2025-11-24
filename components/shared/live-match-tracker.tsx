@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useRealtime } from '@/hooks/use-realtime';
 import { Match } from '@/types';
+import { useAuthContext } from '@/contexts/auth-context';
 
 interface LiveMatchTrackerProps {
   matchId: number;
@@ -13,7 +14,8 @@ interface LiveMatchTrackerProps {
 export function LiveMatchTracker({ matchId, editionId }: LiveMatchTrackerProps) {
   const { isConnected, events, subscribeToMatch, subscribeToEdition } = useRealtime();
   const [matchData, setMatchData] = useState<Match | null>(null);
-  console.log(matchData);
+  const {user, loading, isAdmin, signOut} = useAuthContext();
+  console.log(user)
 
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export function LiveMatchTracker({ matchId, editionId }: LiveMatchTrackerProps) 
 
   return (
     <div className="p-4 border rounded-lg">
+      {user ? (<div className="">{user?.displayName + "" + user?.email} <button onClick={async () => await  signOut()}>Deconnexion</button></div>) : ""}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Match en direct</h3>
         <div className="flex items-center space-x-2">

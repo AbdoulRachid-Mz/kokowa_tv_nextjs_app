@@ -41,6 +41,7 @@ export interface EntityListProps<T> {
   title: string;
   description?: string;
   entityType:
+    | "user"
     | "fighter"
     | "transfer"
     | "region"

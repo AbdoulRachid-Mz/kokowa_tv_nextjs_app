@@ -3,7 +3,7 @@
 import { query, queryOne } from '@/lib/db/neon-client';
 import { fighterSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
-import { Fighter, FighterFilters, PaginatedResponse } from '@/types';
+import { ArchiveFighterAchievementFilters, Fighter, FighterFilters, PaginatedResponse } from '@/types';
 
 export async function getFighters(
   filters: FighterFilters = {}

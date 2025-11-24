@@ -5,6 +5,7 @@ import { getRegions } from '@/actions/regions';
 import { getEditions } from '@/actions/editions';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { LiveMatchTracker } from '@/components/shared/live-match-tracker';
+import TailwindHero from '@/components/pages/home-page/tailwind-hero';
 
 async function getStats() {
   try {
@@ -52,8 +53,9 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50">
+      <TailwindHero />
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      {/* <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-orange-600">Kokowa TV</h1>
@@ -74,12 +76,12 @@ export default async function HomePage() {
             </nav>
           </div>
         </div>
-      </header>
+      </header> */}
 
-      <LiveMatchTracker matchId={2} editionId={2} />
+      {/* <LiveMatchTracker matchId={2} editionId={2} /> */}
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-16 text-center">
+      {/* <section className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-5xl font-bold text-gray-900 mb-6">
           Bienvenue sur <span className="text-orange-600">Kokowa TV</span>
         </h1>
@@ -102,10 +104,10 @@ export default async function HomePage() {
             Compétitions ({stats.competitionsCount})
           </Link>
         </div>
-      </section>
+      </section> */}
 
       {/* Stats Section */}
-      <section className="container mx-auto px-4 py-12">
+      {/* <section className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow">
             <div className="text-3xl font-bold text-orange-600 mb-2">{stats.fightersCount}</div>
@@ -124,7 +126,7 @@ export default async function HomePage() {
             <div className="text-gray-600">Éditions</div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Derniers Lutteurs */}
       {stats.latestFighters.length > 0 && (

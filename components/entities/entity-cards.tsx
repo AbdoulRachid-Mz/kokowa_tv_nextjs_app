@@ -12,6 +12,7 @@ import {
   Coach,
   FighterTransfer,
   SubGroup,
+  User,
 } from "@/types";
 import {
   MapPin,
@@ -20,6 +21,7 @@ import {
   Calendar,
   Shield,
   Award,
+  User as UserIcon,
   Star,
   Swords,
   Clock,
@@ -27,6 +29,8 @@ import {
   Eye,
   ArrowRight,
   DollarSign,
+  Phone,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -1245,6 +1249,174 @@ export const SubGroupCard = ({
   );
 };
 
+interface UserCardProps {
+  user: User;
+  viewMode: "grid" | "list";
+  onEdit?: (user: User) => void;
+  onView?: (user: User) => void;
+}
+
+export function UserCard({ user, viewMode, onEdit, onView }: UserCardProps) {
+  const isListView = viewMode === "list";
+
+  const getRoleBadge = (role: string) => {
+    const roleConfig = {
+      admin: { label: "Administrateur", color: "bg-red-100 text-red-800" },
+      editor: { label: "Éditeur", color: "bg-blue-100 text-blue-800" },
+      moderator: { label: "Modérateur", color: "bg-green-100 text-green-800" },
+      fighter_manager: { label: "Manager Lutteurs", color: "bg-purple-100 text-purple-800" },
+      user: { label: "Utilisateur", color: "bg-gray-100 text-gray-800" },
+    };
+
+    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.user;
+    return config;
+  };
+
+  const roleConfig = getRoleBadge(user.role);
+
+  return (
+    <Card className={cn(
+      "hover:shadow-lg transition-all duration-300 cursor-pointer group",
+      isListView && "flex"
+    )}>
+      <div className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}>
+        {/* Avatar */}
+        <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
+          <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center">
+            {user.profile_picture ? (
+              <Image
+                src={user.profile_picture}
+                alt={user.username}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <UserIcon className="h-6 w-6 text-white" />
+            )}
+          </div>
+        </div>
+
+        <div className={cn("flex-1", isListView && "flex items-center justify-between")}>
+          <div className={cn(isListView && "flex items-center gap-6")}>
+            <div>
+              <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                {user.username}
+              </CardTitle>
+              
+              {(user.first_name || user.last_name) && (
+                <Typography variant="body-sm" className="text-muted-foreground">
+                  {user.first_name} {user.last_name}
+                </Typography>
+              )}
+
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <Badge variant="outline" className={roleConfig.color}>
+                  {roleConfig.label}
+                </Badge>
+
+                <Badge variant={user.is_active ? "default" : "secondary"}>
+                  {user.is_active ? "Actif" : "Inactif"}
+                </Badge>
+
+                {user.is_verified && (
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    Vérifié
+                  </Badge>
+                )}
+
+                {user.country && (
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {user.country}
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {isListView && (
+              <div className="text-right space-y-1">
+                <div className="flex items-center gap-1 justify-end text-sm text-muted-foreground">
+                  <Mail className="h-3 w-3" />
+                  <Typography variant="body-sm">{user.email}</Typography>
+                </div>
+                
+                {user.phone_number && (
+                  <div className="flex items-center gap-1 justify-end text-sm text-muted-foreground">
+                    <Phone className="h-3 w-3" />
+                    <Typography variant="body-sm">{user.phone_number}</Typography>
+                  </div>
+                )}
+
+                {user.last_login && (
+                  <Typography variant="caption2" theme="muted">
+                    Dernière connexion: {new Date(user.last_login).toLocaleDateString()}
+                  </Typography>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Informations secondaires (grid seulement) */}
+          {!isListView && (
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Mail className="h-3 w-3" />
+                <Typography variant="body-sm" className="truncate">
+                  {user.email}
+                </Typography>
+              </div>
+
+              {user.phone_number && (
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <Phone className="h-3 w-3" />
+                  <Typography variant="body-sm">{user.phone_number}</Typography>
+                </div>
+              )}
+
+              {user.last_login && (
+                <div className="text-sm text-muted-foreground">
+                  Connecté le {new Date(user.last_login).toLocaleDateString()}
+                </div>
+              )}
+
+              {user.bio && (
+                <Typography variant="body-sm" theme="muted" className="line-clamp-2">
+                  {user.bio}
+                </Typography>
+              )}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className={cn("flex gap-2 mt-3", isListView && "mt-0")}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onView?.(user);
+              }}
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              Voir
+            </Button>
+            <Button
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.(user);
+              }}
+            >
+              <Edit className="h-4 w-4 mr-1" />
+              Modifier
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 // Export des composants de cartes
 export const EntityCards = {
   Fighter: FighterCard,
@@ -1254,4 +1426,5 @@ export const EntityCards = {
   Coach: CoachCard, // AJOUT
   Transfer: TransferCard, // AJOUT
   SubGroup: SubGroupCard,
+  User: UserCard,
 };
