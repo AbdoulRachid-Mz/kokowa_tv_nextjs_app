@@ -69,10 +69,10 @@ export default function SubGroupsPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {stats.map((stat, index) => (
           <Card key={index}>
-            <CardContent className="p-4">
+            <CardContent className="p-2">
               <div className="flex items-center justify-between">
                 <div>
                   <Typography variant="body-sm" theme="muted" className="mb-1">
@@ -112,7 +112,7 @@ export default function SubGroupsPage() {
       filters={filters}
       onFilterChange={setFilters}
       onAdd={onAdd}
-      onExport={onExport}
+      // onExport={onExport}
       onRefresh={onRefresh}
       viewMode={viewMode}
       onViewModeChange={setViewMode}

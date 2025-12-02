@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 interface ParticipantsManagerProps {
   editionId: number;
@@ -114,13 +115,20 @@ export function ParticipantsManager({
     setAddingItems(prev => new Set(prev).add(itemId));
     try {
       const endpoint = `/api/editions/${editionId}/${type}`;
+      const body: any = { status: 'registered' };
+
+      if (isFighters) {
+        const fighter = allItems.find(f => f.id === itemId);
+        body.fighter_id = itemId;
+        if (fighter?.region?.id) body.region_id = fighter.region.id;
+      } else {
+        body.region_id = itemId;
+      }
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          [isFighters ? 'fighter_id' : 'region_id']: itemId,
-          status: 'registered'
-        }),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
@@ -286,18 +294,18 @@ export function ParticipantsManager({
     <div className="space-y-6">
       {/* En-tête */}
       <div>
-        <Typography variant="h3" className="flex items-center gap-2">
+        {/* <Typography variant="h3" className="flex items-center gap-2">
           {isFighters ? <Users className="h-6 w-6" /> : <MapPin className="h-6 w-6" />}
           Gestion des {entityName}
-        </Typography>
-        <Typography variant="body-sm" theme="muted">
+        </Typography> */}
+        {/* <Typography variant="body-sm" theme="muted">
           Ajoutez ou retirez des {entityName} de cette édition
-        </Typography>
+        </Typography> */}
       </div>
 
-      <Tabs defaultValue="available" className="space-y-6">
+      <Tabs defaultValue="available" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="available">
+          <TabsTrigger value="available" >
             {entityName} disponibles ({filteredItems.length})
           </TabsTrigger>
           <TabsTrigger value="current">
@@ -306,7 +314,7 @@ export function ParticipantsManager({
         </TabsList>
 
         {/* Onglet des éléments disponibles */}
-        <TabsContent value="available" className="space-y-4">
+        <TabsContent value="available" className="space-y-2">
           {/* Barre de recherche */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -324,30 +332,55 @@ export function ParticipantsManager({
             </div>
           ) : filteredItems.length === 0 ? (
             <Card>
-              <CardContent className="py-8 text-center">
+              <CardContent className="py-4 text-center">
                 <Typography variant="body-lg" theme="muted">
                   Aucun {entityName} trouvé
                 </Typography>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-3">
+            <div className="grid gap-2">
               {filteredItems.map((item) => {
                 const itemId = item.id;
                 const isAdded = currentIds.has(itemId);
                 const isAdding = addingItems.has(itemId);
 
                 return (
-                  <Card key={itemId} className={isAdded ? "opacity-60" : ""}>
-                    <CardContent className="p-4">
+                  <Card key={itemId} className={isAdded ? "opacity-60 p-2" : "p-2"}>
+                    <CardContent className="p-2">
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
+                        <div className="flex-1 flex items-center">
+                          {item.profile_image ? (
+                            <div className="mr-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={item.profile_image} alt={getItemDisplayName(item)} />
+                                <AvatarFallback>
+                                  {isFighters
+                                    ? `${item.first_name?.[0]}${item.last_name?.[0]}`
+                                    : item.code?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                            </div>
+                          ) : (
+                             <div className="mr-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={item.flag_image} alt={getItemDisplayName(item)} />
+                                <AvatarFallback>
+                                  {isFighters
+                                    ? `${item.first_name?.[0]}${item.last_name?.[0]}`
+                                    : item.code?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                            </div>
+                          )}
+                          <div className="">
                           <Typography variant="body-base" weight="medium" className="mb-1">
                             {getItemDisplayName(item)}
                           </Typography>
                           <Typography variant="body-sm" theme="muted">
                             {getItemDetails(item)}
                           </Typography>
+                          </div>
                         </div>
                         
                         <div className="flex items-center gap-2">

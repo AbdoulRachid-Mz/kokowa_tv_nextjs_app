@@ -41,7 +41,7 @@ export function EmptyMatchCard({
   };
 
   return (
-    <Card className="border-dashed border-2 border-primary/30 bg-muted/20">
+    <Card className="border-dashed border-2 border-primary/30 bg-muted/20 p-2">
       <CardContent className="p-2">
         <Typography
           variant="body-lg"
@@ -51,7 +51,7 @@ export function EmptyMatchCard({
           Nouveau Match
         </Typography>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-2 gap-2 mb-3">
           {/* Sélection Lutteur 1 */}
           <div className="space-y-2">
             <Typography variant="body-sm" weight="medium">

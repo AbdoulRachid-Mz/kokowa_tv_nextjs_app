@@ -11,6 +11,7 @@ import { Fighter, Region } from "@/types";
 import { FighterCard } from "@/components/entities/entity-cards";
 import { FighterDialog } from "@/components/regions/fighter-dialog";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function RegionDetailPage() {
   const params = useParams();
@@ -48,17 +49,17 @@ export default function RegionDetailPage() {
   if (!region) return <div>Région non trouvée</div>;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="mx-auto ">
       {/* En-tête */}
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex justify-between items-start mb-2">
         <div>
-          <Typography variant="h2" className="mb-2">
+          <Typography variant="h4" className="mb-2">
             {region.name}
           </Typography>
           <div className="flex gap-2 items-center">
             <Badge variant="secondary">{region.code}</Badge>
             <Badge variant="outline">{fighters.length} lutteurs</Badge>
-            {region.total_champions > 0 && (
+            {(region.total_champions ?? 0) > 0 && (
               <Badge variant="default">
                 {region.total_champions} champions
               </Badge>
@@ -71,20 +72,27 @@ export default function RegionDetailPage() {
       </div>
 
       {/* Drapeau et informations */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <Card className="lg:col-span-1">
-          <CardContent className="p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-3 ">
+        <Card
+          className={`lg:col-span-1 p-2 border-t-[${
+            region.color || "primary"
+          }] border-2`}
+        >
+          <CardContent className="p-4">
             {region.flag_image && (
               <div className="mb-4">
-                <img
+                <Image
                   src={region.flag_image}
                   alt={`Drapeau ${region.name}`}
-                  className="w-full h-32 object-contain rounded"
+                  width={320}
+                  height={128}
+                  className="object-contain rounded"
+                  style={{ width: "100%", height: "auto" }}
                 />
               </div>
             )}
             {region.color && (
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 ">
                 <div
                   className="w-6 h-6 rounded border"
                   style={{ backgroundColor: region.color }}
@@ -100,12 +108,16 @@ export default function RegionDetailPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card
+          className={`lg:col-span-2 p-2 border-t-[${
+            region.color || "primary"
+          }] border-2`}
+        >
           <CardHeader>
             <CardTitle>Statistiques</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               <div className="text-center">
                 <Typography variant="h4" weight="bold">
                   {fighters.length}
@@ -136,12 +148,14 @@ export default function RegionDetailPage() {
       </div>
 
       {/* Liste des lutteurs */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <Typography variant="h3">Lutteurs</Typography>
-          <Link href={`/fighters/create`}>
-            Ajouter un lutteur
-          </Link>
+      <div className="mb-3">
+        <div className="flex justify-between items-center mb-3">
+          <Typography variant="h4">Lutteurs</Typography>
+          <Button variant="default" asChild>
+            <Link href={`/fighters/create?regionId=${regionId}`}>
+              Ajouter un lutteur
+            </Link>
+          </Button>
         </div>
 
         {fighters.length > 0 ? (

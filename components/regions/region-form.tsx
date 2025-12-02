@@ -94,92 +94,106 @@ export function RegionForm({ region, isEdit = false }: RegionFormProps) {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <Typography variant="h2" className="mb-6">
+    <div className="p-2">
+      <div className="max-w-4xl mx-auto">
+        <Typography variant="h4" className="mb-3">
           {isEdit ? "Modifier la Région" : "Créer une Région"}
         </Typography>
 
-        <Card>
+        <Card className="p-2 gap-2">
           <CardHeader>
             <CardTitle>Informations de la région</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Upload du drapeau */}
-              <div>
-                <Typography variant="body-sm" weight="medium" className="mb-2">
-                  Drapeau de la région
-                </Typography>
-                <AdvancedUpload
-                  value={flagImage}
-                  onChange={setFlagImage}
-                  maxSizeMB={2}
-                  isAutoUpload={false}
-                  isRounded={false}
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <Typography variant="body-sm" weight="medium" className="mb-2">
-                  Stade
-                </Typography>
-                <AdvancedUpload
-                  value={stadiumImage}
-                  onChange={setStadiumImage}
-                  maxSizeMB={2}
-                  isAutoUpload={false}
-                  isRounded={false}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Nom */}
-              <div className="flex items-center justify-center">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="relative mb-14">
                 <div>
-                  <label
-                    htmlFor="name"
-                    className="block text-sm font-medium mb-2"
+                  <Typography
+                    variant="body-sm"
+                    weight="medium"
+                    className="mb-2"
                   >
-                    Nom de la région *
-                  </label>
-                  <Input
-                    id="name"
-                    name="name"
-                    type="text"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Ex: Dakar"
-                    className={errors.name ? "border-red-500" : ""}
+                    Stade
+                  </Typography>
+                  <AdvancedUpload
+                    value={stadiumImage}
+                    onChange={setStadiumImage}
+                    maxSizeMB={2}
+                    isAutoUpload={false}
+                    isRounded={false}
+                    className="w-full"
                   />
-                  {errors.name && (
-                    <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-                  )}
                 </div>
-                <div>
-                  <label
-                    htmlFor="name"
-                    className="block text-sm font-medium mb-2"
+                {/* Upload du drapeau */}
+                <div className="max-w-fit absolute -bottom-14 left-2 ">
+                  <Typography
+                    variant="body-sm"
+                    weight="medium"
+                    className="mb-2"
                   >
-                    Nom de stade*
-                  </label>
-                  <Input
-                    id="stadium_name"
-                    name="stadium_name"
-                    type="text"
-                    value={formData.stadium_name}
-                    onChange={handleChange}
-                    placeholder="Ex: Dakar"
-                    className={errors.stadium_name ? "border-red-500" : ""}
+                    Drapeau de la région
+                  </Typography>
+                  <AdvancedUpload
+                    value={flagImage}
+                    onChange={setFlagImage}
+                    maxSizeMB={2}
+                    isAutoUpload={false}
+                    isRounded={true}
+                    className="w-full "
                   />
-                  {errors.stadium_name && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.stadium_name}
-                    </p>
-                  )}
                 </div>
               </div>
 
+              {/* nom et stade */}
+              {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-2"> */}
+                {/* Nom */}
+                <div className="grid grid cols-1 md:grid-cols-2 gap-2 ">
+                  <div>
+                    <label
+                      htmlFor="name"
+                      className="block text-sm font-medium mb-2"
+                    >
+                      Nom de la région *
+                    </label>
+                    <Input
+                      id="name"
+                      name="name"
+                      type="text"
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="Ex: Dakar"
+                      className={errors.name ? "border-red-500" : ""}
+                    />
+                    {errors.name && (
+                      <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="name"
+                      className="block text-sm font-medium mb-2"
+                    >
+                      Nom de stade*
+                    </label>
+                    <Input
+                      id="stadium_name"
+                      name="stadium_name"
+                      type="text"
+                      value={formData.stadium_name}
+                      onChange={handleChange}
+                      placeholder="Ex: Dakar"
+                      className={errors.stadium_name ? "border-red-500" : ""}
+                    />
+                    {errors.stadium_name && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.stadium_name}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              {/* </div> */}
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {/* Code */}
               <div>
                 <label
@@ -227,6 +241,7 @@ export function RegionForm({ region, isEdit = false }: RegionFormProps) {
                   />
                 </div>
               </div>
+               </div>
 
               {/* Description */}
               <div>

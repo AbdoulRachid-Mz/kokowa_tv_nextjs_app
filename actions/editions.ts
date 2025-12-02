@@ -1023,32 +1023,52 @@ export async function getEditionRegions(
 }
 
 // Gestion des lutteurs d'édition
-export async function addFighterToEdition(editionId: number, fighterId: number, status: string = 'registered') {
+export async function addFighterToEdition(editionId: number, fighterId: number, status: string = 'registered', regionId?: number) {
   try {
     const validatedData = editionFighterSchema.parse({
       edition_id: editionId,
       fighter_id: fighterId,
+      region_id: regionId,
       status: status as any,
     });
+    // console.log(validatedData)
 
-    const sql = `
-      INSERT INTO edition_fighters (edition_id, fighter_id, status)
-      VALUES ($1, $2, $3)
-      ON CONFLICT (edition_id, fighter_id) DO UPDATE SET status = $3
-      RETURNING id
-    `;
-    
-    const result = await query<{ id: number }>(sql, [
-      validatedData.edition_id,
-      validatedData.fighter_id,
-      validatedData.status,
-    ]);
+    // Vérifier si le lien existe déjà
+    const existing = await query<{ id: number; region_id: number | null }>(
+      `SELECT id, region_id FROM edition_fighters WHERE edition_id = $1 AND fighter_id = $2`,
+      [validatedData.edition_id, validatedData.fighter_id]
+    );
+
+    let returnedId: number;
+
+    if (existing.length > 0) {
+      // Mettre à jour le statut et éventuellement la region_id si fournie
+      const updateResult = await query<{ id: number }>(
+        `UPDATE edition_fighters 
+         SET status = $3${regionId !== undefined ? ', region_id = $4' : ''} 
+         WHERE edition_id = $1 AND fighter_id = $2 RETURNING id`,
+        regionId !== undefined
+          ? [validatedData.edition_id, validatedData.fighter_id, validatedData.status, regionId]
+          : [validatedData.edition_id, validatedData.fighter_id, validatedData.status]
+      );
+      returnedId = updateResult[0].id;
+    } else {
+      // Insérer un nouveau lien avec region_id si fournie
+      const insertResult = await query<{ id: number }>(
+        `INSERT INTO edition_fighters (edition_id, fighter_id, status${regionId !== undefined ? ', region_id' : ''}) 
+         VALUES ($1, $2, $3${regionId !== undefined ? ', $4' : ''}) RETURNING id`,
+        regionId !== undefined
+          ? [validatedData.edition_id, validatedData.fighter_id, validatedData.status, regionId]
+          : [validatedData.edition_id, validatedData.fighter_id, validatedData.status]
+      );
+      returnedId = insertResult[0].id;
+    }
 
     revalidatePath(`/ad/editions/${editionId}/figthers`);
     revalidatePath(`/ad/editions/${editionId}`);
     return { 
       success: true, 
-      id: result[0].id,
+      id: returnedId,
       message: 'Lutteur ajouté à l\'édition avec succès'
     };
   } catch (error) {

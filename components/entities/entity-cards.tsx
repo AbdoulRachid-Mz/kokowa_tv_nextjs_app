@@ -66,10 +66,10 @@ export function FighterCard({
       )}
     >
       <div
-        className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}
+        className={cn("p-2", isListView && "flex items-center gap-2 flex-1")}
       >
         {/* Avatar/Image */}
-        <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
+        <div className={cn("flex-shrink-0 mb-2", isListView && "mb-0")}>
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm">
             {fighter.first_name[0]}
             {fighter.last_name[0]}
@@ -83,7 +83,7 @@ export function FighterCard({
           )}
         >
           {/* Informations principales */}
-          <div className={cn(isListView && "flex items-center gap-6")}>
+          <div className={cn(isListView && "flex items-center gap-3")}>
             <div>
               <CardTitle className="text-lg group-hover:text-primary transition-colors">
                 {fighter.first_name} {fighter.last_name}
@@ -132,7 +132,7 @@ export function FighterCard({
 
           {/* Informations secondaires */}
           {!isListView && (
-            <div className="mt-3 space-y-2">
+            <div className="mt-2 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Classement:</span>
                 <span className="font-semibold">#{fighter.ranking}</span>
@@ -155,7 +155,7 @@ export function FighterCard({
           )}
 
           {/* Actions */}
-          <div className={cn("flex gap-2 mt-3", isListView && "mt-0")}>
+          <div className={cn("flex gap-2 mt-2", isListView && "mt-0")}>
             <Button
               variant="outline"
               size="sm"
@@ -201,16 +201,16 @@ export function RegionCard({
   return (
     <Card
       className={cn(
-        "hover:shadow-lg transition-all duration-300 cursor-pointer group border-l-4",
+        "hover:shadow-lg p-2 gap-2 transition-all duration-300 cursor-pointer group border-l-4",
         isListView && "flex"
       )}
       style={{ borderLeftColor: region.color || "#3b82f6" }}
     >
       <div
-        className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}
+        className={cn("p-2", isListView && "flex items-center gap-2 flex-1")}
       >
         {/* Icône */}
-        <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
+        <div className={cn("flex-shrink-0 mb-2", isListView && "mb-0")}>
           <div
             className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold"
             style={{ backgroundColor: region.color || "#3b82f6" }}
@@ -225,7 +225,7 @@ export function RegionCard({
             isListView && "flex items-center justify-between"
           )}
         >
-          <div className={cn(isListView && "flex items-center gap-6")}>
+          <div className={cn(isListView && "flex items-center gap-2")}>
             <div>
               <CardTitle className="text-lg group-hover:text-primary transition-colors">
                 {region.name}
@@ -234,7 +234,7 @@ export function RegionCard({
                 Code: {region.code}
               </Typography>
 
-              <div className="flex items-center gap-3 mt-2">
+              <div className="flex items-center gap-2 mt-1">
                 <Badge variant="secondary" className="flex items-center gap-1">
                   <Users className="h-3 w-3" />
                   {region.total_fighters} lutteurs
@@ -255,7 +255,7 @@ export function RegionCard({
           </div>
 
           {/* Actions */}
-          <div className={cn("flex gap-2 mt-3", isListView && "mt-0")}>
+          <div className={cn("flex gap-2 mt-2", isListView && "mt-0")}>
             <Button
               variant="outline"
               size="sm"
@@ -360,10 +360,10 @@ export function CompetitionCard({
       )}
     >
       <div
-        className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}
+        className={cn("p-2", isListView && "flex items-center gap-2 flex-1")}
       >
         {/* Icône */}
-        <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
+        <div className={cn("flex-shrink-0 mb-2", isListView && "mb-0")}>
           <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white">
             <Trophy className="h-6 w-6" />
           </div>
@@ -375,7 +375,7 @@ export function CompetitionCard({
             isListView && "flex items-center justify-between"
           )}
         >
-          <div className={cn(isListView && "flex items-center gap-6")}>
+          <div className={cn(isListView && "flex items-center gap-3")}>
             <div>
               <CardTitle className="text-lg group-hover:text-primary transition-colors">
                 {competition.name}
@@ -418,7 +418,7 @@ export function CompetitionCard({
           </div>
 
           {/* Actions */}
-          <div className={cn("flex gap-2 mt-3", isListView && "mt-0")}>
+          <div className={cn("flex gap-2 mt-2", isListView && "mt-0")}>
             <Button
               variant="outline"
               size="sm"
@@ -489,10 +489,10 @@ export function RefereeCard({
       )}
     >
       <div
-        className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}
+        className={cn("p-2", isListView && "flex items-center gap-2 flex-1")}
       >
         {/* Avatar/Image */}
-        <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
+        <div className={cn("flex-shrink-0 mb-2", isListView && "mb-0")}>
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white">
             <Shield className="h-6 w-6" />
           </div>
@@ -504,7 +504,7 @@ export function RefereeCard({
             isListView && "flex items-center justify-between"
           )}
         >
-          <div className={cn(isListView && "flex items-center gap-6")}>
+          <div className={cn(isListView && "flex items-center gap-3")}>
             <div>
               <CardTitle className="text-lg group-hover:text-primary transition-colors">
                 {referee.first_name} {referee.last_name}
@@ -562,7 +562,7 @@ export function RefereeCard({
 
           {/* Informations secondaires */}
           {!isListView && (
-            <div className="mt-3 space-y-2">
+            <div className="mt-2 space-y-2">
               {referee.license_number && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">License:</span>
@@ -594,7 +594,7 @@ export function RefereeCard({
           )}
 
           {/* Actions */}
-          <div className={cn("flex gap-2 mt-3", isListView && "mt-0")}>
+          <div className={cn("flex gap-2 mt-2", isListView && "mt-0")}>
             <Button
               variant="outline"
               size="sm"
@@ -636,8 +636,8 @@ export const CoachCard = ({
 }: CoachCardProps) => {
   if (viewMode === "list") {
     return (
-      <Card className="hover:shadow-lg transition-shadow">
-        <CardContent className="p-4">
+      <Card className="hover:shadow-lg transition-shadow p-2">
+        <CardContent className="p-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="relative w-12 h-12 rounded-full overflow-hidden">
@@ -711,7 +711,7 @@ export const CoachCard = ({
   // Vue grid
   return (
     <Card className="hover:shadow-lg transition-shadow">
-      <CardHeader className="p-4 pb-2">
+      <CardHeader className="p-2 pb-2">
         <div className="flex justify-between items-start">
           <div className="flex items-center space-x-3">
             <div className="relative w-12 h-12 rounded-full overflow-hidden">
@@ -738,7 +738,7 @@ export const CoachCard = ({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-2">
+      <CardContent className="p-2 pt-2">
         <div className="space-y-2">
           {coach.region && (
             <div className="flex items-center space-x-2">
@@ -820,7 +820,7 @@ export const TransferCard = ({
   if (viewMode === "list") {
     return (
       <Card className="hover:shadow-lg transition-shadow">
-        <CardContent className="p-4">
+        <CardContent className="p-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4 flex-1">
               {/* Lutteur */}
@@ -923,7 +923,7 @@ export const TransferCard = ({
   // Vue grid
   return (
     <Card className="hover:shadow-lg transition-shadow h-full">
-      <CardHeader className="p-4 pb-2">
+      <CardHeader className="p-2 pb-2">
         <div className="flex justify-between items-start">
           <div className="flex items-center space-x-3">
             {transfer.fighter && (
@@ -960,7 +960,7 @@ export const TransferCard = ({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-2">
+      <CardContent className="p-2 pt-2">
         <div className="space-y-3">
           {/* Transfert */}
           <div className="flex items-center justify-center space-x-3 py-2">
@@ -1064,7 +1064,7 @@ export const SubGroupCard = ({
   if (viewMode === "list") {
     return (
       <Card className="hover:shadow-lg transition-shadow">
-        <CardContent className="p-4">
+        <CardContent className="p-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4 flex-1">
               <div className="flex-1">
@@ -1136,7 +1136,7 @@ export const SubGroupCard = ({
   // Vue grid
   return (
     <Card className="hover:shadow-lg transition-shadow h-full">
-      <CardHeader className="p-4 pb-2">
+      <CardHeader className="p-2 pb-2">
         <div className="flex justify-between items-start">
           <div>
             <CardTitle className="text-base">{subGroup.name}</CardTitle>
@@ -1154,7 +1154,7 @@ export const SubGroupCard = ({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-2">
+      <CardContent className="p-2 pt-2">
         <div className="space-y-3">
           {/* Régions */}
           {subGroup.region1 && subGroup.region2 && (
@@ -1279,9 +1279,9 @@ export function UserCard({ user, viewMode, onEdit, onView }: UserCardProps) {
       "hover:shadow-lg transition-all duration-300 cursor-pointer group",
       isListView && "flex"
     )}>
-      <div className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}>
+      <div className={cn("p-2", isListView && "flex items-center gap-2 flex-1")}>
         {/* Avatar */}
-        <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
+        <div className={cn("flex-shrink-0 mb-2", isListView && "mb-0")}>
           <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center">
             {user.profile_picture ? (
               <Image
@@ -1297,7 +1297,7 @@ export function UserCard({ user, viewMode, onEdit, onView }: UserCardProps) {
         </div>
 
         <div className={cn("flex-1", isListView && "flex items-center justify-between")}>
-          <div className={cn(isListView && "flex items-center gap-6")}>
+          <div className={cn(isListView && "flex items-center gap-3")}>
             <div>
               <CardTitle className="text-lg group-hover:text-primary transition-colors">
                 {user.username}
@@ -1358,7 +1358,7 @@ export function UserCard({ user, viewMode, onEdit, onView }: UserCardProps) {
 
           {/* Informations secondaires (grid seulement) */}
           {!isListView && (
-            <div className="mt-3 space-y-2">
+            <div className="mt-2 space-y-2">
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Mail className="h-3 w-3" />
                 <Typography variant="body-sm" className="truncate">
@@ -1388,7 +1388,7 @@ export function UserCard({ user, viewMode, onEdit, onView }: UserCardProps) {
           )}
 
           {/* Actions */}
-          <div className={cn("flex gap-2 mt-3", isListView && "mt-0")}>
+          <div className={cn("flex gap-2 mt-2", isListView && "mt-0")}>
             <Button
               variant="outline"
               size="sm"

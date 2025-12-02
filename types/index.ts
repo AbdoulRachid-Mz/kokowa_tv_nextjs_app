@@ -16,8 +16,8 @@ export interface Region extends BaseEntity {
   stadium_name?: string,
   stadium_image?: string,
   color?: string;
-  total_fighters: number;
-  total_champions: number;
+  total_fighters?: number;
+  total_champions?: number;
 
   fighters?: Fighter[];
   coach?: Coach[]
@@ -120,6 +120,7 @@ export interface CompetitionEdition extends BaseEntity {
   start_date?: string;
   end_date?: string;
   winner_fighter_id?: number;
+  winner_region_id?: number;
   region_id?: number;
   total_participants: number;
   prize_pool?: number;

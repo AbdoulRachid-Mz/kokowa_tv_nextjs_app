@@ -63,22 +63,22 @@ export default function EditionFightersPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="mx-auto">
       {/* En-tête */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="icon"
-            onClick={() => router.push(`/admin/editions/${editionId}`)}
+            onClick={() => router.push(`/ad/editions/${editionId}`)}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <Typography variant="h2">
+            <Typography variant="h5">
               Gestion des Lutteurs - Édition {edition.edition_number}
             </Typography>
-            <Typography variant="body-lg" theme="muted">
+            <Typography variant="body-base" theme="muted">
               {edition.competition?.name} • {edition.year}
             </Typography>
           </div>

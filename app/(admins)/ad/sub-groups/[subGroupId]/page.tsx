@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import { SubGroup, Match } from "@/types";
 import { Edit, Plus, Users, MapPin, Trophy, Clock, Swords } from "lucide-react";
+import { MatchCard } from "./organisation/matches-card";
 
 export default function SubGroupDetailPage() {
   const { subGroupId } = useParams();
@@ -71,16 +72,16 @@ export default function SubGroupDetailPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-2 space-y-2">
+    <div className="space-y-2">
       {/* En-tête de la rencontre */}
-      <Card>
-        <CardContent className="p-4">
+      <Card className="p-2">
+        <CardContent className="p-2">
           <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between space-y-4 lg:space-y-0">
             <div className="text-center lg:text-left">
-              <Typography variant="h2" weight="bold" className="mb-2">
+              <Typography variant="h4" weight="bold" className="mb-2">
                 {subGroup.name}
               </Typography>
-              <Typography variant="body-lg" theme="muted" className="mb-4">
+              <Typography variant="body-base" theme="muted" className="mb-4">
                 {subGroup.description}
               </Typography>
 
@@ -185,7 +186,7 @@ export default function SubGroupDetailPage() {
       </Card>
 
       {/* Contenu (onglets) */}
-      <Card>
+      <Card className="p-3">
         <CardHeader>
           <CardTitle>Gestion de la rencontre</CardTitle>
         </CardHeader>
@@ -201,7 +202,7 @@ export default function SubGroupDetailPage() {
 
             {/* Onglet Vue d'ensemble */}
             <TabsContent value="overview">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Info label="Groupe" value={subGroup.group?.name} />
                 <Info label="Ordre" value={subGroup.sub_group_order} />
                 <Info label="Phase" value={subGroup.group?.phase?.name} />
@@ -218,7 +219,7 @@ export default function SubGroupDetailPage() {
               </div>
 
               {/* Statistiques des matchs */}
-              <div className="mt-4">
+              <div className="mt-3">
                 <Typography variant="h5" className="mb-4">
                   Statistiques des matchs
                 </Typography>
@@ -323,114 +324,12 @@ function MatchesList({
 
       <div className="space-y-3">
         {matches.map((match) => (
-          <Card key={match.id} className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-4">
-                    <div className="text-center">
-                      <Typography variant="body-sm" theme="muted">
-                        Match #{match.match_number}
-                      </Typography>
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          {match.fighter1 && (
-                            <div className="text-center">
-                              <Typography variant="body-sm" weight="medium">
-                                {match.fighter1.first_name}{" "}
-                                {match.fighter1.last_name}
-                              </Typography>
-                              {match.fighter1.nickname && (
-                                <Typography variant="body-base" theme="muted">
-                                  "{match.fighter1.nickname}"
-                                </Typography>
-                              )}
-                            </div>
-                          )}
-
-                          <div className="text-muted-foreground">VS</div>
-
-                          {match.fighter2 && (
-                            <div className="text-center">
-                              <Typography variant="body-sm" weight="medium">
-                                {match.fighter2.first_name}{" "}
-                                {match.fighter2.last_name}
-                              </Typography>
-                              {match.fighter2.nickname && (
-                                <Typography variant="body-base" theme="muted">
-                                  "{match.fighter2.nickname}"
-                                </Typography>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="text-right">
-                          <Typography variant="body-sm">
-                            {new Date(match.match_date).toLocaleDateString()}
-                          </Typography>
-                          <Typography variant="body-base" theme="muted">
-                            {match.start_time}
-                          </Typography>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2 ml-4">
-                  <Badge
-                    variant={
-                      match.status === "completed"
-                        ? "default"
-                        : match.status === "live"
-                        ? "destructive"
-                        : match.status === "scheduled"
-                        ? "secondary"
-                        : "outline"
-                    }
-                  >
-                    {match.status === "completed"
-                      ? "Terminé"
-                      : match.status === "live"
-                      ? "En direct"
-                      : match.status === "scheduled"
-                      ? "Programmé"
-                      : match.status}
-                  </Badge>
-
-                  {match.winner_fighter && (
-                    <Badge
-                      variant="default"
-                      className="bg-green-100 text-green-800"
-                    >
-                      🏆 Vainqueur
-                    </Badge>
-                  )}
-
-                  <div className="flex space-x-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onEditMatch(match)}
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onDeleteMatch(match.id)}
-                    >
-                      🗑️
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <MatchCard
+            key={match.id}
+            match={match}
+            onEdit={() => onEditMatch(match)}
+            onDelete={() => onDeleteMatch(match.id)}
+          />
         ))}
       </div>
     </div>
@@ -480,7 +379,7 @@ function OrganizationTab({
         </Card>
 
         {/* Région 2 */}
-        <Card>
+        <Card className="p-2">
           <CardHeader>
             <CardTitle className="text-lg">
               {subGroup.region2?.name || "Région 2"}
@@ -560,7 +459,7 @@ function StatCard({
   icon: any;
 }) {
   return (
-    <Card>
+    <Card className="p-2 border-t-primary border-2 border-b-green-500">
       <CardContent className="text-center p-2">
         <Typography variant="h4" weight="bold">
           {value}

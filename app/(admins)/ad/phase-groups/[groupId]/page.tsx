@@ -27,6 +27,7 @@ import { useEntityList } from "@/hooks/use-entity-list";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSubGroupDialog } from "@/components/phase-groups/create-sub-group-dialog";
+import { CardStats } from "@/components/entities/card-stats";
 
 export default function PhaseGroupDetailPage() {
   const params = useParams();
@@ -73,6 +74,11 @@ export default function PhaseGroupDetailPage() {
       with_matches: true,
     },
   });
+
+  const handleOnSuccess = () => {
+    setCreateSubGroupOpen(false);
+    subGroupsList.onRefresh();
+  };
 
   // Statistiques pour le groupe
   const getGroupStats = () => {
@@ -123,23 +129,23 @@ export default function PhaseGroupDetailPage() {
 
   // Gestionnaires d'actions
   const handleEditGroup = () => {
-    router.push(`/admin/phase-groups/${groupId}/edit`);
+    router.push(`/ad/phase-groups/${groupId}/edit`);
   };
 
   const handleViewSubGroup = (subGroup: SubGroup) => {
-    router.push(`/admin/sub-groups/${subGroup.id}`);
+    router.push(`/ad/sub-groups/${subGroup.id}`);
   };
 
   const handleEditSubGroup = (subGroup: SubGroup) => {
-    router.push(`/admin/sub-groups/${subGroup.id}/edit`);
+    router.push(`/ad/sub-groups/${subGroup.id}/edit`);
   };
 
   const handleManageMatches = (subGroup: SubGroup) => {
-    router.push(`/admin/sub-groups/${subGroup.id}/matches`);
+    router.push(`/ad/sub-groups/${subGroup.id}/matches`);
   };
 
   const handleManageGroupMatches = () => {
-    router.push(`/admin/phase-groups/${groupId}/matches`);
+    router.push(`/ad/phase-groups/${groupId}/matches`);
   };
 
   // Rendu des cartes pour les sous-groupes
@@ -156,13 +162,13 @@ export default function PhaseGroupDetailPage() {
     return (
       <Card
         className={cn(
-          "hover:shadow-lg transition-all duration-300 cursor-pointer group border-l-4",
+          "hover:shadow-lg transition-all duration-300 cursor-pointer group border-l-4 p-2",
           isListView && "flex",
           subGroup.is_completed ? "border-l-green-500" : "border-l-orange-500"
         )}
       >
         <div
-          className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}
+          className={cn("p-2", isListView && "flex items-center gap-2 flex-1")}
         >
           <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
             <div
@@ -183,7 +189,7 @@ export default function PhaseGroupDetailPage() {
               isListView && "flex items-center justify-between"
             )}
           >
-            <div className={cn(isListView && "flex items-center gap-6")}>
+            <div className={cn(isListView && "flex items-center gap-4")}>
               <div>
                 <CardTitle className="text-lg group-hover:text-primary transition-colors">
                   {subGroup.name}
@@ -357,16 +363,16 @@ export default function PhaseGroupDetailPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.push(`/admin/phases/${group.phase_id}`)}
+            onClick={() => router.push(`/ad/phases/${group.phase_id}`)}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour
           </Button>
           <div>
-            <Typography variant="h3" weight="bold" gradient animated>
+            <Typography variant="h5" weight="bold" animated>
               {group.name}
             </Typography>
-            <Typography variant="lead" theme="muted">
+            <Typography variant="body-sm" theme="muted">
               {group.phase?.name} • Édition{" "}
               {group.phase?.edition?.edition_number} -{" "}
               {group.phase?.edition?.year}
@@ -394,30 +400,15 @@ export default function PhaseGroupDetailPage() {
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {getGroupStats().map((stat, index) => (
-          <Card key={index} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Typography variant="body-sm" theme="muted" className="mb-1">
-                    {stat.label}
-                  </Typography>
-                  <Typography variant="h3" weight="bold" className="mb-1">
-                    {stat.value}
-                  </Typography>
-                  <Typography variant="caption2" theme="muted">
-                    {stat.description}
-                  </Typography>
-                </div>
-                <div
-                  className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}
-                >
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <CardStats
+            key={index}
+            label={stat.label}
+            icon={stat.icon}
+            value={stat.value}
+            color={stat.color}
+          />
         ))}
       </div>
 
@@ -434,8 +425,8 @@ export default function PhaseGroupDetailPage() {
         </TabsList>
 
         {/* Vue d'ensemble */}
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Informations principales */}
             <Card className="lg:col-span-2">
               <CardHeader>
@@ -541,7 +532,7 @@ export default function PhaseGroupDetailPage() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() =>
-                    router.push(`/admin/phase-groups/${groupId}/participants`)
+                    router.push(`/ad/phase-groups/${groupId}/participants`)
                   }
                 >
                   <Users className="h-4 w-4 mr-2" />
@@ -551,7 +542,7 @@ export default function PhaseGroupDetailPage() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() =>
-                    router.push(`/admin/phase-groups/${groupId}/calendar`)
+                    router.push(`/ad/phase-groups/${groupId}/calendar`)
                   }
                 >
                   <Calendar className="h-4 w-4 mr-2" />
@@ -674,6 +665,7 @@ export default function PhaseGroupDetailPage() {
         open={createSubGroupOpen}
         onOpenChange={setCreateSubGroupOpen}
         groupId={parseInt(groupId)}
+        group={group}
         onSuccess={() => {
           subGroupsList.onRefresh();
           setCreateSubGroupOpen(false);

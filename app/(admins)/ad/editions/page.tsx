@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Trophy, Users, Clock } from "lucide-react";
 import { EditionCard } from "@/components/entities/edition-card";
 import { CompetitionEdition } from "@/types";
+import { CardStats } from "@/components/entities/card-stats";
 
 export default function EditionsPage() {
   const {
@@ -36,7 +37,7 @@ export default function EditionsPage() {
       with_phases: true,
       with_fighters: true,
       with_regions: true,
-      with_competitions: true,
+      with_competition: true,
       limit: '20',
     },
   });
@@ -75,25 +76,9 @@ export default function EditionsPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Typography variant="body-sm" theme="muted" className="mb-1">
-                    {stat.label}
-                  </Typography>
-                  <Typography variant="h3" weight="bold">
-                    {stat.value}
-                  </Typography>
-                </div>
-                <div className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}>
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <CardStats key={index} {...stat} />
         ))}
       </div>
     );
@@ -139,12 +124,12 @@ export default function EditionsPage() {
       filters={filters}
       onFilterChange={setFilters}
       onAdd={onAdd}
-      onExport={onExport}
+      // onExport={onExport}
       onRefresh={onRefresh}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
       renderStats={renderStats}
-      availableFilters={availableFilters}
+      // availableFilters={availableFilters}
       renderCard={(edition, viewMode) => (
         <EditionCard
           edition={edition}

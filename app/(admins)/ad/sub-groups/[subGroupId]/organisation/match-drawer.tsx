@@ -192,14 +192,14 @@ export function MatchDrawer({
           <DrawerDescription>Contrôles globaux du match</DrawerDescription>
         </DrawerHeader>
 
-        <div className="px-4 overflow-y-auto">
+        <div className="px-3 overflow-y-auto">
           {/* Résumé des lutteurs */}
-          <Card className="mb-4">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-2 gap-4">
+          <Card className="mb-3 p-2">
+            <CardContent className="p-2">
+              <div className="grid grid-cols-2 gap-3">
                 {/* Fighter 1 */}
                 <div
-                  className="text-center p-3 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                  className="text-center p-1 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => onFighterClick("fighter1")}
                 >
                   {match.fighter1 && (
@@ -226,7 +226,7 @@ export function MatchDrawer({
 
                 {/* Fighter 2 */}
                 <div
-                  className="text-center p-3 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                  className="text-center p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => onFighterClick("fighter2")}
                 >
                   {match.fighter2 && (
@@ -255,15 +255,15 @@ export function MatchDrawer({
           </Card>
 
           {/* Contrôles de match */}
-          <Card className="mb-4">
-            <CardContent className="p-4">
-              <Typography variant="h4" className="mb-4 flex items-center">
+          <Card className="mb-3 p-2">
+            <CardContent className="p-2">
+              <Typography variant="h4" className="mb-3 flex items-center">
                 <Timer className="h-5 w-5 mr-2" />
                 Contrôles du match
               </Typography>
 
               {/* Timer et pauses */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="text-center">
                   <Typography
                     variant="body-sm"
@@ -291,7 +291,7 @@ export function MatchDrawer({
               </div>
 
               {/* Boutons de contrôle */}
-              <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="grid grid-cols-2 gap-2 mb-3">
                 <Button
                   onClick={handleToggleLive}
                   variant={isLive ? "destructive" : "default"}
@@ -345,9 +345,9 @@ export function MatchDrawer({
           </Card>
 
           {/* Résultat final */}
-          <Card className="mb-4">
-            <CardContent className="p-4">
-              <Typography variant="h4" className="mb-4">
+          <Card className="mb-3 p-2">
+            <CardContent className="p-2">
+              <Typography variant="h4" className="mb-3">
                 Résultat final
               </Typography>
 

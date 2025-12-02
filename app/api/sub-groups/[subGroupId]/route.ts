@@ -25,6 +25,8 @@ export async function GET(
         with_belts?: boolean;
         with_referee?: boolean;
         with_matches?: boolean;
+        with_edition_regions?: boolean;
+with_edition_fighters?: boolean;
       };
       is_active?: boolean;
     } = {};
@@ -38,6 +40,8 @@ export async function GET(
     const with_belts = searchParams.get('with_belts');
     const with_referee = searchParams.get('with_referee');
     const with_matches = searchParams.get('with_matches');
+    const with_edition_regions = searchParams.get('with_edition_regions');
+    const with_edition_fighters = searchParams.get('with_edition_fighters');
     const is_active = searchParams.get('is_active');
 
     // If any relation param is provided, build relations object
@@ -60,6 +64,8 @@ export async function GET(
         with_belts: with_belts !== 'false',
         with_referee: with_referee !== 'false',
         with_matches: with_matches !== 'false',
+        with_edition_fighters: with_edition_fighters !== 'false',
+        with_edition_regions: with_edition_regions !== 'false',
       };
       options.with_relations = true;
     }

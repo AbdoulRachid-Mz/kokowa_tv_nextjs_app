@@ -31,7 +31,7 @@ import { getBeltColor } from "@/utils/getBeltColor";
 interface FighterDrawerProps {
   match: Match;
   fighter: Fighter;
-  fighterType: 'fighter1' | 'fighter2';
+  fighterType: "fighter1" | "fighter2";
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdateMatch: (updatedMatch: Match) => Promise<void>;
@@ -53,7 +53,6 @@ export function FighterDrawer({
   });
   const [isSaving, setIsSaving] = useState(false);
 
-
   useEffect(() => {
     if (fighter && open) {
       loadFighterCards();
@@ -64,7 +63,9 @@ export function FighterDrawer({
     if (!fighter) return;
 
     try {
-      const response = await api.get(`/api/fighter-cards?match_id=${match.id}&fighter_id=${fighter.id}`);
+      const response = await api.get(
+        `/api/fighter-cards?match_id=${match.id}&fighter_id=${fighter.id}`
+      );
       if (response && response) {
         setCards((response as { data: FighterCard[] }).data);
       }
@@ -119,7 +120,8 @@ export function FighterDrawer({
       const updatedMatch = {
         ...match,
         winner_fighter_id: fighter.id,
-        match_result: fighterType === 'fighter1' ? "fighter1_win" : "fighter2_win",
+        match_result:
+          fighterType === "fighter1" ? "fighter1_win" : "fighter2_win",
         status: "completed",
       };
       await onUpdateMatch(updatedMatch as Match);
@@ -131,12 +133,13 @@ export function FighterDrawer({
     }
   };
 
-  const getCardCount = (type: 'yellow' | 'red') => {
-    return cards.filter(card => card.card_type === type && !card.is_cancelled).length;
+  const getCardCount = (type: "yellow" | "red") => {
+    return cards.filter((card) => card.card_type === type && !card.is_cancelled)
+      .length;
   };
 
-  const yellowCards = getCardCount('yellow');
-  const redCards = getCardCount('red');
+  const yellowCards = getCardCount("yellow");
+  const redCards = getCardCount("red");
 
   if (!fighter) return null;
 
@@ -145,7 +148,9 @@ export function FighterDrawer({
       <DrawerContent className="max-h-[90vh]">
         <DrawerHeader>
           <DrawerTitle className="flex items-center justify-between">
-            <span>{fighter.first_name} {fighter.last_name}</span>
+            <span>
+              {fighter.first_name} {fighter.last_name}
+            </span>
             <div className="flex items-center gap-2">
               {match.winner_fighter_id === fighter.id && (
                 <Badge variant="default" className="flex items-center gap-1">
@@ -155,23 +160,23 @@ export function FighterDrawer({
               )}
             </div>
           </DrawerTitle>
-          <DrawerDescription>
-            Gestion individuelle du lutteur
-          </DrawerDescription>
+          <DrawerDescription>Gestion individuelle du lutteur</DrawerDescription>
         </DrawerHeader>
 
         <div className="px-4 overflow-y-auto">
           {/* Informations du lutteur */}
-          <Card className="mb-4">
-            <CardContent className="p-4">
+          <Card className="mb-3 p-2">
+            <CardContent className="p-2">
               <div className="text-center">
-                <Avatar 
-                  className="w-20 h-20 mx-auto mb-3 border-4"
+                <Avatar
+                  className="w-20 h-20 mx-auto mb-2 border-4"
                   style={{
                     borderColor: getBeltColor(
-                      fighterType === 'fighter1' ? match.sub_group?.belt_region1 : match.sub_group?.belt_region2,
-                      fighterType === 'fighter1' ? "#10b981" : "#f59e0b"
-                    )
+                      fighterType === "fighter1"
+                        ? match.sub_group?.belt_region1
+                        : match.sub_group?.belt_region2,
+                      fighterType === "fighter1" ? "#10b981" : "#f59e0b"
+                    ),
                   }}
                 >
                   <AvatarImage
@@ -183,18 +188,18 @@ export function FighterDrawer({
                     {fighter.last_name[0]}
                   </AvatarFallback>
                 </Avatar>
-                
+
                 <Typography variant="h4" weight="bold" className="mb-1">
                   {fighter.first_name} {fighter.last_name}
                 </Typography>
-                
+
                 {fighter.nickname && (
                   <Typography variant="body-lg" theme="muted" className="mb-2">
                     "{fighter.nickname}"
                   </Typography>
                 )}
-                
-                <div className="grid grid-cols-2 gap-4 mt-3">
+
+                <div className="grid grid-cols-2 gap-3 mt-2">
                   <div>
                     <Typography variant="body-sm" weight="medium" theme="muted">
                       Classement
@@ -217,22 +222,31 @@ export function FighterDrawer({
           </Card>
 
           {/* Cartons du lutteur */}
-          <Card className="mb-4">
-            <CardContent className="p-4">
-              <Typography variant="h4" className="mb-4 flex items-center justify-between">
+          <Card className="mb-2 p-2">
+            <CardContent className="p-2">
+              <Typography
+                variant="h4"
+                className="mb-3 flex items-center justify-between"
+              >
                 <span className="flex items-center">
                   <CardIcon className="h-5 w-5 mr-2" />
                   Cartons
                 </span>
                 <div className="flex gap-2">
                   {yellowCards > 0 && (
-                    <Badge variant="secondary" className="flex items-center gap-1">
+                    <Badge
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
                       <div className="w-2 h-2 bg-yellow-500 rounded-full" />
                       {yellowCards}
                     </Badge>
                   )}
                   {redCards > 0 && (
-                    <Badge variant="destructive" className="flex items-center gap-1">
+                    <Badge
+                      variant="destructive"
+                      className="flex items-center gap-1"
+                    >
                       <div className="w-2 h-2 bg-red-500 rounded-full" />
                       {redCards}
                     </Badge>
@@ -241,7 +255,7 @@ export function FighterDrawer({
               </Typography>
 
               {/* Formulaire d'ajout de carton */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
                 <div>
                   <Label>Type</Label>
                   <Select
@@ -294,8 +308,8 @@ export function FighterDrawer({
                 </div>
               </div>
 
-              <Button 
-                onClick={handleAddCard} 
+              <Button
+                onClick={handleAddCard}
                 disabled={!newCard.minute_given || isSaving}
                 className="w-full"
               >
@@ -304,11 +318,11 @@ export function FighterDrawer({
               </Button>
 
               {/* Liste des cartons */}
-              <div className="mt-4 space-y-2">
+              <div className="mt-3 space-y-2">
                 {cards.map((card) => (
                   <div
                     key={card.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
+                    className="flex items-center justify-between p-2 border rounded-lg"
                   >
                     <div className="flex items-center space-x-3">
                       <Badge
@@ -344,21 +358,25 @@ export function FighterDrawer({
           </Card>
 
           {/* Actions */}
-          <Card>
-            <CardContent className="p-4">
-              <Typography variant="h4" className="mb-4 flex items-center">
+          <Card className="p-2">
+            <CardContent className="p-2">
+              <Typography variant="h4" className="mb-3 flex items-center">
                 <Trophy className="h-5 w-5 mr-2" />
                 Actions
               </Typography>
 
-              <Button 
+              <Button
                 onClick={handleSetWinner}
                 disabled={isSaving || match.winner_fighter_id === fighter.id}
                 className="w-full"
-                variant={match.winner_fighter_id === fighter.id ? "default" : "outline"}
+                variant={
+                  match.winner_fighter_id === fighter.id ? "default" : "outline"
+                }
               >
                 <Trophy className="h-4 w-4 mr-2" />
-                {match.winner_fighter_id === fighter.id ? "Vainqueur désigné" : "Désigner vainqueur"}
+                {match.winner_fighter_id === fighter.id
+                  ? "Vainqueur désigné"
+                  : "Désigner vainqueur"}
               </Button>
             </CardContent>
           </Card>

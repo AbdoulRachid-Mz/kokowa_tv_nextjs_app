@@ -5,15 +5,18 @@ import { useRouter, useParams } from "next/navigation";
 import { RegionForm } from "@/components/regions/region-form";
 import { api } from "@/lib/api";
 import { number } from "zod";
+import { Region } from "@/types";
 
-interface Region {
-  id: number;
-  name: string;
-  code?: string;
-  description?: string;
-  flag_image?: string;
-  color?: string;
-}
+// interface Region {
+//   id: number;
+//   name: string;
+//   code?: string;
+//   description?: string;
+//   flag_image?: string;
+//   stadium_image?: string;
+//   stadium_name?: string;
+//   color?: string;
+// }
 
 export default function EditRegionPage() {
   const router = useRouter();
@@ -25,6 +28,8 @@ export default function EditRegionPage() {
     code: "",
     description: "",
     flag_image: "",
+    stadium_image: "",
+    stadium_name: "",
     color: "",
   });
   const [loading, setLoading] = useState(true);
@@ -39,12 +44,14 @@ export default function EditRegionPage() {
           code: region.code || "",
           description: region.description || "",
           flag_image: region.flag_image || "",
+          stadium_image: region.stadium_image || "",
+          stadium_name: region.stadium_name || "",
           color: region.color || "",
         });
       } catch (error: any) {
-        console.error('Erreur chargement région:', error);
-        alert('Erreur lors du chargement de la région');
-        router.push('/regions');
+        console.error("Erreur chargement région:", error);
+        alert("Erreur lors du chargement de la région");
+        router.push("/regions");
       } finally {
         setLoading(false);
       }
@@ -55,7 +62,6 @@ export default function EditRegionPage() {
     }
   }, [id, router]);
 
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -63,8 +69,6 @@ export default function EditRegionPage() {
       </div>
     );
   }
-  console.log(formData)
-  return (
-    <RegionForm region={formData} isEdit={true} />
-  );
+  console.log(formData);
+  return <RegionForm region={formData} isEdit={true} />;
 }

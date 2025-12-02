@@ -39,8 +39,8 @@ export default function RegionsPage() {
 
   // Statistiques pour les régions
   const renderStats = () => {
-    const totalFighters = data.reduce((sum, region) => sum + region.total_fighters, 0);
-    const totalChampions = data.reduce((sum, region) => sum + region.total_champions, 0);
+    const totalFighters = data.reduce((sum, region) => sum + (region.total_fighters ?? 0), 0);
+    const totalChampions = data.reduce((sum, region) => sum + (region.total_champions ?? 0), 0);
     const averageFighters = data.length > 0 ? Math.round(totalFighters / data.length) : 0;
 
     const stats = [
@@ -71,10 +71,10 @@ export default function RegionsPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {stats.map((stat, index) => (
           <Card key={index}>
-            <CardContent className="p-4">
+            <CardContent className="p-2">
               <div className="flex items-center justify-between">
                 <div>
                   <Typography variant="body-sm" theme="muted" className="mb-1">
@@ -126,7 +126,7 @@ export default function RegionsPage() {
       filters={filters}
       onFilterChange={setFilters}
       onAdd={onAdd}
-      onExport={onExport}
+      // onExport={onExport}
       onRefresh={onRefresh}
       viewMode={viewMode}
       onViewModeChange={setViewMode}

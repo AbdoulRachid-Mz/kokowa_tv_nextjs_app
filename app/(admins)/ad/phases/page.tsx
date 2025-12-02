@@ -75,21 +75,21 @@ export default function PhasesPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {stats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="p-4">
+          <Card key={index} className="p-2">
+            <CardContent className="p-1">
               <div className="flex items-center justify-between">
                 <div>
                   <Typography variant="body-sm" theme="muted" className="mb-1">
                     {stat.label}
                   </Typography>
-                  <Typography variant="h3" weight="bold">
+                  <Typography variant="h4" weight="bold">
                     {stat.value}
                   </Typography>
                 </div>
                 <div
-                  className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}
+                  className={`p-2 rounded-lg bg-opacity-10 ${stat.color} bg-current`}
                 >
                   <stat.icon className={`h-6 w-6 ${stat.color}`} />
                 </div>
@@ -153,14 +153,14 @@ export default function PhasesPage() {
       filters={filters}
       onFilterChange={setFilters}
       onAdd={onAdd}
-      onExport={onExport}
+      // onExport={onExport}
       onRefresh={onRefresh}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
       renderStats={renderStats}
       availableFilters={availableFilters}
       renderCard={(phase, viewMode) => (
-        <Card key={phase.id} className="p-4">
+        <Card key={phase.id} className="p-2">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <Typography variant="h4">{phase.name}</Typography>

@@ -225,7 +225,7 @@ export default function SubGroupOrganizationPage() {
   return (
     <div className="mx-auto space-y-1">
       {/* En-tête avec indicateur temps réel */}
-      <Card>
+      <Card className="p-2">
         <CardContent className="p-1">
           <div className="flex flex-col lg:flex-row items-center justify-between space-y-2 lg:space-y-0">
             <div className="text-center lg:text-left">
@@ -245,14 +245,14 @@ export default function SubGroupOrganizationPage() {
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
                 <div className="flex items-center space-x-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <Typography variant="body-sm">
+                  <Typography variant="caption1">
                     {subGroup.group?.phase?.edition?.edition_number} -{" "}
                     {subGroup.group?.phase?.edition?.year}
                   </Typography>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Trophy className="h-4 w-4 text-muted-foreground" />
-                  <Typography variant="body-sm">
+                  <Typography variant="caption1">
                     {subGroup.group?.phase?.name} • {subGroup.group?.name}
                   </Typography>
                 </div>
@@ -273,14 +273,14 @@ export default function SubGroupOrganizationPage() {
               onClick={() => router.push(`/ad/sub-groups/${id}`)}
               variant="outline"
             >
-              ← Retour au détail
+              ← Retour
             </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Grille d'organisation */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
         {/* Colonne Région 1 */}
         <div className="space-y-2 col-span-3">
           <RegionColumn
@@ -292,7 +292,7 @@ export default function SubGroupOrganizationPage() {
         </div>
 
         {/* Colonne centrale - Matches */}
-        <div className="space-y-4 col-span-6">
+        <div className="space-y-2 col-span-6">
           <MatchesColumn
             matches={matches}
             availableRegion1Fighters={availableRegion1Fighters}
@@ -317,7 +317,6 @@ export default function SubGroupOrganizationPage() {
   );
 }
 
-// ... (le reste du code reste identique)
 
 // Composant pour une colonne de région
 function RegionColumn({
@@ -333,14 +332,14 @@ function RegionColumn({
 }) {
   if (!region) {
     return (
-      <Card>
+      <Card className="p-2">
         <CardHeader>
           <CardTitle className="text-lg text-center">
             Région {side === "left" ? "1" : "2"}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
+          <div className="text-center py-4">
             <Typography variant="body-sm" theme="muted">
               Aucune région assignée
             </Typography>
@@ -351,8 +350,8 @@ function RegionColumn({
   }
 
   return (
-    <Card className="h-fit">
-      <CardHeader className="pb-3">
+    <Card className="h-fit p-2">
+      <CardHeader className="pb-2">
         <div className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-2">
             <MapPin className="h-5 w-5 text-muted-foreground" />
@@ -390,8 +389,8 @@ function RegionColumn({
 // Composant pour un lutteur
 function FighterCard({ fighter, position="left" }: { fighter: Fighter, position?: "right" | "left" }) {
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer">
-      <CardContent className="p-3">
+    <Card className="hover:shadow-md transition-shadow cursor-pointer p-1">
+      <CardContent className="p-2">
         {/* <div className="flex items-center space-x-3"> */}
           <div className={`flex ${position === "right" && "flex-row-reverse"} items-center space-x-3`}>
             <Avatar className="h-10 w-10">
@@ -469,7 +468,7 @@ function MatchesColumn({
   onEditMatch: (match: Match) => void;
 }) {
   return (
-    <Card>
+    <Card className="p-2">
       <CardHeader>
         <CardTitle className="text-center flex items-center justify-center space-x-2">
           <Swords className="h-5 w-5" />

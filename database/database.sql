@@ -305,6 +305,7 @@ CREATE TABLE IF NOT EXISTS belt (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 -- Sous-groupes dans un groupe
 CREATE TABLE IF NOT EXISTS sub_groups (
     id SERIAL PRIMARY KEY,

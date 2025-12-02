@@ -11,9 +11,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdvancedUpload } from "@/components/ui/advanced-upload";
 import { api } from "@/lib/api";
 import { Fighter } from "@/types";
-import { Pin } from "lucide-react";
+import { FileArchive, Pin } from "lucide-react";
 import Image from "next/image";
 import { useScreenSize } from "@/hooks/use-screen";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 export default function FighterDetailPage() {
   const { fighterId } = useParams();
@@ -59,7 +67,7 @@ export default function FighterDetailPage() {
   console.log(fighter);
 
   return (
-    <div className="container mx-auto px-4 py-6 space-y-6">
+    <div className="">
       {/* ✅ Image de couverture */}
       <div className="relative w-full h-50 rounded-2xl  shadow-md">
         <div className="flex justify-center gap-2 mt-4 absolute top-4 right-4">
@@ -98,10 +106,10 @@ export default function FighterDetailPage() {
       </div>
 
       {/* ✅ Nom et badges */}
-      <div className="pt-14">
+      <div className="pt-12">
         <div className="flex items-center justify-between">
           <div className="">
-            <Typography variant="h2" weight="bold">
+            <Typography variant="h3" weight="bold">
               {fighter.first_name} {fighter.last_name}
             </Typography>
 
@@ -132,13 +140,13 @@ export default function FighterDetailPage() {
       </div>
 
       {/* ✅ Contenu (onglets) */}
-      <Card className="max-w-5xl mx-auto">
+      <Card className="max-w-5xl mx-auto p-4">
         <CardHeader>
           <CardTitle>Détails du lutteur</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="flex justify-center mb-4">
+            <TabsList className="flex justify-center mb-3">
               <TabsTrigger value="profile">Profil</TabsTrigger>
               <TabsTrigger value="stats">Statistiques</TabsTrigger>
               <TabsTrigger value="achievements">Palmarès</TabsTrigger>
@@ -146,7 +154,7 @@ export default function FighterDetailPage() {
 
             {/* ✅ Onglet Profil */}
             <TabsContent value="profile">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Info label="Région" value={fighter.region?.name} />
                 <Info
                   label="Date de naissance"
@@ -169,7 +177,7 @@ export default function FighterDetailPage() {
               </div>
 
               {fighter.bio && (
-                <div className="mt-6">
+                <div className="mt-4">
                   <Typography variant="h5" className="mb-2">
                     Biographie
                   </Typography>
@@ -205,8 +213,8 @@ export default function FighterDetailPage() {
               {fighter.achievements?.length ? (
                 <div className="space-y-3">
                   {fighter.achievements.map((a) => (
-                    <Card key={a.id}>
-                      <CardContent className="p-4 flex justify-between items-center">
+                    <Card key={a.id} className="p-3">
+                      <CardContent className="p-2 flex justify-between items-center">
                         <div>
                           <Typography variant="h5">{a.title}</Typography>
                           <Typography variant="body-sm" theme="muted">
@@ -234,14 +242,29 @@ export default function FighterDetailPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Typography variant="h4" theme="muted">
-                    Aucun palmarès
-                  </Typography>
-                  <Typography variant="body-sm" theme="muted">
-                    Aucune réalisation enregistrée pour ce lutteur.
-                  </Typography>
-                </div>
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <FileArchive size={48} />
+                    </EmptyMedia>
+                    <EmptyTitle>Aucun palmarès</EmptyTitle>
+                    <EmptyDescription>
+                      Aucune réalisation enregistrée pour ce lutteur.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="default"
+                        onClick={() => router.push(
+                          `/ad/achievements/create?fighterId=${fighterId}`
+                        )}
+                      >
+                        Ajouter palmares
+                      </Button>
+                    </div>
+                  </EmptyContent>
+                </Empty>
               )}
             </TabsContent>
           </Tabs>
@@ -271,8 +294,8 @@ function Info({
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <Card>
-      <CardContent className="text-center p-4">
+    <Card className="p-2 border-t-primary border-b-green-500 border-2">
+      <CardContent className="text-center p-2">
         <Typography variant="h4" weight="bold">
           {value}
         </Typography>

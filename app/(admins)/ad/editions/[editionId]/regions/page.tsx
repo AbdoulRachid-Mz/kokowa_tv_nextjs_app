@@ -63,10 +63,10 @@ export default function EditionRegionsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="">
       {/* En-tête */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="icon"
@@ -75,10 +75,10 @@ export default function EditionRegionsPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <Typography variant="h2">
+            <Typography variant="h4">
               Gestion des Régions - Édition {edition.edition_number}
             </Typography>
-            <Typography variant="body-lg" theme="muted">
+            <Typography variant="body-base" theme="muted">
               {edition.competition?.name} • {edition.year}
             </Typography>
           </div>

@@ -192,8 +192,11 @@ export function useEntityList<T>({
         if (editionFilters.year) params.year = editionFilters.year.toString();
         if (editionFilters.with_competition) params.with_competition = 'true';
         if (editionFilters.with_fighters) params.with_fighters = 'true';
-        if (editionFilters.with_regions) params.with_regions = 'true';
+        // if (editionFilters.with_regions) params.with_regions = 'true';
         if (editionFilters.with_phases) params.with_phases = 'true';
+        if (editionFilters.with_groups) params.with_groups = 'true';
+        if (editionFilters.with_subGroups) params.with_subGroups = 'true';
+        if (editionFilters.with_matches) params.with_matches = 'true';
         if (editionFilters.is_active !== undefined) params.is_active = editionFilters.is_active.toString();
         break;
 
@@ -376,7 +379,7 @@ export function useEntityList<T>({
   };
 
   const handleAdd = () => {
-    router.push(`/ad/${entityType}/new`);
+    router.push(`/ad/${entityType}/create`);
   };
 
   const handleEdit = (item: T) => {

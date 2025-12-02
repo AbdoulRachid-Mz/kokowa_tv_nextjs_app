@@ -120,7 +120,7 @@ export const phaseSchema = z.object({
 export const phaseGroupSchema = z.object({
   phase_id: z.number().int().positive('Phase invalide'),
   name: z.string().min(1, 'Le nom est requis').max(100, 'Le nom est trop long'),
-  is_active: z.boolean().default(false),
+  is_active: z.boolean().default(true),
   group_order: z.number().int().min(1, 'L\'ordre doit être positif'),
   description: z.string().optional(),
   is_completed: z.boolean().default(false),
@@ -132,7 +132,7 @@ export const subGroupSchema = z.object({
   name: z.string().min(1, 'Le nom est requis').max(100, 'Le nom est trop long'),
   sub_group_order: z.number().int().min(1, 'L\'ordre doit être positif'),
   description: z.string().optional(),
-  is_active: z.boolean().default(false),
+  is_active: z.boolean().default(true),
   region1_id: z.number().int().positive('Région 1 invalide').optional(),
   region2_id: z.number().int().positive('Région 2 invalide').optional(),
   belt_region1: z.number().int().positive('Ceinture région 1 invalide').optional(),

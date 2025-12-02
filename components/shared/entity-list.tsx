@@ -528,11 +528,11 @@ export function EntityList<T>({
   const entityFilters = [...getEntitySpecificFilters(), ...availableFilters];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* En-tête avec titre et actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <div>
-          <Typography variant="body-lg" weight="bold" gradient animated>
+          <Typography variant="body-lg" weight="bold" animated>
             {title}
           </Typography>
           {description && (
@@ -590,9 +590,9 @@ export function EntityList<T>({
       {renderStats && renderStats()}
 
       {/* Barre de recherche et filtres */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col lg:flex-row gap-4">
+      <Card className="py-1 gap-1">
+        <CardContent className="p-1">
+          <div className="flex flex-col lg:flex-row gap-2">
             {/* Recherche */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -649,7 +649,7 @@ export function EntityList<T>({
           {loading ? (
             <div
               className={cn(
-                "grid gap-4",
+                "grid gap-2",
                 viewMode === "grid"
                   ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
                   : "grid-cols-1"
@@ -672,7 +672,7 @@ export function EntityList<T>({
               ))}
             </div>
           ) : data.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-10">
               <Typography variant="h4" theme="muted" className="mb-2">
                 Aucun résultat trouvé
               </Typography>

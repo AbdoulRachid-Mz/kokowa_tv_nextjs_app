@@ -21,12 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PhaseGroup } from "@/types";
 
 interface CreateSubGroupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groupId: number;
   onSuccess: () => void;
+  group?: PhaseGroup;
 }
 
 export function CreateSubGroupDialog({
@@ -34,35 +36,35 @@ export function CreateSubGroupDialog({
   onOpenChange,
   groupId,
   onSuccess,
+  group
 }: CreateSubGroupDialogProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
-    sub_group_order: 1,
+    sub_group_order: group?.sub_groups?.length ? group.sub_groups.length + 1 : 1,
     description: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('sub_group_order', String(formData.sub_group_order));
+      formDataToSend.append('description', formData.description);
+      formDataToSend.append('group_id', String(groupId));
+
       const response = await fetch('/api/sub-groups', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          group_id: groupId,
-        }),
+        body: formDataToSend,
       });
 
       if (response.ok) {
         onSuccess();
         setFormData({
           name: "",
-          sub_group_order: 1,
+          sub_group_order: group?.sub_groups?.length ? group.sub_groups.length + 1 : 1,
           description: "",
         });
       } else {
@@ -95,7 +97,7 @@ export function CreateSubGroupDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
             <div className="space-y-2">
               <Label htmlFor="name">Nom du sous-groupe *</Label>
               <Input
@@ -107,7 +109,7 @@ export function CreateSubGroupDialog({
               />
             </div>
 
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="sub_group_order">Ordre *</Label>
               <Input
                 id="sub_group_order"
@@ -117,7 +119,7 @@ export function CreateSubGroupDialog({
                 onChange={(e) => handleInputChange('sub_group_order', parseInt(e.target.value))}
                 required
               />
-            </div>
+            </div> */}
           </div>
 
           <div className="space-y-2">

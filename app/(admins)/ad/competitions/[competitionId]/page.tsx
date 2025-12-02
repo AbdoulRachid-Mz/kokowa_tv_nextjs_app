@@ -30,6 +30,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import { CardStats } from "@/components/entities/card-stats";
 
 export default function CompetitionDetailPage() {
   const params = useParams();
@@ -40,15 +42,24 @@ export default function CompetitionDetailPage() {
   const [loading, setLoading] = useState(true);
 
   // Hook pour la liste des éditions
-  const editionsList = useEntityList<CompetitionEdition>({
-    entityType: 'editions',
-    defaultFilters: {
-      competition_id: parseInt(competitionId),
-      with_competition: false, // On a déjà les infos de la compétition
-      with_fighters: true,
-      with_regions: true,
-    },
-  });
+  // Utiliser les éditions déjà chargées avec la compétition
+  const editionsList = {
+    data: competition?.editions || [],
+    total: competition?.editions?.length || 0,
+    loading: false,
+    page: 1,
+    limit: 50,
+    searchTerm: '',
+    filters: {},
+    setPage: () => {},
+    setLimit: () => {},
+    setSearchTerm: () => {},
+    setFilters: () => {},
+    refetch: () => {},
+    onRefresh: () => {},
+    viewMode: 'grid' as const,
+    setViewMode: () => {},
+  };
 
   // Charger les détails de la compétition
   useEffect(() => {
@@ -330,7 +341,7 @@ export default function CompetitionDetailPage() {
           Compétition non trouvée
         </Typography>
         <Button 
-          onClick={() => router.push('/admin/competitions')}
+          onClick={() => router.push('/ad/competitions')}
           className="mt-4"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -343,32 +354,32 @@ export default function CompetitionDetailPage() {
   const statusConfig = getStatusBadge(competition.status);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => router.push('/admin/competitions')}
+            onClick={() => router.push('/ad/competitions')}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour
           </Button>
           <div>
-            <Typography variant="h3" weight="bold" gradient animated>
+            <Typography variant="h4" weight="bold" animated>
               {competition.name}
             </Typography>
-            <Typography variant="lead" theme="muted">
+            {/* <Typography variant="lead" theme="muted">
               Détails de la compétition
-            </Typography>
+            </Typography> */}
           </div>
         </div>
         
         <div className="flex items-center gap-2">
           <Button 
             variant="outline"
-            onClick={() => router.push(`/admin/competitions/${competitionId}/edit`)}
+            onClick={() => router.push(`/ad/competitions/${competitionId}/edit`)}
           >
             <Edit className="h-4 w-4 mr-2" />
             Modifier
@@ -381,33 +392,15 @@ export default function CompetitionDetailPage() {
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {getCompetitionStats().map((stat, index) => (
-          <Card key={index} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Typography variant="body-sm" theme="muted" className="mb-1">
-                    {stat.label}
-                  </Typography>
-                  <Typography variant="h3" weight="bold" className="mb-1">
-                    {stat.value}
-                  </Typography>
-                  <Typography variant="caption2" theme="muted">
-                    {stat.description}
-                  </Typography>
-                </div>
-                <div className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}>
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <CardStats key={index} label={stat.label} icon={stat.icon} value={stat.value} color={stat.color} />
+
         ))}
       </div>
 
       {/* Informations de la compétition */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Informations principales */}
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -548,7 +541,7 @@ export default function CompetitionDetailPage() {
       {/* Liste des éditions */}
       <EntityList
         title="Éditions de la Compétition"
-        description={`Historique des éditions pour ${competition.name}`}
+        description={`Editions pour ${competition.name}`}
         entityType="edition"
         data={editionsList.data}
         total={editionsList.total}
@@ -569,9 +562,4 @@ export default function CompetitionDetailPage() {
       />
     </div>
   );
-}
-
-// Utilitaire cn pour les classes conditionnelles
-function cn(...classes: (string | undefined | null | false)[]): string {
-  return classes.filter(Boolean).join(' ');
 }

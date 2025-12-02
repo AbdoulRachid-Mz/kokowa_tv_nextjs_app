@@ -57,6 +57,10 @@ export async function GET(request: NextRequest) {
 with_fighters,
 with_regions,
 with_phases,
+with_groups,
+with_subGroups,
+with_matches,
+
       offset: (page - 1) * limit,
     };
 

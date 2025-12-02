@@ -57,13 +57,16 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { fighter_id, status = 'registered' } = body;
+    const { fighter_id, status = 'registered', region_id } = body;
 
     if (!fighter_id) {
       return NextResponse.json({ error: 'ID de lutteur requis' }, { status: 400 });
     }
+    console.log(fighter_id,
+status,
+region_id)
 
-    const result = await addFighterToEdition(editionIdNum, fighter_id, status);
+    const result = await addFighterToEdition(editionIdNum, fighter_id, status, region_id);
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('Erreur POST /api/editions/[editionId]/fighters:', error);

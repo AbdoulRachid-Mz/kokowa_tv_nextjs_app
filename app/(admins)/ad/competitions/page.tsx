@@ -67,16 +67,16 @@ export default function CompetitionsPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {stats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="p-4">
+          <Card key={index} className="p-2">
+            <CardContent className="p-2">
               <div className="flex items-center justify-between">
                 <div>
                   <Typography variant="body-sm" theme="muted" className="mb-1">
                     {stat.label}
                   </Typography>
-                  <Typography variant="h3" weight="bold">
+                  <Typography variant="h4" weight="bold">
                     {stat.value}
                   </Typography>
                 </div>
@@ -94,7 +94,7 @@ export default function CompetitionsPage() {
   return (
     <EntityList
       title="Gestion des Compétitions"
-      description="Organisez et gérez toutes les compétitions de lutte traditionnelle"
+      description="Organisez et gérez les compétitions"
       entityType="competition"
       data={data}
       total={total}
@@ -108,7 +108,7 @@ export default function CompetitionsPage() {
       filters={filters}
       onFilterChange={setFilters}
       onAdd={onAdd}
-      onExport={onExport}
+      // onExport={onExport}
       onRefresh={onRefresh}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
