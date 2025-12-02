@@ -86,28 +86,28 @@ export const menuItems = [
   {
     id: "competitions",
     label: "Compétitions",
-    path: "/admin/competitions",
+    path: "/ad/competitions",
     icon: Trophy,
     description: "Gérer les compétitions",
   },
   {
     id: "editions",
     label: "Éditions",
-    path: "/admin/competitions/editions",
+    path: "/ad/editions",
     icon: Calendar,
     description: "Gérer les éditions de compétitions",
   },
   {
     id: "phases",
     label: "Phases",
-    path: "/admin/competitions/phases",
+    path: "/ad/competitions/phases",
     icon: Layers,
     description: "Gérer les phases et groupes des éditions",
   },
   {
     id: "matches",
     label: "Matchs",
-    path: "/admin/competitions/matches",
+    path: "/ad/competitions/matches",
     icon: Swords,
     description: "Gérer les matchs",
   },
@@ -115,21 +115,21 @@ export const menuItems = [
   {
     id: "articles",
     label: "Articles",
-    path: "/admin/articles",
+    path: "/ad/articles",
     icon: Newspaper,
     description: "Gérer les articles et publications",
   },
   {
     id: "media",
     label: "Médias",
-    path: "/admin/media",
+    path: "/ad/media",
     icon: FileImage,
     description: "Gérer les fichiers multimédias",
   },
   {
     id: "videos",
     label: "Vidéos",
-    path: "/admin/videos",
+    path: "/ad/videos",
     icon: Video,
     description: "Gérer les vidéos et diffusions",
   },
@@ -137,14 +137,14 @@ export const menuItems = [
   {
     id: "messages",
     label: "Messages",
-    path: "/admin/messages",
+    path: "/ad/messages",
     icon: MessageSquare,
     description: "Gérer les messages et commentaires",
   },
   {
     id: "notifications",
     label: "Notifications",
-    path: "/admin/notifications",
+    path: "/ad/notifications",
     icon: Bell,
     description: "Notifications et alertes système",
   },
@@ -152,7 +152,7 @@ export const menuItems = [
   {
     id: "interactions",
     label: "Interactions",
-    path: "/admin/interactions",
+    path: "/ad/interactions",
     icon: Activity,
     description: "Gérer les likes, vues et partages",
   },
@@ -160,14 +160,14 @@ export const menuItems = [
   {
     id: "database",
     label: "Base de Données",
-    path: "/admin/database",
+    path: "/ad/database",
     icon: Database,
     description: "Surveiller et gérer les données système",
   },
   {
     id: "settings",
     label: "Paramètres",
-    path: "/admin/settings",
+    path: "/ad/settings",
     icon: Settings,
     description: "Configuration système",
   },
@@ -197,9 +197,9 @@ export const refereeItems = [
 
 export const competitionItems = [
   { title: "Compétitions", url: "/ad/competitions", icon: Trophy, description: "Gérer les compétitions" },
-  { title: "Éditions", url: "/ad/competitions/editions", icon: Calendar, description: "Éditions et saisons" },
-  { title: "Phases", url: "/ad/competitions/phases", icon: Activity, description: "Phases et groupes" },
-  { title: "Matchs", url: "/ad/competitions/matches", icon: Swords, description: "Matchs et résultats" },
+  { title: "Éditions", url: "/ad/editions", icon: Calendar, description: "Éditions et saisons" },
+  { title: "Phases", url: "/ad/phases", icon: Activity, description: "Phases et groupes" },
+  { title: "Matchs", url: "/ad/matches", icon: Swords, description: "Matchs et résultats" },
 ]
 
 export const contentItems = [
