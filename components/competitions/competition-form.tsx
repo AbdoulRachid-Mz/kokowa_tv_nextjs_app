@@ -191,7 +191,7 @@ export default function CompetitionForm({
   };
 
   return (
-    <Card>
+    <Card className="p-3">
       <CardHeader>
         <CardTitle>
           {competition ? "Modifier la Compétition" : "Créer une Compétition"}
@@ -308,7 +308,7 @@ export default function CompetitionForm({
             </div>
 
             {/* Région */}
-            <div>
+            {/* <div>
               <label
                 htmlFor="region_id"
                 className="block text-sm font-medium text-gray-700 mb-2"
@@ -339,7 +339,7 @@ export default function CompetitionForm({
                   Chargement des régions...
                 </p>
               )}
-            </div>
+            </div> */}
 
             {/* Statut actif */}
             <div className="flex items-center space-x-2">
@@ -397,7 +397,7 @@ export default function CompetitionForm({
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push("/competitions")}
+              onClick={() => router.push("ad/competitions")}
             >
               Annuler
             </Button>

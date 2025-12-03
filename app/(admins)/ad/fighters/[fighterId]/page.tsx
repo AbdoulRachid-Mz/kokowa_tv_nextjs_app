@@ -41,7 +41,7 @@ export default function FighterDetailPage() {
     try {
       setLoading(true);
       const fighterData = await api.get<any>(`/api/fighters/${id}`);
-      setFighter(fighterData.fighter);
+      setFighter(fighterData);
     } catch (error) {
       console.error("Erreur chargement lutteur:", error);
       setFighter(null);
@@ -64,7 +64,6 @@ export default function FighterDetailPage() {
       </div>
     );
   }
-  console.log(fighter);
 
   return (
     <div className="">
@@ -146,7 +145,7 @@ export default function FighterDetailPage() {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="flex justify-center mb-3">
+            <TabsList className="flex justify-center mb-3 border-primary border bg-primary">
               <TabsTrigger value="profile">Profil</TabsTrigger>
               <TabsTrigger value="stats">Statistiques</TabsTrigger>
               <TabsTrigger value="achievements">Palmarès</TabsTrigger>

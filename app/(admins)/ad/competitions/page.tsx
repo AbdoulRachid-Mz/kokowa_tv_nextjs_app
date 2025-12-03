@@ -8,6 +8,8 @@ import { Competition } from "@/types";
 import { Typography } from "@/components/ui/typography";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, Calendar, Play, CheckCircle } from "lucide-react";
+import { CardStats } from "@/components/entities/card-stats";
+
 
 export default function CompetitionsPage() {
   const {
@@ -69,23 +71,7 @@ export default function CompetitionsPage() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {stats.map((stat, index) => (
-          <Card key={index} className="p-2">
-            <CardContent className="p-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Typography variant="body-sm" theme="muted" className="mb-1">
-                    {stat.label}
-                  </Typography>
-                  <Typography variant="h4" weight="bold">
-                    {stat.value}
-                  </Typography>
-                </div>
-                <div className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}>
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <CardStats key={index} {...stat} />
         ))}
       </div>
     );

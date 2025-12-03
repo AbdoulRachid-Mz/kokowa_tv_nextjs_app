@@ -8,6 +8,7 @@ import { Coach } from "@/types";
 import { Typography } from "@/components/ui/typography";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Award, TrendingUp, GraduationCap } from "lucide-react";
+import { CardStats } from "@/components/entities/card-stats";
 
 export default function CoachesPage() {
   const {
@@ -62,27 +63,9 @@ export default function CoachesPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {stats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Typography variant="body-sm" theme="muted" className="mb-1">
-                    {stat.label}
-                  </Typography>
-                  <Typography variant="h3" weight="bold">
-                    {stat.value}
-                  </Typography>
-                </div>
-                <div
-                  className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}
-                >
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <CardStats key={index} {...stat} />
         ))}
       </div>
     );

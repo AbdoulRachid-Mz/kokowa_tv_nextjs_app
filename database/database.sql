@@ -158,10 +158,8 @@ CREATE TABLE IF NOT EXISTS competitions (
     ) DEFAULT 'upcoming',
     featured_image VARCHAR(255),
     is_active BOOLEAN DEFAULT TRUE,
-    region_id INTEGER, -- ✅ Ajout ici
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (region_id) REFERENCES regions (id)
 );
 
 -- Éditions des compétitions
@@ -585,16 +583,39 @@ CREATE TABLE IF NOT EXISTS interactions (
 CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     notification_type VARCHAR(30) CHECK (
         notification_type IN (
             'match_update',
             'fighter_update',
             'competition_update',
-            'system_notification'
+            'system_notification',
+            'achievement',
+            'message'
         )
     ) NOT NULL,
+    entity_type VARCHAR(50) CHECK (
+        entity_type IN (
+            'article',
+            'match',
+            'fighter',
+            'competition',
+            'user',
+            'message'
+        )
+    ),
+    entity_id INTEGER,
     is_read BOOLEAN DEFAULT FALSE,
+    action_url VARCHAR(255),
+    priority VARCHAR(10) CHECK (
+        priority IN (
+            'low',
+            'medium',
+            'high'
+        )
+    ) DEFAULT 'medium',
+    expires_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
@@ -618,7 +639,7 @@ END $$;
 -- Index for performance
 CREATE INDEX idx_notifications_user ON notifications (user_id, is_read, created_at DESC);
 CREATE INDEX idx_notifications_type ON notifications (notification_type);
-
+CREATE INDEX idx_notifications_entity ON notifications (entity_type, entity_id);
 
 -- =============================================
 -- CONFIGURATION DE L'APPLICATION

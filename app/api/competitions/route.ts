@@ -53,9 +53,15 @@ export async function POST(request: NextRequest) {
         body = Object.fromEntries(formData.entries());
       }
     }
-
-    console.log('Request body:', body);
     
+    // Extraire le paramètre with_edition depuis le corps ou les query params
+    const { searchParams } = new URL(request.url);
+    const withEditionParam = body.with_edition ?? searchParams.get('with_edition');
+    const with_edition = withEditionParam === 'true' || withEditionParam === true;
+
+    // Supprimer le champ with_edition du body pour ne pas le valider dans le schema
+    delete body.with_edition;
+
     // Valider les données
     const validatedData = competitionSchema.parse(body);
 
@@ -67,7 +73,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    const result = await createCompetition(formData);
+    const result = await createCompetition(formData, { with_edition });
 
     return NextResponse.json(result);
   } catch (error) {

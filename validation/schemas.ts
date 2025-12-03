@@ -81,9 +81,6 @@ export const competitionSchema = z.object({
   is_active: z.union([z.boolean(), z.string()]).transform(val => 
     typeof val === 'string' ? val === 'true' : val
   ).default(true),
-  region_id: z.union([z.number(), z.string()]).transform(val => 
-    typeof val === 'string' ? (val ? Number(val) : undefined) : val
-  ).optional().nullable(),
 });
 
 // Schema pour les éditions de compétition
@@ -277,52 +274,84 @@ export const messageSchema = z.object({
 
 // Schema pour les articles
 export const articleSchema = z.object({
-  title: z.string().min(1, 'Le titre est requis').max(255, 'Le titre est trop long'),
-  slug: z.string().min(1, 'Le slug est requis').max(255, 'Le slug est trop long'),
+  title: z.string().min(1, 'Le titre est requis').max(255),
+  slug: z.string().min(1, 'Le slug est requis').max(255),
   excerpt: z.string().optional(),
+
   content: z.string().min(1, 'Le contenu est requis'),
-  featured_image: z.string().url('URL invalide').optional().or(z.literal('')),
-  author_id: z.number().int().positive('Auteur invalide'),
-  status: z.enum(['draft', 'published', 'archived']).default('draft'),
-  language: z.enum(['fr', 'ha', 'en']).default('fr'),
-  view_count: z.number().int().min(0, 'Nombre de vues invalide').default(0),
-  like_count: z.number().int().min(0, 'Nombre de likes invalide').default(0),
-  share_count: z.number().int().min(0, 'Nombre de partages invalide').default(0),
-  meta_title: z.string().max(255, 'Le meta titre est trop long').optional(),
+
+  featured_image: z.union([
+    z.string().url(),
+    z.instanceof(File),
+    z.literal(""),
+  ]).optional(),
+
+  author_id: z.number().int().positive(),
+
+  // ❗ Retirer default()
+  status: z.enum(['draft', 'published', 'archived']),
+
+  language: z.enum(['fr', 'ha', 'en']),
+
+  view_count: z.number().int().min(0),
+  like_count: z.number().int().min(0),
+  share_count: z.number().int().min(0),
+
+  meta_title: z.string().max(255).optional(),
   meta_description: z.string().optional(),
-  published_at: z.string().datetime('Format de date/heure invalide').optional(),
+
+  published_at: z.string().datetime().optional(),
 });
+
 
 // Schema pour les médias
 export const mediaSchema = z.object({
-  title: z.string().min(1, 'Le titre est requis').max(255, 'Le titre est trop long'),
-  file_path: z.string().min(1, 'Le chemin du fichier est requis').max(255, 'Le chemin est trop long'),
+  title: z.string().min(1, 'Le titre est requis').max(255),
+  file_path: z.string().min(1, 'Le chemin du fichier est requis').max(255),
   file_type: z.enum(['image', 'video', 'document', 'audio']),
-  mime_type: z.string().max(100, 'Le type MIME est trop long').optional(),
-  file_size: z.number().int().min(0, 'La taille du fichier est invalide').optional(),
-  alt_text: z.string().max(255, 'Le texte alternatif est trop long').optional(),
+
+  mime_type: z.string().max(100).optional(),
+  file_size: z.number().int().min(0).optional(),
+  alt_text: z.string().max(255).optional(),
   description: z.string().optional(),
-  uploader_id: z.number().int().positive('Uploader invalide'),
-  is_featured: z.boolean().default(false),
-  entity_type: z.string().max(50, 'Le type d\'entité est trop long').optional(),
-  entity_id: z.number().int().positive('ID d\'entité invalide').optional(),
+
+  uploader_id: z.number().int().positive(),
+
+  // Important : retirer default()
+  is_featured: z.boolean().optional(),
+
+  entity_type: z.string().max(50).optional(),
+  entity_id: z.number().int().positive().optional(),
 });
 
+
 export const videoSchema = z.object({
-  title: z.string().min(1, 'Titre requis').max(255, 'Titre trop long'),
-  slug: z.string().min(1, 'Slug requis').max(255, 'Slug trop long'),
+  title: z.string().min(1).max(255),
+  slug: z.string().min(1).max(255),
   description: z.string().optional(),
-  video_url: z.string().url('URL vidéo invalide'),
-  thumbnail_url: z.string().url('URL miniature invalide').optional(),
-  duration: z.number().int().nonnegative('Durée invalide').optional(),
+
+  video_url: z.string().url().or(z.literal("")),
+
+  thumbnail_url: z.string().url().or(z.literal("")).optional(),
+
+  duration: z.coerce.number()
+    .int()
+    .nonnegative()
+    .optional(),
+
   type: z.enum(['youtube', 'facebook', 'tiktok', 'rtmp', 'upload', 'vimeo']),
   category: z.enum(['match', 'interview', 'highlights', 'training', 'documentary', 'ceremony']),
+
   view_count: z.number().int().nonnegative().default(0),
   like_count: z.number().int().nonnegative().default(0),
+
   is_live: z.boolean().default(false),
   is_featured: z.boolean().default(false),
-  published_at: z.string().datetime('Date de publication invalide').optional(),
+
+  published_at: z.string().datetime().optional(),
 });
+
+
 
 // Schema pour les interactions
 export const interactionSchema = z.object({

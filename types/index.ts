@@ -313,10 +313,15 @@ export interface Message extends BaseEntity {
 
 export interface Notification extends BaseEntity {
   user_id: number;
+  title: string;
   message: string;
-  notification_type: 'match_update' | 'fighter_update' | 'competition_update' | 'system_notification';
+  notification_type: 'match_update' | 'fighter_update' | 'competition_update' | 'system_notification' | 'achievement' | 'message';
+  entity_type?: 'article' | 'match' | 'fighter' | 'competition' | 'user' | 'message';
+  entity_id?: number;
   is_read: boolean;
-  created_at: string;
+  action_url?: string;
+  priority: 'low' | 'medium' | 'high';
+  expires_at?: string;
   
   // Relations
   user?: User;

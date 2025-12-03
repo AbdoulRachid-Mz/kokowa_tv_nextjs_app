@@ -17,6 +17,7 @@ import { Bell, Sparkles, Zap } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import Link from "next/link"
 import { useTheme } from "next-themes"
+import { ThemeToggle } from "../shared/ThemeToggle"
 
 interface EnhancedDashboardProps {
   children: React.ReactNode
@@ -561,6 +562,7 @@ export function DashboardHeader({
             Notifications
           </Button>
         )}
+        <ThemeToggle />
       </div>
     </header>
   )

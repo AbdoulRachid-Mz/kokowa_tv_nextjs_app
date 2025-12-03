@@ -57,10 +57,10 @@ export default function CoachDetailPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 space-y-6">
+    <div className="">
       {/* En-tête avec photo de profil */}
-      <Card>
-        <CardContent className="p-6">
+      <Card className="p-2">
+        <CardContent className="p-2">
           <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6">
             <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-background">
               <Image
@@ -73,7 +73,7 @@ export default function CoachDetailPage() {
             <div className="flex-1 text-center md:text-left">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                 <div>
-                  <Typography variant="h2" weight="bold">
+                  <Typography variant="h4" weight="bold">
                     {coach.first_name} {coach.last_name}
                   </Typography>
                   {coach.nickname && (

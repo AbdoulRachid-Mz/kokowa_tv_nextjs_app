@@ -18,8 +18,7 @@ const ClienttFigtherPage = ({ fighterId }: Props) => {
     try {
       setLoading(true);
       const response = await api.get<any>(`/api/fighters/${parsedFighterId}?with_relations=true`);
-      const fighterData = response.fighter;
-      setFighter(fighterData);
+      setFighter(response);
     } catch (error) {
       console.error("Erreur chargement lutteur:", error);
       setFighter(null);

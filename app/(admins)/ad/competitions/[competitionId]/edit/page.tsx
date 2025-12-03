@@ -1,4 +1,4 @@
-import CompetitionForm from '@/components/competitions/competition-form';
+import CompetitionForm from '@/components/competitions/competition-form-2';
 import { notFound } from 'next/navigation';
 
 interface PageProps {
@@ -34,7 +34,7 @@ export default async function EditCompetitionPage({ params }: PageProps) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="">
       <div className="max-w-4xl mx-auto">
         <CompetitionForm competition={competition} />
       </div>

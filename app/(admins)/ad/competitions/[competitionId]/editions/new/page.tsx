@@ -76,7 +76,7 @@ export default function EditionFormPage() {
   } = useForm<EditionFormData>({
     resolver: zodResolver(editionSchema),
     defaultValues: {
-      edition_number: 1,
+      edition_number: competition?.editions?.length ? competition.editions.length + 1 : 1,
       year: new Date().getFullYear(),
     },
   });
@@ -249,7 +249,7 @@ export default function EditionFormPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
@@ -258,7 +258,7 @@ export default function EditionFormPage() {
             Retour
           </Button>
           <div>
-            <Typography variant="h3" weight="bold" gradient animated>
+            <Typography variant="h4" weight="bold" animated>
               {isEdit ? "Modifier l'Édition" : "Nouvelle Édition"}
             </Typography>
             <Typography variant="lead" theme="muted">
@@ -279,11 +279,11 @@ export default function EditionFormPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Formulaire principal */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4">
             {/* Informations de base */}
-            <Card>
+            <Card className="p-3">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
@@ -293,7 +293,7 @@ export default function EditionFormPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Numéro d'édition */}
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="edition_number">Numéro d'édition *</Label>
                     <Input
                       id="edition_number"
@@ -307,7 +307,22 @@ export default function EditionFormPage() {
                         {errors.edition_number.message}
                       </Typography>
                     )}
-                  </div>
+                  </div> */}
+
+                                  {/* Thème */}
+                <div className="space-y-2">
+                  <Label htmlFor="theme">Thème de l'édition</Label>
+                  <Input
+                    id="theme"
+                    placeholder="Ex: Édition de la Renaissance, Lutte pour la Paix..."
+                    {...register("theme")}
+                  />
+                  {errors.theme && (
+                    <Typography variant="caption2" theme="danger">
+                      {errors.theme.message}
+                    </Typography>
+                  )}
+                </div>
 
                   {/* Année */}
                   <div className="space-y-2">
@@ -325,22 +340,9 @@ export default function EditionFormPage() {
                       </Typography>
                     )}
                   </div>
+
                 </div>
 
-                {/* Thème */}
-                <div className="space-y-2">
-                  <Label htmlFor="theme">Thème de l'édition</Label>
-                  <Input
-                    id="theme"
-                    placeholder="Ex: Édition de la Renaissance, Lutte pour la Paix..."
-                    {...register("theme")}
-                  />
-                  {errors.theme && (
-                    <Typography variant="caption2" theme="danger">
-                      {errors.theme.message}
-                    </Typography>
-                  )}
-                </div>
 
                 {/* Période */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

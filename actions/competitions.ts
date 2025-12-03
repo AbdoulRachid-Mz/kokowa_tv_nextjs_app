@@ -302,13 +302,12 @@ export async function createCompetition(
   options: { with_edition?: boolean } = { with_edition: true }
 ) {
   try {
-    const { with_edition = true } = options;
+    const { with_edition = false } = options;
     
     // Extraire et transformer les données du FormData
     const rawData = {
       name: formData.get('name') as string,
       description: formData.get('description') as string | null,
-      region_id: formData.get('region_id') as string | null,
       featured_image: formData.get('featured_image') as string | null,
       status: formData.get('status') as string || 'upcoming',
       is_active: formData.get('is_active') as string | null,
@@ -328,13 +327,11 @@ export async function createCompetition(
       name: rawData.name,
       slug,
       description: rawData.description || undefined,
-      region_id: rawData.region_id || undefined,
       featured_image: rawData.featured_image || undefined,
       status: rawData.status as 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed',
       is_active: rawData.is_active || 'true', // Par défaut à true
     };
 
-    console.log('Data for validation:', dataForValidation);
 
     const validatedData = competitionSchema.parse(dataForValidation);
 
@@ -345,8 +342,8 @@ export async function createCompetition(
       // 1. Créer la compétition
       const competitionSql = `
         INSERT INTO competitions (
-          name, slug, description, region_id, featured_image, status, is_active
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          name, slug, description, featured_image, status, is_active
+        ) VALUES ($1, $2, $3, $5, $6, $7)
         RETURNING id, name, slug
       `;
       
@@ -354,7 +351,6 @@ export async function createCompetition(
         validatedData.name,
         validatedData.slug ?? null,
         validatedData.description || null,
-        validatedData.region_id || null,
         validatedData.featured_image || null,
         validatedData.status,
         validatedData.is_active,
@@ -426,7 +422,6 @@ export async function updateCompetition(id: number, formData: FormData) {
     const rawData = {
       name: formData.get('name') as string,
       description: formData.get('description') as string | null,
-      region_id: formData.get('region_id') as string | null,
       featured_image: formData.get('featured_image') as string | null,
       status: formData.get('status') as string,
       is_active: formData.get('is_active') as string | null,
@@ -448,21 +443,18 @@ export async function updateCompetition(id: number, formData: FormData) {
       name: rawData.name,
       slug,
       description: rawData.description || undefined,
-      region_id: rawData.region_id || undefined,
       featured_image: rawData.featured_image || undefined,
       status: rawData.status as 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed',
       is_active: rawData.is_active || 'true',
     };
 
-    console.log('Update data for validation:', dataForValidation);
 
     const validatedData = competitionSchema.parse(dataForValidation);
 
     const sql = `
       UPDATE competitions 
       SET 
-        name = $1, slug = $2, description = $3, 
-        region_id = $4, featured_image = $5, status = $6, 
+        name = $1, slug = $2, description = $3, featured_image = $5, status = $6, 
         is_active = $7, updated_at = CURRENT_TIMESTAMP
       WHERE id = $8
       RETURNING id, name, slug
@@ -472,7 +464,6 @@ export async function updateCompetition(id: number, formData: FormData) {
       validatedData.name,
       validatedData.slug ?? null,
       validatedData.description || null,
-      validatedData.region_id || null,
       validatedData.featured_image || null,
       validatedData.status,
       validatedData.is_active,

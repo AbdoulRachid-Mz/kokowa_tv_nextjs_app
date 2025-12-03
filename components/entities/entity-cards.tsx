@@ -355,7 +355,7 @@ export function CompetitionCard({
   return (
     <Card
       className={cn(
-        "hover:shadow-lg transition-all duration-300 cursor-pointer group",
+        "hover:shadow-lg transition-all duration-300 cursor-pointer p-2 group",
         isListView && "flex"
       )}
     >

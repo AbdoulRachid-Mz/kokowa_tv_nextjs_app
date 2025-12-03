@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { CardStats } from "@/components/entities/card-stats";
+import Image from "next/image"
 
 export default function CompetitionDetailPage() {
   const params = useParams();
@@ -410,15 +411,6 @@ export default function CompetitionDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Typography variant="body-sm" theme="muted" className="mb-1">
-                  Type
-                </Typography>
-                <Typography variant="body-base" weight="medium">
-                  {getTypeLabel(competition.type)}
-                </Typography>
-              </div>
-              
-              <div>
-                <Typography variant="body-sm" theme="muted" className="mb-1">
                   Statut
                 </Typography>
                 <Badge variant={statusConfig.variant} className={'color' in statusConfig ? statusConfig.color : undefined}>
@@ -426,61 +418,29 @@ export default function CompetitionDetailPage() {
                 </Badge>
               </div>
               
-              {competition.location && (
+              {competition.featured_image && (
                 <div>
                   <Typography variant="body-sm" theme="muted" className="mb-1">
-                    <MapPin className="h-3 w-3 inline mr-1" />
-                    Localisation
+                    Image de couverture
                   </Typography>
-                  <Typography variant="body-base">
-                    {competition.location}
-                  </Typography>
+                  <Image
+                    src={competition.featured_image}
+                    alt="Image de couverture"
+                    className="w-full h-32 object-cover rounded-md"
+                    width={400}
+                    height={128}
+                  />
                 </div>
               )}
               
-              {competition.region && (
-                <div>
-                  <Typography variant="body-sm" theme="muted" className="mb-1">
-                    Région
-                  </Typography>
-                  <Typography variant="body-base">
-                    {competition.region.name}
-                  </Typography>
-                </div>
-              )}
-              
-              {competition.registration_deadline && (
-                <div>
-                  <Typography variant="body-sm" theme="muted" className="mb-1">
-                    Date limite d'inscription
-                  </Typography>
-                  <Typography variant="body-base">
-                    {new Date(competition.registration_deadline).toLocaleDateString()}
-                  </Typography>
-                </div>
-              )}
-              
-              {competition.max_participants && (
-                <div>
-                  <Typography variant="body-sm" theme="muted" className="mb-1">
-                    Participants maximum
-                  </Typography>
-                  <Typography variant="body-base">
-                    {competition.max_participants}
-                  </Typography>
-                </div>
-              )}
-              
-              {competition.prize_pool && (
-                <div>
-                  <Typography variant="body-sm" theme="muted" className="mb-1">
-                    Prix total
-                  </Typography>
-                  <Typography variant="body-base" weight="bold" className="text-green-600">
-                    {competition.prize_pool.toLocaleString()} FCFA
-                  </Typography>
-                </div>
-              )}
+              <div>
+                <Typography variant="body-sm" theme="muted" className="mb-1">
+                  Activé
+                </Typography>
+                <Typography variant="body-base">
+                  {competition.is_active ? 'Oui' : 'Non'}
+                </Typography>
+              </div>
             </div>
             
             {competition.description && (
@@ -497,7 +457,7 @@ export default function CompetitionDetailPage() {
         </Card>
 
         {/* Actions rapides */}
-        <Card>
+        <Card className="p-3">
           <CardHeader>
             <CardTitle>Actions Rapides</CardTitle>
           </CardHeader>
@@ -510,30 +470,30 @@ export default function CompetitionDetailPage() {
               <Plus className="h-4 w-4 mr-2" />
               Nouvelle Édition
             </Button>
-            <Button 
+             <Button 
               variant="outline" 
               className="w-full justify-start"
               onClick={() => router.push(`/ad/competitions/${competitionId}/phases`)}
             >
               <Trophy className="h-4 w-4 mr-2" />
               Gérer les Phases
-            </Button>
-            <Button 
+            </Button> 
+            {/* <Button 
               variant="outline" 
               className="w-full justify-start"
               onClick={() => router.push(`/ad/competitions/${competitionId}/participants`)}
             >
               <Users className="h-4 w-4 mr-2" />
               Gérer les Participants
-            </Button>
-            <Button 
+            </Button> */}
+            {/* <Button 
               variant="outline" 
               className="w-full justify-start"
               onClick={() => router.push(`/ad/competitions/${competitionId}/matches`)}
             >
               <Award className="h-4 w-4 mr-2" />
               Voir les Matchs
-            </Button>
+            </Button> */}
           </CardContent>
         </Card>
       </div>

@@ -22,9 +22,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const withRelations = request.nextUrl.searchParams.get('with_relations') !== 'false';
     
-    const fighter = await getFighterById(id, { with_relations: withRelations });
-    
-    return NextResponse.json({fighter, data: fighter});
+    const result = await getFighterById(id, { with_relations: withRelations });
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error(`API Error GET /api/fighters/${"params.id"}:`, error);
     

@@ -153,7 +153,7 @@ export default function RefereesPage() {
       viewMode={viewMode}
       onViewModeChange={setViewMode}
       renderStats={renderStats}
-      availableFilters={availableFilters}
+      // availableFilters={availableFilters}
       renderCard={(referee, viewMode) => (
         <EntityCards.Referee
           referee={referee}

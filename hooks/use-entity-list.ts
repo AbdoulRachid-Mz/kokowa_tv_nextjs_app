@@ -166,9 +166,9 @@ export function useEntityList<T>({
       case 'coaches':
         const coachFilters = filters as CoachFilters;
         if (coachFilters.region_id) params.region_id = coachFilters.region_id.toString();
-        if (coachFilters.is_active !== undefined) params.is_active = coachFilters.is_active.toString();
-        if (coachFilters.certification_level) params.certification_level = coachFilters.certification_level;
-        if (coachFilters.experience_min) params.experience_min = coachFilters.experience_min.toString();
+        // if (coachFilters.is_active !== undefined) params.is_active = coachFilters.is_active.toString();
+        // if (coachFilters.certification_level) params.certification_level = coachFilters.certification_level;
+        // if (coachFilters.experience_min) params.experience_min = coachFilters.experience_min.toString();
         if (coachFilters.with_region) params.with_region = 'true';
         break;
 

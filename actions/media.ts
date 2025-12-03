@@ -210,7 +210,7 @@ export async function createMedia(formData: FormData) {
       validatedData.alt_text || null,
       validatedData.description || null,
       validatedData.uploader_id,
-      validatedData.is_featured,
+      validatedData.is_featured ?? false,
       validatedData.entity_type || null,
       validatedData.entity_id || null,
     ]);
@@ -283,7 +283,7 @@ export async function updateMedia(id: number, formData: FormData) {
       validatedData.alt_text || null,
       validatedData.description || null,
       validatedData.uploader_id,
-      validatedData.is_featured,
+      validatedData.is_featured ?? false,
       validatedData.entity_type || null,
       validatedData.entity_id || null,
       id,
