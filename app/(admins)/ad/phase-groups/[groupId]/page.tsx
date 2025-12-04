@@ -142,11 +142,11 @@ export default function PhaseGroupDetailPage() {
   };
 
   const handleManageMatches = (subGroup: SubGroup) => {
-    router.push(`/ad/sub-groups/${subGroup.id}/matches`);
+    router.push(`/ad/sub-groups/${subGroup.id}/organisation`);
   };
 
   const handleManageGroupMatches = () => {
-    router.push(`/ad/phase-groups/${groupId}/matches`);
+    router.push(`/ad/phase-groups/${groupId}/organisation`);
   };
 
   // Rendu des cartes pour les sous-groupes

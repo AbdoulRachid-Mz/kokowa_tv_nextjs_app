@@ -81,7 +81,9 @@ export default function SubGroupOrganizationPage() {
   const loadSubGroup = async () => {
     try {
       setLoading(true);
-      const subGroupData = await api.get<any>(`/api/sub-groups/${id}`);
+      const response = await fetch(`/api/sub-groups/${id}`);
+      if (!response.ok) throw new Error('Failed to fetch sub-group');
+      const subGroupData = await response.json();
       setSubGroup(subGroupData);
       setMatches(subGroupData.matches || []);
 
@@ -92,15 +94,19 @@ export default function SubGroupOrganizationPage() {
         const region2Id = subGroupData.region2?.id;
 
         if (region1Id) {
-          const fightersRegion1 = await api.get<any>(`/api/editions/${editionId}/fighters?region_id=${region1Id}`);
-          setRegion1Fighters(fightersRegion1.data.map((e: any) => e.fighter) || []);
+          const responseRegion1 = await fetch(`/api/editions/${editionId}/fighters?region_id=${region1Id}`);
+          if (!responseRegion1.ok) throw new Error('Failed to fetch region1 fighters');
+          const fightersRegion1 = await responseRegion1.json();
+          setRegion1Fighters(fightersRegion1.data?.map((e: any) => e.fighter) || []);
         } else {
           setRegion1Fighters([]);
         }
 
         if (region2Id) {
-          const fightersRegion2 = await api.get<any>(`/api/editions/${editionId}/fighters?region_id=${region2Id}`);
-          setRegion2Fighters(fightersRegion2.data.map((e: any) => e.fighter) || []);
+          const responseRegion2 = await fetch(`/api/editions/${editionId}/fighters?region_id=${region2Id}`);
+          if (!responseRegion2.ok) throw new Error('Failed to fetch region2 fighters');
+          const fightersRegion2 = await responseRegion2.json();
+          setRegion2Fighters(fightersRegion2.data?.map((e: any) => e.fighter) || []);
         } else {
           setRegion2Fighters([]);
         }

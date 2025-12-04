@@ -114,15 +114,15 @@ export default function PhaseGroupsPage() {
         // Les phases seront chargées dynamiquement
       ],
     },
-    {
-      key: "is_completed",
-      label: "Statut",
-      options: [
-        { value: "all", label: "Tous" },
-        { value: "true", label: "Terminé" },
-        { value: "false", label: "En cours" },
-      ],
-    },
+    // {
+    //   key: "is_completed",
+    //   label: "Statut",
+    //   options: [
+    //     { value: "all", label: "Tous" },
+    //     { value: "true", label: "Terminé" },
+    //     { value: "false", label: "En cours" },
+    //   ],
+    // },
     {
       key: "sort",
       label: "Trier par",

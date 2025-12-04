@@ -67,7 +67,8 @@ export default function PhaseDetailPage() {
   // Hook pour les groupes
   const groupsList = useEntityList<PhaseGroup>({
     entityType: "phase-groups",
-    // defaultData: phase?.groups || [],
+    defaultData: phase?.groups || [],
+    useDefaultData: true,
     defaultFilters: {
       phase_id: parseInt(phaseId),
       with_sub_groups: true,
@@ -157,7 +158,7 @@ export default function PhaseDetailPage() {
   };
 
   const handleAddSubGroups = (group: PhaseGroup) => {
-    router.push(`/ad/phase-groups/${group.id}/sub-groups`);
+    router.push(`/ad/phase-groups/${group.id}/sub-groups/new`);
   };
 
   // Rendu des cartes pour les groupes
@@ -259,8 +260,12 @@ export default function PhaseDetailPage() {
                   handleAddSubGroups(group);
                 }}
               >
+                <Typography
+                hasTooltip
+                tooltipContent="ajouter des Sous-groupes"
+                >
                 <Plus className="h-4 w-4 mr-1" />
-                Sous-groupes
+                </Typography>
               </Button>
               <Button
                 variant="outline"
@@ -308,7 +313,7 @@ export default function PhaseDetailPage() {
   if (!phase) {
     return (
       <div className="text-center py-12">
-        <Typography variant="h3" theme="muted">
+        <Typography variant="h4" theme="muted">
           Phase non trouvée
         </Typography>
         <Button onClick={() => router.push("/ad/phases")} className="mt-4">
