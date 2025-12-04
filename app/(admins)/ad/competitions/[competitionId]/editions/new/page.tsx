@@ -430,51 +430,6 @@ export default function EditionFormPage() {
                   </Typography>
                 </div>
 
-                <div>
-                  <Typography variant="body-sm" theme="muted" className="mb-1">
-                    Type
-                  </Typography>
-                  <Badge variant="outline">
-                    {competition?.type
-                      ? getTypeLabel(competition.type)
-                      : "Chargement..."}
-                  </Badge>
-                </div>
-
-                {competition?.location && (
-                  <div>
-                    <Typography
-                      variant="body-sm"
-                      theme="muted"
-                      className="mb-1"
-                    >
-                      <MapPin className="h-3 w-3 inline mr-1" />
-                      Localisation
-                    </Typography>
-                    <Typography variant="body-base">
-                      {competition.location}
-                    </Typography>
-                  </div>
-                )}
-
-                {competition?.prize_pool && (
-                  <div>
-                    <Typography
-                      variant="body-sm"
-                      theme="muted"
-                      className="mb-1"
-                    >
-                      Prix total
-                    </Typography>
-                    <Typography
-                      variant="body-base"
-                      weight="bold"
-                      className="text-green-600"
-                    >
-                      {competition.prize_pool.toLocaleString()} FCFA
-                    </Typography>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
@@ -558,20 +513,4 @@ export default function EditionFormPage() {
       </form>
     </div>
   );
-}
-
-// Fonction utilitaire pour les labels de type
-function getTypeLabel(type: string): string {
-  const typeLabels: Record<string, string> = {
-    sabre_national: "Sabre National",
-    coupe_regionale: "Coupe Régionale",
-    halarou_bakwai: "Halarou Bakwai",
-    aes: "AES",
-    friendly: "Amical",
-    ministre: "Ministre",
-    coupe_airtel: "Coupe Airtel",
-    other: "Autre",
-  };
-
-  return typeLabels[type] || type;
 }

@@ -123,13 +123,6 @@ export default function CompetitionDetailPage() {
         color: "text-orange-600",
         description: "Éditions actuellement en cours",
       },
-      {
-        label: "Prix Total",
-        value: `${(competition.prize_pool || 0).toLocaleString()} FCFA`,
-        icon: Award,
-        color: "text-purple-600",
-        description: "Total des prix distribués",
-      },
     ];
   };
 
@@ -147,21 +140,6 @@ export default function CompetitionDetailPage() {
     return config;
   };
 
-  // Obtenir le label du type
-  const getTypeLabel = (type: string) => {
-    const typeLabels: Record<string, string> = {
-      sabre_national: 'Sabre National',
-      coupe_regionale: 'Coupe Régionale',
-      halarou_bakwai: 'Halarou Bakwai',
-      aes: 'AES',
-      friendly: 'Amical',
-      ministre: 'Ministre',
-      coupe_airtel: 'Coupe Airtel',
-      other: 'Autre',
-    };
-    
-    return typeLabels[type] || type;
-  };
 
   // Gestionnaires d'actions pour les éditions
   const handleViewEdition = (edition: CompetitionEdition) => {

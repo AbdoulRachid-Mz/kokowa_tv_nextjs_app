@@ -337,21 +337,6 @@ export function CompetitionCard({
     );
   };
 
-  const getTypeLabel = (type: string) => {
-    const typeLabels: Record<string, string> = {
-      sabre_national: "Sabre National",
-      coupe_regionale: "Coupe Régionale",
-      halarou_bakwai: "Halarou Bakwai",
-      aes: "AES",
-      friendly: "Amical",
-      ministre: "Ministre",
-      coupe_airtel: "Coupe Airtel",
-      other: "Autre",
-    };
-
-    return typeLabels[type] || type;
-  };
-
   return (
     <Card
       className={cn(
@@ -380,34 +365,6 @@ export function CompetitionCard({
               <CardTitle className="text-lg group-hover:text-primary transition-colors">
                 {competition.name}
               </CardTitle>
-
-              <div className="flex items-center gap-2 mt-1 mb-2">
-                {getStatusBadge(competition.status)}
-                <Badge variant="outline">
-                  {getTypeLabel(competition.type)}
-                </Badge>
-              </div>
-
-              <div className="space-y-1 text-sm">
-                {competition.location && (
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <MapPin className="h-3 w-3" />
-                    {competition.location}
-                  </div>
-                )}
-
-                {competition.region && (
-                  <div className="text-muted-foreground">
-                    Région: {competition.region.name}
-                  </div>
-                )}
-
-                {competition.prize_pool && (
-                  <div className="font-semibold text-green-600">
-                    Prix: {competition.prize_pool.toLocaleString()} FCFA
-                  </div>
-                )}
-              </div>
             </div>
 
             {isListView && competition.description && (
@@ -1264,22 +1221,30 @@ export function UserCard({ user, viewMode, onEdit, onView }: UserCardProps) {
       admin: { label: "Administrateur", color: "bg-red-100 text-red-800" },
       editor: { label: "Éditeur", color: "bg-blue-100 text-blue-800" },
       moderator: { label: "Modérateur", color: "bg-green-100 text-green-800" },
-      fighter_manager: { label: "Manager Lutteurs", color: "bg-purple-100 text-purple-800" },
+      fighter_manager: {
+        label: "Manager Lutteurs",
+        color: "bg-purple-100 text-purple-800",
+      },
       user: { label: "Utilisateur", color: "bg-gray-100 text-gray-800" },
     };
 
-    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.user;
+    const config =
+      roleConfig[role as keyof typeof roleConfig] || roleConfig.user;
     return config;
   };
 
   const roleConfig = getRoleBadge(user.role);
 
   return (
-    <Card className={cn(
-      "hover:shadow-lg transition-all duration-300 cursor-pointer group",
-      isListView && "flex"
-    )}>
-      <div className={cn("p-2", isListView && "flex items-center gap-2 flex-1")}>
+    <Card
+      className={cn(
+        "hover:shadow-lg transition-all duration-300 cursor-pointer group",
+        isListView && "flex"
+      )}
+    >
+      <div
+        className={cn("p-2", isListView && "flex items-center gap-2 flex-1")}
+      >
         {/* Avatar */}
         <div className={cn("flex-shrink-0 mb-2", isListView && "mb-0")}>
           <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center">
@@ -1296,13 +1261,18 @@ export function UserCard({ user, viewMode, onEdit, onView }: UserCardProps) {
           </div>
         </div>
 
-        <div className={cn("flex-1", isListView && "flex items-center justify-between")}>
+        <div
+          className={cn(
+            "flex-1",
+            isListView && "flex items-center justify-between"
+          )}
+        >
           <div className={cn(isListView && "flex items-center gap-3")}>
             <div>
               <CardTitle className="text-lg group-hover:text-primary transition-colors">
                 {user.username}
               </CardTitle>
-              
+
               {(user.first_name || user.last_name) && (
                 <Typography variant="body-sm" className="text-muted-foreground">
                   {user.first_name} {user.last_name}
@@ -1319,7 +1289,10 @@ export function UserCard({ user, viewMode, onEdit, onView }: UserCardProps) {
                 </Badge>
 
                 {user.is_verified && (
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  <Badge
+                    variant="outline"
+                    className="bg-green-50 text-green-700 border-green-200"
+                  >
                     Vérifié
                   </Badge>
                 )}
@@ -1339,17 +1312,20 @@ export function UserCard({ user, viewMode, onEdit, onView }: UserCardProps) {
                   <Mail className="h-3 w-3" />
                   <Typography variant="body-sm">{user.email}</Typography>
                 </div>
-                
+
                 {user.phone_number && (
                   <div className="flex items-center gap-1 justify-end text-sm text-muted-foreground">
                     <Phone className="h-3 w-3" />
-                    <Typography variant="body-sm">{user.phone_number}</Typography>
+                    <Typography variant="body-sm">
+                      {user.phone_number}
+                    </Typography>
                   </div>
                 )}
 
                 {user.last_login && (
                   <Typography variant="caption2" theme="muted">
-                    Dernière connexion: {new Date(user.last_login).toLocaleDateString()}
+                    Dernière connexion:{" "}
+                    {new Date(user.last_login).toLocaleDateString()}
                   </Typography>
                 )}
               </div>
@@ -1380,7 +1356,11 @@ export function UserCard({ user, viewMode, onEdit, onView }: UserCardProps) {
               )}
 
               {user.bio && (
-                <Typography variant="body-sm" theme="muted" className="line-clamp-2">
+                <Typography
+                  variant="body-sm"
+                  theme="muted"
+                  className="line-clamp-2"
+                >
                   {user.bio}
                 </Typography>
               )}
