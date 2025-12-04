@@ -67,6 +67,7 @@ export default function PhaseDetailPage() {
   // Hook pour les groupes
   const groupsList = useEntityList<PhaseGroup>({
     entityType: "phase-groups",
+    // defaultData: phase?.groups || [],
     defaultFilters: {
       phase_id: parseInt(phaseId),
       with_sub_groups: true,
@@ -491,7 +492,7 @@ export default function PhaseDetailPage() {
             </Card>
 
             {/* Actions rapides */}
-            <Card>
+            <Card className="p-3">
               <CardHeader>
                 <CardTitle>Actions Rapides</CardTitle>
               </CardHeader>
@@ -648,6 +649,7 @@ export default function PhaseDetailPage() {
       <CreateGroupDialog
         open={createGroupOpen}
         onOpenChange={setCreateGroupOpen}
+        phase={phase}
         phaseId={parseInt(phaseId)}
         onSuccess={handleOnSuccess}
       />

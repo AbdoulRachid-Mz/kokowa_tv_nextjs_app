@@ -1,5 +1,5 @@
 // hooks/use-entity-list.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FighterFilters,
@@ -41,6 +41,10 @@ export type EntityFilters =
   | SubGroupFilters
   | NotificationFilters
   | UserFilters
+  | CoachFilters
+  | FighterTransferFilters
+  | ArchiveFighterAchievementFilters
+  | InteractionFilters
   | Record<string, any>;
 
 export interface UseEntityListProps<T> {
@@ -67,6 +71,8 @@ export interface UseEntityListProps<T> {
   defaultFilters?: EntityFilters;
   defaultLimit?: number;
   withRelations?: boolean;
+  defaultData?: T[];
+  useDefaultData?: boolean; // Option pour désactiver l'utilisation de defaultData
 }
 
 export function useEntityList<T>({
@@ -74,18 +80,25 @@ export function useEntityList<T>({
   defaultFilters = {},
   defaultLimit = 20,
   withRelations = true,
+  defaultData = [],
+  useDefaultData = true,
 }: UseEntityListProps<T>) {
   const router = useRouter();
   
   // États
-  const [data, setData] = useState<T[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<T[]>(useDefaultData ? defaultData : []);
+  const [total, setTotal] = useState(useDefaultData ? defaultData.length : 0);
+  const [loading, setLoading] = useState(!useDefaultData || defaultData.length === 0);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(defaultLimit);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<EntityFilters>(defaultFilters);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
+  // Mémorisation pour éviter les recalculs inutiles
+  const queryParams = useMemo(() => {
+    return buildQueryParams();
+  }, [entityType, page, limit, searchTerm, filters, withRelations]);
 
   // Construction des paramètres de requête selon le type d'entité
   const buildQueryParams = useCallback(() => {
@@ -102,18 +115,19 @@ export function useEntityList<T>({
     // Paramètres spécifiques selon le type d'entité
     switch (entityType) {
       case 'users':
-  const userFilters = filters as UserFilters;
-  if (userFilters.role) params.role = userFilters.role;
-  if (userFilters.is_active !== undefined) params.is_active = userFilters.is_active.toString();
-  if (userFilters.is_verified !== undefined) params.is_verified = userFilters.is_verified.toString();
-  if (userFilters.country) params.country = userFilters.country;
-  if (userFilters.date_from) params.date_from = userFilters.date_from;
-  if (userFilters.date_to) params.date_to = userFilters.date_to;
-  if (userFilters.with_profile) params.with_profile = 'true';
-  if (userFilters.with_permissions) params.with_permissions = 'true';
-  if (userFilters.with_interactions) params.with_interactions = 'false';
-  if (userFilters.with_messages) params.with_messages = 'false';
-  break;
+        const userFilters = filters as UserFilters;
+        if (userFilters.role) params.role = userFilters.role;
+        if (userFilters.is_active !== undefined) params.is_active = userFilters.is_active.toString();
+        if (userFilters.is_verified !== undefined) params.is_verified = userFilters.is_verified.toString();
+        if (userFilters.country) params.country = userFilters.country;
+        if (userFilters.date_from) params.date_from = userFilters.date_from;
+        if (userFilters.date_to) params.date_to = userFilters.date_to;
+        if (userFilters.with_profile) params.with_profile = 'true';
+        if (userFilters.with_permissions) params.with_permissions = 'true';
+        if (userFilters.with_interactions) params.with_interactions = 'false';
+        if (userFilters.with_messages) params.with_messages = 'false';
+        break;
+      
       case 'fighters':
         const fighterFilters = filters as FighterFilters;
         if (fighterFilters.region_id) params.region_id = fighterFilters.region_id.toString();
@@ -125,6 +139,7 @@ export function useEntityList<T>({
         if (fighterFilters.with_achievements) params.with_achievements = 'true';
         if (fighterFilters.with_transfers) params.with_transfers = 'true';
         break;
+      
       case 'archives':
         const archiveFilters = filters as ArchiveFighterAchievementFilters;
         if (archiveFilters.fighter_id) params.fighter_id = archiveFilters.fighter_id.toString();
@@ -140,18 +155,18 @@ export function useEntityList<T>({
         if (archiveFilters.with_edition) params.with_edition = 'true';
         break;
 
-        case 'transfers':
-  const transferFilters = filters as FighterTransferFilters;
-  if (transferFilters.fighter_id) params.fighter_id = transferFilters.fighter_id.toString();
-  if (transferFilters.from_region_id) params.from_region_id = transferFilters.from_region_id.toString();
-  if (transferFilters.to_region_id) params.to_region_id = transferFilters.to_region_id.toString();
-  if (transferFilters.status) params.status = transferFilters.status;
-  if (transferFilters.date_from) params.date_from = transferFilters.date_from;
-  if (transferFilters.date_to) params.date_to = transferFilters.date_to;
-  if (transferFilters.with_fighter) params.with_fighter = 'true';
-  if (transferFilters.with_regions) params.with_regions = 'true';
-  if (transferFilters.with_approver) params.with_approver = 'true';
-  break;
+      case 'transfers':
+        const transferFilters = filters as FighterTransferFilters;
+        if (transferFilters.fighter_id) params.fighter_id = transferFilters.fighter_id.toString();
+        if (transferFilters.from_region_id) params.from_region_id = transferFilters.from_region_id.toString();
+        if (transferFilters.to_region_id) params.to_region_id = transferFilters.to_region_id.toString();
+        if (transferFilters.status) params.status = transferFilters.status;
+        if (transferFilters.date_from) params.date_from = transferFilters.date_from;
+        if (transferFilters.date_to) params.date_to = transferFilters.date_to;
+        if (transferFilters.with_fighter) params.with_fighter = 'true';
+        if (transferFilters.with_regions) params.with_regions = 'true';
+        if (transferFilters.with_approver) params.with_approver = 'true';
+        break;
 
       case 'regions':
         const regionFilters = filters as RegionFilters;
@@ -166,9 +181,6 @@ export function useEntityList<T>({
       case 'coaches':
         const coachFilters = filters as CoachFilters;
         if (coachFilters.region_id) params.region_id = coachFilters.region_id.toString();
-        // if (coachFilters.is_active !== undefined) params.is_active = coachFilters.is_active.toString();
-        // if (coachFilters.certification_level) params.certification_level = coachFilters.certification_level;
-        // if (coachFilters.experience_min) params.experience_min = coachFilters.experience_min.toString();
         if (coachFilters.with_region) params.with_region = 'true';
         break;
 
@@ -192,7 +204,6 @@ export function useEntityList<T>({
         if (editionFilters.year) params.year = editionFilters.year.toString();
         if (editionFilters.with_competition) params.with_competition = 'true';
         if (editionFilters.with_fighters) params.with_fighters = 'true';
-        // if (editionFilters.with_regions) params.with_regions = 'true';
         if (editionFilters.with_phases) params.with_phases = 'true';
         if (editionFilters.with_groups) params.with_groups = 'true';
         if (editionFilters.with_subGroups) params.with_subGroups = 'true';
@@ -218,25 +229,24 @@ export function useEntityList<T>({
         if (phaseGroupFilters.phase_id) params.phase_id = phaseGroupFilters.phase_id.toString();
         if (phaseGroupFilters.with_phase) params.with_phase = 'true';
         if (phaseGroupFilters.is_active !== undefined) params.is_active = phaseGroupFilters.is_active.toString();
-        // if (phaseGroupFilters.with_sub_groups) params.with_sub_groups = 'true';
         break;
 
       case 'sub-groups':
-  const subGroupFilters = filters as SubGroupFilters;
-  if (subGroupFilters.group_id) params.group_id = subGroupFilters.group_id.toString();
-  if (subGroupFilters.region1_id) params.region1_id = subGroupFilters.region1_id.toString();
-  if (subGroupFilters.region2_id) params.region2_id = subGroupFilters.region2_id.toString();
-  if (subGroupFilters.belt_region1) params.belt_region1 = subGroupFilters.belt_region1.toString();
-  if (subGroupFilters.belt_region2) params.belt_region2 = subGroupFilters.belt_region2.toString();
-  if (subGroupFilters.main_referee_id) params.main_referee_id = subGroupFilters.main_referee_id.toString();
-  if (subGroupFilters.is_completed !== undefined) params.is_completed = subGroupFilters.is_completed.toString();
-  if (subGroupFilters.is_active !== undefined) params.is_active = subGroupFilters.is_active.toString();
-  if (subGroupFilters.with_group) params.with_group = 'true';
-  if (subGroupFilters.with_matches) params.with_matches = 'true';
-  if (subGroupFilters.with_regions) params.with_regions = 'true';
-  if (subGroupFilters.with_belts) params.with_belts = 'true';
-  if (subGroupFilters.with_referee) params.with_referee = 'true';
-  break;
+        const subGroupFilters = filters as SubGroupFilters;
+        if (subGroupFilters.group_id) params.group_id = subGroupFilters.group_id.toString();
+        if (subGroupFilters.region1_id) params.region1_id = subGroupFilters.region1_id.toString();
+        if (subGroupFilters.region2_id) params.region2_id = subGroupFilters.region2_id.toString();
+        if (subGroupFilters.belt_region1) params.belt_region1 = subGroupFilters.belt_region1.toString();
+        if (subGroupFilters.belt_region2) params.belt_region2 = subGroupFilters.belt_region2.toString();
+        if (subGroupFilters.main_referee_id) params.main_referee_id = subGroupFilters.main_referee_id.toString();
+        if (subGroupFilters.is_completed !== undefined) params.is_completed = subGroupFilters.is_completed.toString();
+        if (subGroupFilters.is_active !== undefined) params.is_active = subGroupFilters.is_active.toString();
+        if (subGroupFilters.with_group) params.with_group = 'true';
+        if (subGroupFilters.with_matches) params.with_matches = 'true';
+        if (subGroupFilters.with_regions) params.with_regions = 'true';
+        if (subGroupFilters.with_belts) params.with_belts = 'true';
+        if (subGroupFilters.with_referee) params.with_referee = 'true';
+        break;
 
       case 'matches':
         const matchFilters = filters as MatchFilters;
@@ -328,12 +338,77 @@ export function useEntityList<T>({
     return params;
   }, [entityType, page, limit, searchTerm, filters, withRelations]);
 
-  // Chargement des données
+  // Filtrer les données locales si defaultData est fourni
+  const filterLocalData = useCallback(() => {
+    if (!useDefaultData || defaultData.length === 0) return [];
+
+    let filtered = [...defaultData];
+
+    // Filtre par recherche
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(item => {
+        // Recherche générique dans toutes les propriétés string de l'objet
+        return Object.values(item as Record<string, any>).some(value => {
+          if (typeof value === 'string') {
+            return value.toLowerCase().includes(term);
+          }
+          return false;
+        });
+      });
+    }
+
+    // Filtres spécifiques par type d'entité
+    switch (entityType) {
+      case 'fighters':
+        const fighterFilters = filters as FighterFilters;
+        if (fighterFilters.region_id) {
+          filtered = filtered.filter(item => 
+            (item as any).region_id === fighterFilters.region_id
+          );
+        }
+        if (fighterFilters.is_active !== undefined) {
+          filtered = filtered.filter(item => 
+            (item as any).is_active === fighterFilters.is_active
+          );
+        }
+        break;
+      
+      case 'regions':
+        const regionFilters = filters as RegionFilters;
+        if (regionFilters.code) {
+          filtered = filtered.filter(item => 
+            (item as any).code?.toLowerCase().includes(regionFilters.code?.toLowerCase() || '')
+          );
+        }
+        break;
+      
+      case 'competitions':
+        const competitionFilters = filters as CompetitionFilters;
+        if (competitionFilters.status) {
+          filtered = filtered.filter(item => 
+            (item as any).status === competitionFilters.status
+          );
+        }
+        break;
+      
+      // Ajouter d'autres cas au besoin
+    }
+
+    // Pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedData = filtered.slice(startIndex, endIndex);
+
+    return paginatedData;
+  }, [useDefaultData, defaultData, searchTerm, filters, page, limit, entityType]);
+
+  // Chargement des données depuis l'API
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const queryParams = new URLSearchParams(buildQueryParams());
-      const response = await fetch(`/api/${entityType}?${queryParams}`);
+      const queryString = new URLSearchParams(queryParams).toString();
+      const response = await fetch(`/api/${entityType}?${queryString}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -351,12 +426,40 @@ export function useEntityList<T>({
     } finally {
       setLoading(false);
     }
-  }, [entityType, buildQueryParams]);
+  }, [entityType, queryParams]);
 
-  // Effet pour charger les données
+  // Déterminer si on doit utiliser les données locales ou fetch l'API
+  const shouldUseLocalData = useMemo(() => {
+    return useDefaultData && defaultData.length > 0 && !searchTerm && 
+           Object.keys(filters).length === Object.keys(defaultFilters).length &&
+           page === 1;
+  }, [useDefaultData, defaultData, searchTerm, filters, defaultFilters, page]);
+
+  // Effet pour gérer le chargement des données
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (shouldUseLocalData) {
+      // Utiliser les données locales
+      const filteredData = filterLocalData();
+      setData(filteredData);
+      setTotal(filteredData.length);
+      setLoading(false);
+    } else if (useDefaultData && defaultData.length > 0) {
+      // Si on a des filtres ou recherche, filtrer localement d'abord
+      const filteredData = filterLocalData();
+      setData(filteredData);
+      setTotal(filteredData.length);
+      
+      // Si besoin, fetch aussi depuis l'API pour avoir les données complètes
+      if (searchTerm || Object.keys(filters).length > Object.keys(defaultFilters).length) {
+        fetchData();
+      } else {
+        setLoading(false);
+      }
+    } else {
+      // Pas de defaultData, fetch depuis l'API
+      fetchData();
+    }
+  }, [shouldUseLocalData, useDefaultData, defaultData, filterLocalData, fetchData, searchTerm, filters, defaultFilters]);
 
   // Gestionnaires d'événements
   const handlePageChange = (newPage: number) => {
@@ -398,12 +501,12 @@ export function useEntityList<T>({
 
   const handleExport = async () => {
     try {
-      const exportParams = buildQueryParams();
+      const exportParams = { ...queryParams };
       exportParams.limit = '10000'; // Exporter tout
       exportParams.with_relations = 'false'; // Simplifier l'export
       
-      const queryParams = new URLSearchParams(exportParams);
-      const response = await fetch(`/api/${entityType}/export?${queryParams}`);
+      const queryString = new URLSearchParams(exportParams).toString();
+      const response = await fetch(`/api/${entityType}/export?${queryString}`);
       
       if (!response.ok) {
         throw new Error('Erreur lors de l\'export');
@@ -455,6 +558,11 @@ export function useEntityList<T>({
     setPage(1);
   };
 
+  // Fonction pour forcer un refresh depuis l'API
+  const forceRefresh = () => {
+    fetchData();
+  };
+
   return {
     // Données
     data,
@@ -480,13 +588,14 @@ export function useEntityList<T>({
     onEdit: handleEdit,
     onView: handleView,
     onExport: handleExport,
-    onRefresh: fetchData,
+    onRefresh: forceRefresh,
     onResetFilters: resetFilters,
     
     // Utilitaires
-    refetch: fetchData,
-    totalPages: Math.ceil(total / limit) || total,
+    refetch: forceRefresh,
+    totalPages: Math.ceil(total / limit) || 1,
     hasData: data.length > 0,
     isEmpty: !loading && data.length === 0,
+    isUsingLocalData: shouldUseLocalData,
   };
 }

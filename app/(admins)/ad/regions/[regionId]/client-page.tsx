@@ -13,6 +13,8 @@ import { FighterDialog } from "@/components/regions/fighter-dialog";
 import Link from "next/link";
 import Image from "next/image";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { getRegionById } from "@/actions/regions";
 
 export default function ClientRegionDetail({ regionId }: { regionId: number }) {
   const router = useRouter();
@@ -29,9 +31,9 @@ export default function ClientRegionDetail({ regionId }: { regionId: number }) {
   const loadRegionData = async () => {
     try {
       setLoading(true);
-      const regionData = await api.get(`/api/regions/${regionId}`);
+      const regionData = await getRegionById(regionId, { with_relations: true });
       setRegion(regionData as Region);
-      setFighters((regionData as Region).fighters || []);
+      setFighters((regionData as any).fighters || []);
     } catch (error) {
       console.error("Erreur chargement région:", error);
     } finally {
@@ -75,14 +77,14 @@ export default function ClientRegionDetail({ regionId }: { regionId: number }) {
         </div>
 
         <Typography variant="h3" weight="semibold" className="mb-2">
-          Lutteur introuvable
+          region introuvable
         </Typography>
         <Typography
           variant="body-base"
           theme="muted"
           className="mb-6 text-center max-w-sm"
         >
-          Il semble que cette regions n’existe pas ou ait été supprimée.
+          Il semble que cette region n’existe pas ou ait été supprimée.
         </Typography>
 
         <div className="flex gap-3">
@@ -91,7 +93,9 @@ export default function ClientRegionDetail({ regionId }: { regionId: number }) {
             onClick={() => window.location.reload()}
             className="gap-2"
           >
-            <span className="inline-block animate-spin">🔄</span>
+            {/* <span className="inline-block animate-spin"> */}
+            <Spinner width={24} height={24} />
+            {/* </span> */}
             Actualiser
           </Button>
           <Button onClick={() => router.push("/ad/regions")}>

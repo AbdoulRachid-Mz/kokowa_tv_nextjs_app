@@ -20,8 +20,7 @@ export async function GET(
     // Extract query parameters from the request URL
     const { searchParams } = new URL(request.url);
     const with_relations = searchParams.get('with_relations') !== 'false';
-    const is_active = searchParams.get('is_active') === 'true' ? true : searchParams.get('is_active') === 'false' ? false : undefined;
-
+    const is_active = searchParams.get('is_active') !== 'false';
     const relations = {
       with_phase: searchParams.get('with_phase') !== 'false',
       with_edition: searchParams.get('with_edition') !== 'false',
@@ -33,7 +32,7 @@ export async function GET(
       with_belts: searchParams.get('with_belts') !== 'false',
     };
 
-    const group = await getPhaseGroupById(groupIdNum, { with_relations, relations, is_active });
+    const group = await getPhaseGroupById(groupIdNum, { with_relations, relations });
     return NextResponse.json(group);
   } catch (error: any) {
     console.error('API Error GET /api/phase-groups/[groupId]:', error);

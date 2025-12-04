@@ -67,6 +67,7 @@ export default function PhaseGroupDetailPage() {
   // Hook pour les sous-groupes
   const subGroupsList = useEntityList<SubGroup>({
     entityType: "sub-groups",
+    defaultData: group?.sub_groups || undefined,
     defaultFilters: {
       group_id: parseInt(groupId),
       with_belt_fighters: true,
@@ -343,7 +344,7 @@ export default function PhaseGroupDetailPage() {
           Groupe non trouvé
         </Typography>
         <Button
-          onClick={() => router.push("/admin/phase-groups")}
+          onClick={() => router.push("/ad/phase-groups")}
           className="mt-4"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -388,7 +389,11 @@ export default function PhaseGroupDetailPage() {
             <Edit className="h-4 w-4 mr-2" />
             Modifier
           </Button>
-          <Button onClick={() => setCreateSubGroupOpen(true)}>
+          <Button
+            onClick={() =>
+              router.push(`/ad/phase-groups/${group.id}/sub-groups/new`)
+            }
+          >
             <Plus className="h-4 w-4 mr-2" />
             Nouveau Sous-groupe
           </Button>

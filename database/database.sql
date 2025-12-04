@@ -139,9 +139,7 @@ BEGIN
 END $$;
 
 
--- =============================================
--- GESTION DES COMPÉTITIONS (NOUVELLE STRUCTURE)
--- =============================================
+-- Dans la table competitions
 CREATE TABLE IF NOT EXISTS competitions (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -160,6 +158,8 @@ CREATE TABLE IF NOT EXISTS competitions (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Ajouter la contrainte d'unicité sur le nom
+    CONSTRAINT competitions_name_unique UNIQUE (name)
 );
 
 -- Éditions des compétitions
@@ -292,7 +292,7 @@ CREATE TABLE IF NOT EXISTS phase_groups (
     group_order INTEGER NOT NULL,
     description TEXT,
     is_completed BOOLEAN DEFAULT FALSE,
-    is_active BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (phase_id) REFERENCES phases (id) ON DELETE CASCADE
 );

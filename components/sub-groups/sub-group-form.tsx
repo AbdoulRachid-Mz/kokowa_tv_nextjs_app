@@ -27,6 +27,9 @@ import { Badge } from "@/components/ui/badge";
 import { Save, X, Users, MapPin, Award, Shield, Flag } from "lucide-react";
 import { Typography } from "../ui/typography";
 import { cn } from "@/lib/utils";
+import { createSubGroup, updateSubGroup } from "@/actions/sub-groups";
+import { PhaseGroup } from "@/types";
+import { toast } from "sonner";
 
 interface SubGroupFormData {
   id?: number;
@@ -45,7 +48,7 @@ interface SubGroupFormData {
 
 interface SubGroupFormProps {
   subGroup?: SubGroupFormData;
-  group?: any; // Utilisation de any pour simplifier
+  group?: PhaseGroup;
   onSuccess?: () => void;
 }
 
@@ -89,21 +92,23 @@ export default function SubGroupForm({
         } catch (error) {
           console.error("Erreur chargement des sous-groupes:", error);
         } finally {
-          setLoading(prev => ({ ...prev, subGroups: false }));
+          setLoading((prev) => ({ ...prev, subGroups: false }));
         }
       }
     };
-    
+
     loadSubGroups();
   }, [group?.id]);
 
   // Calculer l'ordre automatique
   const calculateAutoOrder = () => {
     if (subGroup?.sub_group_order) return subGroup.sub_group_order;
-    
+
     if (subGroups.length === 0) return 1;
-    
-    const maxOrder = Math.max(...subGroups.map(sg => sg.sub_group_order || 0));
+
+    const maxOrder = Math.max(
+      ...subGroups.map((sg) => sg.sub_group_order || 0)
+    );
     return maxOrder + 1;
   };
 
@@ -134,7 +139,7 @@ export default function SubGroupForm({
         }
 
         // Charger les ceintures
-        const beltsResponse = await fetch("/api/belts?is_active=true");
+        const beltsResponse = await fetch("/api/belts");
         if (beltsResponse.ok) {
           const beltsResult = await beltsResponse.json();
           setBelts(beltsResult.data || beltsResult || []);
@@ -163,7 +168,7 @@ export default function SubGroupForm({
   // Mettre à jour group_id si group change
   useEffect(() => {
     if (group?.id && group.id !== formData.group_id) {
-      setFormData(prev => ({ ...prev, group_id: group.id }));
+      setFormData((prev) => ({ ...prev, group_id: group.id }));
     }
   }, [group?.id, formData.group_id]);
 
@@ -179,7 +184,7 @@ export default function SubGroupForm({
 
     if (!formData.group_id) newErrors.group_id = "Le groupe est requis";
     if (!formData.name.trim()) newErrors.name = "Le nom est requis";
-    
+
     if (formData.sub_group_order < 1) {
       newErrors.sub_group_order = "L'ordre doit être supérieur à 0";
     }
@@ -207,38 +212,47 @@ export default function SubGroupForm({
     }
 
     try {
-      const url = subGroup?.id 
-        ? `/api/sub-groups/${subGroup.id}`
-        : "/api/sub-groups";
-      
-      const method = subGroup?.id ? "PUT" : "POST";
+      // Créer FormData pour envoyer aux actions serveur
+      const serverFormData = new FormData();
+      serverFormData.set("group_id", String(formData.group_id));
+      serverFormData.set("name", formData.name);
+      serverFormData.set("sub_group_order", String(formData.sub_group_order));
+      serverFormData.set("description", formData.description || "");
+      serverFormData.set(
+        "region1_id",
+        formData.region1_id ? String(formData.region1_id) : ""
+      );
+      serverFormData.set(
+        "region2_id",
+        formData.region2_id ? String(formData.region2_id) : ""
+      );
+      serverFormData.set(
+        "belt_region1",
+        formData.belt_region1 ? String(formData.belt_region1) : ""
+      );
+      serverFormData.set(
+        "belt_region2",
+        formData.belt_region2 ? String(formData.belt_region2) : ""
+      );
+      serverFormData.set(
+        "main_referee_id",
+        formData.main_referee_id ? String(formData.main_referee_id) : ""
+      );
+      serverFormData.set("is_completed", String(formData.is_completed));
+      serverFormData.set("is_active", String(formData.is_active));
 
-      const cleanedData = {
-        ...formData,
-        description: formData.description || null,
-        region1_id: formData.region1_id || null,
-        region2_id: formData.region2_id || null,
-        belt_region1: formData.belt_region1 || null,
-        belt_region2: formData.belt_region2 || null,
-        main_referee_id: formData.main_referee_id || null,
-        sub_group_order: Number(formData.sub_group_order),
-      };
+      let result: { success: boolean; id?: number; message?: string };
 
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cleanedData),
-      });
+      if (subGroup?.id) {
+        // Mise à jour
+        result = await updateSubGroup(subGroup.id, serverFormData);
+      } else {
+        // Création
+        result = await createSubGroup(serverFormData);
+      }
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error || result.message ||
-            `Erreur lors de ${
-              subGroup ? "la modification" : "la création"
-            } de la rencontre`
-        );
+      if (!result.success) {
+        throw new Error(result.message || "Erreur inconnue");
       }
 
       // Succès
@@ -247,7 +261,8 @@ export default function SubGroupForm({
       } else {
         // Rediriger vers la page du groupe
         setTimeout(() => {
-          router.push(`/admin/groups/${formData.group_id}`);
+          toast.success(result.message)
+          router.push(`/ad/sub-groups/${formData.id || 1}`);
           router.refresh();
         }, 1000);
       }
@@ -268,7 +283,7 @@ export default function SubGroupForm({
   // Fonction pour obtenir la couleur d'une ceinture
   const getBeltColor = (beltId?: number) => {
     if (!beltId) return "#6b7280"; // Gris par défaut
-    const belt = belts.find(b => b.id === beltId);
+    const belt = belts.find((b) => b.id === beltId);
     return belt?.color || "#6b7280";
   };
 
@@ -276,14 +291,17 @@ export default function SubGroupForm({
   const renderRegionOption = (region: any, beltColor?: string) => (
     <div className="flex items-center space-x-1">
       <div className="relative">
-        <Avatar className="h-10 w-10 border-2" style={{ borderColor: beltColor }}>
+        <Avatar
+          className="h-10 w-10 border-2"
+          style={{ borderColor: beltColor }}
+        >
           <AvatarImage src={region?.flag_image} alt={region.name} />
           <AvatarFallback className="bg-muted">
             <Flag className="h-5 w-5" />
           </AvatarFallback>
         </Avatar>
         {beltColor && (
-          <div 
+          <div
             className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-background"
             style={{ backgroundColor: beltColor }}
           />
@@ -302,9 +320,13 @@ export default function SubGroupForm({
   const renderRefereeOption = (referee: any) => (
     <div className="flex items-center space-x-3">
       <Avatar className="h-10 w-10">
-        <AvatarImage src={referee.profile_image} alt={`${referee.first_name} ${referee.last_name}`} />
+        <AvatarImage
+          src={referee.profile_image}
+          alt={`${referee.first_name} ${referee.last_name}`}
+        />
         <AvatarFallback className="bg-primary/10">
-          {referee.first_name?.[0]}{referee.last_name?.[0]}
+          {referee.first_name?.[0]}
+          {referee.last_name?.[0]}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
@@ -323,16 +345,17 @@ export default function SubGroupForm({
   // Informations du groupe parent
   const getGroupInfo = () => {
     if (!group) return "Groupe non spécifié";
-    
+
     const phaseName = group.phase?.name || "Phase inconnue";
     const editionNumber = group.phase?.edition?.edition_number;
     const editionYear = group.phase?.edition?.year;
-    const competitionName = group.phase?.edition?.competition?.name || "Compétition inconnue";
-    
+    const competitionName =
+      group.phase?.edition?.competition?.name || "Compétition inconnue";
+
     if (editionNumber && editionYear) {
       return `Compétition: ${competitionName} • Édition ${editionNumber} (${editionYear})`;
     }
-    
+
     return `Groupe: ${group.name} (Ordre: ${group.group_order || 1})`;
   };
 
@@ -392,8 +415,214 @@ export default function SubGroupForm({
               )}
             </div>
 
+            {/* Configuration des régions */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 bg-muted/50 rounded-lg">
+              {/* Région 1 */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <div className="relative">
+                    <div
+                      className="h-4 w-4 rounded-full border-2 border-background"
+                      style={{
+                        backgroundColor: getBeltColor(formData.belt_region1),
+                      }}
+                    />
+                  </div>
+                  <Label htmlFor="region1_id">Région 1</Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Select
+                    value={formData.region1_id?.toString() || ""}
+                    onValueChange={(value) =>
+                      handleChange("region1_id", Number(value))
+                    }
+                    disabled={loading.regions}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionnez une région">
+                        {formData.region1_id && regions.length > 0 ? (
+                          renderRegionOption(
+                            regions.find((r) => r.id === formData.region1_id),
+                            getBeltColor(formData.belt_region1)
+                          )
+                        ) : (
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="h-10 w-10 border-2 border-muted">
+                              <AvatarFallback className="bg-muted">
+                                <Flag className="h-5 w-5" />
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>Sélectionnez une région</span>
+                          </div>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {regions.map((region) => (
+                        <SelectItem
+                          key={region.id}
+                          value={region.id.toString()}
+                        >
+                          {renderRegionOption(
+                            region,
+                            getBeltColor(formData.belt_region1)
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={formData.belt_region1?.toString() || ""}
+                    onValueChange={(value) =>
+                      handleChange("belt_region1", Number(value))
+                    }
+                    disabled={loading.belts}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Ceinture de la région 1">
+                        {formData.belt_region1 && belts.length > 0 ? (
+                          <div className="flex items-center space-x-2">
+                            <Award className="h-4 w-4" />
+                            <span>
+                              Ceinture{" "}
+                              {
+                                belts.find(
+                                  (b) => b.id === formData.belt_region1
+                                )?.color
+                              }
+                            </span>
+                          </div>
+                        ) : (
+                          "Sélectionnez une ceinture"
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {belts.map((belt) => (
+                        <SelectItem key={belt.id} value={belt.id.toString()}>
+                          <div className="flex items-center space-x-2">
+                            <div
+                              className="h-4 w-4 rounded-full border"
+                              style={{ backgroundColor: belt.color }}
+                            />
+                            <span>Ceinture {belt.color}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Région 2 */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <div className="relative">
+                    <div
+                      className="h-4 w-4 rounded-full border-2 border-background"
+                      style={{
+                        backgroundColor: getBeltColor(formData.belt_region2),
+                      }}
+                    />
+                  </div>
+                  <Label htmlFor="region2_id">Région 2</Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Select
+                    value={formData.region2_id?.toString() || ""}
+                    onValueChange={(value) =>
+                      handleChange("region2_id", Number(value))
+                    }
+                    disabled={loading.regions}
+                  >
+                    <SelectTrigger
+                      className={errors.region2_id ? "border-red-500" : ""}
+                    >
+                      <SelectValue placeholder="Sélectionnez une région">
+                        {formData.region2_id && regions.length > 0 ? (
+                          renderRegionOption(
+                            regions.find((r) => r.id === formData.region2_id),
+                            getBeltColor(formData.belt_region2)
+                          )
+                        ) : (
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="h-10 w-10 border-2 border-muted">
+                              <AvatarFallback className="bg-muted">
+                                <Flag className="h-5 w-5" />
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>Sélectionnez une région</span>
+                          </div>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {regions.map((region) => (
+                        <SelectItem
+                          key={region.id}
+                          value={region.id.toString()}
+                        >
+                          {renderRegionOption(
+                            region,
+                            getBeltColor(formData.belt_region2)
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.region2_id && (
+                    <p className="text-red-500 text-sm">{errors.region2_id}</p>
+                  )}
+
+                  <Select
+                    value={formData.belt_region2?.toString() || ""}
+                    onValueChange={(value) =>
+                      handleChange("belt_region2", Number(value))
+                    }
+                    disabled={loading.belts}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Ceinture de la région 2">
+                        {formData.belt_region2 && belts.length > 0 ? (
+                          <div className="flex items-center space-x-2">
+                            <Award className="h-4 w-4" />
+                            <span>
+                              Ceinture{" "}
+                              {
+                                belts.find(
+                                  (b) => b.id === formData.belt_region2
+                                )?.color
+                              }
+                            </span>
+                          </div>
+                        ) : (
+                          "Sélectionnez une ceinture"
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {belts.map((belt) => (
+                        <SelectItem key={belt.id} value={belt.id.toString()}>
+                          <div className="flex items-center space-x-2">
+                            <div
+                              className="h-4 w-4 rounded-full border"
+                              style={{ backgroundColor: belt.color }}
+                            />
+                            <span>Ceinture {belt.color}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
             {/* Ordre du sous-groupe */}
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="sub_group_order">Ordre dans le groupe</Label>
               <div className="relative">
                 <Input
@@ -424,7 +653,7 @@ export default function SubGroupForm({
               <Typography variant="caption2" theme="muted">
                 Basé sur le nombre de rencontres existantes dans le groupe
               </Typography>
-            </div>
+            </div> */}
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
@@ -435,182 +664,6 @@ export default function SubGroupForm({
                 placeholder="Description de la rencontre..."
                 rows={3}
               />
-            </div>
-
-            {/* Configuration des régions */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 bg-muted/50 rounded-lg">
-              {/* Région 1 */}
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <div className="relative">
-                    <div 
-                      className="h-4 w-4 rounded-full border-2 border-background"
-                      style={{ backgroundColor: getBeltColor(formData.belt_region1) }}
-                    />
-                  </div>
-                  <Label htmlFor="region1_id">Région 1</Label>
-                </div>
-
-                <div className="space-y-2">
-                  <Select
-                    value={formData.region1_id?.toString() || ""}
-                    onValueChange={(value) =>
-                      handleChange("region1_id", Number(value))
-                    }
-                    disabled={loading.regions}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionnez une région">
-                        {formData.region1_id && regions.length > 0 ? (
-                          renderRegionOption(
-                            regions.find(r => r.id === formData.region1_id),
-                            getBeltColor(formData.belt_region1)
-                          )
-                        ) : (
-                          <div className="flex items-center space-x-3">
-                            <Avatar className="h-10 w-10 border-2 border-muted">
-                              <AvatarFallback className="bg-muted">
-                                <Flag className="h-5 w-5" />
-                              </AvatarFallback>
-                            </Avatar>
-                            <span>Sélectionnez une région</span>
-                          </div>
-                        )}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regions.map((region) => (
-                        <SelectItem
-                          key={region.id}
-                          value={region.id.toString()}
-                        >
-                          {renderRegionOption(region, getBeltColor(formData.belt_region1))}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Select
-                    value={formData.belt_region1?.toString() || ""}
-                    onValueChange={(value) =>
-                      handleChange("belt_region1", Number(value))
-                    }
-                    disabled={loading.belts}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Ceinture de la région 1">
-                        {formData.belt_region1 && belts.length > 0 ? (
-                          <div className="flex items-center space-x-2">
-                            <Award className="h-4 w-4" />
-                            <span>Ceinture {belts.find(b => b.id === formData.belt_region1)?.color}</span>
-                          </div>
-                        ) : "Sélectionnez une ceinture"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {belts.map((belt) => (
-                        <SelectItem key={belt.id} value={belt.id.toString()}>
-                          <div className="flex items-center space-x-2">
-                            <div 
-                              className="h-4 w-4 rounded-full border"
-                              style={{ backgroundColor: belt.color }}
-                            />
-                            <span>Ceinture {belt.color}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Région 2 */}
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <div className="relative">
-                    <div 
-                      className="h-4 w-4 rounded-full border-2 border-background"
-                      style={{ backgroundColor: getBeltColor(formData.belt_region2) }}
-                    />
-                  </div>
-                  <Label htmlFor="region2_id">Région 2</Label>
-                </div>
-
-                <div className="space-y-2">
-                  <Select
-                    value={formData.region2_id?.toString() || ""}
-                    onValueChange={(value) =>
-                      handleChange("region2_id", Number(value))
-                    }
-                    disabled={loading.regions}
-                  >
-                    <SelectTrigger className={errors.region2_id ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Sélectionnez une région">
-                        {formData.region2_id && regions.length > 0 ? (
-                          renderRegionOption(
-                            regions.find(r => r.id === formData.region2_id),
-                            getBeltColor(formData.belt_region2)
-                          )
-                        ) : (
-                          <div className="flex items-center space-x-3">
-                            <Avatar className="h-10 w-10 border-2 border-muted">
-                              <AvatarFallback className="bg-muted">
-                                <Flag className="h-5 w-5" />
-                              </AvatarFallback>
-                            </Avatar>
-                            <span>Sélectionnez une région</span>
-                          </div>
-                        )}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regions.map((region) => (
-                        <SelectItem
-                          key={region.id}
-                          value={region.id.toString()}
-                        >
-                          {renderRegionOption(region, getBeltColor(formData.belt_region2))}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.region2_id && (
-                    <p className="text-red-500 text-sm">{errors.region2_id}</p>
-                  )}
-
-                  <Select
-                    value={formData.belt_region2?.toString() || ""}
-                    onValueChange={(value) =>
-                      handleChange("belt_region2", Number(value))
-                    }
-                    disabled={loading.belts}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Ceinture de la région 2">
-                        {formData.belt_region2 && belts.length > 0 ? (
-                          <div className="flex items-center space-x-2">
-                            <Award className="h-4 w-4" />
-                            <span>Ceinture {belts.find(b => b.id === formData.belt_region2)?.color}</span>
-                          </div>
-                        ) : "Sélectionnez une ceinture"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {belts.map((belt) => (
-                        <SelectItem key={belt.id} value={belt.id.toString()}>
-                          <div className="flex items-center space-x-2">
-                            <div 
-                              className="h-4 w-4 rounded-full border"
-                              style={{ backgroundColor: belt.color }}
-                            />
-                            <span>Ceinture {belt.color}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
             </div>
 
             {/* Arbitre principal */}
@@ -626,7 +679,9 @@ export default function SubGroupForm({
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionnez un arbitre principal">
                     {formData.main_referee_id && referees.length > 0 ? (
-                      renderRefereeOption(referees.find(r => r.id === formData.main_referee_id))
+                      renderRefereeOption(
+                        referees.find((r) => r.id === formData.main_referee_id)
+                      )
                     ) : (
                       <div className="flex items-center space-x-3">
                         <Avatar className="h-10 w-10">
@@ -698,21 +753,38 @@ export default function SubGroupForm({
                       {formData.region1_id && (
                         <>
                           <div className="relative">
-                            <Avatar className="h-16 w-16 border-4" style={{ 
-                              borderColor: getBeltColor(formData.belt_region1) 
-                            }}>
-                              <AvatarImage 
-                                src={regions.find(r => r.id === formData.region1_id)?.flag_image} 
-                                alt={regions.find(r => r.id === formData.region1_id)?.name} 
+                            <Avatar
+                              className="h-16 w-16 border-4"
+                              style={{
+                                borderColor: getBeltColor(
+                                  formData.belt_region1
+                                ),
+                              }}
+                            >
+                              <AvatarImage
+                                src={
+                                  regions.find(
+                                    (r) => r.id === formData.region1_id
+                                  )?.flag_image
+                                }
+                                alt={
+                                  regions.find(
+                                    (r) => r.id === formData.region1_id
+                                  )?.name
+                                }
                               />
                               <AvatarFallback className="bg-muted">
                                 <Flag className="h-8 w-8" />
                               </AvatarFallback>
                             </Avatar>
                             {formData.belt_region1 && (
-                              <Badge 
+                              <Badge
                                 className="absolute -bottom-1 -right-1 px-2 py-1"
-                                style={{ backgroundColor: getBeltColor(formData.belt_region1) }}
+                                style={{
+                                  backgroundColor: getBeltColor(
+                                    formData.belt_region1
+                                  ),
+                                }}
                               >
                                 <Shield className="h-3 w-3 mr-1" />
                                 Ceinture
@@ -720,7 +792,8 @@ export default function SubGroupForm({
                             )}
                           </div>
                           <Typography variant="body-base" weight="medium">
-                            {regions.find(r => r.id === formData.region1_id)?.name || "Région inconnue"}
+                            {regions.find((r) => r.id === formData.region1_id)
+                              ?.name || "Région inconnue"}
                           </Typography>
                         </>
                       )}
@@ -731,7 +804,11 @@ export default function SubGroupForm({
                       <Badge variant="outline" className="text-lg px-4 py-2">
                         VS
                       </Badge>
-                      <Typography variant="caption2" theme="muted" className="mt-2">
+                      <Typography
+                        variant="caption2"
+                        theme="muted"
+                        className="mt-2"
+                      >
                         Rencontre
                       </Typography>
                     </div>
@@ -741,21 +818,38 @@ export default function SubGroupForm({
                       {formData.region2_id && (
                         <>
                           <div className="relative">
-                            <Avatar className="h-16 w-16 border-4" style={{ 
-                              borderColor: getBeltColor(formData.belt_region2) 
-                            }}>
-                              <AvatarImage 
-                                src={regions.find(r => r.id === formData.region2_id)?.flag_image} 
-                                alt={regions.find(r => r.id === formData.region2_id)?.name} 
+                            <Avatar
+                              className="h-16 w-16 border-4"
+                              style={{
+                                borderColor: getBeltColor(
+                                  formData.belt_region2
+                                ),
+                              }}
+                            >
+                              <AvatarImage
+                                src={
+                                  regions.find(
+                                    (r) => r.id === formData.region2_id
+                                  )?.flag_image
+                                }
+                                alt={
+                                  regions.find(
+                                    (r) => r.id === formData.region2_id
+                                  )?.name
+                                }
                               />
                               <AvatarFallback className="bg-muted">
                                 <Flag className="h-8 w-8" />
                               </AvatarFallback>
                             </Avatar>
                             {formData.belt_region2 && (
-                              <Badge 
+                              <Badge
                                 className="absolute -bottom-1 -right-1 px-2 py-1"
-                                style={{ backgroundColor: getBeltColor(formData.belt_region2) }}
+                                style={{
+                                  backgroundColor: getBeltColor(
+                                    formData.belt_region2
+                                  ),
+                                }}
                               >
                                 <Shield className="h-3 w-3 mr-1" />
                                 Ceinture
@@ -763,7 +857,8 @@ export default function SubGroupForm({
                             )}
                           </div>
                           <Typography variant="body-base" weight="medium">
-                            {regions.find(r => r.id === formData.region2_id)?.name || "Région inconnue"}
+                            {regions.find((r) => r.id === formData.region2_id)
+                              ?.name || "Région inconnue"}
                           </Typography>
                         </>
                       )}
@@ -777,8 +872,16 @@ export default function SubGroupForm({
                       <Typography variant="body-sm" theme="muted">
                         Arbitre:{" "}
                         <span className="font-medium">
-                          {referees.find(r => r.id === formData.main_referee_id)?.first_name}{" "}
-                          {referees.find(r => r.id === formData.main_referee_id)?.last_name}
+                          {
+                            referees.find(
+                              (r) => r.id === formData.main_referee_id
+                            )?.first_name
+                          }{" "}
+                          {
+                            referees.find(
+                              (r) => r.id === formData.main_referee_id
+                            )?.last_name
+                          }
                         </span>
                       </Typography>
                     </div>
@@ -807,7 +910,9 @@ export default function SubGroupForm({
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    {subGroup?.id ? "Modifier la rencontre" : "Créer la rencontre"}
+                    {subGroup?.id
+                      ? "Modifier la rencontre"
+                      : "Créer la rencontre"}
                   </>
                 )}
               </Button>

@@ -76,6 +76,7 @@ with_edition_fighters?: boolean;
     }
 
     const subGroup = await getSubGroupById(subGroupIdNum, options);
+
     return NextResponse.json(subGroup);
   } catch (error: any) {
     console.error('Error in GET /api/sub-groups/[subGroupId]:', error);

@@ -23,12 +23,6 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-interface Region {
-  id: number;
-  name: string;
-  code?: string;
-}
-
 interface CompetitionFormData {
   id?: number;
   name: string;
@@ -37,7 +31,6 @@ interface CompetitionFormData {
   status: string;
   featured_image?: string;
   is_active: boolean;
-  region_id?: string;
 }
 
 interface CompetitionFormProps {
@@ -57,7 +50,6 @@ const competitionStatuses = [
 
 export default function CompetitionForm({
   competition,
-  regionId,
   onSuccess,
   withEdition = false, // Par défaut pas d'édition automatique
 }: CompetitionFormProps) {
@@ -69,14 +61,11 @@ export default function CompetitionForm({
     status: "upcoming",
     featured_image: "",
     is_active: true,
-    region_id: regionId || "",
   });
   const [errors, setErrors] = useState<
     Partial<Record<keyof CompetitionFormData, string>>
   >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [regionsData, setRegionsData] = useState<Region[]>([]);
-  const [isLoadingRegions, setIsLoadingRegions] = useState(true);
   const [createWithEdition, setCreateWithEdition] = useState(withEdition);
 
   // Initialiser les données si on est en mode édition
@@ -84,34 +73,9 @@ export default function CompetitionForm({
     if (competition) {
       setFormData({
         ...competition,
-        region_id: competition.region_id?.toString() || "",
       });
     }
   }, [competition]);
-
-  // Charger les régions
-  useEffect(() => {
-    const loadRegions = async () => {
-      try {
-        const response = await fetch("/api/regions");
-        const data = await response.json();
-        setRegionsData(data.data || []);
-      } catch (error) {
-        console.error("Erreur lors du chargement des régions:", error);
-      } finally {
-        setIsLoadingRegions(false);
-      }
-    };
-
-    loadRegions();
-  }, []);
-
-  // When a region is pre-selected via prop, set it in formData
-  useEffect(() => {
-    if (regionId) {
-      setFormData((prev) => ({ ...prev, region_id: regionId }));
-    }
-  }, [regionId]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -130,40 +94,52 @@ export default function CompetitionForm({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setErrors({});
+ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+  setErrors({});
 
-    try {
-      // Créer un FormData pour l'envoi
-      const formDataToSend = new FormData();
+  try {
+    // Validation simple côté client
+    if (!formData.name.trim()) {
+      setErrors({ name: 'Le nom est requis' });
+      setIsSubmitting(false);
+      return;
+    }
 
-      // Ajouter tous les champs au FormData
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== undefined && value !== "") {
-          formDataToSend.append(key, value?.toString());
-        }
-      });
+    // Créer un FormData pour l'envoi
+    const formDataToSend = new FormData();
 
-      const url = competition
-        ? `/api/competitions/${competition.id}`
-        : "/api/competitions";
-      const method = competition ? "PUT" : "POST";
-
-      // Ajouter un paramètre pour indiquer si on veut créer avec édition
-      if (!competition && createWithEdition) {
-        formDataToSend.append("with_edition", "true");
+    // Ajouter tous les champs au FormData
+    Object.entries(formData).forEach(([key, value]) => {
+      if (value !== undefined && value !== "") {
+        formDataToSend.append(key, value?.toString());
       }
+    });
 
-      const response = await fetch(url, {
-        method,
-        body: formDataToSend,
-      });
+    const url = competition
+      ? `/api/competitions/${competition.id}`
+      : "/api/competitions";
+    const method = competition ? "PUT" : "POST";
 
-      const result = await response.json();
+    // Ajouter un paramètre pour indiquer si on veut créer avec édition
+    if (!competition && createWithEdition) {
+      formDataToSend.append("with_edition", "true");
+    }
 
-      if (!response.ok) {
+    const response = await fetch(url, {
+      method,
+      body: formDataToSend,
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      // Gestion spécifique des erreurs de nom dupliqué
+      if (response.status === 409 || result.error?.includes('existe déjà')) {
+        setErrors({ name: 'Une compétition avec ce nom existe déjà' });
+        alert('Une compétition avec ce nom existe déjà');
+      } else {
         throw new Error(
           result.error ||
             `Erreur lors de ${
@@ -171,35 +147,44 @@ export default function CompetitionForm({
             } de la compétition`
         );
       }
+      return;
+    }
 
-      if (result.success) {
-        if (onSuccess) {
-          onSuccess();
-        } else {
-          router.push(
-            competition 
-              ? `/ad/competitions/${competition.id}`
-              : `/ad/competitions`
-          );
-        }
+    if (result.success) {
+      // Afficher un message de succès avec éventuellement un avertissement
+      if (result.warning) {
+        alert(`${result.message}\n\nNote: ${result.warning}`);
       } else {
-        throw new Error(result.message || "Erreur inconnue");
+        alert(result.message);
       }
-    } catch (error) {
-      console.error("Erreur:", error);
-      if (error instanceof Error) {
-        alert(error.message);
+      
+      if (onSuccess) {
+        onSuccess();
       } else {
-        alert(
-          `Erreur lors de ${
-            competition ? "la modification" : "la création"
-          } de la compétition`
+        router.push(
+          competition
+            ? `/ad/competitions/${competition.id}`
+            : `/ad/competitions`
         );
       }
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      throw new Error(result.message || "Erreur inconnue");
     }
-  };
+  } catch (error) {
+    console.error("Erreur:", error);
+    if (error instanceof Error) {
+      alert(error.message);
+    } else {
+      alert(
+        `Erreur lors de ${
+          competition ? "la modification" : "la création"
+        } de la compétition`
+      );
+    }
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <Card className="p-3">
@@ -245,7 +230,7 @@ export default function CompetitionForm({
           {/* Informations de base */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Nom */}
-            <div className="md:col-span-2">
+            <div className="">
               <label
                 htmlFor="name"
                 className="block text-sm font-medium text-gray-700 mb-2"
@@ -291,68 +276,34 @@ export default function CompetitionForm({
 
             {/* Statut */}
             {competition && (
-            <div>
-              <label
-                htmlFor="status"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Statut <span className="text-red-500">*</span>
-              </label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) => handleSelectChange("status", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  {competitionStatuses.map((status) => (
-                    <SelectItem
-                      key={status.value}
-                      value={status.value}
-                      disabled={status.value === ""}
-                    >
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div>
+                <label
+                  htmlFor="status"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Statut <span className="text-red-500">*</span>
+                </label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => handleSelectChange("status", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {competitionStatuses.map((status) => (
+                      <SelectItem
+                        key={status.value}
+                        value={status.value}
+                        disabled={status.value === ""}
+                      >
+                        {status.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
-
-            {/* Région */}
-            <div>
-              <label
-                htmlFor="region_id"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Région
-              </label>
-              <Select
-                value={formData.region_id || ""}
-                onValueChange={(value) =>
-                  handleSelectChange("region_id", value)
-                }
-                disabled={isLoadingRegions}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une région" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="empty">Aucune région</SelectItem>
-                  {regionsData.map((region) => (
-                    <SelectItem key={region.id} value={String(region.id)}>
-                      {region.name} {region.code ? `(${region.code})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {isLoadingRegions && (
-                <p className="text-gray-500 text-sm mt-1">
-                  Chargement des régions...
-                </p>
-              )}
-            </div>
           </div>
 
           {/* Option création avec édition (seulement en mode création) */}
@@ -382,34 +333,31 @@ export default function CompetitionForm({
             </div>
           )} */}
 
-          {
-            competition && (
-                         <div className="flex items-center space-x-2">
-            <input
-              id="is_active"
-              name="is_active"
-              type="checkbox"
-              checked={formData.is_active}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  is_active: e.target.checked,
-                }))
-              }
-              className="h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-            />
-            <label
-              htmlFor="is_active"
-              className="text-sm font-medium text-gray-700"
-            >
-              Compétition active
-            </label>
-          </div>
-            )
-          }
+          {competition && (
+            <div className="flex items-center space-x-2">
+              <input
+                id="is_active"
+                name="is_active"
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    is_active: e.target.checked,
+                  }))
+                }
+                className="h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+              />
+              <label
+                htmlFor="is_active"
+                className="text-sm font-medium text-gray-700"
+              >
+                Compétition active
+              </label>
+            </div>
+          )}
 
           {/* Statut actif */}
- 
 
           {/* Description */}
           <div>
@@ -441,7 +389,7 @@ export default function CompetitionForm({
           </Alert> */}
 
           {/* Boutons */}
-          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
             <Button
               type="button"
               variant="outline"

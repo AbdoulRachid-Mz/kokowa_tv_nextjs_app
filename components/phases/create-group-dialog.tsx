@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Phase } from "@/types";
+import { createPhaseGroup } from "@/actions/phase-groups";
+import { toast } from "sonner";
 
 interface CreateGroupDialogProps {
   open: boolean;
@@ -46,23 +48,24 @@ export function CreateGroupDialog({
     create_sub_groups: 0,
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const response = await fetch("/api/phase-groups", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...formData,
-          phase_id: phaseId,
-        }),
+      const formData = new FormData(e.currentTarget);
+      formData.set("phase_id", phaseId.toString());
+      formData.set(
+        "group_order",
+        (phase?.groups?.length ? phase.groups.length + 1 : 1).toString()
+      );
+
+      const res = await createPhaseGroup(formData, {
+        create_sub_groups: Number(formData.get("create_sub_groups")),
       });
 
-      if (response.ok) {
+      if (res.success) {
+        toast.success("Groupe créé avec succès:", res);
         onSuccess();
         setFormData({
           name: "",
@@ -70,9 +73,9 @@ export function CreateGroupDialog({
           description: "",
           create_sub_groups: 0,
         });
+        onOpenChange(false);
       } else {
-        const error = await response.json();
-        throw new Error(error.error || "Erreur lors de la création");
+        throw new Error(res.message || "Erreur lors de la création");
       }
     } catch (error) {
       console.error("Erreur:", error);
@@ -95,7 +98,7 @@ export function CreateGroupDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Créer un nouveau groupe</DialogTitle>
+          <DialogTitle>Créer un nouveau groupe de la phase</DialogTitle>
           <DialogDescription>
             Ajoutez un nouveau groupe à cette phase. Vous pouvez optionnellement
             créer des sous-groupes automatiquement.

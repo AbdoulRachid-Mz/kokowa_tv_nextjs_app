@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
 
     const createSubGroups = body.create_sub_groups ? Number(body.create_sub_groups) : 0;
     const result = await createPhaseGroup(formData, { create_sub_groups: createSubGroups });
+    console.log(formData)
     
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {

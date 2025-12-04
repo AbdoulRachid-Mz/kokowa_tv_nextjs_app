@@ -23,6 +23,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { getFighterById } from "@/actions/fighters";
 
 export default function ClientFighterDetailPage({
   fighterId,
@@ -45,7 +47,7 @@ export default function ClientFighterDetailPage({
   const loadFighter = async () => {
     try {
       setLoading(true);
-      const fighterData = await api.get<any>(`/api/fighters/${id}`);
+      const fighterData = await getFighterById(id, { with_relations: true });
       setFighter(fighterData);
     } catch (error) {
       console.error("Erreur chargement lutteur:", error);
@@ -88,7 +90,11 @@ export default function ClientFighterDetailPage({
         <Typography variant="h3" weight="semibold" className="mb-2">
           Lutteur introuvable
         </Typography>
-        <Typography variant="body-base" theme="muted" className="mb-6 text-center max-w-sm">
+        <Typography
+          variant="body-base"
+          theme="muted"
+          className="mb-6 text-center max-w-sm"
+        >
           Il semble que ce lutteur n’existe pas ou ait été supprimé.
         </Typography>
 
@@ -98,7 +104,9 @@ export default function ClientFighterDetailPage({
             onClick={() => window.location.reload()}
             className="gap-2"
           >
-            <span className="inline-block animate-spin">🔄</span>
+            {/* <span className="inline-block animate-spin"> */}
+            <Spinner width={24} height={24} />
+            {/* </span> */}
             Actualiser
           </Button>
           <Button onClick={() => router.push("/ad/fighters")}>

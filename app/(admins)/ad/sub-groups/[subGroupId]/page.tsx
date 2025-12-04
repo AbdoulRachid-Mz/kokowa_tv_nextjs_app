@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 import { SubGroup, Match } from "@/types";
 import { Edit, Plus, Users, MapPin, Trophy, Clock, Swords } from "lucide-react";
 import { MatchCard } from "./organisation/matches-card";
+import { getSubGroupById } from "@/actions/sub-groups";
 
 export default function SubGroupDetailPage() {
   const { subGroupId } = useParams();
@@ -30,7 +31,21 @@ export default function SubGroupDetailPage() {
   const loadSubGroup = async () => {
     try {
       setLoading(true);
-      const subGroupData = await api.get<any>(`/api/sub-groups/${id}`);
+      const subGroupData = await getSubGroupById(id, {
+        with_relations: true,
+        relations: {
+          with_group: true,
+          with_phase: true,
+          with_edition: true,
+          with_regions: true,
+          with_fighters: true,
+          with_belts: true,
+          with_referee: true,
+          with_matches: true,
+          with_edition_regions: true,
+          with_edition_fighters: true
+        }
+      });
       setSubGroup(subGroupData);
       setMatches(subGroupData.matches || []);
     } catch (error) {
@@ -96,7 +111,11 @@ export default function SubGroupDetailPage() {
                       </Typography>
                     </div>
                     {subGroup.belt1 && (
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className={`text-xs text-white`}
+                      style={{
+                        backgroundColor: subGroup.belt1.color || "red"
+                      }}
+                      >
                         Ceinture {subGroup.belt1.color}
                       </Badge>
                     )}
@@ -114,7 +133,11 @@ export default function SubGroupDetailPage() {
                       </Typography>
                     </div>
                     {subGroup.belt2 && (
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className={`text-xs text-white`}
+                      style={{
+                        backgroundColor: subGroup.belt2.color || "blue"
+                      }}
+                      >
                         Ceinture {subGroup.belt2.color}
                       </Badge>
                     )}

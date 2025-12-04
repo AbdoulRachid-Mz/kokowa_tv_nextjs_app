@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
       with_subGroups: searchParams.get('with_subGroups') !== "false",
       with_matches: searchParams.get('with_matches') !== 'false',
     };
-    console.log("sous-groupes:",searchParams.get('with_SubGroups'))
 
 
     const result = await getPhases({

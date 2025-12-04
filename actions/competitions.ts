@@ -297,9 +297,11 @@ export async function getCompetitionById(id: number, options: {
   }
 }
 
+
+
 export async function createCompetition(
   formData: FormData, 
-  options: { with_edition?: boolean } = { with_edition: true }
+  options: { with_edition?: boolean } = { with_edition: false }
 ) {
   try {
     const { with_edition = false } = options;
@@ -313,53 +315,161 @@ export async function createCompetition(
       is_active: formData.get('is_active') as string | null,
     };
 
-    // Générer le slug à partir du nom
+    // VÉRIFICATION 1: Vérifier si une compétition avec le même nom existe déjà
+    const existingCompetition = await queryOne<{ id: number }>(
+      'SELECT id FROM competitions WHERE LOWER(name) = LOWER($1)',
+      [rawData.name.trim()]
+    );
+
+    if (existingCompetition) {
+      throw new Error('Une compétition avec ce nom existe déjà');
+    }
+
+    // VÉRIFICATION 2: Vérifier aussi par slug pour éviter les conflits
     const slug = rawData.name
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '') // Supprimer les accents
-      .replace(/[^a-z0-9]/g, '-')
+      .replace(/[^a-z0-9\s]/g, ' ') // Remplacer caractères spéciaux par espace
+      .trim()
+      .replace(/\s+/g, '-') // Remplacer espaces par tirets
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
 
-    // Préparer les données pour la validation
+    const existingSlug = await queryOne<{ id: number }>(
+      'SELECT id FROM competitions WHERE slug = $1',
+      [slug]
+    );
+
+    if (existingSlug) {
+      // Si le slug existe déjà, ajouter un timestamp
+      const uniqueSlug = `${slug}-${Date.now()}`;
+      
+      // Préparer les données pour la validation avec le slug unique
+      const dataForValidation = {
+        name: rawData.name.trim(),
+        slug: uniqueSlug,
+        description: rawData.description || undefined,
+        featured_image: rawData.featured_image || undefined,
+        status: rawData.status as 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed',
+        is_active: rawData.is_active || 'true',
+      };
+
+      const validatedData = competitionSchema.parse(dataForValidation);
+
+      await query('BEGIN');
+
+      try {
+        // Créer la compétition avec slug unique
+        const competitionSql = `
+          INSERT INTO competitions (
+            name, slug, description, featured_image, status, is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6)
+          RETURNING id, name, slug
+        `;
+        
+        const competitionResult = await query<{ id: number; name: string; slug: string }>(
+          competitionSql, 
+          [
+            validatedData.name,
+            validatedData.slug ?? null,
+            validatedData.description || null,
+            validatedData.featured_image || null,
+            validatedData.status,
+            validatedData.is_active,
+          ]
+        );
+
+        const competition = competitionResult[0];
+        const competitionId = competition.id;
+
+        // Créer automatiquement une édition si demandé
+        if (with_edition) {
+          const currentYear = new Date().getFullYear();
+          const editionSql = `
+            INSERT INTO competition_editions (
+              competition_id, edition_number, year, theme
+            ) VALUES ($1, $2, $3, $4)
+            RETURNING id
+          `;
+          
+          await query<{ id: number }>(editionSql, [
+            competitionId,
+            1, // Première édition
+            currentYear,
+            `Édition ${currentYear} - ${validatedData.name}`
+          ]);
+        }
+
+        await query('COMMIT');
+
+        revalidatePath('/competitions');
+        revalidatePath('/ad/competitions');
+        
+        return { 
+          success: true, 
+          id: competitionId,
+          competition: {
+            id: competitionId,
+            name: competition.name,
+            slug: competition.slug
+          },
+          message: 'Compétition créée avec succès' + (with_edition ? ' (avec édition automatique)' : ''),
+          warning: with_edition ? 'Une édition a été créée automatiquement' : undefined
+        };
+
+      } catch (error) {
+        await query('ROLLBACK');
+        console.error('Database error in createCompetition:', error);
+        
+        // Gestion spécifique des erreurs de contrainte d'unicité
+        if (error instanceof Error && error.message.includes('unique constraint')) {
+          throw new Error('Une compétition avec ce nom ou slug existe déjà');
+        }
+        
+        throw new Error('Erreur base de données lors de la création de la compétition');
+      }
+    }
+
+    // Si le slug n'existe pas, continuer avec le slug normal
     const dataForValidation = {
-      name: rawData.name,
+      name: rawData.name.trim(),
       slug,
       description: rawData.description || undefined,
       featured_image: rawData.featured_image || undefined,
       status: rawData.status as 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed',
-      is_active: rawData.is_active || 'true', // Par défaut à true
+      is_active: rawData.is_active || 'true',
     };
-
 
     const validatedData = competitionSchema.parse(dataForValidation);
 
-    // Commencer une transaction
     await query('BEGIN');
 
     try {
-      // 1. Créer la compétition
+      // Créer la compétition
       const competitionSql = `
         INSERT INTO competitions (
           name, slug, description, featured_image, status, is_active
-        ) VALUES ($1, $2, $3, $5, $6, $7)
+        ) VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id, name, slug
       `;
       
-      const competitionResult = await query<{ id: number; name: string; slug: string }>(competitionSql, [
-        validatedData.name,
-        validatedData.slug ?? null,
-        validatedData.description || null,
-        validatedData.featured_image || null,
-        validatedData.status,
-        validatedData.is_active,
-      ]);
+      const competitionResult = await query<{ id: number; name: string; slug: string }>(
+        competitionSql, 
+        [
+          validatedData.name,
+          validatedData.slug ?? null,
+          validatedData.description || null,
+          validatedData.featured_image || null,
+          validatedData.status,
+          validatedData.is_active,
+        ]
+      );
 
       const competition = competitionResult[0];
       const competitionId = competition.id;
 
-      // 2. Créer automatiquement une édition si demandé
+      // Créer automatiquement une édition si demandé
       if (with_edition) {
         const currentYear = new Date().getFullYear();
         const editionSql = `
@@ -377,10 +487,11 @@ export async function createCompetition(
         ]);
       }
 
-      // Commit de la transaction
       await query('COMMIT');
 
       revalidatePath('/competitions');
+      revalidatePath('/ad/competitions');
+      
       return { 
         success: true, 
         id: competitionId,
@@ -389,13 +500,19 @@ export async function createCompetition(
           name: competition.name,
           slug: competition.slug
         },
-        message: 'Compétition créée avec succès' + (with_edition ? ' (avec édition automatique)' : '')
+        message: 'Compétition créée avec succès' + (with_edition ? ' (avec édition automatique)' : ''),
+        warning: with_edition ? 'Une édition a été créée automatiquement' : undefined
       };
 
     } catch (error) {
-      // Rollback en cas d'erreur
       await query('ROLLBACK');
       console.error('Database error in createCompetition:', error);
+      
+      // Gestion spécifique des erreurs de contrainte d'unicité
+      if (error instanceof Error && error.message.includes('unique constraint')) {
+        throw new Error('Une compétition avec ce nom existe déjà');
+      }
+      
       throw new Error('Erreur base de données lors de la création de la compétition');
     }
 
@@ -427,20 +544,93 @@ export async function updateCompetition(id: number, formData: FormData) {
       is_active: formData.get('is_active') as string | null,
     };
 
+    // VÉRIFICATION: Si le nom a changé, vérifier qu'il n'existe pas déjà
+    if (rawData.name !== existing.name) {
+      const existingCompetition = await queryOne<{ id: number }>(
+        'SELECT id FROM competitions WHERE LOWER(name) = LOWER($1) AND id != $2',
+        [rawData.name.trim(), id]
+      );
+
+      if (existingCompetition) {
+        throw new Error('Une compétition avec ce nom existe déjà');
+      }
+    }
+
     // Générer le slug si le nom a changé
     const slug = rawData.name !== existing.name 
       ? rawData.name
           .toLowerCase()
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]/g, '-')
+          .replace(/[^a-z0-9\s]/g, ' ')
+          .trim()
+          .replace(/\s+/g, '-')
           .replace(/-+/g, '-')
           .replace(/^-|-$/g, '')
       : existing.slug;
 
-    // Préparer les données pour la validation
+    // Vérifier si le nouveau slug existe déjà (pour un autre enregistrement)
+    if (slug !== existing.slug) {
+      const existingSlug = await queryOne<{ id: number }>(
+        'SELECT id FROM competitions WHERE slug = $1 AND id != $2',
+        [slug, id] as (string | number)[]
+      );
+
+      if (existingSlug) {
+        // Ajouter un suffixe unique si le slug existe
+        const uniqueSlug = `${slug}-${Date.now()}`;
+        
+        const dataForValidation = {
+          name: rawData.name.trim(),
+          slug: uniqueSlug,
+          description: rawData.description || undefined,
+          featured_image: rawData.featured_image || undefined,
+          status: rawData.status as 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed',
+          is_active: rawData.is_active || 'true',
+        };
+
+        const validatedData = competitionSchema.parse(dataForValidation);
+
+        const sql = `
+          UPDATE competitions 
+          SET 
+            name = $1, slug = $2, description = $3, featured_image = $4, status = $5, 
+            is_active = $6, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $7
+          RETURNING id, name, slug
+        `;
+        
+        const result = await query<{ id: number; name: string; slug: string }>(sql, [
+          validatedData.name,
+          validatedData.slug ?? null,
+          validatedData.description || null,
+          validatedData.featured_image || null,
+          validatedData.status,
+          validatedData.is_active,
+          id,
+        ]);
+
+        if (result.length === 0) {
+          throw new Error('Compétition non trouvée lors de la mise à jour');
+        }
+
+        revalidatePath('/competitions');
+        revalidatePath(`/competitions/${id}`);
+        revalidatePath(`/ad/competitions`);
+        revalidatePath(`/ad/competitions/${id}`);
+        
+        return { 
+          success: true, 
+          competition: result[0],
+          message: 'Compétition modifiée avec succès',
+          warning: 'Le slug a été modifié car il existait déjà'
+        };
+      }
+    }
+
+    // Si le slug n'existe pas, continuer normalement
     const dataForValidation = {
-      name: rawData.name,
+      name: rawData.name.trim(),
       slug,
       description: rawData.description || undefined,
       featured_image: rawData.featured_image || undefined,
@@ -448,15 +638,14 @@ export async function updateCompetition(id: number, formData: FormData) {
       is_active: rawData.is_active || 'true',
     };
 
-
     const validatedData = competitionSchema.parse(dataForValidation);
 
     const sql = `
       UPDATE competitions 
       SET 
-        name = $1, slug = $2, description = $3, featured_image = $5, status = $6, 
-        is_active = $7, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8
+        name = $1, slug = $2, description = $3, featured_image = $4, status = $5, 
+        is_active = $6, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7
       RETURNING id, name, slug
     `;
     
@@ -476,6 +665,9 @@ export async function updateCompetition(id: number, formData: FormData) {
 
     revalidatePath('/competitions');
     revalidatePath(`/competitions/${id}`);
+    revalidatePath(`/ad/competitions`);
+    revalidatePath(`/ad/competitions/${id}`);
+    
     return { 
       success: true, 
       competition: result[0],
@@ -492,6 +684,7 @@ export async function updateCompetition(id: number, formData: FormData) {
     throw error;
   }
 }
+
 
 export async function deleteCompetition(id: number) {
   try {

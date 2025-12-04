@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { ParticipantsManager } from "@/components/editions/participants-manager";
+import { ParticipantsManagerV2 } from "@/components/editions/participants-manager-v2";
 import { CompetitionEdition } from "@/types";
 
 export default function EditionFightersPage() {
@@ -18,7 +18,7 @@ export default function EditionFightersPage() {
   useEffect(() => {
     const fetchEdition = async () => {
       try {
-        const response = await fetch(`/api/editions/${editionId}?with_relations=true`);
+        const response = await fetch(`/api/editions/${editionId}?with_relations=true&relations[with_fighters]=true&relations[with_regions]=true`);
         if (response.ok) {
           const data = await response.json();
           setEdition(data);
@@ -37,7 +37,7 @@ export default function EditionFightersPage() {
 
   const handleParticipantsUpdate = () => {
     // Recharger les données de l'édition
-    fetch(`/api/editions/${editionId}?with_relations=true`)
+    fetch(`/api/editions/${editionId}?with_relations=true&relations[with_fighters]=true&relations[with_regions]=true`)
       .then(res => res.json())
       .then(data => setEdition(data))
       .catch(console.error);
@@ -63,7 +63,7 @@ export default function EditionFightersPage() {
   }
 
   return (
-    <div className="mx-auto">
+    <div className="mx-auto space-y-6">
       {/* En-tête */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -75,7 +75,7 @@ export default function EditionFightersPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <Typography variant="h5">
+            <Typography variant="h4">
               Gestion des Lutteurs - Édition {edition.edition_number}
             </Typography>
             <Typography variant="body-base" theme="muted">
@@ -83,10 +83,17 @@ export default function EditionFightersPage() {
             </Typography>
           </div>
         </div>
+        
+        <Button
+          variant="outline"
+          onClick={() => router.push(`/ad/editions/${editionId}/regions`)}
+        >
+          Gérer les régions
+        </Button>
       </div>
 
-      {/* Gestionnaire de lutteurs */}
-      <ParticipantsManager
+      {/* Gestionnaire de lutteurs amélioré */}
+      <ParticipantsManagerV2
         editionId={parseInt(editionId)}
         type="fighters"
         currentParticipants={edition.fighters || []}

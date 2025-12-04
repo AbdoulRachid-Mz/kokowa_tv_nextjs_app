@@ -94,20 +94,13 @@ export interface Belt extends BaseEntity {
 // Compétition
 export interface Competition extends BaseEntity {
   name: string;
-  slug: string;
+  slug?: string;
   description?: string;
-  type: 'sabre_national' | 'coupe_regionale' | 'halarou_bakwai' | 'aes' | 'friendly' | 'ministre' | 'coupe_airtel' | 'other';
-  location?: string;
-  region_id?: number;
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed';
   featured_image?: string;
-  registration_deadline?: string;
-  max_participants?: number;
-  prize_pool?: number;
   is_active?: boolean;
   
   // Relations
-  region?: Region;
   editions?: CompetitionEdition[];
 }
 
