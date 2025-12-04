@@ -95,11 +95,6 @@ export function useEntityList<T>({
   const [filters, setFilters] = useState<EntityFilters>(defaultFilters);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
-  // Mémorisation pour éviter les recalculs inutiles
-  const queryParams = useMemo(() => {
-    return buildQueryParams();
-  }, [entityType, page, limit, searchTerm, filters, withRelations]);
-
   // Construction des paramètres de requête selon le type d'entité
   const buildQueryParams = useCallback(() => {
     const params: Record<string, string> = {
@@ -337,6 +332,11 @@ export function useEntityList<T>({
 
     return params;
   }, [entityType, page, limit, searchTerm, filters, withRelations]);
+
+  // Mémorisation pour éviter les recalculs inutiles - DOIT ÊTRE APRÈS buildQueryParams
+  const queryParams = useMemo(() => {
+    return buildQueryParams();
+  }, [buildQueryParams]);
 
   // Filtrer les données locales si defaultData est fourni
   const filterLocalData = useCallback(() => {
