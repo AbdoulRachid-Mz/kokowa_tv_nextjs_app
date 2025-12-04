@@ -123,10 +123,11 @@ export async function DELETE(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ beltId: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const {beltId} = await params
+    const id = parseInt(beltId);
     
     if (isNaN(id)) {
       return NextResponse.json(
@@ -155,6 +156,13 @@ export async function PATCH(
         { status: 404 }
       );
     }
+    
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Erreur lors de la modification du statut' },
+      { status: 500 }
+    );
+  }
+}
     
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erreur lors de la modification du statut' },
