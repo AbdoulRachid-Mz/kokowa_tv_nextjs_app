@@ -163,9 +163,12 @@ export default function NotificationsPage() {
   // Gestionnaire pour marquer une notification comme lue
   const handleMarkAsRead = async (notification: Notification) => {
     try {
-      const response = await fetch(`/api/notifications/${notification.id}/read`, {
-        method: "PUT",
-      });
+      const response = await fetch(
+        `/api/notifications/${notification.id}/read`,
+        {
+          method: "PUT",
+        }
+      );
 
       if (response.ok) {
         toast.success("Notification marquée comme lue");
@@ -230,7 +233,7 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* En-tête avec actions globales */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -264,7 +267,9 @@ export default function NotificationsPage() {
       {/* Liste des notifications */}
       <EntityList
         title="Notifications"
-        description={`${total} notification${total > 1 ? 's' : ''} trouvée${total > 1 ? 's' : ''}`}
+        description={`${total} notification${total > 1 ? "s" : ""} trouvée${
+          total > 1 ? "s" : ""
+        }`}
         entityType="notification"
         data={data}
         total={total}

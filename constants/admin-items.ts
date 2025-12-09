@@ -182,7 +182,7 @@ export const overviewItems = [
 
 export const regionItems = [
   { title: "Régions", url: "/ad/regions", icon: Globe, description: "Gestion des régions" },
-  { title: "Villes", url: "/ad/cities", icon: MapPin, description: "Gestion des villes par région" },
+  { title: "Coaches", url: "/ad/coaches", icon: UserCog, description: "Gestion des coaches par région" },
 ]
 
 export const fighterItems = [

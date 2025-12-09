@@ -9,7 +9,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Copy, Check, ZoomIn, QrCode, Sparkles } from "lucide-react";
+import {
+  Copy,
+  Check,
+  ZoomIn,
+  QrCode,
+  Sparkles,
+  Swords,
+  Target,
+  Globe,
+  Newspaper,
+  Video,
+  MessageSquare,
+  Bell,
+  UserPlus,
+  ArrowRightLeft,
+} from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import QRCode from "qrcode";
@@ -218,7 +233,10 @@ const MarkedText = ({
   };
 
   return (
-    <span style={styles[variation as keyof typeof styles]} className={className}>
+    <span
+      style={styles[variation as keyof typeof styles]}
+      className={className}
+    >
       {children}
     </span>
   );
@@ -706,12 +724,7 @@ export function Typography({
   }
 
   return (
-    <div
-      className={cn(
-        "relative ",
-        (copyable || withQRCode) && "pr-8"
-      )}
-    >
+    <div className={cn("relative ", (copyable || withQRCode) && "pr-8")}>
       {wrappedContent}
     </div>
   );

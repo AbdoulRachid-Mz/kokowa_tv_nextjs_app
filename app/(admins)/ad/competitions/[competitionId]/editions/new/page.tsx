@@ -76,7 +76,9 @@ export default function EditionFormPage() {
   } = useForm<EditionFormData>({
     resolver: zodResolver(editionSchema),
     defaultValues: {
-      edition_number: competition?.editions?.length ? competition.editions.length + 1 : 1,
+      edition_number: competition?.editions?.length
+        ? competition.editions.length + 1
+        : 1,
       year: new Date().getFullYear(),
     },
   });
@@ -119,25 +121,32 @@ export default function EditionFormPage() {
                 : "",
               winner_fighter_id: editionData.winner_fighter_id || undefined,
             });
+
+            // Utiliser les lutteurs et régions déjà inclus dans l'édition
+            if (editionData.fighters) {
+              setAvailableFighters(editionData.fighters);
+            }
+            if (editionData.regions) {
+              setAvailableRegions(editionData.regions);
+            }
           }
-        }
+        } else {
+          // En création, charger les lutteurs et régions disponibles
+          const fightersResponse = await fetch(
+            "/api/fighters?limit=100&is_active=true&with_region=true"
+          );
+          if (fightersResponse.ok) {
+            const fightersData = await fightersResponse.json();
+            setAvailableFighters(fightersData.data || []);
+          }
 
-        // Charger les lutteurs disponibles
-        const fightersResponse = await fetch(
-          "/api/fighters?limit=100&is_active=true&with_region=true"
-        );
-        if (fightersResponse.ok) {
-          const fightersData = await fightersResponse.json();
-          setAvailableFighters(fightersData.data || []);
-        }
-
-        // Charger les régions disponibles
-        const regionsResponse = await fetch(
-          "/api/regions?limit=100&with_fighters=true"
-        );
-        if (regionsResponse.ok) {
-          const regionsData = await regionsResponse.json();
-          setAvailableRegions(regionsData.data || []);
+          const regionsResponse = await fetch(
+            "/api/regions?limit=100&with_fighters=true"
+          );
+          if (regionsResponse.ok) {
+            const regionsData = await regionsResponse.json();
+            setAvailableRegions(regionsData.data || []);
+          }
         }
       } catch (error) {
         console.error("Erreur lors du chargement:", error);
@@ -258,7 +267,7 @@ export default function EditionFormPage() {
             Retour
           </Button>
           <div>
-            <Typography variant="h4" weight="bold" animated>
+            <Typography variant="h5" weight="bold">
               {isEdit ? "Modifier l'Édition" : "Nouvelle Édition"}
             </Typography>
             <Typography variant="lead" theme="muted">
@@ -283,7 +292,7 @@ export default function EditionFormPage() {
           {/* Formulaire principal */}
           <div className="lg:col-span-2 space-y-4">
             {/* Informations de base */}
-            <Card className="p-3">
+            <Card className="p-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
@@ -309,20 +318,20 @@ export default function EditionFormPage() {
                     )}
                   </div> */}
 
-                                  {/* Thème */}
-                <div className="space-y-2">
-                  <Label htmlFor="theme">Thème de l'édition</Label>
-                  <Input
-                    id="theme"
-                    placeholder="Ex: Édition de la Renaissance, Lutte pour la Paix..."
-                    {...register("theme")}
-                  />
-                  {errors.theme && (
-                    <Typography variant="caption2" theme="danger">
-                      {errors.theme.message}
-                    </Typography>
-                  )}
-                </div>
+                  {/* Thème */}
+                  <div className="space-y-2">
+                    <Label htmlFor="theme">Thème de l'édition</Label>
+                    <Input
+                      id="theme"
+                      placeholder="Ex: Édition de la Renaissance, Lutte pour la Paix..."
+                      {...register("theme")}
+                    />
+                    {errors.theme && (
+                      <Typography variant="caption2" theme="danger">
+                        {errors.theme.message}
+                      </Typography>
+                    )}
+                  </div>
 
                   {/* Année */}
                   <div className="space-y-2">
@@ -340,9 +349,7 @@ export default function EditionFormPage() {
                       </Typography>
                     )}
                   </div>
-
                 </div>
-
 
                 {/* Période */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -369,7 +376,7 @@ export default function EditionFormPage() {
 
             {/* Vainqueur */}
             {isEdit && (
-              <Card>
+              <Card className="p-2">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Trophy className="h-5 w-5" />
@@ -414,9 +421,9 @@ export default function EditionFormPage() {
           </div>
 
           {/* Sidebar - Informations et actions */}
-          <div className="space-y-6">
+          <div className="space-y-3">
             {/* Statut et résumé */}
-            <Card>
+            <Card className="p-3">
               <CardHeader>
                 <CardTitle>Résumé</CardTitle>
               </CardHeader>
@@ -429,12 +436,11 @@ export default function EditionFormPage() {
                     {competition?.name}
                   </Typography>
                 </div>
-
               </CardContent>
             </Card>
 
             {/* Actions rapides */}
-            <Card>
+            <Card className="p-3">
               <CardHeader>
                 <CardTitle>Actions</CardTitle>
               </CardHeader>
@@ -492,7 +498,7 @@ export default function EditionFormPage() {
             </Card>
 
             {/* Aide */}
-            <Card>
+            <Card className="p-3">
               <CardHeader>
                 <CardTitle>Conseils</CardTitle>
               </CardHeader>

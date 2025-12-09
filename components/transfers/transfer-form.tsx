@@ -632,7 +632,7 @@ export default function TransferForm({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push("/ad/ad/fighters/transfers")}
+                onClick={() => router.push("/ad/fighters/transfers")}
                 disabled={isSubmitting}
               >
                 <X className="h-4 w-4 mr-2" />

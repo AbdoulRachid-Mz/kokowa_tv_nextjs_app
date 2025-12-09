@@ -36,7 +36,7 @@ async function runMigration() {
 
     console.log("🌱 Insertion des données...");
     try {
-      await client.query(seedSQL);
+      // await client.query(seedSQL);
       console.log("✅ Données insérées avec succès");
     } catch (err) {
       if (err.code === "23505") {

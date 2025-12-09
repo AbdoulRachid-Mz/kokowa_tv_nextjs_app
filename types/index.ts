@@ -635,6 +635,9 @@ export interface ArchiveFighterAchievement extends BaseEntity {
   archived_at: string;
   archive_reason?: string;
   original_id: number;
+  
+  fighter?: Fighter;
+  region?: Region;
 }
 
 export interface ArchiveFighterAchievementFilters extends BaseFilters {

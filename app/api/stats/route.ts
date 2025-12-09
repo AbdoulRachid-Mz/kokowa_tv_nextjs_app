@@ -1,54 +1,94 @@
+// app/api/stats/route.ts - Version corrigée
 import { NextRequest, NextResponse } from 'next/server';
-import { getRegionsStats } from '@/actions/regions';
-import { getFighterStats } from '@/actions/fighters';
-import { getCompetitionStats } from '@/actions/competitions';
-import { query } from '@/lib/db/neon-client';
+import { getStats, getRecentActivities } from '@/actions/stats';
 
 export async function GET(request: NextRequest) {
   try {
-    const [regionsStats, fightersStats, competitionsStats, editionsStats] = await Promise.all([
-      getRegionsStats(),
-      getFighterStats(),
-      getCompetitionStats(),
-      // Stats pour les éditions
-      query(`
-        SELECT 
-          COUNT(*) as total_editions,
-          COUNT(*) FILTER (WHERE start_date >= CURRENT_DATE) as upcoming_editions,
-          COUNT(*) FILTER (WHERE start_date < CURRENT_DATE AND end_date >= CURRENT_DATE) as ongoing_editions,
-          COUNT(*) FILTER (WHERE end_date < CURRENT_DATE) as completed_editions
-        FROM competition_editions
-      `)
-    ]);
-
-    const editionsData = editionsStats[0];
-
-    const stats = {
-      regions: regionsStats,
-      fighters: fightersStats,
-      competitions: competitionsStats,
-      editions: {
-        total_editions: parseInt(editionsData?.total_editions ?? '0'),
-        upcoming_editions: parseInt(editionsData?.upcoming_editions ?? '0'),
-        ongoing_editions: parseInt(editionsData?.ongoing_editions ?? '0'),
-        completed_editions: parseInt(editionsData?.completed_editions ?? '0'),
-      },
-      summary: {
-        total_regions: regionsStats.total_regions,
-        total_fighters: fightersStats.total_fighters,
-        total_competitions: competitionsStats.total_competitions,
-        total_editions: parseInt(editionsData?.total_editions ?? '0'),
-        active_fighters: fightersStats.active_fighters,
-        champions: fightersStats.champions,
-        upcoming_competitions: competitionsStats.upcoming,
-      }
+    const { searchParams } = new URL(request.url);
+    
+    // Parse filters
+    const filters = {
+      entity: searchParams.get('entity') || undefined,
+      statId: searchParams.get('statId') || undefined,
+      date_from: searchParams.get('date_from') || undefined,
+      date_to: searchParams.get('date_to') || undefined,
+      region_id: searchParams.get('region_id') ? parseInt(searchParams.get('region_id')!) : undefined,
+      edition_id: searchParams.get('edition_id') ? parseInt(searchParams.get('edition_id')!) : undefined,
+      competition_id: searchParams.get('competition_id') ? parseInt(searchParams.get('competition_id')!) : undefined,
+      year: searchParams.get('year') ? parseInt(searchParams.get('year')!) : undefined,
+      month: searchParams.get('month') ? parseInt(searchParams.get('month')!) : undefined,
+      group_by: searchParams.get('group_by') as any || 'month',
+      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10,
+      page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
+      sort_by: searchParams.get('sort_by') || undefined,
+      sort_order: searchParams.get('sort_order') as 'asc' | 'desc' || 'desc'
     };
 
-    return NextResponse.json(stats);
+    // Récupérer les statistiques
+    const result = await getStats(filters);
+    
+    return NextResponse.json({
+      success: true,
+      ...result,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
-    console.error('API Error GET /api/stats:', error);
+    console.error('Error in GET /api/stats:', error);
+    
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Erreur lors de la récupération des statistiques' },
+      { 
+        success: false,
+        error: 'Erreur lors de la récupération des statistiques',
+        timestamp: new Date().toISOString()
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// Route pour les activités récentes
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { action, limit = 10, filters = {} } = body;
+    
+    if (action === 'recent_activities') {
+      const activities = await getRecentActivities(limit);
+      return NextResponse.json({
+        success: true,
+        data: activities,
+        metadata: { total: activities.length },
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Action non supportée',
+        timestamp: new Date().toISOString()
+      },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('Error in POST /api/stats:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Erreur lors du traitement de la requête',
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }

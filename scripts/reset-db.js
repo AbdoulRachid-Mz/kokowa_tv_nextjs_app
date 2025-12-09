@@ -36,6 +36,7 @@ async function resetDatabase() {
     await client.query('DROP TABLE IF EXISTS referees CASCADE');
     await client.query('DROP TABLE IF EXISTS fighters CASCADE');
     await client.query('DROP TABLE IF EXISTS interactions CASCADE');
+    await client.query('DROP TABLE IF EXISTS notifications CASCADE');
     await client.query('DROP TABLE IF EXISTS videos CASCADE');
     await client.query('DROP TABLE IF EXISTS media CASCADE');
     await client.query('DROP TABLE IF EXISTS articles CASCADE');

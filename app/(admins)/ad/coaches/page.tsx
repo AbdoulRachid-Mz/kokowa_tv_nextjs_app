@@ -88,7 +88,7 @@ export default function CoachesPage() {
       filters={filters}
       onFilterChange={setFilters}
       onAdd={onAdd}
-      onExport={onExport}
+      // onExport={onExport}
       onRefresh={onRefresh}
       viewMode={viewMode}
       onViewModeChange={setViewMode}

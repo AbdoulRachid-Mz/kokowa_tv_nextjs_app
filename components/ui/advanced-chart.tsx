@@ -434,7 +434,7 @@ export function AdvancedChart<T extends Record<string, any>>({
   })();
 
   return (
-    <Card className={cn("w-full", className)}>
+    <Card className={cn("w-full p-3", className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <div className="space-y-1">
           {title && <CardTitle>{title}</CardTitle>}

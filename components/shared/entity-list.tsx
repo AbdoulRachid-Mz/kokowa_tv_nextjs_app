@@ -43,6 +43,7 @@ export interface EntityListProps<T> {
   entityType:
     | "user"
     | "fighter"
+    | "archive"
     | "transfer"
     | "region"
     | "coach"
@@ -136,7 +137,6 @@ export function EntityList<T>({
       },
     ];
 
-
     switch (entityType) {
       case "fighter":
         return [
@@ -168,6 +168,124 @@ export function EntityList<T>({
             ],
           },
         ];
+      case "archive":
+        return [
+          ...baseFilters,
+          {
+            key: "year",
+            label: "Année",
+            options: [
+              { value: "all", label: "Toutes années" },
+              { value: "2024", label: "2024" },
+              { value: "2023", label: "2023" },
+              { value: "2022", label: "2022" },
+              { value: "2021", label: "2021" },
+            ],
+          },
+          {
+            key: "position",
+            label: "Position",
+            options: [
+              { value: "all", label: "Toutes positions" },
+              { value: "1st", label: "1er" },
+              { value: "2nd", label: "2e" },
+              { value: "3rd", label: "3e" },
+              { value: "finalist", label: "Finaliste" },
+              { value: "semifinalist", label: "Demi-finaliste" },
+              { value: "quarterfinalist", label: "Quart-finaliste" },
+            ],
+          },
+          {
+            key: "region_id",
+            label: "Région",
+            options: [{ value: "all", label: "Toutes régions" }],
+          },
+          {
+            key: "edition_id",
+            label: "Édition",
+            options: [{ value: "all", label: "Toutes éditions" }],
+          },
+        ];
+
+        case "notification": 
+        return [
+          ...baseFilters,
+          {
+            key: "notification_type",
+            label: "Type de notification",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "match_update", label: "Mise à jour match" },
+              { value: "fighter_update", label: "Mise à jour lutteur" },
+              { value: "competition_update", label: "Mise à jour compétition" },
+              { value: "system_notification", label: "Notification système" },
+              { value: "achievement", label: "Réalisation" },
+              { value: "message", label: "Message" },
+            ],
+          },
+          {
+            key: "is_read",
+            label: "Statut de lecture",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "true", label: "Lues" },
+              { value: "false", label: "Non lues" },
+            ],
+          },
+          {
+            key: "priority",
+            label: "Priorité",
+            options: [
+              { value: "all", label: "Toutes" },
+              { value: "low", label: "Faible" },
+              { value: "medium", label: "Moyenne" },
+              { value: "high", label: "Haute" },
+            ],
+          },
+        ];
+        case "user": 
+        return [
+          ...baseFilters,
+          {
+            key: "role",
+            label: "Rôle",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "admin", label: "Administrateur" },
+              { value: "editor", label: "Éditeur" },
+              { value: "user", label: "Utilisateur" },
+              { value: "moderator", label: "Modérateur" },
+              { value: "fighter_manager", label: "Gestionnaire de lutteurs" },
+            ],
+          },
+          {
+            key: "is_active",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "true", label: "Actifs" },
+              { value: "false", label: "Inactifs" },
+            ],
+          },
+          {
+            key: "is_verified",
+            label: "Vérifié",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "true", label: "Vérifiés" },
+              { value: "false", label: "Non vérifiés" },
+            ],
+          },
+          {
+            key: "country",
+            label: "Pays",
+            options: [
+              { value: "all", label: "Tous pays" },
+              // Les options seront chargées dynamiquement
+            ],
+          },
+        ]
+
 
       case "region":
         return [
