@@ -69,7 +69,7 @@ export function CtaSection() {
             </Typography>
 
             {/* Description */}
-            <Typography variant="body-xl" theme="muted" className="mb-10 max-w-2xl mx-auto">
+            <Typography variant="body-lg" theme="muted" className="mb-10 max-w-2xl mx-auto">
               Rejoignez des centaines d'organisations qui font déjà confiance 
               à notre plateforme pour gérer leurs compétitions de lutte traditionnelle.
             </Typography>

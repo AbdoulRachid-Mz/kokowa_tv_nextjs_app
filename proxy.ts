@@ -8,6 +8,7 @@ const PUBLIC_ROUTES = [
   "/about",
   "/contact",
   "/competitions",
+  "/editions",
   "/fighters",
   "/auth/forget-password",
   "/auth/reset-password",

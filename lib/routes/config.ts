@@ -53,6 +53,40 @@ export const ROUTE_CONFIG: RouteConfig[] = [
     isWildcard: true,
     description: "Configuration par défaut"
   },
+  {
+    path: "/editions",
+    name: "Default",
+    breadcrumbs: true,
+    footer: true,
+    navigation: true,
+    parentPath: "/**",
+    excludeLayout: false,
+    menu: false,
+    isWildcard: true,
+    description: "Configuration par défaut"
+  },
+  {
+    path: "/competitions/**",
+    name: "Default",
+    breadcrumbs: true,
+    footer: true,
+    navigation: true,
+    excludeLayout: false,
+    menu: false,
+    isWildcard: true,
+    description: "Configuration par défaut"
+  },
+  {
+    path: "/fighters/**",
+    name: "Default",
+    breadcrumbs: true,
+    footer: true,
+    navigation: true,
+    excludeLayout: false,
+    menu: false,
+    isWildcard: true,
+    description: "Configuration par défaut"
+  },
 
   // =============================================
   // GROUPE AUTHENTIFICATION (sans layout)

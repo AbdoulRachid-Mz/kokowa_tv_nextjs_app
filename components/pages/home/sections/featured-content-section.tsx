@@ -67,7 +67,7 @@ export function FeaturedContentSection() {
             Contenu en{' '}
             <span className="text-primary">Vedette</span>
           </Typography>
-          <Typography variant="body-xl" theme="muted" className="max-w-2xl mx-auto">
+          <Typography variant="body-lg" theme="muted" className="max-w-2xl mx-auto">
             Découvrez les dernières actualités, analyses et moments forts 
             du monde de la lutte traditionnelle.
           </Typography>
@@ -104,7 +104,7 @@ export function FeaturedContentSection() {
                     </Typography>
 
                     {/* Description */}
-                    <Typography variant="body" theme="muted" className="mb-6 line-clamp-3">
+                    <Typography variant="body-base" theme="muted" className="mb-6 line-clamp-3">
                       {content.description}
                     </Typography>
 
@@ -159,7 +159,7 @@ export function FeaturedContentSection() {
                 Calendrier des Événements
               </Typography>
             </div>
-            <Typography variant="body" theme="muted" className="mb-6">
+            <Typography variant="body-base" theme="muted" className="mb-6">
               Ne manquez aucun événement important. Consultez le calendrier complet 
               des compétitions, matchs et événements spéciaux.
             </Typography>
@@ -183,7 +183,7 @@ export function FeaturedContentSection() {
                 Classements en Direct
               </Typography>
             </div>
-            <Typography variant="body" theme="muted" className="mb-6">
+            <Typography variant="body-base" theme="muted" className="mb-6">
               Suivez les classements mis à jour en temps réel. Découvrez qui mène 
               la course au titre de champion.
             </Typography>

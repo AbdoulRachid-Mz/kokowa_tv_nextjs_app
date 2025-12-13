@@ -82,7 +82,7 @@ export function StatsSection() {
     }
   }
 
-  const cardVariants: c = {
+  const cardVariants: Variants = {
     hidden: { y: 30, opacity: 0 },
     visible: {
       y: 0,
