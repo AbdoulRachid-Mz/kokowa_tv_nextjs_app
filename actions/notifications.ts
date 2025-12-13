@@ -1,4 +1,4 @@
-// lib/actions/notifications.ts
+// @/actions/notifications.ts
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';

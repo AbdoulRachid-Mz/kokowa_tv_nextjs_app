@@ -1,3 +1,4 @@
+// /api/mobile/fighters
 import { NextRequest } from 'next/server';
 import { getMobileFighters } from '@/actions/mobile/fighters';
 import { publicHandler } from '@/lib/api-handler';

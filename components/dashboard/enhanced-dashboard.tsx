@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import Link from "next/link"
 import { useTheme } from "next-themes"
 import { ThemeToggle } from "../shared/ThemeToggle"
+import { motion } from "framer-motion"
 
 interface EnhancedDashboardProps {
   children: React.ReactNode
@@ -63,6 +64,7 @@ interface SidebarItemProps {
   sidebarBgType?: "gradient" | "glass" | "neuomorphic" | "solid" | "default"
 }
 
+// components/shared/enhanced-dashboard.tsx - Partie SidebarItem uniquement
 export function SidebarItem({ 
   title, 
   url, 
@@ -84,7 +86,7 @@ export function SidebarItem({
           "group relative overflow-hidden transition-all duration-300 p-2 rounded-lg",
           "hover:scale-105 hover:shadow-lg cursor-pointer",
           isActive 
-            ? "bg-white/20 shadow-lg text-white backdrop-blur-sm" 
+            ? "bg-white/20 shadow-lg text-white backdrop-blur-sm border-l-4 border-yellow-400" 
             : "hover:bg-white/10 text-white/80 hover:text-white"
         )
       case "glass":
@@ -92,7 +94,7 @@ export function SidebarItem({
           "group relative overflow-hidden transition-all duration-300 p-2 rounded-lg",
           "hover:scale-105 hover:shadow-lg cursor-pointer glass-shine",
           isActive 
-            ? "bg-white/20 shadow-lg text-white backdrop-blur-sm border border-white/20" 
+            ? "bg-white/20 shadow-lg text-white backdrop-blur-sm border border-white/30 border-l-4 border-yellow-400" 
             : "hover:bg-white/10 text-white/80 hover:text-white border border-transparent hover:border-white/10"
         )
       case "neuomorphic":
@@ -100,7 +102,7 @@ export function SidebarItem({
           "group relative overflow-hidden transition-all duration-300 p-2 rounded-lg",
           "hover:scale-105 cursor-pointer neomorphic",
           isActive 
-            ? "bg-primary/10 shadow-inner text-primary" 
+            ? "bg-primary/20 shadow-inner text-primary border-l-4 border-primary" 
             : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
         )
       case "solid":
@@ -108,17 +110,17 @@ export function SidebarItem({
           "group relative overflow-hidden transition-all duration-300 p-2 rounded-lg",
           "hover:scale-105 hover:shadow-lg cursor-pointer",
           isActive 
-            ? "bg-primary/10 shadow-md text-primary" 
+            ? "bg-primary/20 shadow-md text-primary border-l-4 border-primary" 
             : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
         )
       case "default":
       default:
         return cn(
-          "group hover:border-x-3 hover:bg-primary/30 border-s-primary border-e-green-500 overflow-hidden transition-all duration-300 p-2 rounded-lg",
+          "group hover:border-l-4 hover:border-primary hover:bg-primary/10 overflow-hidden transition-all duration-300 p-2 rounded-lg",
           "hover:scale-105 hover:shadow-md cursor-pointer",
           isActive 
-            ? "bg-primary text-primary-foreground shadow-md border-x-3 border-s-primary border-e-green-500" 
-            : "hover:bg-accent text-accent-foreground hover:text-foreground"
+            ? "bg-primary/10 text-primary shadow-md border-l-4 border-primary" 
+            : "hover:bg-accent/50 text-accent-foreground hover:text-foreground"
         )
     }
   }
@@ -130,7 +132,7 @@ export function SidebarItem({
         return cn(
           "p-1.5 rounded-lg transition-all duration-300",
           isActive 
-            ? "bg-white/20 text-yellow-400" 
+            ? "bg-yellow-400/20 text-yellow-400" 
             : "group-hover:bg-white/10 text-white/70 group-hover:text-white"
         )
       case "neuomorphic":
@@ -162,14 +164,14 @@ export function SidebarItem({
     switch (sidebarBgType) {
       case "gradient":
       case "glass":
-        return "text-white"
+        return isActive ? "text-yellow-300" : "text-white/80"
       case "neuomorphic":
-        return isDark ? "text-white" : "text-foreground"
+        return isActive ? "text-primary" : isDark ? "text-white/80" : "text-foreground/80"
       case "solid":
-        return isDark ? "text-white" : "text-foreground"
+        return isActive ? "text-primary" : isDark ? "text-white/80" : "text-foreground/80"
       case "default":
       default:
-        return "text-foreground"
+        return isActive ? "text-primary" : "text-foreground/80"
     }
   }
 
@@ -188,7 +190,7 @@ export function SidebarItem({
             <div className="flex-1 min-w-0">
               <Typography 
                 variant="body-sm" 
-                weight="medium"
+                weight={isActive ? "semibold" : "medium"}
                 className={cn(
                   "truncate",
                   getTextColor()
@@ -202,8 +204,8 @@ export function SidebarItem({
                   className={cn(
                     "text-xs",
                     (sidebarBgType === "gradient" || sidebarBgType === "glass") 
-                      ? "text-white/60" 
-                      : "text-muted-foreground"
+                      ? isActive ? "text-yellow-300/70" : "text-white/60" 
+                      : isActive ? "text-primary/70" : "text-muted-foreground"
                   )}
                 >
                   {description}
@@ -217,7 +219,9 @@ export function SidebarItem({
                 className={cn(
                   "text-xs px-1.5 py-0.5",
                   (sidebarBgType === "gradient" || sidebarBgType === "glass") 
-                    ? "bg-yellow-400/20 text-yellow-300 border-yellow-400/30" 
+                    ? isActive 
+                      ? "bg-yellow-400/30 text-yellow-300 border-yellow-400/40" 
+                      : "bg-yellow-400/20 text-yellow-300/80 border-yellow-400/30" 
                     : ""
                 )}
               >
@@ -227,6 +231,20 @@ export function SidebarItem({
           </>
         )}
       </div>
+      
+      {/* Animation pour l'item actif */}
+      {isActive && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className={cn(
+            "absolute top-0 right-0 w-2 h-2 rounded-full",
+            (sidebarBgType === "gradient" || sidebarBgType === "glass")
+              ? "bg-yellow-400"
+              : "bg-primary"
+          )}
+        />
+      )}
     </div>
   )
 
@@ -247,7 +265,10 @@ export function SidebarItem({
         {state === "collapsed" && (
           <TooltipContent side="right">
             <div className="text-center">
-              <p className="font-medium">{title}</p>
+              <p className={cn("font-medium", isActive && "text-primary")}>
+                {title}
+                {isActive && " (actif)"}
+              </p>
               {description && (
                 <p className="text-xs text-muted-foreground mt-1">{description}</p>
               )}

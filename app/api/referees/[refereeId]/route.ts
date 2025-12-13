@@ -1,10 +1,10 @@
+// GET /ad/referees/[refereeId]
 import { NextRequest, NextResponse } from 'next/server';
 import { getRefereeById, updateReferee, deleteReferee } from '@/actions/referees';
 
 interface Props {
  params: Promise<{ refereeId: string }>
 }
-// GET /admin/referees/[refereeId]
 export async function GET(
   _req: NextRequest,
   { params }: Props 

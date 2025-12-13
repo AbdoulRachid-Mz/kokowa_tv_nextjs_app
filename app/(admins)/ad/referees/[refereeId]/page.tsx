@@ -21,6 +21,7 @@ import {
   Phone,
   Shield,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function RefereeDetailPage() {
   const params = useParams();
@@ -51,7 +52,7 @@ export default function RefereeDetailPage() {
   }, [refereeId]);
 
   const handleEdit = () => {
-    router.push(`/admin/referees/${refereeId}/edit`);
+    router.push(`/ad/referees/${refereeId}/edit`);
   };
 
   if (loading) {
@@ -85,14 +86,14 @@ export default function RefereeDetailPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="">
       {/* En-tête */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
             size="icon"
-            onClick={() => router.push("/admin/referees")}
+            onClick={() => router.push("/ad/referees")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -116,29 +117,30 @@ export default function RefereeDetailPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Colonne principale */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4">
           {/* Photo de profil */}
-          <Card>
+          <Card className="p-3">
             <CardHeader>
               <CardTitle>Photo de profil</CardTitle>
             </CardHeader>
             <CardContent>
-              <AdvancedUpload
-                value={referee.profile_image || ""}
-                onChange={(url) => {
-                  // Mettre à jour l'image de profil
-                  console.log("Nouvelle image:", url);
-                }}
-                isRounded={true}
-                className="max-w-xs"
-              />
+              <Avatar className="w-32 h-32 mx-auto">
+                <AvatarImage
+                  src={referee.profile_image || ""}
+                  alt={`${referee.first_name} ${referee.last_name}`}
+                />
+                <AvatarFallback>
+                  {referee.first_name?.[0]}
+                  {referee.last_name?.[0]}
+                </AvatarFallback>
+              </Avatar>
             </CardContent>
           </Card>
 
           {/* Informations personnelles */}
-          <Card>
+          <Card className="p-2">
             <CardHeader>
               <CardTitle>Informations personnelles</CardTitle>
             </CardHeader>
@@ -183,7 +185,7 @@ export default function RefereeDetailPage() {
           </Card>
 
           {/* Informations professionnelles */}
-          <Card>
+          <Card className="p-3">
             <CardHeader>
               <CardTitle>Informations professionnelles</CardTitle>
             </CardHeader>

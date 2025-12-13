@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateGroupDialog } from "@/components/phases/create-group-dialog";
 import { CardStats } from "@/components/entities/card-stats";
-import {toast} from "sonner"
+import { toast } from "sonner";
 
 export default function PhaseDetailPage() {
   const params = useParams();
@@ -97,11 +97,11 @@ export default function PhaseDetailPage() {
         description: "Groupes créés",
       },
       {
-        label: "Sous-groupes",
+        label: "Rencontres",
         value: totalSubGroups,
         icon: Layers,
         color: "text-green-600",
-        description: "Sous-groupes totaux",
+        description: "Rencontres totales",
       },
       {
         label: "Groupes Terminés",
@@ -211,9 +211,7 @@ export default function PhaseDetailPage() {
                     {group.is_completed ? "Terminé" : "En cours"}
                   </Badge>
 
-                  <Badge variant="outline">
-                    {subGroupsCount} sous-groupe(s)
-                  </Badge>
+                  <Badge variant="outline">{subGroupsCount} rencontre(s)</Badge>
                 </div>
 
                 <div className="space-y-1 text-sm">
@@ -260,11 +258,8 @@ export default function PhaseDetailPage() {
                   handleAddSubGroups(group);
                 }}
               >
-                <Typography
-                hasTooltip
-                tooltipContent="ajouter des Sous-groupes"
-                >
-                <Plus className="h-4 w-4 mr-1" />
+                <Typography hasTooltip tooltipContent="ajouter des Rencontres">
+                  <Plus className="h-4 w-4 mr-1" />
                 </Typography>
               </Button>
               <Button
@@ -343,7 +338,7 @@ export default function PhaseDetailPage() {
             <Typography variant="h5" weight="bold" animated>
               {phase.name}
             </Typography>
-            <Typography variant="lead" theme="muted">
+            <Typography variant="body-lg" theme="muted">
               {phase.phase_type} • Édition {phase.edition?.edition_number} -{" "}
               {phase.edition?.year}
             </Typography>
@@ -368,8 +363,13 @@ export default function PhaseDetailPage() {
       {/* Statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {getPhaseStats().map((stat, index) => (
-          <CardStats key={index} label={stat.label} icon={stat.icon} value={stat.value} color={stat.color} />
-
+          <CardStats
+            key={index}
+            label={stat.label}
+            icon={stat.icon}
+            value={stat.value}
+            color={stat.color}
+          />
         ))}
       </div>
 
@@ -391,7 +391,9 @@ export default function PhaseDetailPage() {
             {/* Informations principales */}
             <Card className="lg:col-span-2 p-4">
               <CardHeader>
-                <CardTitle className="text-primary text-2xl">Informations de la Phase</CardTitle>
+                <CardTitle className="text-primary text-2xl">
+                  Informations de la Phase
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -509,7 +511,7 @@ export default function PhaseDetailPage() {
                   <Plus className="h-4 w-4 mr-2" />
                   Nouveau Groupe
                 </Button>
-                <Button
+                {/* <Button
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() => router.push(`/ad/phases/${phaseId}/groups`)}
@@ -536,7 +538,7 @@ export default function PhaseDetailPage() {
                 >
                   <Calendar className="h-4 w-4 mr-2" />
                   Calendrier
-                </Button>
+                </Button> */}
               </CardContent>
             </Card>
           </div>

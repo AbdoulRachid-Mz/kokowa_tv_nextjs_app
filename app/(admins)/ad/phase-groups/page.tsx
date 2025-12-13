@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { CardStats } from "@/components/entities/card-stats";
 
 export default function PhaseGroupsPage() {
   const router = useRouter();
@@ -81,25 +82,7 @@ export default function PhaseGroupsPage() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Typography variant="body-sm" theme="muted" className="mb-1">
-                    {stat.label}
-                  </Typography>
-                  <Typography variant="h3" weight="bold">
-                    {stat.value}
-                  </Typography>
-                </div>
-                <div
-                  className={`p-3 rounded-lg bg-opacity-10 ${stat.color} bg-current`}
-                >
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <CardStats key={index} {...stat} />
         ))}
       </div>
     );
@@ -135,15 +118,15 @@ export default function PhaseGroupsPage() {
   ];
 
   const handleViewGroup = (group: PhaseGroup) => {
-    router.push(`/admin/phase-groups/${group.id}`);
+    router.push(`/ad/phase-groups/${group.id}`);
   };
 
   const handleEditGroup = (group: PhaseGroup) => {
-    router.push(`/admin/phase-groups/${group.id}/edit`);
+    router.push(`/ad/phase-groups/${group.id}/edit`);
   };
 
   const handleManageMatches = (group: PhaseGroup) => {
-    router.push(`/admin/phase-groups/${group.id}/matches`);
+    router.push(`/ad/phase-groups/${group.id}/matches`);
   };
 
   const renderGroupCard = (group: PhaseGroup, viewMode: "grid" | "list") => {
@@ -253,7 +236,7 @@ export default function PhaseGroupsPage() {
             <div
               className={cn("flex gap-2 mt-3", isListView && "mt-0 flex-col")}
             >
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={(e) => {
@@ -262,7 +245,7 @@ export default function PhaseGroupsPage() {
                 }}
               >
                 Matchs
-              </Button>
+              </Button> */}
               <Button
                 variant="outline"
                 size="sm"
@@ -306,7 +289,7 @@ export default function PhaseGroupsPage() {
       filters={filters}
       onFilterChange={setFilters}
       onAdd={onAdd}
-      onExport={onExport}
+      // onExport={onExport}
       onRefresh={onRefresh}
       viewMode={viewMode}
       onViewModeChange={setViewMode}

@@ -1,4 +1,4 @@
-// app/admin/sub-groups/[subGroupId]/organisation/fighter-drawer.tsx
+// /ad/sub-groups/[subGroupId]/organisation/fighter-drawer.tsx
 "use client";
 
 import { useState, useEffect } from "react";

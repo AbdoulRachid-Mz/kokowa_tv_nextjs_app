@@ -4,6 +4,7 @@ import { query, queryOne } from '@/lib/db/neon-client';
 import { UserDocument } from '@/types/user';
 import { User } from 'firebase/auth';
 
+
 export async function getUserByFirebaseUid(uid: string): Promise<UserDocument | null> {
   try {
     const sql = `SELECT * FROM users WHERE auth_id = $1 AND is_active = true`;
@@ -72,7 +73,14 @@ export async function updateLastLogin(uid: string): Promise<void> {
 
 export async function getCompleteUserData(uid: string): Promise<UserDocument | null> {
   try {
-    const user = await getUserByAuthId(uid, { with_relations: false, is_active: true });
+    const user = await getUserByAuthId(uid, { 
+      with_relations: true,
+      relations: {
+        with_messages: true,
+        with_interactions: true,
+        with_notifications: true // Nouveau
+      }
+    });
     return user as UserDocument | null;
   } catch (error) {
     console.error('Error getting complete user data:', error);

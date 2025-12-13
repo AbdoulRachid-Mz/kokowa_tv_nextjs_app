@@ -46,7 +46,7 @@ export default function CreateMatchInSubGroupPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <MatchForm 
+      <MatchForm
         subGroupId={parseInt(subGroupId as string)}
         subGroup={subGroup}
         onSuccess={handleSuccess}

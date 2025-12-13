@@ -21,163 +21,163 @@ import {
   Bell,
 } from "lucide-react";
 
-export const menuItems = [
-  {
-    id: "dashboard",
-    label: "Tableau de Bord",
-    path: "/admin",
-    icon: BarChart3,
-    description: "Vue d'ensemble",
-  },
-  // Utilisateurs
-  {
-    id: "users",
-    label: "Utilisateurs",
-    path: "/admin/users",
-    icon: UserCog,
-    description: "Gérer les comptes utilisateurs",
-  },
-  // Régions et Villes
-  {
-    id: "regions",
-    label: "Régions",
-    path: "/ad/regions",
-    icon: Globe,
-    description: "Gérer les régions et leurs statistiques",
-  },
-  {
-    id: "coaches",
-    label: "Coaches",
-    path: "/ad/coaches",
-    icon: MapPin,
-    description: "Gérer les coaches par région",
-  },
-  // Lutteurs
-  {
-    id: "fighters",
-    label: "Lutteurs",
-    path: "/ad/fighters",
-    icon: Users,
-    description: "Gérer les lutteurs",
-  },
-  {
-    id: "fighter-achievements",
-    label: "Palmarès",
-    path: "/ad/fighters/achievements",
-    icon: Award,
-    description: "Gérer les distinctions et titres des lutteurs",
-  },
-  {
-    id: "fighter-transfers",
-    label: "Transferts",
-    path: "/ad/fighters/transfers",
-    icon: Repeat,
-    description: "Suivre les transferts de lutteurs entre régions",
-  },
-  // Arbitres
-  {
-    id: "referees",
-    label: "Arbitres",
-    path: "/admin/referees",
-    icon: Shield,
-    description: "Gérer les arbitres et leurs certifications",
-  },
-  // Compétitions
-  {
-    id: "competitions",
-    label: "Compétitions",
-    path: "/ad/competitions",
-    icon: Trophy,
-    description: "Gérer les compétitions",
-  },
-  {
-    id: "editions",
-    label: "Éditions",
-    path: "/ad/editions",
-    icon: Calendar,
-    description: "Gérer les éditions de compétitions",
-  },
-  {
-    id: "phases",
-    label: "Phases",
-    path: "/ad/competitions/phases",
-    icon: Layers,
-    description: "Gérer les phases et groupes des éditions",
-  },
-  {
-    id: "matches",
-    label: "Matchs",
-    path: "/ad/competitions/matches",
-    icon: Swords,
-    description: "Gérer les matchs",
-  },
-  // Médias et contenus
-  {
-    id: "articles",
-    label: "Articles",
-    path: "/ad/articles",
-    icon: Newspaper,
-    description: "Gérer les articles et publications",
-  },
-  {
-    id: "media",
-    label: "Médias",
-    path: "/ad/media",
-    icon: FileImage,
-    description: "Gérer les fichiers multimédias",
-  },
-  {
-    id: "videos",
-    label: "Vidéos",
-    path: "/ad/videos",
-    icon: Video,
-    description: "Gérer les vidéos et diffusions",
-  },
-  // Messagerie & Notifications
-  {
-    id: "messages",
-    label: "Messages",
-    path: "/ad/messages",
-    icon: MessageSquare,
-    description: "Gérer les messages et commentaires",
-  },
-  {
-    id: "notifications",
-    label: "Notifications",
-    path: "/ad/notifications",
-    icon: Bell,
-    description: "Notifications et alertes système",
-  },
-  // Interactions
-  {
-    id: "interactions",
-    label: "Interactions",
-    path: "/ad/interactions",
-    icon: Activity,
-    description: "Gérer les likes, vues et partages",
-  },
-  // Système
-  {
-    id: "database",
-    label: "Base de Données",
-    path: "/ad/database",
-    icon: Database,
-    description: "Surveiller et gérer les données système",
-  },
-  {
-    id: "settings",
-    label: "Paramètres",
-    path: "/ad/settings",
-    icon: Settings,
-    description: "Configuration système",
-  },
-];
+// export const menuItems = [
+//   {
+//     id: "dashboard",
+//     label: "Tableau de Bord",
+//     path: "/admin",
+//     icon: BarChart3,
+//     description: "Vue d'ensemble",
+//   },
+//   // Utilisateurs
+//   {
+//     id: "users",
+//     label: "Utilisateurs",
+//     path: "/admin/users",
+//     icon: UserCog,
+//     description: "Gérer les comptes utilisateurs",
+//   },
+//   // Régions et Villes
+//   {
+//     id: "regions",
+//     label: "Régions",
+//     path: "/ad/regions",
+//     icon: Globe,
+//     description: "Gérer les régions et leurs statistiques",
+//   },
+//   {
+//     id: "coaches",
+//     label: "Coaches",
+//     path: "/ad/coaches",
+//     icon: MapPin,
+//     description: "Gérer les coaches par région",
+//   },
+//   // Lutteurs
+//   {
+//     id: "fighters",
+//     label: "Lutteurs",
+//     path: "/ad/fighters",
+//     icon: Users,
+//     description: "Gérer les lutteurs",
+//   },
+//   {
+//     id: "fighter-achievements",
+//     label: "Palmarès",
+//     path: "/ad/fighters/achievements",
+//     icon: Award,
+//     description: "Gérer les distinctions et titres des lutteurs",
+//   },
+//   {
+//     id: "fighter-transfers",
+//     label: "Transferts",
+//     path: "/ad/fighters/transfers",
+//     icon: Repeat,
+//     description: "Suivre les transferts de lutteurs entre régions",
+//   },
+//   // Arbitres
+//   {
+//     id: "referees",
+//     label: "Arbitres",
+//     path: "/admin/referees",
+//     icon: Shield,
+//     description: "Gérer les arbitres et leurs certifications",
+//   },
+//   // Compétitions
+//   {
+//     id: "competitions",
+//     label: "Compétitions",
+//     path: "/ad/competitions",
+//     icon: Trophy,
+//     description: "Gérer les compétitions",
+//   },
+//   {
+//     id: "editions",
+//     label: "Éditions",
+//     path: "/ad/editions",
+//     icon: Calendar,
+//     description: "Gérer les éditions de compétitions",
+//   },
+//   {
+//     id: "phases",
+//     label: "Phases",
+//     path: "/ad/competitions/phases",
+//     icon: Layers,
+//     description: "Gérer les phases et groupes des éditions",
+//   },
+//   {
+//     id: "matches",
+//     label: "Matchs",
+//     path: "/ad/competitions/matches",
+//     icon: Swords,
+//     description: "Gérer les matchs",
+//   },
+//   // Médias et contenus
+//   {
+//     id: "articles",
+//     label: "Articles",
+//     path: "/ad/articles",
+//     icon: Newspaper,
+//     description: "Gérer les articles et publications",
+//   },
+//   {
+//     id: "media",
+//     label: "Médias",
+//     path: "/ad/media",
+//     icon: FileImage,
+//     description: "Gérer les fichiers multimédias",
+//   },
+//   {
+//     id: "videos",
+//     label: "Vidéos",
+//     path: "/ad/videos",
+//     icon: Video,
+//     description: "Gérer les vidéos et diffusions",
+//   },
+//   // Messagerie & Notifications
+//   {
+//     id: "messages",
+//     label: "Messages",
+//     path: "/ad/messages",
+//     icon: MessageSquare,
+//     description: "Gérer les messages et commentaires",
+//   },
+//   {
+//     id: "notifications",
+//     label: "Notifications",
+//     path: "/ad/notifications",
+//     icon: Bell,
+//     description: "Notifications et alertes système",
+//   },
+//   // Interactions
+//   {
+//     id: "interactions",
+//     label: "Interactions",
+//     path: "/ad/interactions",
+//     icon: Activity,
+//     description: "Gérer les likes, vues et partages",
+//   },
+//   // Système
+//   {
+//     id: "database",
+//     label: "Base de Données",
+//     path: "/ad/database",
+//     icon: Database,
+//     description: "Surveiller et gérer les données système",
+//   },
+//   {
+//     id: "settings",
+//     label: "Paramètres",
+//     path: "/ad/settings",
+//     icon: Settings,
+//     description: "Configuration système",
+//   },
+// ];
 
 
 // === GROUPES DE MENU ===
 
 export const overviewItems = [
-  { title: "Tableau de bord", url: "/admin", icon: BarChart3, description: "Vue d'ensemble générale" },
+  { title: "Tableau de bord", url: "/ad", icon: BarChart3, description: "Vue d'ensemble générale" },
 ]
 
 export const regionItems = [
@@ -199,6 +199,8 @@ export const competitionItems = [
   { title: "Compétitions", url: "/ad/competitions", icon: Trophy, description: "Gérer les compétitions" },
   { title: "Éditions", url: "/ad/editions", icon: Calendar, description: "Éditions et saisons" },
   { title: "Phases", url: "/ad/phases", icon: Activity, description: "Phases et groupes" },
+  { title: "Groupes", url: "/ad/phase-groups", icon: Activity, description: "Groupes et rencontres" },
+  { title: "Rencontres", url: "/ad/sub-groups", icon: Activity, description: "Gestion des Rencontres" },
   { title: "Matchs", url: "/ad/matches", icon: Swords, description: "Matchs et résultats" },
 ]
 

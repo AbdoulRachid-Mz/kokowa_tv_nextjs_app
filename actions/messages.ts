@@ -1,4 +1,4 @@
-// lib/actions/messages.ts
+// @/actions/messages.ts
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';
@@ -255,13 +255,15 @@ export async function createMessage(formData: FormData) {
       message_type: (rawData.message_type as 'comment' | 'direct_message' | 'group_message' | 'match_commentary' | 'system_notification') || 'comment',
       entity_type: rawData.entity_type as string || undefined,
       entity_id: rawData.entity_id ? Number(rawData.entity_id) : undefined,
-      author_id: Number(rawData.author_id),
+      author_id: Number("12"),
       recipient_id: rawData.recipient_id ? Number(rawData.recipient_id) : undefined,
       parent_message_id: rawData.parent_message_id ? Number(rawData.parent_message_id) : undefined,
       images: rawData.images ? JSON.parse(rawData.images as string) : undefined,
       video_url: rawData.video_url as string || undefined,
       audio_url: rawData.audio_url as string || undefined,
     };
+        console.log(cleanedData)
+
 
     const validatedData = messageSchema.parse(cleanedData);
 

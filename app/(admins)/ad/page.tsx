@@ -25,6 +25,7 @@ import {
   PieChart,
   Activity,
   ChevronDown,
+  GalleryVerticalEnd,
 } from "lucide-react";
 import { useAuthContext } from "@/contexts/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,6 +39,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
 
 interface GlobalStats {
   total_fighters: number;
@@ -80,6 +82,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const router = useRouter();
 
   // Charger uniquement les stats globales
   useEffect(() => {
@@ -106,9 +109,8 @@ export default function AdminPage() {
 
     loadGlobalStats();
   }, []); // Pas de dépendances pour éviter les ré-rendus infinis
-
   // Vérification des permissions - CORRIGÉ
-  if (hasRole("admin") || hasRole("editor")) {
+  if (!hasRole("admin")) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] space-y-4">
         <AlertCircle className="h-16 w-16 text-destructive" />
@@ -194,14 +196,54 @@ export default function AdminPage() {
 
   // Actions rapides
   const quickActions = [
-    { label: "Nouvelle Compétition", icon: Trophy, color: "bg-blue-500" },
-    { label: "Ajouter Lutteur", icon: Swords, color: "bg-green-500" },
-    { label: "Gérer Régions", icon: MapPin, color: "bg-orange-500" },
-    { label: "Programmer Match", icon: Calendar, color: "bg-purple-500" },
-    { label: "Créer Article", icon: Newspaper, color: "bg-indigo-500" },
-    { label: "Upload Vidéo", icon: Video, color: "bg-red-500" },
-    { label: "Voir Calendrier", icon: Calendar, color: "bg-cyan-500" },
-    { label: "Rapports", icon: BarChart3, color: "bg-emerald-500" },
+    {
+      label: "Nouvelle Compétition",
+      icon: Trophy,
+      color: "bg-blue-500",
+      href: "/ad/competitions/create",
+    },
+    {
+      label: "Ajouter Lutteur",
+      icon: Swords,
+      color: "bg-green-500",
+      href: "/ad/fighters/create",
+    },
+    {
+      label: "Gérer Régions",
+      icon: MapPin,
+      color: "bg-orange-500",
+      href: "/ad/regions",
+    },
+    {
+      label: "Gérer les editions",
+      icon: GalleryVerticalEnd,
+      color: "bg-purple-500",
+      href: "/ad/editions",
+    },
+    {
+      label: "Créer Article",
+      icon: Newspaper,
+      color: "bg-indigo-500",
+      href: "/ad/articles/create",
+    },
+    {
+      label: "Upload Vidéo",
+      icon: Video,
+      color: "bg-red-500",
+      href: "/ad/media/upload",
+    },
+    {
+      label: "Voir Calendrier",
+      icon: Calendar,
+      color: "bg-cyan-500",
+      href: "/ad/calendar",
+    },
+    {
+      label: "Notifications",
+      icon: Bell,
+      color: "bg-emerald-500",
+      href: "/ad/notifications",
+    },
   ];
 
   if (loading && !globalStats) {
@@ -319,6 +361,7 @@ export default function AdminPage() {
                     <Button
                       key={index}
                       variant="outline"
+                      onClick={() => router.push(action.href)}
                       className="h-20 flex-col justify-center gap-2"
                     >
                       <div

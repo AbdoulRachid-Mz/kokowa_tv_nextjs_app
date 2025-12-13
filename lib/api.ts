@@ -1,10 +1,6 @@
-// lib/api.ts
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:3000" ||
-  "http://localhost:3001";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL!;
 
 class ApiService {
   private static instance: ApiService;
@@ -19,81 +15,70 @@ class ApiService {
     return ApiService.instance;
   }
 
-  public setToken(token: string): void {
+  public setToken(token: string) {
     this.token = token;
   }
 
-  public clearToken(): void {
+  public clearToken() {
     this.token = null;
   }
 
   private async request<T>(config: AxiosRequestConfig): Promise<T> {
     try {
-      // Déterminer le Content-Type en fonction du type de données
       const isFormData = config.data instanceof FormData;
-      
-      const headers = {
-        // Ne pas définir Content-Type pour FormData - le navigateur le fera automatiquement
-        ...(this.token && { Authorization: `Bearer ${this.token}` }),
-        ...config.headers,
+
+      const headers: Record<string, string> = {
+        ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+        ...(config.headers as any),
       };
 
-      // Si ce n'est pas FormData, utiliser application/json par défaut
-      if (!isFormData && !(headers as any)['Content-Type']) {
-        (headers as any)['Content-Type'] = 'application/json';
+      if (!isFormData && !headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json";
       }
 
       const response: AxiosResponse<T> = await axios({
-        baseURL: API_BASE_URL,
+        baseURL: config.url?.startsWith("/api")
+          ? undefined
+          : API_BASE_URL,
         ...config,
         headers,
       });
 
       return response.data;
     } catch (error: any) {
-      if (error.response) {
+      if (axios.isAxiosError(error)) {
+        if (!error.response) {
+          throw new Error("Network Error: serveur inaccessible");
+        }
+
         throw new Error(
-          error.response.data?.error || error.message || "API request failed"
+          error.response.data?.message ||
+          error.response.data?.error ||
+          "Erreur API"
         );
       }
-      throw error;
+
+      throw new Error("Erreur inconnue");
     }
   }
 
-  public async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  get<T>(url: string, config?: AxiosRequestConfig) {
     return this.request<T>({ method: "GET", url, ...config });
   }
 
-  public async post<T>(
-    path: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<T> {
-    return this.request<T>({
-      method: "POST",
-      url: path,
-      data,
-      ...config,
-    });
+  post<T>(url: string, data?: any, config?: AxiosRequestConfig) {
+    return this.request<T>({ method: "POST", url, data, ...config });
   }
 
-  public async put<T>(
-    url: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<T> {
+  put<T>(url: string, data?: any, config?: AxiosRequestConfig) {
     return this.request<T>({ method: "PUT", url, data, ...config });
   }
 
-  public async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  delete<T>(url: string, config?: AxiosRequestConfig) {
     return this.request<T>({ method: "DELETE", url, ...config });
   }
 
-  public async patch<T>(
-    url: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<T> {
+  patch<T>(url: string, data?: any, config?: AxiosRequestConfig) {
     return this.request<T>({ method: "PATCH", url, data, ...config });
   }
 }

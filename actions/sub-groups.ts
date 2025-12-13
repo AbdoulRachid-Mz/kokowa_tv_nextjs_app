@@ -1,4 +1,4 @@
-// lib/actions/sub-groups.ts - VERSION CORRIGÉE
+// @/actions/sub-groups.ts - VERSION CORRIGÉE
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';

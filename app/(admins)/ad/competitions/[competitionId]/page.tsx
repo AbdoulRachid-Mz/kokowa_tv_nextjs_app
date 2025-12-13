@@ -41,6 +41,8 @@ export default function CompetitionDetailPage() {
   
   const [competition, setCompetition] = useState<Competition | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  const [alertDrawerOpen, setAlertDrawerOpen] = useState(false);
 
   // Utiliser les éditions déjà chargées avec la compétition
   const editionsList = {

@@ -1,4 +1,4 @@
-// app/admin/sub-groups/[subGroupId]/organisation/matches-card.tsx
+// /ad/sub-groups/[subGroupId]/organisation/matches-card.tsx
 "use client";
 
 import { useState } from "react";

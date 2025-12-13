@@ -386,6 +386,7 @@ export const appSettingSchema = z.object({
   is_editable: z.boolean().default(true),
 });
 
+
 // Schema pour la mise à jour des settings
 export const appSettingUpdateSchema = z.object({
   setting_value: z.union([z.string(), z.number(), z.boolean(), z.record(z.string(), z.any())]).optional(),

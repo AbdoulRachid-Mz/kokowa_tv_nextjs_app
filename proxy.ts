@@ -1,49 +1,68 @@
-// middleware.ts (à la racine)
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { adminAuth } from './lib/firebase-admin';
+// middleware.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { verifySessionCookie } from "@/lib/session";
+
+const PUBLIC_ROUTES = [
+  "/",
+  "/about",
+  "/contact",
+  "/competitions",
+  "/fighters",
+  "/auth/forget-password",
+  "/auth/reset-password",
+];
+
+const AUTH_ROUTES = [
+  "/auth/sign-in",
+  "/auth/sign-up",
+  "profile",
+  "/profile/:path*",
+  "/ad/:path*",
+];
+
+function matches(routes: string[], path: string) {
+  return routes.some(
+    (route) => path === route || path.startsWith(`${route}/`)
+  );
+}
 
 export async function proxy(request: NextRequest) {
-  // Vérifier les routes protégées
-  if (request.nextUrl.pathname.startsWith('/api/auth')) {
-    return NextResponse.next();
-  }
-    // Vérifier si la route commence par /admin
-    if (request.nextUrl.pathname.startsWith('/ad')) {
-      // Vérifier l'authentification (à adapter avec ton système d'auth)
-      const token = request.cookies.get('auth-token')
-      
-      if (!token) {
-        return NextResponse.redirect(new URL('/signin', request.url))
-      }
-  
-      // Vérifier les rôles (exemple basique)
-      const userRole = request.cookies.get('user-role')
-      const allowedRoles = ['admin', 'editor', 'moderator']
-      
-      if (!userRole || !allowedRoles.includes(userRole.value)) {
-        return NextResponse.redirect(new URL('/unauthorized', request.url))
-      }
-    }
+  const { pathname } = request.nextUrl;
 
-  // Pour les autres routes API, vous pouvez ajouter une vérification d'authentification
-  if (request.nextUrl.pathname.startsWith('/api/')) {
-    const authHeader = request.headers.get('Authorization');
-    
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.split('Bearer ')[1];
-      try {
-        await adminAuth.verifyIdToken(token);
-        return NextResponse.next();
-      } catch (error) {
-        return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
-      }
-    }
+  const isPublic = matches(PUBLIC_ROUTES, pathname);
+  const isAuthRoute = matches(AUTH_ROUTES, pathname);
+
+  const session = await verifySessionCookie(request);
+  const isAuthenticated = !!session?.uid;
+
+  /**
+   * 🔐 Pas connecté → routes protégées interdites
+   */
+  if (!isAuthenticated && !isPublic && !isAuthRoute) {
+    const login = new URL("/auth/sign-in", request.url);
+    login.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(login);
   }
 
-  return NextResponse.next();
+  /**
+   * 🔁 Déjà connecté → pages auth interdites
+   */
+  if (isAuthenticated && isAuthRoute) {
+    return NextResponse.redirect(new URL("/profile", request.url));
+  }
+
+  /**
+   * 🎫 Injecter UID (optionnel)
+   */
+  const res = NextResponse.next();
+  if (isAuthenticated) {
+    res.headers.set("x-user-uid", session.uid);
+  }
+
+  return res;
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

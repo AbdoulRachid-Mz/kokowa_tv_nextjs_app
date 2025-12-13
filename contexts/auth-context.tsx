@@ -7,11 +7,7 @@ interface AuthContextType {
   user: UserInterface | null;
   userDocument: UserDocument | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, userData?: any) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
   reloadUser: () => Promise<void>;
   hasRole: (role: string) => boolean;
   hasPermission: (permission: string) => boolean;

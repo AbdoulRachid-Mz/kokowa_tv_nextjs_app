@@ -1,9 +1,15 @@
 // contexts/app-settings-context.tsx
-'use client';
+"use client";
 
-import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import { getAllAppSettings } from '@/lib/actions/app-settings';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  createContext,
+  useContext,
+  ReactNode,
+  useState,
+  useEffect,
+} from "react";
+import { getAllAppSettings } from "@/actions/app-settings";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface AppSettings {
   app_name?: string;
@@ -34,30 +40,32 @@ interface AppSettingsContextType {
   getSetting: <T = any>(key: string, defaultValue?: T) => T;
 }
 
-const AppSettingsContext = createContext<AppSettingsContextType | undefined>(undefined);
+const AppSettingsContext = createContext<AppSettingsContextType | undefined>(
+  undefined
+);
 
 export function AppSettingsProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
-  const { 
-    data: settings, 
-    isLoading, 
+  const {
+    data: settings,
+    isLoading,
     error,
-    refetch 
+    refetch,
   } = useQuery({
-    queryKey: ['app-settings'],
+    queryKey: ["app-settings"],
     queryFn: getAllAppSettings,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   const refreshSettings = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['app-settings'] });
+    await queryClient.invalidateQueries({ queryKey: ["app-settings"] });
   };
 
-  const getSetting = <T = any>(key: string, defaultValue?: T): T => {
+  const getSetting = <T = any,>(key: string, defaultValue?: T): T => {
     if (!settings) return defaultValue as T;
-    return (settings[key] ?? defaultValue) as T;
+    return (settings as Record<string, any>)[key] ?? defaultValue;
   };
 
   const value: AppSettingsContextType = {
@@ -65,8 +73,8 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     loading: isLoading,
     error: error as Error | null,
     refreshSettings,
-    isMaintenanceMode: getSetting('maintenance_mode', false),
-    isRegistrationEnabled: getSetting('registration_enabled', true),
+    isMaintenanceMode: getSetting("maintenance_mode", false),
+    isRegistrationEnabled: getSetting("registration_enabled", true),
     getSetting,
   };
 
@@ -80,7 +88,9 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
 export const useAppSettings = () => {
   const context = useContext(AppSettingsContext);
   if (context === undefined) {
-    throw new Error('useAppSettings must be used within an AppSettingsProvider');
+    throw new Error(
+      "useAppSettings must be used within an AppSettingsProvider"
+    );
   }
   return context;
 };

@@ -1,6 +1,7 @@
 // lib/server/auth-middleware
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth } from '../firebase-admin';
+import { cookies } from 'next/headers';
 
 export interface AuthUser {
   uid: string;
@@ -10,49 +11,27 @@ export interface AuthUser {
   picture?: string;
 }
 
-export async function verifyFirebaseToken(request: NextRequest): Promise<{
-  user: AuthUser | null;
-  error?: string;
-}> {
+export async function verifyFirebaseToken(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return { user: null, error: 'Token manquant' };
-    }
+    const cookieStore = await cookies();
+    const token = cookieStore.get("firebase_token")?.value;
 
-    const token = authHeader.split('Bearer ')[1];
-    
     if (!token) {
-      return { user: null, error: 'Token invalide' };
+      return { user: null, error: "Token manquant" };
     }
 
     const decodedToken = await adminAuth.verifyIdToken(token);
-    
-    const user: AuthUser = {
-      uid: decodedToken.uid,
-      email: decodedToken.email,
-      email_verified: decodedToken.email_verified,
-      name: decodedToken.name,
-      picture: decodedToken.picture,
+
+    return {
+      user: {
+        uid: decodedToken.uid,
+        email: decodedToken.email,
+        name: decodedToken.name,
+        picture: decodedToken.picture,
+      },
     };
-
-    return { user };
-
-  } catch (error: any) {
-    console.error('Error verifying Firebase token:', error);
-    
-    if (error.code === 'auth/id-token-expired') {
-      return { user: null, error: 'Token expiré' };
-    }
-    if (error.code === 'auth/id-token-revoked') {
-      return { user: null, error: 'Token révoqué' };
-    }
-    if (error.code === 'auth/invalid-id-token') {
-      return { user: null, error: 'Token invalide' };
-    }
-    
-    return { user: null, error: 'Erreur de vérification du token' };
+  } catch (error) {
+    return { user: null, error: "Token invalide" };
   }
 }
 

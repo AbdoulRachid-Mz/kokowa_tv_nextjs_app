@@ -1,81 +1,78 @@
-// /api/auth/session/route.ts
+// api/auth/session/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { adminAuth } from '@/lib/firebase-admin';
-import { getCompleteUserData, createUserInDatabase } from '@/lib/server/auth-utils';
+import { getCompleteUserData } from '@/lib/server/auth-utils';
+
+const COOKIE_NAME = "firebase_session";
 
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('session');
+    const session = cookieStore.get(COOKIE_NAME);
 
-    if (!sessionCookie) {
-      return NextResponse.json({ user: null }, { status: 200 });
+    if (!session) {
+      return NextResponse.json({ user: null });
     }
 
-    // Vérifier le cookie de session Firebase
-    const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie.value, true);
+    const decoded = await adminAuth.verifySessionCookie(session.value, true);
+    const userDocument = await getCompleteUserData(decoded.uid);
     
-    if (!decodedClaims) {
-      return NextResponse.json({ user: null }, { status: 200 });
-    }
-
-    // Récupérer l'utilisateur depuis PostgreSQL
-    let userDocument = await getCompleteUserData(decodedClaims.uid);
-
-    // Si l'utilisateur n'existe pas en base, le créer
-    if (!userDocument) {
-      console.log('User not found in database, creating...');
-      
-      // Récupérer les infos Firebase
-      const firebaseUser = await adminAuth.getUser(decodedClaims.uid);
-      
-      // Créer l'utilisateur en base
-      const dbResult = await createUserInDatabase(
-        {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-          phoneNumber: firebaseUser.phoneNumber,
-          photoURL: firebaseUser.photoURL,
-          emailVerified: firebaseUser.emailVerified,
-        } as any,
-        {
-          username: firebaseUser.email?.split('@')[0] || `user_${firebaseUser.uid.slice(0, 8)}`,
-          first_name: firebaseUser.displayName?.split(' ')[0] || '',
-          last_name: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
-          phone_number: firebaseUser.phoneNumber || '',
-        }
-      );
-
-      if (dbResult.success) {
-        userDocument = dbResult.user!;
-      }
-    }
-
-    // Mettre à jour la dernière connexion
-    if (userDocument) {
-      await fetch(`${request.nextUrl.origin}/api/auth/update-last-login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: decodedClaims.uid }),
-      });
-    }
-
     return NextResponse.json({
-      user: userDocument
+      user: userDocument,
+      firebaseUser: { uid: decoded.uid, email: decoded.email },
+      success: true
+    });
+    
+  } catch (error) {
+    console.error('Error in session API:', error);
+    return NextResponse.json({ user: null });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { token } = await request.json();
+
+    if (!token) {
+      return NextResponse.json({ error: "Token manquant" }, { status: 400 });
+    }
+
+    // Vérifier le token
+    const decoded = await adminAuth.verifyIdToken(token);
+
+    // Créer le cookie de session
+    const sessionCookie = await adminAuth.createSessionCookie(token, {
+      expiresIn: 5 * 24 * 60 * 60 * 1000, // 5 jours
     });
 
-  } catch (error) {
-    console.error('Error getting session:', error);
-    return NextResponse.json({ user: null }, { status: 200 });
+    const cookieStore = await cookies();
+    cookieStore.set(COOKIE_NAME, sessionCookie, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 5 * 24 * 60 * 60, // 5 jours en secondes
+    });
+
+    return NextResponse.json({ 
+      success: true,
+      uid: decoded.uid 
+    });
+    
+  } catch (error: any) {
+    console.error('Error creating session:', error);
+    return NextResponse.json(
+      { error: "Token invalide ou expiré" },
+      { status: 401 }
+    );
   }
 }
 
 export async function DELETE() {
   try {
     const cookieStore = await cookies();
-    cookieStore.delete('session');
+    cookieStore.delete(COOKIE_NAME);
     
     return NextResponse.json({ success: true });
   } catch (error) {

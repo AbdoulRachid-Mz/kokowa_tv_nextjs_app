@@ -1,36 +1,27 @@
 // components/layout/main-layout.tsx
 "use client";
 
-import { usePathname, useRouter } from 'next/navigation';
-import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { ReactNode, useEffect, useState } from "react";
 import { useAuthContext } from "@/contexts/auth-context";
-// import { useAppSettings } from "@/contexts/app-settings-context";
+import { useAppSettings } from "@/contexts/app-settings-context";
 import { Header } from "./header";
-// import { Footer } from "./footer";
-// import { MaintenanceMode } from "./maintenance-mode";
+import { Footer } from "./footer";
+import { MaintenanceMode } from "./maintenance-mode";
 import { LoadingScreen } from "./loading-screen";
 import {
   findRouteConfig,
   canAccessRoute,
   shouldExcludeLayout,
   getLayoutOptions,
-  getRouteMetadata,
+  getRouteStyleGroup,
+  routeContainsTerm,
+  UserRoles,
 } from "@/lib/routes/config";
-// import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
-import { useAppSettings } from "@/contexts/app-settings-context";
-import MaintenanceMode from "./maintenance-mode";
-import { Footer } from "./footer";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -39,21 +30,84 @@ interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading: authLoading } = useAuthContext();
+  const { user, loading: authLoading, userDocument } = useAuthContext();
   const {
     settings,
     loading: settingsLoading,
     isMaintenanceMode,
   } = useAppSettings();
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
+  const [redirectPath, setRedirectPath] = useState<string | null>(null);
 
-  // Configuration actuelle de la route
-  const currentRoute = findRouteConfig(pathname);
+  // Préparer l'objet user pour les vérifications de permission
+  const userRoles: UserRoles | null = user
+    ? {
+        isAuthenticated: true,
+        role: userDocument?.role,
+        isAdmin: userDocument?.role === "admin",
+        isEditor: userDocument?.role === "editor",
+        isFighterManager: userDocument?.role === "fighter_manager",
+        displayName: user.displayName ?? undefined,
+        email: user.email ?? undefined,
+      }
+    : {
+        isAuthenticated: false,
+        role: undefined,
+        isAdmin: false,
+        isEditor: false,
+        isFighterManager: false,
+      };
+
+  // Obtenir le groupe de style de la route
+  const styleGroup = getRouteStyleGroup(pathname);
+
+  // Vérifier si c'est une route de création/modification
+  const isCrudRoute = routeContainsTerm(pathname, [
+    "create",
+    "new",
+    "edit",
+    "update",
+    "add",
+  ]);
 
   // Vérifier si le layout doit être exclu
-  const excludeLayout = shouldExcludeLayout(pathname);
+  const excludeLayout = shouldExcludeLayout(pathname) || isCrudRoute;
 
   // Obtenir les options de layout
   const layoutOptions = getLayoutOptions(pathname);
+
+  // Vérifier l'accès à la route
+  useEffect(() => {
+    if (!authLoading && !settingsLoading && pathname) {
+      setIsCheckingAccess(true);
+
+      // Ne pas vérifier l'accès pour les routes d'authentification
+      if (pathname.startsWith("/auth/")) {
+        setIsCheckingAccess(false);
+        return;
+      }
+
+      const accessCheck = canAccessRoute(pathname, userRoles);
+
+      if (!accessCheck.hasAccess && accessCheck.redirectTo) {
+        setShouldRedirect(true);
+        setRedirectPath(accessCheck.redirectTo);
+      } else {
+        setShouldRedirect(false);
+        setRedirectPath(null);
+      }
+
+      setIsCheckingAccess(false);
+    }
+  }, [authLoading, settingsLoading, pathname, userRoles]);
+
+  // Effectuer la redirection si nécessaire
+  useEffect(() => {
+    if (shouldRedirect && redirectPath && !authLoading) {
+      router.push(redirectPath);
+    }
+  }, [shouldRedirect, redirectPath, authLoading, router]);
 
   // Mode maintenance
   if (isMaintenanceMode && pathname !== "/maintenance") {
@@ -61,37 +115,24 @@ export function MainLayout({ children }: MainLayoutProps) {
   }
 
   // Loading state
-  if (authLoading || settingsLoading) {
+  if (authLoading || settingsLoading || isCheckingAccess) {
     return <LoadingScreen />;
   }
 
-  // Vérifier l'accès à la route
-  if (pathname) {
-    const accessCheck = canAccessRoute(
-      pathname,
-      user
-        ? {
-            isAuthenticated: !!user,
-            role: user.userDocument?.role,
-            isAdmin: user.userDocument?.role === "admin",
-            isEditor: user.userDocument?.role === "editor",
-            isFighterManager: user.userDocument?.role === "fighter_manager",
-          }
-        : null
-    );
-
-    if (!accessCheck.hasAccess && accessCheck.redirectTo) {
-      router.push(accessCheck.redirectTo);
-      return <LoadingScreen />;
-    }
+  // Si on doit rediriger
+  if (shouldRedirect) {
+    return <LoadingScreen />;
   }
 
   // Si le layout doit être exclu
   if (excludeLayout) {
     return (
       <TooltipProvider>
-        {children}
-        <Toaster />
+        {/* Appliquer un style spécifique au groupe si nécessaire */}
+        <div className={styleGroup ? `${styleGroup}-layout` : ""}>
+          {children}
+          <Toaster />
+        </div>
       </TooltipProvider>
     );
   }
@@ -102,43 +143,10 @@ export function MainLayout({ children }: MainLayoutProps) {
         {/* En-tête */}
         <Header
           showNavigation={layoutOptions.navigation || false}
-          currentRoute={currentRoute}
-          user={
-            user
-              ? {
-                  isAuthenticated: true,
-                  role: user.userDocument?.role,
-                  displayName:
-                    user.userDocument?.first_name ||
-                    user.displayName ||
-                    user.email ||
-                    undefined,
-                  email: user.email,
-                }
-              : null
-          }
+          user={userRoles}
         />
 
-        {/* Breadcrumbs avec shadcn */}
-        {layoutOptions.breadcrumbs && currentRoute && (
-          <div className="border-b bg-muted/40">
-            <div className="container mx-auto px-4 py-3">
-              <Breadcrumb>
-                <BreadcrumbList>
-                  <BreadcrumbItem>
-                    <BreadcrumbLink href="/">Accueil</BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>{currentRoute.name}</BreadcrumbPage>
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumb>
-            </div>
-          </div>
-        )}
-
-        {/* Contenu principal avec animation Framer Motion */}
+        {/* Contenu principal */}
         <AnimatePresence mode="wait">
           <motion.main
             key={pathname}
@@ -149,7 +157,9 @@ export function MainLayout({ children }: MainLayoutProps) {
               duration: 0.3,
               ease: "easeInOut",
             }}
-            className="flex-1 container mx-auto px-4 py-6"
+            className={`flex-1 container mx-auto px-4 py-6 ${
+              styleGroup ? `${styleGroup}-content` : ""
+            }`}
           >
             {children}
           </motion.main>

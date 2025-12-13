@@ -98,11 +98,11 @@ export default function PhaseGroupDetailPage() {
 
     return [
       {
-        label: "Sous-groupes",
+        label: "Rencontres",
         value: totalSubGroups,
         icon: Layers,
         color: "text-blue-600",
-        description: "Sous-groupes créés",
+        description: "Rencontres créées",
       },
       {
         label: "Matchs Programmes",
@@ -112,18 +112,18 @@ export default function PhaseGroupDetailPage() {
         description: "Matchs totaux",
       },
       {
-        label: "Sous-groupes Terminés",
+        label: "Rencontres Terminées",
         value: completedSubGroups,
         icon: Trophy,
         color: "text-purple-600",
-        description: "Sous-groupes complétés",
+        description: "Rencontres complétées",
       },
       {
         label: "Avec Ceintures",
         value: groupsWithBelts,
         icon: Shield,
         color: "text-orange-600",
-        description: "Sous-groupes avec ceintures",
+        description: "Rencontres avec ceintures",
       },
     ];
   };
@@ -395,7 +395,7 @@ export default function PhaseGroupDetailPage() {
             }
           >
             <Plus className="h-4 w-4 mr-2" />
-            Nouveau Sous-groupe
+            Nouvelle Rencontre
           </Button>
           <Button onClick={handleManageGroupMatches}>
             <Swords className="h-4 w-4 mr-2" />
@@ -425,7 +425,7 @@ export default function PhaseGroupDetailPage() {
       >
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-          <TabsTrigger value="sub-groups">Sous-groupes</TabsTrigger>
+          <TabsTrigger value="sub-groups">Rencontres</TabsTrigger>
           <TabsTrigger value="matches">Matchs du Groupe</TabsTrigger>
         </TabsList>
 
@@ -520,20 +520,22 @@ export default function PhaseGroupDetailPage() {
               <CardContent className="space-y-3">
                 <Button
                   className="w-full justify-start"
-                  onClick={() => setCreateSubGroupOpen(true)}
+                  onClick={() =>
+                    router.push(`/ad/phase-groups/${group.id}/sub-groups/new`)
+                  }
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Nouveau Sous-groupe
+                  Nouvelle Rencontre
                 </Button>
-                <Button
+                {/* <Button
                   variant="outline"
                   className="w-full justify-start"
                   onClick={handleManageGroupMatches}
                 >
                   <Swords className="h-4 w-4 mr-2" />
                   Gérer les Matchs
-                </Button>
-                <Button
+                </Button> */}
+                {/* <Button
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() =>
@@ -542,8 +544,8 @@ export default function PhaseGroupDetailPage() {
                 >
                   <Users className="h-4 w-4 mr-2" />
                   Gérer Participants
-                </Button>
-                <Button
+                </Button> */}
+                {/* <Button
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() =>
@@ -552,7 +554,7 @@ export default function PhaseGroupDetailPage() {
                 >
                   <Calendar className="h-4 w-4 mr-2" />
                   Calendrier
-                </Button>
+                </Button> */}
               </CardContent>
             </Card>
           </div>
@@ -561,7 +563,7 @@ export default function PhaseGroupDetailPage() {
           {group.sub_groups && group.sub_groups.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Sous-groupes Récents</CardTitle>
+                <CardTitle>Rencontres Récentes</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -605,7 +607,7 @@ export default function PhaseGroupDetailPage() {
                       variant="outline"
                       onClick={() => setActiveTab("sub-groups")}
                     >
-                      Voir tous les sous-groupes ({group.sub_groups.length})
+                      Voir toutes les rencontres ({group.sub_groups.length})
                     </Button>
                   </div>
                 )}
@@ -617,8 +619,8 @@ export default function PhaseGroupDetailPage() {
         {/* Sous-groupes */}
         <TabsContent value="sub-groups">
           <EntityList
-            title="Sous-groupes du Groupe"
-            description={`Gérez les sous-groupes de ${group.name}`}
+            title="Rencontres du Groupe"
+            description={`Gérez les rencontres de ${group.name}`}
             entityType="sub-group"
             data={subGroupsList.data}
             total={subGroupsList.total}

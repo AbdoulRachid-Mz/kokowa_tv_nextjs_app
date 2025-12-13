@@ -43,12 +43,12 @@ export function Footer() {
     { label: "Conditions", href: "/terms" },
   ];
 
-  const socialLinks = [
-    { icon: Facebook, href: "#", label: "Facebook" },
-    { icon: Twitter, href: "#", label: "Twitter" },
-    { icon: Instagram, href: "#", label: "Instagram" },
-    { icon: Youtube, href: "#", label: "YouTube" },
-  ];
+  // const socialLinks = [
+  //   { icon: Facebook, href: "#", label: "Facebook" },
+  //   { icon: Twitter, href: "#", label: "Twitter" },
+  //   { icon: Instagram, href: "#", label: "Instagram" },
+  //   { icon: Youtube, href: "#", label: "YouTube" },
+  // ];
 
   const contactInfo = [
     { icon: Mail, text: "contact@lutte-traditionnelle.com" },
@@ -60,8 +60,6 @@ export function Footer() {
     <footer className="bg-muted/50 border-t">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Logo et description */}
-<div className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center">
                 <Typography variant="h4" weight="bold" className="text-primary-foreground">

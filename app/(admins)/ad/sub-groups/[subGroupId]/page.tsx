@@ -104,13 +104,27 @@ export default function SubGroupDetailPage() {
               <div className="flex items-center justify-center lg:justify-start space-x-6">
                 {subGroup.region1 && (
                   <div className="text-center">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <Typography variant="body-sm" weight="medium">
+                    <div className="flex items-center space-x-2 mb-1 relative group">
+                      <MapPin className="h-4 w-4"
+                      style={{
+                        color: subGroup.belt1?.color || "red"
+                      }}
+                      />
+                      {subGroup.belt1 && (
+                        <span 
+                        className="w-3 h-3 block absolute -top-1 -right-1  bg-muted-foreground rounded-full"
+                        style={{
+                          backgroundColor: subGroup.belt1.color || "red"
+                        }}
+                        ></span>
+                      )
+
+                      }
+                      <Typography variant="body-lg" weight="medium">
                         {subGroup.region1.name}
                       </Typography>
                     </div>
-                    {subGroup.belt1 && (
+                    {/* {subGroup.belt1 && (
                       <Badge variant="outline" className={`text-xs text-white`}
                       style={{
                         backgroundColor: subGroup.belt1.color || "red"
@@ -118,21 +132,35 @@ export default function SubGroupDetailPage() {
                       >
                         Ceinture {subGroup.belt1.color}
                       </Badge>
-                    )}
+                    )} */}
                   </div>
                 )}
 
-                <div className="text-muted-foreground">VS</div>
+                {/* <div className="text-muted-foreground">VS</div> */}
 
                 {subGroup.region2 && (
                   <div className="text-center">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <Typography variant="body-sm" weight="medium">
+                    <div className="flex items-center space-x-2 mb-1 relative group">
+                      <MapPin className="h-4 w-4 text-muted-foreground"
+                      style={{
+                        color: subGroup.belt2?.color || "blue"
+                      }}
+                      />
+                      {subGroup.belt2 && (
+                        <span 
+                        className="w-3 h-3 block absolute -top-1 -right-1  bg-muted-foreground rounded-full"
+                        style={{
+                          backgroundColor: subGroup.belt2.color || "blue"
+                        }}
+                        ></span>
+                      )
+
+                      }
+                      <Typography variant="body-lg" weight="medium">
                         {subGroup.region2.name}
                       </Typography>
                     </div>
-                    {subGroup.belt2 && (
+                    {/* {subGroup.belt2 && (
                       <Badge variant="outline" className={`text-xs text-white`}
                       style={{
                         backgroundColor: subGroup.belt2.color || "blue"
@@ -140,7 +168,7 @@ export default function SubGroupDetailPage() {
                       >
                         Ceinture {subGroup.belt2.color}
                       </Badge>
-                    )}
+                    )} */}
                   </div>
                 )}
               </div>

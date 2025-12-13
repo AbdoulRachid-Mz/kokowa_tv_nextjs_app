@@ -1,4 +1,4 @@
-// lib/actions/fighter-transfers.ts
+// @/actions/fighter-transfers.ts
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';

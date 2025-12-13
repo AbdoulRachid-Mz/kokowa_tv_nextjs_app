@@ -1,7 +1,7 @@
-// app/admin/sub-groups/[subGroupId]/organisation/page.tsx
+// app/ad/sub-groups/[subGroupId]/organisation/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { SubGroup, Match, Fighter, Region } from "@/types";
-import { Plus, Users, MapPin, Trophy, Swords } from "lucide-react";
+import {
+  Plus,
+  Users,
+  MapPin,
+  Trophy,
+  Swords,
+  SaveAll,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 import { MatchCard } from "./matches-card";
-import { EmptyMatchCard } from "./empty-match-card";
+import { BulkMatchCreator } from "./bulk-match-creator";
 import { Spinner } from "@/components/ui/spinner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useRealtime } from "@/hooks/use-realtime"; // IMPORT AJOUTÉ
+import { useRealtime } from "@/hooks/use-realtime";
+import { toast } from "sonner";
 
 export default function SubGroupOrganizationPage() {
   const { subGroupId } = useParams();
@@ -26,9 +36,10 @@ export default function SubGroupOrganizationPage() {
   const [region1Fighters, setRegion1Fighters] = useState<Fighter[]>([]);
   const [region2Fighters, setRegion2Fighters] = useState<Fighter[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isBulkCreating, setIsBulkCreating] = useState(false);
+  const [showBulkCreator, setShowBulkCreator] = useState(false);
 
-  // UTILISATION DU TEMPS RÉEL
-  const { isConnected, events, subscribeToMatch, subscribeToEdition } = useRealtime();
+  const { isConnected } = useRealtime();
 
   useEffect(() => {
     if (!isNaN(id)) {
@@ -36,151 +47,202 @@ export default function SubGroupOrganizationPage() {
     }
   }, [id]);
 
-  // ÉCOUTER LES ÉVÉNEMENTS TEMPS RÉEL
-  useEffect(() => {
-    if (!isConnected || !subGroup) return;
-
-    // S'abonner aux matches de ce sous-groupe
-    matches.forEach(match => {
-      subscribeToMatch(match.id);
-    });
-
-    // S'abonner à l'édition
-    const editionId = subGroup.group?.phase?.edition?.id;
-    if (editionId) {
-      subscribeToEdition(editionId);
-    }
-  }, [isConnected, subGroup, matches, subscribeToMatch, subscribeToEdition]);
-
-  // TRAITER LES ÉVÉNEMENTS TEMPS RÉEL
-  useEffect(() => {
-    const lastEvent = events[events.length - 1];
-    if (!lastEvent) return;
-
-    console.log('Événement temps réel reçu:', lastEvent);
-
-    switch (lastEvent.type) {
-      case 'match_updated':
-      case 'match_status_changed':
-      case 'match_live_update':
-        // Mettre à jour le match spécifique
-        setMatches(prev => prev.map(match => 
-          match.id === lastEvent.data.matchId 
-            ? { ...match, ...lastEvent.data.match }
-            : match
-        ));
-        break;
-
-      case 'new_message':
-        // Gérer les nouveaux messages/commentaires
-        console.log('Nouveau message:', lastEvent.data.message);
-        break;
-    }
-  }, [events]);
-
   const loadSubGroup = async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/sub-groups/${id}`);
-      if (!response.ok) throw new Error('Failed to fetch sub-group');
+      if (!response.ok) throw new Error("Failed to fetch sub-group");
       const subGroupData = await response.json();
       setSubGroup(subGroupData);
       setMatches(subGroupData.matches || []);
 
-      // Les lutteurs sont déjà inclus dans la réponse, pas besoin de recharger
       const editionId = subGroupData.group?.phase?.edition?.id;
       if (editionId) {
         const region1Id = subGroupData.region1?.id;
         const region2Id = subGroupData.region2?.id;
 
-        if (region1Id) {
-          const responseRegion1 = await fetch(`/api/editions/${editionId}/fighters?region_id=${region1Id}`);
-          if (!responseRegion1.ok) throw new Error('Failed to fetch region1 fighters');
-          const fightersRegion1 = await responseRegion1.json();
-          setRegion1Fighters(fightersRegion1.data?.map((e: any) => e.fighter) || []);
-        } else {
-          setRegion1Fighters([]);
-        }
+        const [fighters1, fighters2] = await Promise.all([
+          region1Id
+            ? loadRegionFighters(editionId, region1Id)
+            : Promise.resolve([]),
+          region2Id
+            ? loadRegionFighters(editionId, region2Id)
+            : Promise.resolve([]),
+        ]);
 
-        if (region2Id) {
-          const responseRegion2 = await fetch(`/api/editions/${editionId}/fighters?region_id=${region2Id}`);
-          if (!responseRegion2.ok) throw new Error('Failed to fetch region2 fighters');
-          const fightersRegion2 = await responseRegion2.json();
-          setRegion2Fighters(fightersRegion2.data?.map((e: any) => e.fighter) || []);
-        } else {
-          setRegion2Fighters([]);
-        }
-      } else {
-        setRegion1Fighters([]);
-        setRegion2Fighters([]);
+        setRegion1Fighters(fighters1);
+        setRegion2Fighters(fighters2);
       }
     } catch (error) {
       console.error("Erreur chargement sous-groupe:", error);
       setSubGroup(null);
+      toast.error("Erreur lors du chargement des données");
     } finally {
       setLoading(false);
     }
   };
 
-  // Fonction pour obtenir les lutteurs disponibles (sans match)
-  const getAvailableFighters = (
-    regionFighters: Fighter[],
-    regionId?: number
-  ) => {
-    if (!regionId) return [];
-
-    const fightersInMatches = new Set<number>();
-    matches.forEach((match) => {
-      if (match.fighter1_id) fightersInMatches.add(match.fighter1_id);
-      if (match.fighter2_id) fightersInMatches.add(match.fighter2_id);
-    });
-
-    return regionFighters.filter(
-      (fighter) => !fightersInMatches.has(fighter.id)
-    );
+  const loadRegionFighters = async (
+    editionId: number,
+    regionId: number
+  ): Promise<Fighter[]> => {
+    try {
+      const response = await fetch(
+        `/api/editions/${editionId}/fighters?region_id=${regionId}&limit=100`
+      );
+      if (!response.ok) return [];
+      const data = await response.json();
+      return data.data?.map((e: any) => e.fighter) || [];
+    } catch (error) {
+      console.error(`Erreur chargement lutteurs région ${regionId}:`, error);
+      return [];
+    }
   };
 
-  const handleCreateMatch = async (fighter1Id: number, fighter2Id: number) => {
+  // Calculer les lutteurs utilisés dans les matchs existants
+  const usedFighterIds = useMemo(() => {
+    const ids = new Set<number>();
+    matches.forEach((match) => {
+      if (match.fighter1_id) ids.add(match.fighter1_id);
+      if (match.fighter2_id) ids.add(match.fighter2_id);
+    });
+    return ids;
+  }, [matches]);
+
+  // Filtrer les lutteurs disponibles
+  const availableRegion1Fighters = useMemo(
+    () => region1Fighters.filter((f) => !usedFighterIds.has(f.id)),
+    [region1Fighters, usedFighterIds]
+  );
+
+  const availableRegion2Fighters = useMemo(
+    () => region2Fighters.filter((f) => !usedFighterIds.has(f.id)),
+    [region2Fighters, usedFighterIds]
+  );
+
+  // Compter le nombre de fois qu'un lutteur est sélectionné dans les matchs existants
+  const fighterSelectionCounts = useMemo(() => {
+    const counts: Record<number, number> = {};
+
+    matches.forEach((match) => {
+      if (match.fighter1_id) {
+        counts[match.fighter1_id] = (counts[match.fighter1_id] || 0) + 1;
+      }
+      if (match.fighter2_id) {
+        counts[match.fighter2_id] = (counts[match.fighter2_id] || 0) + 1;
+      }
+    });
+
+    return counts;
+  }, [matches]);
+
+  // Dans la page principale, modifier handleCreateMatch :
+  const handleCreateMatch = async (fighter1Id: number, fighter2Id?: number) => {
     try {
       const formData = new FormData();
       formData.append("sub_group_id", id.toString());
       formData.append("fighter1_id", fighter1Id.toString());
-      formData.append("fighter2_id", fighter2Id.toString());
+      if (fighter2Id) {
+        formData.append("fighter2_id", fighter2Id.toString());
+      }
       formData.append("status", "scheduled");
+
+      // Ajouter un numéro de match auto-généré
+      const nextMatchNumber = (matches.length || 0) + 1;
+      formData.append("match_number", nextMatchNumber.toString());
 
       const response = await api.post("/api/matches", formData);
 
-      if (response && typeof response === 'object' && 'success' in response && response.success) {
-        loadSubGroup(); // Recharger les données
+      if (
+        response &&
+        typeof response === "object" &&
+        "success" in response &&
+        response.success
+      ) {
+        // Mettre à jour les compteurs localement
+        setMatches((prev) => [
+          ...prev,
+          {
+            // id: response.id,
+            sub_group_id: id,
+            fighter1_id: fighter1Id,
+            fighter2_id: fighter2Id,
+            status: "scheduled",
+            match_number: nextMatchNumber,
+            fighter1: region1Fighters.find((f) => f.id === fighter1Id),
+            fighter2: fighter2Id
+              ? region2Fighters.find((f) => f.id === fighter2Id)
+              : undefined,
+          } as any,
+        ]);
+
+        return response;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erreur création match:", error);
-      alert("Erreur lors de la création du match");
+      const errorMessage =
+        error?.message || "Erreur lors de la création du match";
+      toast.error(errorMessage);
+      throw error;
+    }
+  };
+
+  // Fonction pour créer plusieurs matchs en une fois
+  const handleBulkCreateMatches = async (
+    matchesToCreate: { fighter1Id: number; fighter2Id: number }[]
+  ) => {
+    if (matchesToCreate.length === 0) return;
+
+    try {
+      setIsBulkCreating(true);
+
+      const promises = matchesToCreate.map((match) =>
+        handleCreateMatch(match.fighter1Id, match.fighter2Id)
+      );
+
+      await Promise.all(promises);
+
+      toast.success(`${promises.length} match(s) créé(s) avec succès`);
+      setShowBulkCreator(false); // Masquer le créateur en masse
+    } catch (error) {
+      console.error("Erreur création en masse:", error);
+      toast.error("Erreur lors de la création des matchs");
+    } finally {
+      setIsBulkCreating(false);
     }
   };
 
   const handleEditMatch = async (match: Match) => {
     try {
       const formData = new FormData();
-      
-      // Ne pas envoyer de champs vides
+
       if (match.status) formData.append("status", match.status);
-      if (match.winner_fighter_id) formData.append("winner_fighter_id", match.winner_fighter_id.toString());
-      if (match.match_result) formData.append("match_result", match.match_result);
-      if (match.total_duration) formData.append("total_duration", match.total_duration);
+      if (match.winner_fighter_id)
+        formData.append(
+          "winner_fighter_id",
+          match.winner_fighter_id.toString()
+        );
+      if (match.match_result)
+        formData.append("match_result", match.match_result);
+      if (match.total_duration)
+        formData.append("total_duration", match.total_duration);
       if (match.notes) formData.append("notes", match.notes);
 
       const response = await api.put(`/api/matches/${match.id}`, formData);
 
-      if (response && typeof response === 'object' && 'success' in response && response.success) {
-        // Pas besoin de recharger - le temps réel va mettre à jour
-        console.log('Match mis à jour avec succès');
+      if (
+        response &&
+        typeof response === "object" &&
+        "success" in response &&
+        response.success
+      ) {
+        toast.success("Match mis à jour");
       } else {
-        alert("Erreur lors de la mise à jour du match");
+        toast.error("Erreur lors de la mise à jour du match");
       }
     } catch (error) {
       console.error("Erreur édition match:", error);
-      alert("Erreur lors de l'édition du match");
+      toast.error("Erreur lors de l'édition du match");
     }
   };
 
@@ -189,14 +251,14 @@ export default function SubGroupOrganizationPage() {
 
     try {
       await api.delete(`/api/matches/${matchId}`);
+      toast.success("Match supprimé");
       loadSubGroup(); // Recharger les données
     } catch (error) {
       console.error("Erreur suppression match:", error);
-      alert("Erreur lors de la suppression du match");
+      toast.error("Erreur lors de la suppression du match");
     }
   };
 
-  // Afficher l'état de connexion temps réel
   if (loading) {
     return (
       <div className="text-center mx-auto flex justify-center flex-col items-center py-20">
@@ -219,35 +281,29 @@ export default function SubGroupOrganizationPage() {
     );
   }
 
-  const availableRegion1Fighters = getAvailableFighters(
-    region1Fighters,
-    subGroup.region1?.id
-  );
-  const availableRegion2Fighters = getAvailableFighters(
-    region2Fighters,
-    subGroup.region2?.id
-  );
-
   return (
-    <div className="mx-auto space-y-1">
-      {/* En-tête avec indicateur temps réel */}
-      <Card className="p-2">
-        <CardContent className="p-1">
-          <div className="flex flex-col lg:flex-row items-center justify-between space-y-2 lg:space-y-0">
+    <div className="mx-auto space-y-4">
+      {/* En-tête */}
+      <Card className="p-4">
+        <CardContent className="p-0">
+          <div className="flex flex-col lg:flex-row items-center justify-between space-y-4 lg:space-y-0">
             <div className="text-center lg:text-left">
               <div className="flex items-center gap-2 mb-2">
-                <Typography variant="h5" weight="bold">
+                <Typography variant="h4" weight="bold">
                   {subGroup.name}
                 </Typography>
                 <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <div
+                    className={`w-3 h-3 rounded-full ${
+                      isConnected ? "bg-green-500" : "bg-red-500"
+                    }`}
+                  />
                   <Badge variant={isConnected ? "default" : "outline"}>
-                    {isConnected ? 'Temps réel actif' : 'Hors ligne'}
+                    {isConnected ? "Temps réel actif" : "Hors ligne"}
                   </Badge>
                 </div>
               </div>
 
-              {/* Informations de la rencontre */}
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
                 <div className="flex items-center space-x-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -275,34 +331,190 @@ export default function SubGroupOrganizationPage() {
               </div>
             </div>
 
-            <Button
-              onClick={() => router.push(`/ad/sub-groups/${id}`)}
-              variant="outline"
-            >
-              ← Retour
-            </Button>
+            <div className="flex gap-2">
+              {!showBulkCreator &&
+                availableRegion1Fighters.length > 0 &&
+                availableRegion2Fighters.length > 0 && (
+                  <Button
+                    onClick={() => setShowBulkCreator(true)}
+                    className="gap-2"
+                    variant="default"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Création multiple
+                  </Button>
+                )}
+              <Button
+                onClick={loadSubGroup}
+                variant="outline"
+                className="gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Actualiser
+              </Button>
+              <Button
+                onClick={() => router.push(`/ad/sub-groups/${id}`)}
+                variant="outline"
+              >
+                ← Retour
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
+      {/* Créateur en masse */}
+      {showBulkCreator && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <Typography variant="h5" weight="bold" className="mb-1">
+                Création multiple de matchs
+              </Typography>
+              <Typography variant="body-sm" theme="muted">
+                Créez plusieurs matchs en une seule fois
+              </Typography>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">
+                {availableRegion1Fighters.length} lutteurs région 1 disponibles
+              </Badge>
+              <Button
+                onClick={() => setShowBulkCreator(false)}
+                variant="ghost"
+                size="sm"
+                className="gap-1"
+              >
+                Fermer
+              </Button>
+            </div>
+          </div>
 
+          <BulkMatchCreator
+            region1Fighters={availableRegion1Fighters}
+            region2Fighters={availableRegion2Fighters}
+            fighterSelectionCounts={fighterSelectionCounts}
+            onCreateMatches={async (matches) => {
+              try {
+                setIsBulkCreating(true);
+                for (const match of matches) {
+                  await handleCreateMatch(match.fighter1Id, match.fighter2Id);
+                }
+                toast.success(`${matches.length} match(s) créé(s) avec succès`);
+                setShowBulkCreator(false);
+              } catch (error) {
+                toast.error("Erreur lors de la création des matchs");
+              } finally {
+                setIsBulkCreating(false);
+              }
+            }}
+            onCancel={() => setShowBulkCreator(false)}
+          />
+
+          {/* Aperçu des matchs existants */}
+          {matches.length > 0 && (
+            <Card className="mt-4">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <Typography variant="body-lg" weight="medium">
+                    Matchs existants ({matches.length})
+                  </Typography>
+                  <Badge variant="secondary">
+                    {usedFighterIds.size} lutteurs déjà utilisés
+                  </Badge>
+                </div>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {matches.slice(0, 5).map((match, index) => (
+                    <div
+                      key={match.id}
+                      className="flex items-center justify-between p-2 border rounded"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage
+                            src={match.fighter1?.profile_image}
+                            alt={match.fighter1?.first_name}
+                          />
+                          <AvatarFallback>
+                            {match.fighter1?.first_name?.[0]}
+                            {match.fighter1?.last_name?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Swords className="h-3 w-3 text-muted-foreground" />
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage
+                            src={match.fighter2?.profile_image}
+                            alt={match.fighter2?.first_name}
+                          />
+                          <AvatarFallback>
+                            {match.fighter2?.first_name?.[0]}
+                            {match.fighter2?.last_name?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Typography variant="body-sm">
+                          {match.fighter1?.first_name || "?"} vs{" "}
+                          {match.fighter2?.first_name || "?"}
+                        </Typography>
+                      </div>
+                      <Badge
+                        variant={
+                          match.status === "scheduled" ? "outline" : "default"
+                        }
+                      >
+                        {match.status === "scheduled"
+                          ? "Programmé"
+                          : match.status === "live"
+                          ? "En direct"
+                          : match.status === "completed"
+                          ? "Terminé"
+                          : match.status}
+                      </Badge>
+                    </div>
+                  ))}
+                  {matches.length > 5 && (
+                    <Typography
+                      variant="body-sm"
+                      theme="muted"
+                      className="text-center"
+                    >
+                      ... et {matches.length - 5} autres matchs
+                    </Typography>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
       {/* Grille d'organisation */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Colonne Région 1 */}
-        <div className="space-y-2 col-span-3">
+        <div className="space-y-4 col-span-3">
           <RegionColumn
             region={subGroup.region1}
             fighters={availableRegion1Fighters}
             belt={subGroup.belt1}
             side="left"
+            fighterSelectionCounts={fighterSelectionCounts}
           />
         </div>
 
         {/* Colonne centrale - Matches */}
-        <div className="space-y-2 col-span-6">
+        <div className="space-y-4 col-span-6">
+          <div className="flex justify-between items-center">
+            <Typography variant="h5" weight="bold">
+              Matchs Programmes ({matches.length})
+            </Typography>
+            {!showBulkCreator && matches.length > 0 && (
+              <Badge variant="outline">
+                {availableRegion1Fighters.length +
+                  availableRegion2Fighters.length}{" "}
+                lutteurs disponibles
+              </Badge>
+            )}
+          </div>
+
           <MatchesColumn
             matches={matches}
-            availableRegion1Fighters={availableRegion1Fighters}
-            availableRegion2Fighters={availableRegion2Fighters}
             onCreateMatch={handleCreateMatch}
             onDeleteMatch={handleDeleteMatch}
             onEditMatch={handleEditMatch}
@@ -316,6 +528,7 @@ export default function SubGroupOrganizationPage() {
             fighters={availableRegion2Fighters}
             belt={subGroup.belt2}
             side="right"
+            fighterSelectionCounts={fighterSelectionCounts}
           />
         </div>
       </div>
@@ -323,22 +536,23 @@ export default function SubGroupOrganizationPage() {
   );
 }
 
-
-// Composant pour une colonne de région
+// Composant pour une colonne de région amélioré
 function RegionColumn({
   region,
   fighters,
   belt,
   side,
+  fighterSelectionCounts,
 }: {
   region?: Region;
   fighters: Fighter[];
   belt?: any;
   side: "left" | "right";
+  fighterSelectionCounts: Record<number, number>;
 }) {
   if (!region) {
     return (
-      <Card className="p-2">
+      <Card className="p-4">
         <CardHeader>
           <CardTitle className="text-lg text-center">
             Région {side === "left" ? "1" : "2"}
@@ -356,25 +570,41 @@ function RegionColumn({
   }
 
   return (
-    <Card className="h-fit p-2">
-      <CardHeader className="pb-2">
+    <Card className="h-fit p-4">
+      <CardHeader className="pb-3">
         <div className="text-center">
-          <div className="flex items-center justify-center space-x-2 mb-2">
-            <MapPin className="h-5 w-5 text-muted-foreground" />
+          <div className="flex items-center justify-center group relative space-x-2 mb-2">
+            {belt && (
+              <span
+                className={`block w-3 h-3 absolute rounded-full -top-1 ${
+                  side === "left" ? "-right-1" : "-left-1"
+                }`}
+                style={{
+                  backgroundColor:
+                    side === "left" ? "red" : "blue",
+                }}
+              ></span>
+            )}
+            <MapPin
+              className="h-5 w-5 text-muted-foreground"
+              style={{
+                color: side === "left" ? "red" : "blue",
+              }}
+            />
             <CardTitle className="text-xl">{region.name}</CardTitle>
           </div>
-          {belt && (
+          {/* {belt && (
             <Badge variant="outline" className="text-sm">
               Ceinture {belt.color}
             </Badge>
-          )}
+          )} */}
           <Typography variant="body-sm" theme="muted" className="mt-1">
             {region.code} • {fighters.length} lutteur(s) disponible(s)
           </Typography>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="space-y-3 max-h-96 overflow-y-auto">
+        <div className="space-y-3 max-h-[500px] overflow-y-auto">
           {fighters.length === 0 ? (
             <div className="text-center py-4">
               <Typography variant="body-sm" theme="muted">
@@ -383,7 +613,12 @@ function RegionColumn({
             </div>
           ) : (
             fighters.map((fighter) => (
-              <FighterCard key={fighter.id}  position={side} fighter={fighter} />
+              <FighterCard
+                key={fighter.id}
+                fighter={fighter}
+                position={side}
+                selectionCount={fighterSelectionCounts[fighter.id] || 0}
+              />
             ))
           )}
         </div>
@@ -392,114 +627,97 @@ function RegionColumn({
   );
 }
 
-// Composant pour un lutteur
-function FighterCard({ fighter, position="left" }: { fighter: Fighter, position?: "right" | "left" }) {
+// Composant pour un lutteur amélioré
+function FighterCard({
+  fighter,
+  position = "left",
+  selectionCount,
+}: {
+  fighter: Fighter;
+  position?: "right" | "left";
+  selectionCount: number;
+}) {
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer p-1">
+    <Card className="hover:shadow-md transition-shadow p-3 cursor-pointer">
       <CardContent className="p-2">
-        {/* <div className="flex items-center space-x-3"> */}
-          <div className={`flex ${position === "right" && "flex-row-reverse"} items-center space-x-3`}>
-            <Avatar className="h-10 w-10">
-              <AvatarImage
-                src={fighter.profile_image || undefined}
-                alt={`${fighter.first_name} ${fighter.last_name}`}
-              />
-              <AvatarFallback>
-                {fighter.first_name?.[0]?.toUpperCase()}
-                {fighter.last_name?.[0]?.toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <Typography variant="body-sm" 
-              weight="medium"
-              hasTooltip={!!fighter.nickname}
-              tooltipSide={position === "left" ? "right" : "left"}
-              tooltipContent={fighter.nickname && fighter.nickname}
-              className="truncate">
+        <div
+          className={`flex ${
+            position === "right" && "flex-row-reverse"
+          } items-center space-x-3`}
+        >
+          <Avatar className="h-12 w-12">
+            <AvatarImage
+              src={fighter.profile_image || undefined}
+              alt={`${fighter.first_name} ${fighter.last_name}`}
+            />
+            <AvatarFallback>
+              {fighter.first_name?.[0]?.toUpperCase()}
+              {fighter.last_name?.[0]?.toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <Typography
+                variant="body-base"
+                weight="medium"
+                hasTooltip={!!fighter.nickname}
+                tooltipSide={position === "left" ? "right" : "left"}
+                tooltipContent={fighter.nickname && fighter.nickname}
+                className="truncate"
+              >
                 {fighter.first_name} {fighter.last_name}
               </Typography>
-              <div className="flex items-center space-x-2 mt-1">
-                {fighter.is_champion && (
-                  <Badge variant="default" className="text-xs px-1 py-0">
-                    🏆
-                  </Badge>
-                )}
-                <Typography variant="body-base" theme="muted">
-                  Classement: {fighter.ranking || "N/A"}
-                </Typography>
-              </div>
+              {selectionCount > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {selectionCount}x
+                </Badge>
+              )}
             </div>
-          </div>
-
-          {/* <div className="flex-1 min-w-0">
-            <Typography variant="body-sm" 
-            weight="medium"
-            hasTooltip={!!fighter.nickname}
-            tooltipSide={position}
-            tooltipContent={fighter.nickname && fighter.nickname}
-            className="truncate">
-              {fighter.first_name} {fighter.last_name}
-            </Typography>
             <div className="flex items-center space-x-2 mt-1">
               {fighter.is_champion && (
                 <Badge variant="default" className="text-xs px-1 py-0">
                   🏆
                 </Badge>
               )}
-              <Typography variant="body-base" theme="muted">
+              <Typography variant="body-sm" theme="muted">
                 Classement: {fighter.ranking || "N/A"}
               </Typography>
             </div>
-          </div> */}
-        {/* </div> */}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-// Composant pour la colonne des matches
+// Composant pour la colonne des matches simplifié
 function MatchesColumn({
   matches,
-  availableRegion1Fighters,
-  availableRegion2Fighters,
   onCreateMatch,
   onDeleteMatch,
   onEditMatch,
 }: {
   matches: Match[];
-  availableRegion1Fighters: Fighter[];
-  availableRegion2Fighters: Fighter[];
-  onCreateMatch: (fighter1Id: number, fighter2Id: number) => void;
+  onCreateMatch: (fighter1Id: number, fighter2Id?: number) => void;
   onDeleteMatch: (matchId: number) => void;
   onEditMatch: (match: Match) => void;
 }) {
   return (
-    <Card className="p-2">
-      <CardHeader>
-        <CardTitle className="text-center flex items-center justify-center space-x-2">
-          <Swords className="h-5 w-5" />
-          <span>Matchs Programmes</span>
-          <Badge variant="outline" className="ml-2">
-            {matches.length}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2 max-h-[600px] overflow-y-auto">
-          {matches.length === 0 &&
-          availableRegion1Fighters.length === 0 &&
-          availableRegion2Fighters.length === 0 ? (
+    <Card>
+      <CardContent className="p-4">
+        <div className="space-y-4 max-h-[600px] overflow-y-auto">
+          {matches.length === 0 ? (
             <div className="text-center py-8">
               <Typography variant="h4" theme="muted" className="mb-2">
-                Aucun match
+                Aucun match programmé
               </Typography>
               <Typography variant="body-sm" theme="muted">
-                Ajoutez des lutteurs aux régions pour créer des matchs
+                Utilisez le bouton "Création multiple" pour créer plusieurs
+                matchs en une fois
               </Typography>
             </div>
           ) : (
             <>
-              {/* Matchs existants */}
               {matches.map((match) => (
                 <MatchCard
                   key={match.id}
@@ -508,16 +726,6 @@ function MatchesColumn({
                   onEdit={onEditMatch}
                 />
               ))}
-
-              {/* Card vide pour nouveau match */}
-              {availableRegion1Fighters.length > 0 &&
-                availableRegion2Fighters.length > 0 && (
-                  <EmptyMatchCard
-                    region1Fighters={availableRegion1Fighters}
-                    region2Fighters={availableRegion2Fighters}
-                    onCreateMatch={onCreateMatch}
-                  />
-                )}
             </>
           )}
         </div>

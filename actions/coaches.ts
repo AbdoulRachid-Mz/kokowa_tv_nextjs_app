@@ -1,4 +1,4 @@
-// lib/actions/coaches.ts
+// @/actions/coaches.ts
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';

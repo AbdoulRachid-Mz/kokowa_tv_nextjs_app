@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
       certification_level: searchParams.get('certification_level') || undefined,
       experience_min: searchParams.get('experience_min') ? parseInt(searchParams.get('experience_min')!) : undefined,
       with_region: searchParams.get('with_region') !== 'false',
+      with_sub_groups: searchParams.get('with_sub_groups') !== 'false',
     };
 
     const result = await getReferees(filters);

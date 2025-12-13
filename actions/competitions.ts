@@ -1,3 +1,4 @@
+// @/actions/competitions.ts
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';

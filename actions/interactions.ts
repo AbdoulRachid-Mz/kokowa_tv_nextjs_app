@@ -1,4 +1,4 @@
-// lib/actions/interactions.ts
+// @/actions/interactions.ts
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';
@@ -157,11 +157,12 @@ export async function createInteraction(formData: FormData) {
     };
 
     const cleanedData = {
-      user_id: Number(rawData.user_id),
+      user_id: Number("user_id"),
       entity_type: rawData.entity_type as string,
       entity_id: Number(rawData.entity_id),
       interaction_type: rawData.interaction_type as 'like' | 'view' | 'share' | 'bookmark' | 'follow',
     };
+    // console.log(cleanedData)
 
     const validatedData = interactionSchema.parse(cleanedData);
 

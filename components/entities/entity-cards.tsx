@@ -441,7 +441,7 @@ export function RefereeCard({
   return (
     <Card
       className={cn(
-        "hover:shadow-lg transition-all duration-300 cursor-pointer group",
+        "hover:shadow-lg transition-all duration-300 p-2 cursor-pointer group",
         isListView && "flex"
       )}
     >
@@ -477,8 +477,8 @@ export function RefereeCard({
                   {referee.is_active ? "Actif" : "Inactif"}
                 </Badge>
 
-                <Badge variant="outline" className={certificationConfig.color}>
-                  {certificationConfig.label}
+                <Badge variant="outline" className={certificationConfig?.color}>
+                  {certificationConfig?.label}
                 </Badge>
 
                 {referee.experience_years && (
@@ -1117,25 +1117,37 @@ export const SubGroupCard = ({
           {subGroup.region1 && subGroup.region2 && (
             <div className="text-center py-2">
               <div className="flex items-center justify-center space-x-3">
-                <div className="text-center">
-                  <Typography variant="body-sm" weight="medium">
-                    {subGroup.region1.name}
+                <div className="text-center relative group">
+                  <Typography variant="body-sm" className="flex gap-2 items-center" weight="medium">
+                    <MapPin className="h-3 w-3 text-muted-foreground" />
+                    {subGroup.region1.name || "region 1"}
+                    {subGroup.belt1 && (
+                      <span
+                        className="block w-3 h-3 -top-2 absolute animate-pulse -left-2 rounded-full"
+                        style={{
+                          backgroundColor: subGroup.belt1.color || "red",
+                        }}
+                      >
+                        {/* Ceinture {subGroup.belt1.color} */}
+                      </span>
+                    )}
                   </Typography>
-                  {subGroup.belt1 && (
-                    <Typography variant="body-base" theme="muted">
-                      Ceinture {subGroup.belt1.color}
-                    </Typography>
-                  )}
                 </div>
                 <div className="text-muted-foreground">VS</div>
-                <div className="text-center">
-                  <Typography variant="body-sm" weight="medium">
-                    {subGroup.region2.name}
+                <div className="text-center relative group">
+                  <Typography variant="body-sm" className="flex gap-2" weight="medium">
+                    <MapPin className="h-3 w-3 text-muted-foreground" />
+                    {subGroup.region2.name || "region 2"}
                   </Typography>
                   {subGroup.belt2 && (
-                    <Typography variant="body-base" theme="muted">
-                      Ceinture {subGroup.belt2.color}
-                    </Typography>
+                    <span
+                      className="block w-3 h-3 -top-2 absolute -right-2 animate-pulse rounded-full"
+                      style={{
+                        backgroundColor: subGroup.belt2.color || "blue",
+                      }}
+                    >
+                      {/* Ceinture {subGroup.belt2.color} */}
+                    </span>
                   )}
                 </div>
               </div>

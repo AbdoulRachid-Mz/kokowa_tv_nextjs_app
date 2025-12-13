@@ -1,4 +1,4 @@
-// lib/actions/users.ts
+// @/actions/users.ts
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';
@@ -313,108 +313,161 @@ export async function getUserByAuthId(
     relations?: {
       with_messages?: boolean;
       with_interactions?: boolean;
+      with_notifications?: boolean;
     };
     is_active?: boolean;
   } = {}
 ) {
   try {
     const {
-      with_relations = true,
-      relations = {
-        with_messages: true,
-        with_interactions: true
-      },
+      with_relations = false, // Désactivé par défaut pour debug
       is_active
     } = options;
 
-    const { with_messages = true, with_interactions = true } = relations;
-
     const params: any[] = [auth_id];
-    let whereClause = 'WHERE u.auth_id = $1';
+    let whereClause = 'WHERE auth_id = $1';
 
     if (typeof is_active === 'boolean') {
       params.push(is_active);
-      whereClause += ` AND u.is_active = $${params.length}`;
+      whereClause += ` AND is_active = $${params.length}`;
     }
 
-    let sql = `SELECT * FROM users u ${whereClause}`;
+    // 1. Récupérer d'abord l'utilisateur de base
+    let sql = `SELECT * FROM users ${whereClause}`;
 
-    if (with_relations) {
-      const selectFields = ['u.*'];
-      const joinClauses: string[] = [];
+    const userResult = await queryOne<User>(sql, params);
 
-      if (with_messages) {
-        joinClauses.push(`
-          LEFT JOIN (
-            SELECT 
-              author_id,
-              JSONB_AGG(
-                JSONB_BUILD_OBJECT(
-                  'id', id,
-                  'content', content,
-                  'message_type', message_type,
-                  'entity_type', entity_type,
-                  'entity_id', entity_id,
-                  'created_at', created_at,
-                  'like_count', like_count,
-                  'is_read', is_read
-                )
-              ) as messages
-            FROM messages
-            WHERE author_id = u.id AND is_deleted = false
-            GROUP BY author_id
-          ) m ON m.author_id = u.id
-        `);
-        selectFields.push(`COALESCE(m.messages, '[]'::jsonb) as messages`);
-      }
-
-      if (with_interactions) {
-        joinClauses.push(`
-          LEFT JOIN (
-            SELECT 
-              user_id,
-              JSONB_OBJECT_AGG(
-                entity_type,
-                JSONB_BUILD_OBJECT(
-                  'entity_type', entity_type,
-                  'interactions', JSONB_AGG(
-                    JSONB_BUILD_OBJECT(
-                      'entity_id', entity_id,
-                      'interaction_type', interaction_type,
-                      'created_at', created_at
-                    )
-                  )
-                )
-              ) as interactions
-            FROM interactions
-            WHERE user_id = u.id
-            GROUP BY user_id
-          ) i ON i.user_id = u.id
-        `);
-        selectFields.push(`COALESCE(i.interactions, '{}'::jsonb) as interactions`);
-      }
-
-      sql = `
-        SELECT ${selectFields.join(', ')}
-        FROM users u
-        ${joinClauses.join(' ')}
-        ${whereClause}
-      `;
-    }
-
-    const result = await queryOne<User & { messages?: any; interactions?: any }>(sql, params);
-
-    if (!result) {
+    if (!userResult) {
       throw new Error('Utilisateur non trouvé');
     }
 
-    return result;
+    // 2. Si on demande les relations, faire des requêtes séparées
+    if (with_relations) {
+      const userId = userResult.id;
+      const relationsData: any = {};
+
+      // Messages
+      if (options.relations?.with_messages) {
+        const messagesSql = `
+          SELECT 
+            id, content, message_type, entity_type, entity_id,
+            author_id, recipient_id, is_read, is_deleted, like_count,
+            images, video_url, audio_url, created_at, updated_at
+          FROM messages 
+          WHERE author_id = $1 AND is_deleted = false
+          ORDER BY created_at DESC
+        `;
+        const messages = await query(messagesSql, [userId]);
+        relationsData.messages = messages;
+      }
+
+      // Interactions par type
+      if (options.relations?.with_interactions) {
+        const interactionsSql = `
+          SELECT 
+            interaction_type,
+            JSONB_AGG(
+              JSONB_BUILD_OBJECT(
+                'id', id,
+                'entity_type', entity_type,
+                'entity_id', entity_id,
+                'created_at', created_at
+              )
+            ) as data
+          FROM interactions 
+          WHERE user_id = $1
+          GROUP BY interaction_type
+        `;
+        const interactions = await query<{ interaction_type: string; data: any[] }>(interactionsSql, [userId]);
+        
+        const interactionsObj: any = {
+          likes: [],
+          views: [],
+          shares: [],
+          bookmarks: [],
+          follows: []
+        };
+        
+        interactions.forEach(row => {
+          const type = row.interaction_type;
+          if (interactionsObj.hasOwnProperty(type + 's')) {
+            interactionsObj[type + 's'] = row.data;
+          }
+        });
+        
+        relationsData.interactions = interactionsObj;
+      }
+
+      // Notifications
+      if (options.relations?.with_notifications) {
+        // Toutes les notifications
+        const allNotificationsSql = `
+          SELECT 
+            id, title, message, notification_type, entity_type, entity_id,
+            is_read, action_url, priority, expires_at, created_at, updated_at
+          FROM notifications 
+          WHERE user_id = $1
+          ORDER BY created_at DESC
+        `;
+        const allNotifications = await query(allNotificationsSql, [userId]);
+        
+        // Notifications non lues
+        const unreadNotificationsSql = `
+          SELECT 
+            id, title, message, notification_type, entity_type, entity_id,
+            is_read, action_url, priority, expires_at, created_at, updated_at
+          FROM notifications 
+          WHERE user_id = $1 AND is_read = false
+          ORDER BY created_at DESC
+        `;
+        const unreadNotifications = await query(unreadNotificationsSql, [userId]);
+        
+        // Notifications lues
+        const readNotificationsSql = `
+          SELECT 
+            id, title, message, notification_type, entity_type, entity_id,
+            is_read, action_url, priority, expires_at, created_at, updated_at
+          FROM notifications 
+          WHERE user_id = $1 AND is_read = true
+          ORDER BY created_at DESC
+        `;
+        const readNotifications = await query(readNotificationsSql, [userId]);
+        
+        // Compteurs
+        const countsSql = `
+          SELECT 
+            COUNT(*) as total,
+            COUNT(*) FILTER (WHERE is_read = false) as unread,
+            COUNT(*) FILTER (WHERE is_read = true) as read
+          FROM notifications 
+          WHERE user_id = $1
+        `;
+        const countsResult = await queryOne<{ total: string; unread: string; read: string }>(countsSql, [userId]);
+        
+        relationsData.notifications = {
+          all: allNotifications,
+          unread: unreadNotifications,
+          read: readNotifications,
+          counts: {
+            total: parseInt(countsResult?.total || '0'),
+            unread: parseInt(countsResult?.unread || '0'),
+            read: parseInt(countsResult?.read || '0')
+          }
+        };
+      }
+
+      return {
+        ...userResult,
+        ...relationsData
+      };
+    }
+
+    return userResult;
   } catch (error) {
     console.error('Error in getUserByAuthId:', error);
     throw error;
   }
 }
-
 
 export async function createUser(userData: CreateUserData) {
   try {

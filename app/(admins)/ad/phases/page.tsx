@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Trophy, Users, Clock } from "lucide-react";
 import { Phase } from "@/types";
 import { Badge } from "@/components/ui/badge";
+import { CardStats } from "@/components/entities/card-stats";
+import { Button } from "@/components/ui/button";
 
 export default function PhasesPage() {
   const {
@@ -77,25 +79,7 @@ export default function PhasesPage() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
         {stats.map((stat, index) => (
-          <Card key={index} className="p-2">
-            <CardContent className="p-1">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Typography variant="body-sm" theme="muted" className="mb-1">
-                    {stat.label}
-                  </Typography>
-                  <Typography variant="h4" weight="bold">
-                    {stat.value}
-                  </Typography>
-                </div>
-                <div
-                  className={`p-2 rounded-lg bg-opacity-10 ${stat.color} bg-current`}
-                >
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <CardStats key={index} {...stat} />
         ))}
       </div>
     );
@@ -182,6 +166,7 @@ export default function PhasesPage() {
               </Typography>
             </div>
           )}
+          <Button onClick={() => onView(phase)}>Voir détails</Button>
         </Card>
       )}
     />

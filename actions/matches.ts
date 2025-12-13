@@ -1,4 +1,4 @@
-// lib/actions/matches.ts - VERSION FINALE CORRIGÉE
+// @/actions/matches.ts - VERSION FINALE CORRIGÉE
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';
@@ -546,6 +546,7 @@ async function emitMatchEvent(matchId: number, eventType: string, data: any) {
 }
 
 
+// @/actions/matches.ts (extrait modifié)
 export async function createMatch(formData: FormData) {
   try {
     const rawData = {
@@ -554,7 +555,7 @@ export async function createMatch(formData: FormData) {
       match_date: formData.get('match_date'),
       start_time: formData.get('start_time'),
       fighter1_id: formData.get('fighter1_id'),
-      fighter2_id: formData.get('fighter2_id'),
+      fighter2_id: formData.get('fighter2_id'), // Peut être vide
       notes: formData.get('notes'),
     };
 
@@ -573,7 +574,8 @@ export async function createMatch(formData: FormData) {
 
     console.log('🧹 Données nettoyées (create):', cleanedData);
 
-    const validatedData = matchSchema.parse(cleanedData);
+    // Valider avec le schéma (permet fighter2_id undefined)
+    const validatedData = matchSchema.partial().parse(cleanedData);
 
     const sql = `
       INSERT INTO matches (
@@ -584,14 +586,20 @@ export async function createMatch(formData: FormData) {
     `;
     
     const result = await query<{ id: number }>(sql, [
-      validatedData.sub_group_id,
+      validatedData.sub_group_id ?? null,
       validatedData.match_number || null,
-      validatedData.match_date,
+      validatedData.match_date ?? null,
       validatedData.start_time || null,
       validatedData.fighter1_id || null,
-      validatedData.fighter2_id || null,
+      validatedData.fighter2_id || null, // Peut être null
       validatedData.notes || null,
     ]);
+
+    // Émettre l'événement temps réel
+    await emitMatchEvent(result[0].id, 'match_created', {
+      matchId: result[0].id,
+      subGroupId: validatedData.sub_group_id
+    });
 
     // Récupérer l'édition pour revalidation
     const editionInfo = await query(`
@@ -606,9 +614,6 @@ export async function createMatch(formData: FormData) {
 
     const editionId = editionInfo[0]?.edition_id;
 
-    revalidatePath('/matches');
-    revalidatePath(`/editions/${editionId}`);
-    revalidatePath(`/ad/sub-groups/${validatedData.sub_group_id}`);
     revalidatePath(`/ad/sub-groups/${validatedData.sub_group_id}/organisation`);
     
     return { 
@@ -693,7 +698,6 @@ export async function updateMatch(id: number, formData: FormData) {
     // Utiliser partial() pour permettre les mises à jour partielles
     const validatedData = matchSchema.partial().parse(cleanedData);
 
-    console.log('✅ Données validées:', validatedData);
 
     // Construire la requête SQL dynamiquement
     const updates: string[] = [];
@@ -853,7 +857,6 @@ export async function updateMatch(id: number, formData: FormData) {
     });
 
     revalidatePath('/matches');
-    revalidatePath(`/editions/${editionId}`);
     revalidatePath(`/matches/${id}`);
     revalidatePath(`/ad/sub-groups/${validatedData.sub_group_id || existing.sub_group_id}`);
     revalidatePath(`/ad/sub-groups/${validatedData.sub_group_id || existing.sub_group_id}/organisation`);

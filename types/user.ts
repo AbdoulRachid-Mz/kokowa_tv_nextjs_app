@@ -29,6 +29,26 @@ export interface UserDocument {
   updated_at: string;
   bio?: string;
   permissions?: string[];
+  
+  // Nouvelles relations
+  messages?: any[];
+  interactions?: {
+    likes?: any[];
+    views?: any[];
+    shares?: any[];
+    bookmarks?: any[];
+    follows?: any[];
+  };
+  notifications?: {
+    all?: any[];
+    unread?: any[];
+    read?: any[];
+    counts?: {
+      total: number;
+      unread: number;
+      read: number;
+    };
+  };
 }
 
 export interface AuthResponse {

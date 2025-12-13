@@ -47,6 +47,7 @@ export interface Fighter extends BaseEntity {
   // Relations
   region?: Region;
   achievements?: FighterAchievement[];
+  matches?: Match;
   total_matches?: number;
   total_wins?: number;
   total_losses?: number;
@@ -67,6 +68,19 @@ export interface FighterAchievement extends BaseEntity {
   edition?: CompetitionEdition;
 }
 
+export interface RefereeFilters {
+  search?: string;
+  page?: number;
+  limit?: number;
+  region_id?: number;
+  is_active?: boolean;
+  certification_level?: string;
+  experience_min?: number;
+  
+  with_region?: boolean;
+  with_sub_groups?: boolean;
+}
+
 // Arbitre
 export interface Referee extends BaseEntity {
   first_name: string;
@@ -83,6 +97,7 @@ export interface Referee extends BaseEntity {
   
   // Relations
   region?: Region;
+  sub_groups?: SubGroup[];
 }
 
 // Ceinture
@@ -123,6 +138,7 @@ export interface CompetitionEdition extends BaseEntity {
   // Relations
   competition?: Competition;
   winner_fighter?: Fighter;
+  winner_region?: Region;
   region?: Region;
   fighters?: EditionFighter[];
   regions?: EditionRegion[];

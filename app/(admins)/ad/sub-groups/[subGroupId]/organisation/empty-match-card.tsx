@@ -13,92 +13,99 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Fighter } from "@/types";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface EmptyMatchCardProps {
-  region1Fighters: Fighter[];
+  fighter1?: Fighter;
+  fighter2?: Fighter;
   region2Fighters: Fighter[];
-  onCreateMatch: (fighter1Id: number, fighter2Id: number) => void;
+  onSelectFighter2: (fighter2Id?: number) => void;
+  onCreate: () => void;
+  onCancel: () => void;
 }
 
 export function EmptyMatchCard({
-  region1Fighters,
+  fighter1,
+  fighter2,
   region2Fighters,
-  onCreateMatch,
+  onSelectFighter2,
+  onCreate,
+  onCancel,
 }: EmptyMatchCardProps) {
-  const [selectedFighter1, setSelectedFighter1] = useState<string>("");
-  const [selectedFighter2, setSelectedFighter2] = useState<string>("");
+  const [selectedFighter2, setSelectedFighter2] = useState<string>(
+    fighter2?.id.toString() || ""
+  );
 
-  const canCreateMatch = selectedFighter1 && selectedFighter2;
+  const canCreateMatch = fighter1 && selectedFighter2;
 
   const handleCreate = () => {
     if (canCreateMatch) {
-      onCreateMatch(parseInt(selectedFighter1), parseInt(selectedFighter2));
-      setSelectedFighter1("");
+      onCreate();
       setSelectedFighter2("");
     }
+  };
+
+  const handleCancel = () => {
+    onCancel();
+    setSelectedFighter2("");
   };
 
   return (
     <Card className="border-dashed border-2 border-primary/30 bg-muted/20 p-2">
       <CardContent className="p-2">
-        <Typography
-          variant="body-lg"
-          weight="medium"
-          className="text-center mb-2 text-primary"
-        >
-          Nouveau Match
-        </Typography>
+        <div className="flex justify-between items-center mb-2">
+          <Typography
+            variant="body-lg"
+            weight="medium"
+            className="text-primary"
+          >
+            Nouveau Match
+          </Typography>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCancel}
+            className="h-6 w-6 p-0"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
 
         <div className="grid grid-cols-2 gap-2 mb-3">
-          {/* Sélection Lutteur 1 */}
+          {/* Lutteur 1 (présélectionné) */}
           <div className="space-y-2">
             <Typography variant="body-sm" weight="medium">
               Lutteur Région 1
             </Typography>
-            <Select
-              value={selectedFighter1}
-              onValueChange={setSelectedFighter1}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionnez..." />
-              </SelectTrigger>
-              <SelectContent>
-                {region1Fighters.map((fighter) => (
-                  <SelectItem
-                    className="text-wrap"
-                    key={fighter.id}
-                    value={fighter.id.toString()}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage
-                          src={
-                            fighter.profile_image || "/placeholder-avatar.png"
-                          }
-                          alt={`${fighter.first_name} ${fighter.last_name}`}
-                        />
-                        <AvatarFallback>
-                          {fighter.first_name[0]}
-                          {fighter.last_name[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="font-medium">
-                          {fighter.first_name} {fighter.last_name}
-                        </span>
-                        {fighter.nickname && (
-                          <span className="text-xs text-muted-foreground">
-                            "{fighter.nickname}"
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {fighter1 ? (
+              <div className="flex items-center gap-3 p-2 border rounded-md">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage
+                    src={fighter1.profile_image || "/placeholder-avatar.png"}
+                    alt={`${fighter1.first_name} ${fighter1.last_name}`}
+                  />
+                  <AvatarFallback>
+                    {fighter1.first_name[0]}
+                    {fighter1.last_name[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <span className="font-medium">
+                    {fighter1.first_name} {fighter1.last_name}
+                  </span>
+                  {fighter1.nickname && (
+                    <span className="text-xs text-muted-foreground">
+                      "{fighter1.nickname}"
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <Typography variant="body-sm" theme="muted" className="italic">
+                Sélectionnez un lutteur
+              </Typography>
+            )}
           </div>
 
           {/* Sélection Lutteur 2 */}
@@ -108,20 +115,24 @@ export function EmptyMatchCard({
             </Typography>
             <Select
               value={selectedFighter2}
-              onValueChange={setSelectedFighter2}
+              onValueChange={(value) => {
+                setSelectedFighter2(value);
+                onSelectFighter2(value ? parseInt(value) : undefined);
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionnez..." />
               </SelectTrigger>
               <SelectContent>
                 {region2Fighters.map((fighter) => (
-                  <SelectItem key={fighter.id} value={fighter.id.toString()}>
+                  <SelectItem
+                    key={fighter.id}
+                    value={fighter.id.toString()}
+                  >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
                         <AvatarImage
-                          src={
-                            fighter.profile_image || "/placeholder-avatar.png"
-                          }
+                          src={fighter.profile_image || "/placeholder-avatar.png"}
                           alt={`${fighter.first_name} ${fighter.last_name}`}
                         />
                         <AvatarFallback>

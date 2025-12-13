@@ -1,3 +1,4 @@
+// @/actions/editions.ts
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';
@@ -25,42 +26,50 @@ export async function getEditions(options: EditionFilters = {}) {
       with_matches = true
     } = options;
 
-    const baseParams: any[] = [];
+    const baseParams: (string | number | boolean)[] = [];
     let whereClause = "WHERE 1=1";
     let joinClause = "";
     const selectFields = ["ce.*"];
 
-    // Filtres de base
+    // Filtres de base avec typage explicite
     if (competition_id) {
-      baseParams.push(competition_id);
+      baseParams.push(Number(competition_id));
       whereClause += ` AND ce.competition_id = $${baseParams.length}`;
     }
 
     if (year) {
-      baseParams.push(year);
+      baseParams.push(Number(year));
       whereClause += ` AND ce.year = $${baseParams.length}`;
     }
 
     if (typeof is_active === 'boolean') {
       baseParams.push(is_active);
-      whereClause += ` AND ce.is_active = $${baseParams.length}`;
+      whereClause += ` AND ce.is_active = $${baseParams.length}::boolean`;
     }
 
     if (search) {
       baseParams.push(`%${search}%`);
-      whereClause += ` AND (
-        ce.theme ILIKE $${baseParams.length} 
-        OR CAST(ce.year AS TEXT) ILIKE $${baseParams.length}
-        OR CAST(ce.edition_number AS TEXT) ILIKE $${baseParams.length}
-        ${with_competition ? `OR c.name ILIKE $${baseParams.length}` : ''}
-      )`;
+      if (with_competition) {
+        whereClause += ` AND (
+          ce.theme ILIKE $${baseParams.length} 
+          OR CAST(ce.year AS TEXT) ILIKE $${baseParams.length}
+          OR CAST(ce.edition_number AS TEXT) ILIKE $${baseParams.length}
+          OR c.name ILIKE $${baseParams.length}
+        )`;
+      } else {
+        whereClause += ` AND (
+          ce.theme ILIKE $${baseParams.length} 
+          OR CAST(ce.year AS TEXT) ILIKE $${baseParams.length}
+          OR CAST(ce.edition_number AS TEXT) ILIKE $${baseParams.length}
+        )`;
+      }
     }
 
     // Jointures optionnelles
     if (with_competition) {
       joinClause += " LEFT JOIN competitions c ON ce.competition_id = c.id";
       selectFields.push(`
-        JSON_BUILD_OBJECT(
+        JSONB_BUILD_OBJECT(
           'id', c.id,
           'name', c.name,
           'slug', c.slug,
@@ -72,25 +81,23 @@ export async function getEditions(options: EditionFilters = {}) {
       `);
     }
 
-    // Paramètres pour la requête DATA
+    // Paramètres pour la requête DATA - nous allons gérer chaque section séparément
     const dataParams = [...baseParams];
 
     // Fighters avec filtre is_active
     if (with_fighters) {
       const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
-      dataParams.push(isActiveFlag);
-      const isActiveIdx = dataParams.length;
-
+      
       selectFields.push(`
         COALESCE(
-          (SELECT JSON_AGG(
-            JSON_BUILD_OBJECT(
+          (SELECT JSONB_AGG(
+            JSONB_BUILD_OBJECT(
               'id', ef.id,
               'fighter_id', ef.fighter_id,
               'region_id', ef.region_id,
               'status', ef.status,
               'registration_date', ef.registration_date,
-              'fighter', JSON_BUILD_OBJECT(
+              'fighter', JSONB_BUILD_OBJECT(
                 'id', f.id,
                 'first_name', f.first_name,
                 'last_name', f.last_name,
@@ -104,28 +111,24 @@ export async function getEditions(options: EditionFilters = {}) {
           ) FROM edition_fighters ef
           JOIN fighters f ON ef.fighter_id = f.id
           WHERE ef.edition_id = ce.id
-            AND ($${isActiveIdx}::boolean IS FALSE OR f.is_active = true)
+            AND (${isActiveFlag ? 'f.is_active = true' : '1=1'})
           ),
-          '[]'::json
+          '[]'::jsonb
         ) as fighters
       `);
     }
 
-    // Regions avec filtre is_active
+    // Regions (pas besoin de filtre is_active pour les régions)
     if (with_regions) {
-      const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
-      dataParams.push(isActiveFlag);
-      const isActiveIdx = dataParams.length;
-
       selectFields.push(`
         COALESCE(
-          (SELECT JSON_AGG(
-            JSON_BUILD_OBJECT(
+          (SELECT JSONB_AGG(
+            JSONB_BUILD_OBJECT(
               'id', er.id,
               'region_id', er.region_id,
               'status', er.status,
               'registration_date', er.registration_date,
-              'region', JSON_BUILD_OBJECT(
+              'region', JSONB_BUILD_OBJECT(
                 'id', r.id,
                 'name', r.name,
                 'code', r.code,
@@ -141,31 +144,18 @@ export async function getEditions(options: EditionFilters = {}) {
           JOIN regions r ON er.region_id = r.id
           WHERE er.edition_id = ce.id
           ),
-          '[]'::json
+          '[]'::jsonb
         ) as regions
       `);
     }
 
-    // Phases avec relations complètes
+    // Phases avec relations complètes - version simplifiée d'abord
     if (with_phases) {
-      const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
-      const groupsFlag = with_groups === true;
-      const subGroupsFlag = with_subGroups === true;
-      const matchesFlag = with_matches === true;
-      
-      dataParams.push(isActiveFlag, groupsFlag, subGroupsFlag, matchesFlag);
-      
-      const [isActiveIdx, groupsIdx, subGroupsIdx, matchesIdx] = [
-        dataParams.length - 3,
-        dataParams.length - 2,
-        dataParams.length - 1,
-        dataParams.length
-      ];
-
+      // D'abord les phases de base
       selectFields.push(`
         COALESCE(
-          (SELECT JSON_AGG(
-            JSON_BUILD_OBJECT(
+          (SELECT JSONB_AGG(
+            JSONB_BUILD_OBJECT(
               'id', p.id,
               'name', p.name,
               'phase_type', p.phase_type,
@@ -174,100 +164,100 @@ export async function getEditions(options: EditionFilters = {}) {
               'is_active', p.is_active,
               'description', p.description,
               'start_date', p.start_date,
-              'end_date', p.end_date,
-              'groups', (
-                CASE 
-                  WHEN $${groupsIdx}::boolean THEN (
-                    SELECT COALESCE(
-                      JSON_AGG(
-                        JSON_BUILD_OBJECT(
-                          'id', pg.id,
-                          'name', pg.name,
-                          'group_order', pg.group_order,
-                          'description', pg.description,
-                          'is_completed', pg.is_completed,
-                          'is_active', pg.is_active,
-                          'sub_groups', (
-                            CASE 
-                              WHEN $${subGroupsIdx}::boolean THEN (
-                                SELECT COALESCE(
-                                  JSON_AGG(
-                                    JSON_BUILD_OBJECT(
-                                      'id', sg.id,
-                                      'name', sg.name,
-                                      'sub_group_order', sg.sub_group_order,
-                                      'description', sg.description,
-                                      'region1_id', sg.region1_id,
-                                      'region2_id', sg.region2_id,
-                                      'belt_region1', sg.belt_region1,
-                                      'belt_region2', sg.belt_region2,
-                                      'main_referee_id', sg.main_referee_id,
-                                      'is_completed', sg.is_completed,
-                                      'is_active', sg.is_active,
-                                      'matches', (
-                                        CASE 
-                                          WHEN $${matchesIdx}::boolean THEN (
-                                            SELECT COALESCE(
-                                              JSON_AGG(
-                                                JSON_BUILD_OBJECT(
-                                                  'id', m.id,
-                                                  'match_number', m.match_number,
-                                                  'match_date', m.match_date,
-                                                  'start_time', m.start_time,
-                                                  'end_time', m.end_time,
-                                                  'fighter1_id', m.fighter1_id,
-                                                  'fighter2_id', m.fighter2_id,
-                                                  'winner_fighter_id', m.winner_fighter_id,
-                                                  'loser_fighter_id', m.loser_fighter_id,
-                                                  'match_result', m.match_result,
-                                                  'total_duration', m.total_duration,
-                                                  'break_count', m.break_count,
-                                                  'status', m.status,
-                                                  'audience_count', m.audience_count,
-                                                  'video_url', m.video_url,
-                                                  'live_stream_url', m.live_stream_url,
-                                                  'notes', m.notes
-                                                ) ORDER BY m.match_number
-                                              ),
-                                              '[]'::json
-                                            )
-                                            FROM matches m
-                                            WHERE m.sub_group_id = sg.id
-                                              AND ($${isActiveIdx}::boolean IS FALSE OR m.is_active = true)
-                                          )
-                                          ELSE '[]'::json
-                                        END
-                                      )
-                                    ) ORDER BY sg.sub_group_order
-                                  ),
-                                  '[]'::json
-                                )
-                                FROM sub_groups sg
-                                WHERE sg.group_id = pg.id
-                                  AND ($${isActiveIdx}::boolean IS FALSE OR sg.is_active = true)
-                              )
-                              ELSE '[]'::json
-                            END
-                          )
-                        ) ORDER BY pg.group_order
-                      ),
-                      '[]'::json
-                    )
-                    FROM phase_groups pg
-                    WHERE pg.phase_id = p.id
-                      AND ($${isActiveIdx}::boolean IS FALSE OR pg.is_active = true)
-                  )
-                  ELSE '[]'::json
-                END
-              )
+              'end_date', p.end_date
             ) ORDER BY p.phase_order
           ) FROM phases p 
           WHERE p.edition_id = ce.id
-            AND ($${isActiveIdx}::boolean IS FALSE OR p.is_active = true)
+            ${typeof is_active === 'boolean' ? `AND p.is_active = ${is_active}` : ''}
           ),
-          '[]'::json
+          '[]'::jsonb
         ) as phases
       `);
+      
+      // Si on demande les groupes, faire une requête séparée
+      if (with_groups) {
+        selectFields.push(`
+          COALESCE(
+            (SELECT JSONB_AGG(
+              JSONB_BUILD_OBJECT(
+                'id', pg.id,
+                'phase_id', pg.phase_id,
+                'name', pg.name,
+                'group_order', pg.group_order,
+                'description', pg.description,
+                'is_completed', pg.is_completed,
+                'is_active', pg.is_active
+              ) ORDER BY pg.group_order
+            ) FROM phase_groups pg
+            WHERE pg.phase_id IN (SELECT id FROM phases WHERE edition_id = ce.id)
+              ${typeof is_active === 'boolean' ? `AND pg.is_active = ${is_active}` : ''}
+            ),
+            '[]'::jsonb
+          ) as phase_groups
+        `);
+      }
+      
+      // Si on demande les sous-groupes
+      if (with_subGroups) {
+        selectFields.push(`
+          COALESCE(
+            (SELECT JSONB_AGG(
+              JSONB_BUILD_OBJECT(
+                'id', sg.id,
+                'group_id', sg.group_id,
+                'name', sg.name,
+                'sub_group_order', sg.sub_group_order,
+                'description', sg.description,
+                'region1_id', sg.region1_id,
+                'region2_id', sg.region2_id,
+                'belt_region1', sg.belt_region1,
+                'belt_region2', sg.belt_region2,
+                'main_referee_id', sg.main_referee_id,
+                'is_completed', sg.is_completed,
+                'is_active', sg.is_active
+              ) ORDER BY sg.sub_group_order
+            ) FROM sub_groups sg
+            WHERE sg.group_id IN (SELECT id FROM phase_groups WHERE phase_id IN (SELECT id FROM phases WHERE edition_id = ce.id))
+              ${typeof is_active === 'boolean' ? `AND sg.is_active = ${is_active}` : ''}
+            ),
+            '[]'::jsonb
+          ) as sub_groups
+        `);
+      }
+      
+      // Si on demande les matches
+      if (with_matches) {
+        selectFields.push(`
+          COALESCE(
+            (SELECT JSONB_AGG(
+              JSONB_BUILD_OBJECT(
+                'id', m.id,
+                'sub_group_id', m.sub_group_id,
+                'match_number', m.match_number,
+                'match_date', m.match_date,
+                'start_time', m.start_time,
+                'end_time', m.end_time,
+                'fighter1_id', m.fighter1_id,
+                'fighter2_id', m.fighter2_id,
+                'winner_fighter_id', m.winner_fighter_id,
+                'loser_fighter_id', m.loser_fighter_id,
+                'match_result', m.match_result,
+                'total_duration', m.total_duration,
+                'break_count', m.break_count,
+                'status', m.status,
+                'audience_count', m.audience_count,
+                'video_url', m.video_url,
+                'live_stream_url', m.live_stream_url,
+                'notes', m.notes
+              ) ORDER BY m.match_number
+            ) FROM matches m
+            WHERE m.sub_group_id IN (SELECT id FROM sub_groups WHERE group_id IN (SELECT id FROM phase_groups WHERE phase_id IN (SELECT id FROM phases WHERE edition_id = ce.id)))
+              ${typeof is_active === 'boolean' ? `AND m.is_active = ${is_active}` : ''}
+            ),
+            '[]'::jsonb
+          ) as matches
+        `);
+      }
     }
 
     // Count (utilise seulement baseParams)
@@ -281,11 +271,13 @@ export async function getEditions(options: EditionFilters = {}) {
     const countResult = await query<{ total: number }>(countSql, baseParams);
     const total = countResult[0]?.total || 0;
 
-    // Data
+    // Data avec pagination
     const validatedLimit = Math.max(1, Math.min(100, limit));
     const validatedOffset = offset || (page - 1) * validatedLimit;
     
-    dataParams.push(validatedLimit, validatedOffset);
+    // Paramètres pour la requête data (sans les filtres conditionnels des sous-requêtes)
+    const paginatedParams = [...baseParams];
+    paginatedParams.push(validatedLimit, validatedOffset);
     
     const dataSql = `
       SELECT ${selectFields.join(", ")}
@@ -293,13 +285,37 @@ export async function getEditions(options: EditionFilters = {}) {
       ${joinClause}
       ${whereClause}
       ORDER BY ce.year DESC, ce.edition_number DESC
-      LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}
+      LIMIT $${paginatedParams.length - 1} OFFSET $${paginatedParams.length}
     `;
 
-    const data = await query(dataSql, dataParams);
+    const data = await query(dataSql, paginatedParams);
+    
+    // Traitement supplémentaire pour structurer les données
+    const processedData = data.map(edition => {
+      // Si on a des phases, groupes, sous-groupes, matches séparés, on peut les structurer
+      if (edition.phases && edition.phase_groups) {
+        edition.phases = edition.phases.map((phase: any) => {
+          phase.groups = edition.phase_groups?.filter((group: any) => group.phase_id === phase.id) || [];
+          phase.groups.forEach((group: any) => {
+            group.sub_groups = edition.sub_groups?.filter((sub: any) => sub.group_id === group.id) || [];
+            group.sub_groups.forEach((subGroup: any) => {
+              subGroup.matches = edition.matches?.filter((match: any) => match.sub_group_id === subGroup.id) || [];
+            });
+          });
+          return phase;
+        });
+      }
+      
+      // Nettoyer les champs temporaires
+      delete edition.phase_groups;
+      delete edition.sub_groups;
+      delete edition.matches;
+      
+      return edition;
+    });
     
     return {
-      data,
+      data: processedData,
       total,
       pagination: {
         page: Math.floor(validatedOffset / validatedLimit) + 1,

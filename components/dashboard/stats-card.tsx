@@ -27,19 +27,19 @@ export function StatsCard({
   trendPositive = true
 }: StatsCardProps) {
   return (
-    <Card className="relative overflow-hidden transition-all hover:shadow-lg">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className="relative overflow-hidden group transition-all p-2 hover:shadow-lg border-t-2 border-b-2 border-t-primary border-b-green-500">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
         <CardTitle className="text-sm font-medium">
           {title}
         </CardTitle>
-        <div className={cn("p-2 rounded-lg", bgColor)}>
+        <div className={cn("p-1 rounded-lg", bgColor)}>
           <Icon className={cn("h-4 w-4", color)} />
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex items-end justify-between">
           <div>
-            <Typography variant="h2" weight="bold" className="mb-1">
+            <Typography variant="h3" weight="bold" className="mb-1 group-hover:text-primary">
               {value.toLocaleString()}
             </Typography>
             {description && (

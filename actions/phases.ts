@@ -1,4 +1,4 @@
-// actions/phases.ts - VERSION CORRIGÉE POUR NOUVELLE STRUCTURE
+// @/actions/phases.ts - VERSION CORRIGÉE POUR NOUVELLE STRUCTURE
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';
