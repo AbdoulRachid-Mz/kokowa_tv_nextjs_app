@@ -57,7 +57,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     const currentUser: CurrentUser = {
       uid: authResult.user.uid,
       email: authResult.user.email,
-      email_verified: authResult.user.email_verified,
+      email_verified: (authResult.user as any).email_verified,
       name: authResult.user.name,
       picture: authResult.user.picture,
       // Données PostgreSQL
