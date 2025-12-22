@@ -1,0 +1,192 @@
+import { 
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  updateProfile,
+  GoogleAuthProvider
+} from 'firebase/auth';
+import { UserInterface, UserDocument, AuthResponse } from '@/types/user';
+import { auth } from '@/configs/firebase/config';
+
+const googleProvider = new GoogleAuthProvider();
+
+export class AuthService {
+  // Inscription avec email/mot de passe
+  static async signUp(
+    email: string, 
+    password: string, 
+    userData?: any
+  ): Promise<AuthResponse> {
+    try {
+      // Créer l'utilisateur dans Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Mettre à jour le profil Firebase si nécessaire
+      if (userData?.displayName) {
+        await updateProfile(user, {
+          displayName: userData.displayName,
+          photoURL: userData.photoURL
+        });
+      }
+
+      // Créer l'utilisateur dans PostgreSQL via l'API
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          username: userData?.username || email.split('@')[0],
+          first_name: userData?.first_name || userData?.displayName?.split(' ')[0] || '',
+          last_name: userData?.last_name || userData?.displayName?.split(' ').slice(1).join(' ') || '',
+          phone_number: userData?.phone_number || '',
+          profile_picture: user.photoURL,
+        }),
+      });
+
+      if (!response.ok) {
+        // Rollback: supprimer l'utilisateur Firebase
+        await user.delete();
+        const errorData = await response.json();
+        return {
+          success: false,
+          error: errorData.error || 'Erreur lors de la création du compte'
+        };
+      }
+
+      return {
+        success: true,
+        user: this.formatFirebaseUser(user)
+      };
+    } catch (error: any) {
+      console.error('Erreur lors de l\'inscription:', error);
+      return {
+        success: false,
+        error: this.getAuthErrorMessage(error.code)
+      };
+    }
+  }
+
+  // Connexion avec email/mot de passe
+  static async signIn(email: string, password: string): Promise<AuthResponse> {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return {
+        success: true,
+        user: this.formatFirebaseUser(userCredential.user)
+      };
+    } catch (error: any) {
+      console.error('Erreur lors de la connexion:', error);
+      return {
+        success: false,
+        error: this.getAuthErrorMessage(error.code)
+      };
+    }
+  }
+
+  // Connexion avec Google
+  static async signInWithGoogle(): Promise<AuthResponse> {
+    try {
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      return {
+        success: true,
+        user: this.formatFirebaseUser(userCredential.user)
+      };
+    } catch (error: any) {
+      console.error('Erreur lors de la connexion Google:', error);
+      return {
+        success: false,
+        error: this.getAuthErrorMessage(error.code)
+      };
+    }
+  }
+
+  // Envoyer un email de réinitialisation de mot de passe
+  static async sendPasswordResetEmail(email: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { sendPasswordResetEmail: firebaseSendPasswordResetEmail } = await import('firebase/auth');
+      await firebaseSendPasswordResetEmail(auth, email);
+      return { success: true };
+    } catch (error: any) {
+      console.error('Erreur envoi email réinitialisation:', error);
+      return {
+        success: false,
+        error: this.getAuthErrorMessage(error.code)
+      };
+    }
+  }
+  // Confirmer la réinitialisation du mot de passe avec le code OOB
+  static async confirmPasswordReset(oobCode: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { confirmPasswordReset: firebaseConfirmPasswordReset } = await import('firebase/auth');
+      await firebaseConfirmPasswordReset(auth, oobCode, newPassword);
+      return { success: true };
+    } catch (error: any) {
+      console.error('Erreur confirmation réinitialisation:', error);
+      return {
+        success: false,
+        error: this.getAuthErrorMessage(error.code)
+      };
+    }
+  }
+
+  // Vérifier la validité du code OOB de réinitialisation
+  static async verifyPasswordResetCode(oobCode: string): Promise<{ success: boolean; email?: string; error?: string }> {
+    try {
+      const { verifyPasswordResetCode: firebaseVerifyPasswordResetCode } = await import('firebase/auth');
+      const email = await firebaseVerifyPasswordResetCode(auth, oobCode);
+      return { success: true, email };
+    } catch (error: any) {
+      console.error('Erreur vérification code réinitialisation:', error);
+      return {
+        success: false,
+        error: this.getAuthErrorMessage(error.code)
+      };
+    }
+  }
+
+  // Déconnexion
+  static async signOut(): Promise<{ success: boolean; error?: string }> {
+    try {
+      await signOut(auth);
+      return { success: true };
+    } catch (error: any) {
+      console.error('Erreur lors de la déconnexion:', error);
+      return {
+        success: false,
+        error: 'Erreur lors de la déconnexion'
+      };
+    }
+  }
+
+  // Formater l'utilisateur Firebase
+  private static formatFirebaseUser(user: any): UserInterface {
+    return {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      emailVerified: user.emailVerified,
+      phoneNumber: user.phoneNumber,
+      photoURL: user.photoURL,
+    };
+  }
+
+  // Gestion des erreurs d'authentification
+  private static getAuthErrorMessage(errorCode: string): string {
+    const errorMessages: { [key: string]: string } = {
+      'auth/email-already-in-use': 'Un compte avec cet email existe déjà',
+      'auth/invalid-email': 'Adresse email invalide',
+      'auth/operation-not-allowed': 'Opération non autorisée',
+      'auth/weak-password': 'Le mot de passe est trop faible',
+      'auth/user-disabled': 'Ce compte a été désactivé',
+      'auth/user-not-found': 'Aucun compte trouvé avec cet email',
+      'auth/wrong-password': 'Mot de passe incorrect',
+      'auth/too-many-requests': 'Trop de tentatives, réessayez plus tard',
+      'auth/network-request-failed': 'Erreur réseau, vérifiez votre connexion',
+    };
+
+    return errorMessages[errorCode] || 'Une erreur est survenue';
+  }
+}

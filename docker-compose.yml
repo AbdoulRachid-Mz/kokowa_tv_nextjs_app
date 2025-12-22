@@ -1,0 +1,65 @@
+services:
+  app:
+    build: .
+    container_name: next_app
+    ports:
+      - "3000:3000"
+    restart: always
+
+
+
+# version: "3.8"
+
+# services:
+#   # nginx reverse proxy (jwilder/nginx-proxy)
+#   proxy:
+#     image: jwilder/nginx-proxy:latest
+#     container_name: proxy
+#     restart: always
+#     ports:
+#       - "80:80"
+#       - "443:443"
+#     volumes:
+#       - /var/run/docker.sock:/tmp/docker.sock:ro
+#       - ./proxy/certs:/etc/nginx/certs:rw
+#       - ./proxy/vhost.d:/etc/nginx/vhost.d:rw
+#       - ./proxy/html:/usr/share/nginx/html:ro
+#       - ./proxy/conf.d:/etc/nginx/conf.d:ro
+
+#   # letsencrypt companion
+#   letsencrypt:
+#     image: nginxproxy/acme-companion:latest
+#     container_name: letsencrypt
+#     restart: always
+#     depends_on:
+#       - proxy
+#     environment:
+#       NGINX_PROXY_CONTAINER: proxy
+#       ACME_CA_URI: https://acme-v02.api.letsencrypt.org/directory
+#     volumes:
+#       - /var/run/docker.sock:/var/run/docker.sock:ro
+#       - ./proxy/certs:/etc/nginx/certs:rw
+#       - ./proxy/vhost.d:/etc/nginx/vhost.d:rw
+#       - ./proxy/html:/usr/share/nginx/html:rw
+#       - ./proxy/conf.d:/etc/nginx/conf.d:rw
+
+#   # ton app Next.js (utilise l'image publique que Github Actions build/pushera)
+#   app:
+#     image: ghcr.io/<GITHUB_USER>/<REPO_NAME>:latest
+#     container_name: next_app
+#     restart: always
+#     environment:
+#       - NODE_ENV=production
+#       - PORT=3000
+#     expose:
+#       - "3000"
+#     # labels indispensables pour nginx-proxy + letsencrypt
+#     labels:
+#       - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy=true"
+#       - "traefik.enable=false"
+#       - "nginx.proxy_only=true"
+#       - "VIRTUAL_HOST=example.com,www.example.com"
+#       - "LETSENCRYPT_HOST=example.com,www.example.com"
+#       - "LETSENCRYPT_EMAIL=admin@example.com"
+#     depends_on:
+#       - proxy
