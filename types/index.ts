@@ -224,8 +224,10 @@ export interface SubGroup extends BaseEntity {
   belt2?: Belt;
   main_referee?: Referee;
   matches?: Match[];
-  phase?: Phase[];
-  edition?: CompetitionEdition[];
+  // phase?: Phase[];
+  // edition?: CompetitionEdition[]
+  edition_fighters?: Fighter[];
+  edition_regions?: Region[];
 }
 
 // Match

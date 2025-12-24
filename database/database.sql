@@ -220,6 +220,8 @@ CREATE TABLE IF NOT EXISTS edition_fighters (
     edition_id INTEGER NOT NULL,
     fighter_id INTEGER NOT NULL,
     region_id INTEGER NOT NULL,
+    is_champion BOOLEAN DEFAULT FALSE,
+    is_eliminated BOOLEAN DEFAULT FALSE,
     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) CHECK (
         status IN (
@@ -244,6 +246,8 @@ CREATE TABLE IF NOT EXISTS edition_regions (
     id SERIAL PRIMARY KEY,
     edition_id INTEGER NOT NULL,
     region_id INTEGER NOT NULL,
+    is_eliminated BOOLEAN DEFAULT FALSE,
+    points INTEGER DEFAULT 0,
     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) CHECK (
         status IN (

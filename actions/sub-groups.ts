@@ -4,7 +4,7 @@
 import { query, queryOne } from '@/lib/db/neon-client';
 import { subGroupSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
-import { SubGroup, SubGroupFilters, PaginatedResponse } from '@/types';
+import { SubGroup, SubGroupFilters, PaginatedResponse, Region } from '@/types';
 import { getEditionFighters, getEditionRegions } from '@/actions/editions';
 
 // export async function getSubGroups(
@@ -900,7 +900,7 @@ export async function getSubGroupById(id: number, options: {
         if (with_edition_fighters) {
           try {
             const fightersResponse = await getEditionFighters(editionId, {
-              limit: 50, // Limite pour éviter une réponse trop grande
+              limit: 100, // Limite pour éviter une réponse trop grande
               status: 'qualified',
               with_fighter: true,
               with_region: true,
@@ -938,16 +938,32 @@ export async function getSubGroupById(id: number, options: {
             const region1Fighters = result.edition_fighters.filter((ef: any) => 
               ef.fighter?.region_id === result.region1?.id
             );
-            if (!result.region1) result.region1 = {};
-            result.region1.fighters = region1Fighters.map((ef: any) => ef.fighter);
+            // Ensure region1 is a full Region object before adding fighters
+            if (!result.region1) {
+              result.region1 = {
+                id: 0,
+                name: '',
+                code: '',
+                created_at: new Date().toISOString()
+              } as Region;
+            }
+            (result.region1 as any).fighters = region1Fighters.map((ef: any) => ef.fighter);
           }
           
           if (result.region2?.id) {
             const region2Fighters = result.edition_fighters.filter((ef: any) => 
               ef.fighter?.region_id === result.region2?.id
             );
-            if (!result.region2) result.region2 = {};
-            result.region2.fighters = region2Fighters.map((ef: any) => ef.fighter);
+            // Ensure region2 is a full Region object before adding fighters
+            if (!result.region2) {
+              result.region2 = {
+                id: 0,
+                name: '',
+                code: '',
+                created_at: new Date().toISOString()
+              } as Region;
+            }
+            (result.region2 as any).fighters = region2Fighters.map((ef: any) => ef.fighter);
           }
         }
       }
@@ -1144,83 +1160,83 @@ function groupFightersByRegion(editionFighters: any[]): Map<number, any[]> {
 
 // ==================== FONCTION POUR LA PAGE D'ORGANISATION ====================
 
-export async function getSubGroupOrganisationData(id: number) {
-  try {
-    // Récupérer le sous-groupe avec tout son arbre hiérarchique
-    const subGroup = await getSubGroupById(id, {
-      with_relations: true,
-      relations: {
-        with_group: true,
-        with_phase: true,
-        with_edition: true,
-        with_regions: true,
-        with_fighters: false, // On veut les lutteurs pour les régions du sous-groupe
-        with_belts: true,
-        with_referee: true,
-        with_matches: true,
-        with_edition_regions: true,
-        with_edition_fighters: true
-      }
-    });
+// export async function getSubGroupOrganisationData(id: number) {
+//   try {
+//     // Récupérer le sous-groupe avec tout son arbre hiérarchique
+//     const subGroup = await getSubGroupById(id, {
+//       with_relations: true,
+//       relations: {
+//         with_group: true,
+//         with_phase: true,
+//         with_edition: true,
+//         with_regions: true,
+//         with_fighters: false, // On veut les lutteurs pour les régions du sous-groupe
+//         with_belts: true,
+//         with_referee: true,
+//         with_matches: true,
+//         with_edition_regions: true,
+//         with_edition_fighters: true
+//       }
+//     });
     
-    if (!subGroup) {
-      throw new Error('Sous-groupe non trouvé');
-    }
+//     if (!subGroup) {
+//       throw new Error('Sous-groupe non trouvé');
+//     }
     
-    // Structure hiérarchique attendue
-    const structuredData = {
-      // Le sous-groupe de base
-      subGroup: {
-        ...subGroup,
-        // Ajouter l'arbre hiérarchique explicite
-        group: subGroup.phase_group,
-        phase: subGroup.phase,
-        edition: subGroup.edition
-      },
+//     // Structure hiérarchique attendue
+//     const structuredData = {
+//       // Le sous-groupe de base
+//       subGroup: {
+//         ...subGroup,
+//         // Ajouter l'arbre hiérarchique explicite
+//         group: subGroup.phase_group,
+//         phase: subGroup.phase,
+//         edition: subGroup.edition
+//       },
       
-      // Données additionnelles pour la page d'organisation
-      organisation: {
-        // Arbre hiérarchique complet
-        hierarchy: {
-          sub_group: {
-            id: subGroup.id,
-            name: subGroup.name,
-            order: subGroup.sub_group_order
-          },
-          group: subGroup.phase_group,
-          phase: subGroup.phase,
-          edition: subGroup.edition
-        },
+//       // Données additionnelles pour la page d'organisation
+//       organisation: {
+//         // Arbre hiérarchique complet
+//         hierarchy: {
+//           sub_group: {
+//             id: subGroup.id,
+//             name: subGroup.name,
+//             order: subGroup.sub_group_order
+//           },
+//           group: subGroup.phase_group,
+//           phase: subGroup.phase,
+//           edition: subGroup.edition
+//         },
         
-        // Données de l'édition
-        edition_data: {
-          fighters: subGroup.edition_fighters || [],
-          regions: subGroup.edition_regions || []
-        },
+//         // Données de l'édition
+//         edition_data: {
+//           fighters: subGroup.edition_fighters || [],
+//           regions: subGroup.edition_regions || []
+//         },
         
-        // Régions spécifiques du sous-groupe avec leurs lutteurs
-        assigned_regions: {
-          region1: subGroup.region1 ? {
-            ...subGroup.region1,
-            fighters: subGroup.region1.edition_fighters || []
-          } : null,
-          region2: subGroup.region2 ? {
-            ...subGroup.region2,
-            fighters: subGroup.region2.edition_fighters || []
-          } : null
-        },
+//         // Régions spécifiques du sous-groupe avec leurs lutteurs
+//         assigned_regions: {
+//           region1: subGroup.region1 ? {
+//             ...subGroup.region1,
+//             fighters: subGroup.region1.edition_fighters || []
+//           } : null,
+//           region2: subGroup.region2 ? {
+//             ...subGroup.region2,
+//             fighters: subGroup.region2.edition_fighters || []
+//           } : null
+//         },
         
-        // Matchs du sous-groupe
-        matches: subGroup.matches || []
-      }
-    };
+//         // Matchs du sous-groupe
+//         matches: subGroup.matches || []
+//       }
+//     };
     
-    return structuredData;
-  } catch (error) {
-    console.error('Error in getSubGroupOrganisationData:', error);
-    throw new Error('Erreur lors du chargement des données d\'organisation');
-  }
-}
+//     return structuredData;
+//   } catch (error) {
+//     console.error('Error in getSubGroupOrganisationData:', error);
+//     throw new Error('Erreur lors du chargement des données d\'organisation');
+//   }
+// }
 
 
 // ==================== API ENDPOINTS SIMULÉS POUR LA PAGE ====================
@@ -1229,21 +1245,21 @@ export async function getSubGroupOrganisationData(id: number) {
  * Endpoint API pour la page d'organisation
  * À appeler depuis le client avec fetch('/api/sub-groups/[id]/organisation')
  */
-export async function getSubGroupOrganisationApi(id: number) {
-  try {
-    const data = await getSubGroupOrganisationData(id);
-    return {
-      success: true,
-      data
-    };
-  } catch (error: any) {
-    console.error('API Error:', error);
-    return {
-      success: false,
-      error: error.message || 'Erreur serveur'
-    };
-  }
-}
+// export async function getSubGroupOrganisationApi(id: number) {
+//   try {
+//     const data = await getSubGroupOrganisationData(id);
+//     return {
+//       success: true,
+//       data
+//     };
+//   } catch (error: any) {
+//     console.error('API Error:', error);
+//     return {
+//       success: false,
+//       error: error.message || 'Erreur serveur'
+//     };
+//   }
+// }
 
 
 

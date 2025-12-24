@@ -76,7 +76,6 @@ with_edition_fighters?: boolean;
     if (is_active !== null) {
       options.is_active = is_active === 'true';
     }
-    console.log(options)
 
     const subGroup = await getSubGroupById(subGroupIdNum, options);
 

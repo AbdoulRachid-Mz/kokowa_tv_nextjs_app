@@ -27,7 +27,7 @@ import { useRealtime } from "@/hooks/use-realtime";
 import { toast } from "sonner";
 import { SimpleMatchCard } from "@/components/matches/match-card";
 import { getEditionFighters } from "@/actions/editions";
-import { getSubGroupOrganisationData, getSubGroupById } from "@/actions/sub-groups";
+import { getSubGroupById } from "@/actions/sub-groups";
 
 export default function SubGroupOrganizationPage() {
   const { subGroupId } = useParams();
@@ -72,13 +72,12 @@ export default function SubGroupOrganizationPage() {
         },
       });
 
-      // Hydrate state with returned data
       setSubGroup(subGroupData);
       setMatches(subGroupData.matches || []);
 
       const [r1, r2] = await Promise.all([
-        loadRegionFighters(subGroupData.group.phase.edition.id, subGroupData.region1_id),
-        loadRegionFighters(subGroupData.group.phase.edition.id, subGroupData.region2_id),
+        loadRegionFighters(subGroupData?.group?.phase?.edition?.id ?? 0, subGroupData.region1_id ?? 0),
+        loadRegionFighters(subGroupData?.group?.phase?.edition?.id ?? 0, subGroupData.region2_id ?? 0),
       ]);
       setRegion1Fighters(r1);
       setRegion2Fighters(r2);
