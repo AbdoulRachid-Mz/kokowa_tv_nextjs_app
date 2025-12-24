@@ -527,6 +527,7 @@ export async function getSubGroupById(id: number, options: {
     with_phase?: boolean;
     with_edition?: boolean;
     with_competition?: boolean;
+    with_fighters?: boolean;
     with_regions?: boolean;
     with_belts?: boolean;
     with_referee?: boolean;
