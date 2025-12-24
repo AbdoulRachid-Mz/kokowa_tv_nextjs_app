@@ -26,6 +26,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRealtime } from "@/hooks/use-realtime";
 import { toast } from "sonner";
 import { SimpleMatchCard } from "@/components/matches/match-card";
+import { getEditionFighters } from "@/actions/editions";
+import { getSubGroupOrganisationData, getSubGroupById } from "@/actions/sub-groups";
 
 export default function SubGroupOrganizationPage() {
   const { subGroupId } = useParams();
@@ -50,30 +52,36 @@ export default function SubGroupOrganizationPage() {
 
   const loadSubGroup = async () => {
     try {
+// app/ad/sub-groups/[subGroupId]/organisation/page.tsx
       setLoading(true);
-      const response = await fetch(`/api/sub-groups/${id}`);
-      if (!response.ok) throw new Error("Failed to fetch sub-group");
-      const subGroupData = await response.json();
+// app/ad/sub-groups/[subGroupId]/organisation/page.tsx
+      // Use getSubGroupById with relations for matches, regions, and belts
+      const subGroupData = await getSubGroupById(id, {
+        with_relations: true,
+        relations: {
+          with_group: true,
+          with_phase: true,
+          with_edition: true,
+          with_competition: true,
+          with_regions: true,
+          with_belts: true,
+          with_referee: true,
+          with_matches: true,
+          with_edition_fighters: false, // We'll load fighters separately
+          with_edition_regions: false,
+        },
+      });
+
+      // Hydrate state with returned data
       setSubGroup(subGroupData);
       setMatches(subGroupData.matches || []);
 
-      const editionId = subGroupData.group?.phase?.edition?.id;
-      if (editionId) {
-        const region1Id = subGroupData.region1?.id;
-        const region2Id = subGroupData.region2?.id;
-
-        const [fighters1, fighters2] = await Promise.all([
-          region1Id
-            ? loadRegionFighters(editionId, region1Id)
-            : Promise.resolve([]),
-          region2Id
-            ? loadRegionFighters(editionId, region2Id)
-            : Promise.resolve([]),
-        ]);
-
-        setRegion1Fighters(fighters1);
-        setRegion2Fighters(fighters2);
-      }
+      const [r1, r2] = await Promise.all([
+        loadRegionFighters(subGroupData.group.phase.edition.id, subGroupData.region1_id),
+        loadRegionFighters(subGroupData.group.phase.edition.id, subGroupData.region2_id),
+      ]);
+      setRegion1Fighters(r1);
+      setRegion2Fighters(r2);
     } catch (error) {
       console.error("Erreur chargement sous-groupe:", error);
       setSubGroup(null);
@@ -88,17 +96,20 @@ export default function SubGroupOrganizationPage() {
     regionId: number
   ): Promise<Fighter[]> => {
     try {
-      const response = await fetch(
-        `/api/editions/${editionId}/fighters?region_id=${regionId}&limit=100`
-      );
-      if (!response.ok) return [];
-      const data = await response.json();
-      return data.data?.map((e: any) => e.fighter) || [];
+      const response = await getEditionFighters(editionId, {
+        region_id: regionId,
+        limit: 100,
+        with_fighter: true,
+        with_region: false,
+      });
+      return response.data?.map((e: any) => e.fighter) || [];
     } catch (error) {
       console.error(`Erreur chargement lutteurs région ${regionId}:`, error);
       return [];
     }
   };
+
+  
 
   // Calculer les lutteurs utilisés dans les matchs existants
   const usedFighterIds = useMemo(() => {
@@ -513,11 +524,13 @@ export default function SubGroupOrganizationPage() {
               </Badge>
             )}
           </div>
+          {/* <div className="grid grid-cols-1 gap-2"> */}
 
           <MatchesColumn
             matches={matches}
             subGroupId={id}
-          />
+            />
+            {/* </div> */}
         </div>
 
         {/* Colonne Région 2 */}
@@ -569,8 +582,8 @@ function RegionColumn({
   }
 
   return (
-    <Card className="h-fit p-4">
-      <CardHeader className="pb-3">
+    <Card className="h-fit p-2">
+      <CardHeader className="pb-2">
         <div className="text-center">
           <div className="flex items-center justify-center group relative space-x-2 mb-2">
             {belt && (
@@ -637,8 +650,8 @@ function FighterCard({
   selectionCount: number;
 }) {
   return (
-    <Card className="hover:shadow-md transition-shadow p-3 cursor-pointer">
-      <CardContent className="p-2">
+    <Card className="hover:shadow-md transition-shadow p-2 cursor-pointer">
+      <CardContent className="p-1">
         <div
           className={`flex ${
             position === "right" && "flex-row-reverse"
@@ -692,9 +705,9 @@ function FighterCard({
 // Dans la page d'organisation (remplacement de MatchesColumn)
 function MatchesColumn({ matches, subGroupId }: { matches: Match[], subGroupId: number }) {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="space-y-4">
+    <Card className="p-3">
+      <CardContent className="p-3">
+        <div className="space-y-3">
           {matches.length === 0 ? (
             <div className="text-center py-8">
               <Typography variant="h4" theme="muted" className="mb-2">
@@ -705,7 +718,7 @@ function MatchesColumn({ matches, subGroupId }: { matches: Match[], subGroupId: 
               </Typography>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               {matches.map((match) => (
                 <SimpleMatchCard
                   key={match.id}

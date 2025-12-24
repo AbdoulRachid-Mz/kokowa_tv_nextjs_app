@@ -424,21 +424,79 @@ export async function createPhase(formData: FormData) {
       description: formData.get('description'),
       start_date: formData.get('start_date'),
       end_date: formData.get('end_date'),
-      is_active: formData.get('is_active'),
     };
 
     const cleanedData = {
       edition_id: Number(rawData.edition_id),
       name: rawData.name as string,
-      phase_order: Number(rawData.phase_order),
+      phase_order: rawData.phase_order ? Number(rawData.phase_order) : undefined,
       phase_type: rawData.phase_type as any,
       description: rawData.description as string || undefined,
       start_date: rawData.start_date as string || undefined,
       end_date: rawData.end_date as string || undefined,
-      is_active: rawData.is_active === 'true' || rawData.is_active === 'on',
     };
 
-    const validatedData = phaseSchema.parse(cleanedData);
+    // Vérifier et ajuster le nom si nécessaire
+    let finalName = cleanedData.name;
+    let nameCounter = 1;
+    
+    const existingNameCheck = await query<{ id: number }>(
+      `SELECT id FROM phases WHERE name = $1 AND edition_id = $2`,
+      [finalName, cleanedData.edition_id]
+    );
+    
+    while (existingNameCheck.length > 0) {
+      finalName = `${cleanedData.name} (${nameCounter})`;
+      nameCounter++;
+      
+      const newCheck = await query<{ id: number }>(
+        `SELECT id FROM phases WHERE name = $1 AND edition_id = $2`,
+        [finalName, cleanedData.edition_id]
+      );
+      
+      if (newCheck.length === 0) {
+        break;
+      }
+    }
+
+    // Déterminer l'ordre de la phase
+    let finalOrder = cleanedData.phase_order;
+    
+    if (finalOrder === undefined || finalOrder === null) {
+      // Récupérer le plus grand ordre existant pour cette édition
+      const maxOrderResult = await query<{ max_order: number }>(
+        `SELECT COALESCE(MAX(phase_order), 0) as max_order 
+         FROM phases WHERE edition_id = $1`,
+        [cleanedData.edition_id]
+      );
+      
+      finalOrder = maxOrderResult[0]?.max_order + 1 || 1;
+    } else {
+      // Vérifier si l'ordre existe déjà
+      const existingOrderCheck = await query<{ id: number }>(
+        `SELECT id FROM phases WHERE phase_order = $1 AND edition_id = $2`,
+        [finalOrder, cleanedData.edition_id]
+      );
+      
+      if (existingOrderCheck.length > 0) {
+        // Trouver le prochain ordre disponible
+        const ordersResult = await query<{ phase_order: number }>(
+          `SELECT phase_order FROM phases 
+           WHERE edition_id = $1 
+           ORDER BY phase_order`,
+          [cleanedData.edition_id]
+        );
+        
+        const existingOrders = ordersResult.map(r => r.phase_order);
+        let nextOrder = finalOrder;
+        
+        while (existingOrders.includes(nextOrder)) {
+          nextOrder++;
+        }
+        
+        finalOrder = nextOrder;
+      }
+    }
 
     const sql = `
       INSERT INTO phases (
@@ -449,23 +507,24 @@ export async function createPhase(formData: FormData) {
     `;
     
     const result = await query<{ id: number }>(sql, [
-      validatedData.edition_id,
-      validatedData.name,
-      validatedData.phase_order,
-      validatedData.phase_type,
-      validatedData.description || null,
-      validatedData.start_date || null,
-      validatedData.end_date || null,
-      validatedData.is_active,
+      cleanedData.edition_id,
+      finalName,
+      finalOrder,
+      cleanedData.phase_type,
+      cleanedData.description || null,
+      cleanedData.start_date || null,
+      cleanedData.end_date || null,
+      true, // is_active par défaut à true
     ]);
 
-    revalidatePath('/editions');
-    revalidatePath(`/editions/${validatedData.edition_id}`);
-    revalidatePath('/phases');
+    revalidatePath('/ad/editions');
+    revalidatePath(`/ad/editions/${cleanedData.edition_id}`);
+    revalidatePath('/ad/phases');
+    
     return { 
       success: true, 
       id: result[0].id,
-      message: 'Phase créée avec succès'
+      message: `Phase "${finalName}" créée avec succès (ordre: ${finalOrder})`
     };
   } catch (error) {
     console.error('Error in createPhase:', error);

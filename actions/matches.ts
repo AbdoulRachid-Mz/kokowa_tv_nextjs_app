@@ -546,7 +546,7 @@ async function emitMatchEvent(matchId: number, eventType: string, data: any) {
 }
 
 
-// @/actions/matches.ts (extrait modifié)
+
 export async function createMatch(formData: FormData) {
   try {
     const rawData = {
@@ -555,11 +555,11 @@ export async function createMatch(formData: FormData) {
       match_date: formData.get('match_date'),
       start_time: formData.get('start_time'),
       fighter1_id: formData.get('fighter1_id'),
-      fighter2_id: formData.get('fighter2_id'), // Peut être vide
+      fighter2_id: formData.get('fighter2_id'),
       notes: formData.get('notes'),
     };
 
-    console.log('📥 Données reçues (create):', rawData);
+    // console.log('📥 Données reçues (create):', rawData);
 
     // Nettoyer les données
     const cleanedData = {
@@ -572,54 +572,76 @@ export async function createMatch(formData: FormData) {
       notes: rawData.notes ? (rawData.notes as string).trim() || 'Aucune note' : 'Aucune note',
     };
 
-    console.log('🧹 Données nettoyées (create):', cleanedData);
-
-    // Valider avec le schéma (permet fighter2_id undefined)
-    const validatedData = matchSchema.partial().parse(cleanedData);
+    // Déterminer le numéro du match
+    let finalMatchNumber = cleanedData.match_number;
+    
+    if (finalMatchNumber === undefined || finalMatchNumber === null) {
+      // Récupérer le plus grand numéro de match existant pour ce sous-groupe
+      const maxNumberResult = await query<{ max_number: number }>(
+        `SELECT COALESCE(MAX(match_number), 0) as max_number 
+         FROM matches WHERE sub_group_id = $1`,
+        [cleanedData.sub_group_id]
+      );
+      
+      finalMatchNumber = maxNumberResult[0]?.max_number + 1 || 1;
+    } else {
+      // Vérifier si le numéro existe déjà
+      const existingNumberCheck = await query<{ id: number }>(
+        `SELECT id FROM matches WHERE match_number = $1 AND sub_group_id = $2`,
+        [finalMatchNumber, cleanedData.sub_group_id]
+      );
+      
+      if (existingNumberCheck.length > 0) {
+        // Trouver le prochain numéro disponible
+        const numbersResult = await query<{ match_number: number }>(
+          `SELECT match_number FROM matches 
+           WHERE sub_group_id = $1 
+           ORDER BY match_number`,
+          [cleanedData.sub_group_id]
+        );
+        
+        const existingNumbers = numbersResult.map(r => r.match_number);
+        let nextNumber = finalMatchNumber;
+        
+        while (existingNumbers.includes(nextNumber)) {
+          nextNumber++;
+        }
+        
+        finalMatchNumber = nextNumber;
+      }
+    }
 
     const sql = `
       INSERT INTO matches (
         sub_group_id, match_number, match_date, start_time,
-        fighter1_id, fighter2_id, notes, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled')
+        fighter1_id, fighter2_id, notes, status, is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', $8)
       RETURNING id
     `;
     
     const result = await query<{ id: number }>(sql, [
-      validatedData.sub_group_id ?? null,
-      validatedData.match_number || null,
-      validatedData.match_date ?? null,
-      validatedData.start_time || null,
-      validatedData.fighter1_id || null,
-      validatedData.fighter2_id || null, // Peut être null
-      validatedData.notes || null,
+      cleanedData.sub_group_id,
+      finalMatchNumber,
+      cleanedData.match_date,
+      cleanedData.start_time || null,
+      cleanedData.fighter1_id || null,
+      cleanedData.fighter2_id || null,
+      cleanedData.notes,
+      true, // is_active par défaut à true
     ]);
 
     // Émettre l'événement temps réel
     await emitMatchEvent(result[0].id, 'match_created', {
       matchId: result[0].id,
-      subGroupId: validatedData.sub_group_id
+      subGroupId: cleanedData.sub_group_id
     });
 
-    // Récupérer l'édition pour revalidation
-    const editionInfo = await query(`
-      SELECT ce.id as edition_id
-      FROM matches m
-      JOIN sub_groups sg ON m.sub_group_id = sg.id
-      JOIN phase_groups pg ON sg.group_id = pg.id
-      JOIN phases p ON pg.phase_id = p.id
-      JOIN competition_editions ce ON p.edition_id = ce.id
-      WHERE m.id = $1
-    `, [result[0].id]);
-
-    const editionId = editionInfo[0]?.edition_id;
-
-    revalidatePath(`/ad/sub-groups/${validatedData.sub_group_id}/organisation`);
+    revalidatePath(`/ad/sub-groups/${cleanedData.sub_group_id}/organisation`);
     
     return { 
       success: true, 
       id: result[0].id,
-      message: 'Match créé avec succès'
+      message: `Match #${finalMatchNumber} créé avec succès`
     };
   } catch (error) {
     console.error('Error in createMatch:', error);

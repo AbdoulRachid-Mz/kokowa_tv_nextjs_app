@@ -569,11 +569,71 @@ export async function createPhaseGroup(
     const cleanedData = {
       phase_id: Number(rawData.phase_id),
       name: rawData.name as string,
-      group_order: Number(rawData.group_order),
+      group_order: rawData.group_order ? Number(rawData.group_order) : undefined,
       description: rawData.description as string || undefined,
     };
 
-    const validatedData = phaseGroupSchema.parse(cleanedData);
+    // Vérifier et ajuster le nom si nécessaire
+    let finalName = cleanedData.name;
+    let nameCounter = 1;
+    
+    const existingNameCheck = await query<{ id: number }>(
+      `SELECT id FROM phase_groups WHERE name = $1 AND phase_id = $2`,
+      [finalName, cleanedData.phase_id]
+    );
+    
+    while (existingNameCheck.length > 0) {
+      finalName = `${cleanedData.name} (${nameCounter})`;
+      nameCounter++;
+      
+      const newCheck = await query<{ id: number }>(
+        `SELECT id FROM phase_groups WHERE name = $1 AND phase_id = $2`,
+        [finalName, cleanedData.phase_id]
+      );
+      
+      if (newCheck.length === 0) {
+        break;
+      }
+    }
+
+    // Déterminer l'ordre du groupe
+    let finalOrder = cleanedData.group_order;
+    
+    if (finalOrder === undefined || finalOrder === null) {
+      // Récupérer le plus grand ordre existant pour cette phase
+      const maxOrderResult = await query<{ max_order: number }>(
+        `SELECT COALESCE(MAX(group_order), 0) as max_order 
+         FROM phase_groups WHERE phase_id = $1`,
+        [cleanedData.phase_id]
+      );
+      
+      finalOrder = maxOrderResult[0]?.max_order + 1 || 1;
+    } else {
+      // Vérifier si l'ordre existe déjà
+      const existingOrderCheck = await query<{ id: number }>(
+        `SELECT id FROM phase_groups WHERE group_order = $1 AND phase_id = $2`,
+        [finalOrder, cleanedData.phase_id]
+      );
+      
+      if (existingOrderCheck.length > 0) {
+        // Trouver le prochain ordre disponible
+        const ordersResult = await query<{ group_order: number }>(
+          `SELECT group_order FROM phase_groups 
+           WHERE phase_id = $1 
+           ORDER BY group_order`,
+          [cleanedData.phase_id]
+        );
+        
+        const existingOrders = ordersResult.map(r => r.group_order);
+        let nextOrder = finalOrder;
+        
+        while (existingOrders.includes(nextOrder)) {
+          nextOrder++;
+        }
+        
+        finalOrder = nextOrder;
+      }
+    }
 
     // Commencer une transaction
     await query('BEGIN');
@@ -581,16 +641,17 @@ export async function createPhaseGroup(
     try {
       // 1. Créer le groupe de phase
       const groupSql = `
-        INSERT INTO phase_groups (phase_id, name, group_order, description)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO phase_groups (phase_id, name, group_order, description, is_active)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id
       `;
       
       const groupResult = await query<{ id: number }>(groupSql, [
-        validatedData.phase_id,
-        validatedData.name,
-        validatedData.group_order,
-        validatedData.description || null,
+        cleanedData.phase_id,
+        finalName,
+        finalOrder,
+        cleanedData.description || null,
+        true, // is_active par défaut à true
       ]);
 
       const groupId = groupResult[0].id;
@@ -598,14 +659,39 @@ export async function createPhaseGroup(
       // 2. Créer automatiquement des sous-groupes si demandé
       if (create_sub_groups > 0) {
         for (let i = 1; i <= create_sub_groups; i++) {
+          // Gérer les noms des sous-groupes
+          let subGroupName = `Sous-groupe ${i}`;
+          let subNameCounter = 1;
+          
+          const existingSubNameCheck = await query<{ id: number }>(
+            `SELECT id FROM sub_groups WHERE name = $1 AND group_id = $2`,
+            [subGroupName, groupId]
+          );
+          
+          while (existingSubNameCheck.length > 0) {
+            subGroupName = `Sous-groupe ${i} (${subNameCounter})`;
+            subNameCounter++;
+            
+            const newSubCheck = await query<{ id: number }>(
+              `SELECT id FROM sub_groups WHERE name = $1 AND group_id = $2`,
+              [subGroupName, groupId]
+            );
+            
+            if (newSubCheck.length === 0) {
+              break;
+            }
+          }
+
           const subGroupSql = `
-            INSERT INTO sub_groups (group_id, name, sub_group_order)
-            VALUES ($1, $2, $3)
+            INSERT INTO sub_groups (group_id, name, sub_group_order, is_active)
+            VALUES ($1, $2, $3, $4)
           `;
+          
           await query(subGroupSql, [
             groupId,
-            `Sous-groupe ${i}`,
-            i
+            subGroupName,
+            i,
+            true, // is_active par défaut à true
           ]);
         }
       }
@@ -613,12 +699,12 @@ export async function createPhaseGroup(
       // Commit de la transaction
       await query('COMMIT');
 
-      revalidatePath('/phases');
-      revalidatePath(`/phases/${validatedData.phase_id}`);
+      revalidatePath(`/ad/phases/${cleanedData.phase_id}`);
+      
       return { 
         success: true, 
         id: groupId,
-        message: `Groupe de phase créé avec succès${create_sub_groups > 0 ? ` (${create_sub_groups} sous-groupe(s) créé(s))` : ''}`
+        message: `Groupe "${finalName}" créé avec succès${create_sub_groups > 0 ? ` (${create_sub_groups} sous-groupe(s) créé(s))` : ''}`
       };
 
     } catch (error) {

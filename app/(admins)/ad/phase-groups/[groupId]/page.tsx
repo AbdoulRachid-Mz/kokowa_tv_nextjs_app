@@ -67,7 +67,7 @@ export default function PhaseGroupDetailPage() {
   // Hook pour les sous-groupes
   const subGroupsList = useEntityList<SubGroup>({
     entityType: "sub-groups",
-    defaultData: group?.sub_groups || undefined,
+    // defaultData: group?.sub_groups || undefined,
     defaultFilters: {
       group_id: parseInt(groupId),
       with_belt_fighters: true,

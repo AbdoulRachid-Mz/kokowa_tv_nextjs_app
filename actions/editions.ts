@@ -738,37 +738,78 @@ export async function createEdition(formData: FormData) {
 
     const cleanedData = {
       competition_id: Number(rawData.competition_id),
-      edition_number: Number(rawData.edition_number),
+      edition_number: rawData.edition_number ? Number(rawData.edition_number) : undefined,
       year: Number(rawData.year),
       theme: rawData.theme as string || undefined,
       start_date: rawData.start_date as string || undefined,
       end_date: rawData.end_date as string || undefined,
     };
 
-    const validatedData = competitionEditionSchema.parse(cleanedData);
+    // Déterminer le numéro d'édition
+    let finalEditionNumber = cleanedData.edition_number;
+    
+    if (finalEditionNumber === undefined || finalEditionNumber === null) {
+      // Récupérer le plus grand numéro d'édition existant pour cette compétition
+      const maxNumberResult = await query<{ max_number: number }>(
+        `SELECT COALESCE(MAX(edition_number), 0) as max_number 
+         FROM competition_editions WHERE competition_id = $1`,
+        [cleanedData.competition_id]
+      );
+      
+      finalEditionNumber = maxNumberResult[0]?.max_number + 1 || 1;
+    } else {
+      // Vérifier si le numéro existe déjà
+      const existingNumberCheck = await query<{ id: number }>(
+        `SELECT id FROM competition_editions 
+         WHERE edition_number = $1 AND competition_id = $2`,
+        [finalEditionNumber, cleanedData.competition_id]
+      );
+      
+      if (existingNumberCheck.length > 0) {
+        // Trouver le prochain numéro disponible
+        const numbersResult = await query<{ edition_number: number }>(
+          `SELECT edition_number FROM competition_editions 
+           WHERE competition_id = $1 
+           ORDER BY edition_number`,
+          [cleanedData.competition_id]
+        );
+        
+        const existingNumbers = numbersResult.map(r => r.edition_number);
+        let nextNumber = finalEditionNumber;
+        
+        while (existingNumbers.includes(nextNumber)) {
+          nextNumber++;
+        }
+        
+        finalEditionNumber = nextNumber;
+      }
+    }
 
     const sql = `
       INSERT INTO competition_editions (
-        competition_id, edition_number, year, theme, start_date, end_date
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+        competition_id, edition_number, year, theme, 
+        start_date, end_date, is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
     `;
     
     const result = await query<{ id: number }>(sql, [
-      validatedData.competition_id,
-      validatedData.edition_number,
-      validatedData.year,
-      validatedData.theme || null,
-      validatedData.start_date || null,
-      validatedData.end_date || null,
+      cleanedData.competition_id,
+      finalEditionNumber,
+      cleanedData.year,
+      cleanedData.theme || null,
+      cleanedData.start_date || null,
+      cleanedData.end_date || null,
+      true, // is_active par défaut à true
     ]);
 
-    revalidatePath('/competitions');
-    revalidatePath(`/competitions/${validatedData.competition_id}`);
+    revalidatePath('/ad/competitions');
+    revalidatePath(`/ad/competitions/${cleanedData.competition_id}`);
+    
     return { 
       success: true, 
       id: result[0].id,
-      message: 'Édition créée avec succès'
+      message: `Édition #${finalEditionNumber} (${cleanedData.year}) créée avec succès`
     };
   } catch (error) {
     console.error('Error in createEdition:', error);
