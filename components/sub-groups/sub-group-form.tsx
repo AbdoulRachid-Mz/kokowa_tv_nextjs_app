@@ -24,7 +24,19 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Save, X, Users, MapPin, Award, Shield, Flag } from "lucide-react";
+import {
+  Save,
+  X,
+  Users,
+  MapPin,
+  Award,
+  Shield,
+  Flag,
+  Clock,
+  Activity,
+  Target,
+  Divide,
+} from "lucide-react";
 import { Typography } from "../ui/typography";
 import { cn } from "@/lib/utils";
 import { createSubGroup, updateSubGroup } from "@/actions/sub-groups";
@@ -37,6 +49,11 @@ interface SubGroupFormData {
   name: string;
   sub_group_order: number;
   description?: string;
+  period: "matin" | "soir";
+  score_region1?: number;
+  score_region2?: number;
+  nulls?: number;
+  status: "upcoming" | "ongoing" | "completed" | "cancelled" | "postponed";
   region1_id?: number;
   region2_id?: number;
   belt_region1?: number;
@@ -118,6 +135,11 @@ export default function SubGroupForm({
     name: subGroup?.name || `Rencontre ${calculateAutoOrder()}`,
     sub_group_order: subGroup?.sub_group_order || calculateAutoOrder(),
     description: subGroup?.description || "",
+    period: subGroup?.period || "matin",
+    score_region1: subGroup?.score_region1 || undefined,
+    score_region2: subGroup?.score_region2 || undefined,
+    nulls: subGroup?.nulls || undefined,
+    status: subGroup?.status || "upcoming",
     region1_id: subGroup?.region1_id || undefined,
     region2_id: subGroup?.region2_id || undefined,
     belt_region1: subGroup?.belt_region1 || undefined,
@@ -173,7 +195,25 @@ export default function SubGroupForm({
   }, [group?.id, formData.group_id]);
 
   const handleChange = (field: keyof SubGroupFormData, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Conversion des valeurs numériques pour les scores et nulls
+    if (
+      field === "score_region1" ||
+      field === "score_region2" ||
+      field === "nulls"
+    ) {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value === "" ? undefined : Number(value),
+      }));
+    } else if (field === "period" || field === "status") {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
+
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
@@ -197,6 +237,19 @@ export default function SubGroupForm({
       newErrors.region2_id = "Les deux régions doivent être différentes";
     }
 
+    // Validation des scores (facultatif mais positif si fourni)
+    if (formData.score_region1 !== undefined && formData.score_region1 < 0) {
+      newErrors.score_region1 = "Le score doit être positif";
+    }
+
+    if (formData.score_region2 !== undefined && formData.score_region2 < 0) {
+      newErrors.score_region2 = "Le score doit être positif";
+    }
+
+    if (formData.nulls !== undefined && formData.nulls < 0) {
+      newErrors.nulls = "Le nombre de nulls doit être positif";
+    }
+
     return newErrors;
   };
 
@@ -218,6 +271,20 @@ export default function SubGroupForm({
       serverFormData.set("name", formData.name);
       serverFormData.set("sub_group_order", String(formData.sub_group_order));
       serverFormData.set("description", formData.description || "");
+
+      // Nouveaux champs
+      serverFormData.set("period", formData.period);
+      if (formData.score_region1 !== undefined) {
+        serverFormData.set("score_region1", String(formData.score_region1));
+      }
+      if (formData.score_region2 !== undefined) {
+        serverFormData.set("score_region2", String(formData.score_region2));
+      }
+      if (formData.nulls !== undefined) {
+        serverFormData.set("nulls", String(formData.nulls));
+      }
+      serverFormData.set("status", formData.status);
+
       serverFormData.set(
         "region1_id",
         formData.region1_id ? String(formData.region1_id) : ""
@@ -261,7 +328,7 @@ export default function SubGroupForm({
       } else {
         // Rediriger vers la page du groupe
         setTimeout(() => {
-          toast.success(result.message)
+          toast.success(result.message);
           router.push(`/ad/sub-groups/${formData.id || 1}`);
           router.refresh();
         }, 1000);
@@ -413,6 +480,109 @@ export default function SubGroupForm({
               {errors.name && (
                 <p className="text-red-500 text-sm">{errors.name}</p>
               )}
+            </div>
+
+            {/* Nouveaux champs : Période, Scores et Statut */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+              {/* Période */}
+              <div className="space-y-2">
+                <Label htmlFor="period" className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  Période
+                </Label>
+                <Select
+                  value={formData.period}
+                  onValueChange={(value) =>
+                    handleChange("period", value as "matin" | "soir")
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionnez une période" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="matin">Matin</SelectItem>
+                    <SelectItem value="soir">Soir</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Score Région 1 */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="score_region1"
+                  className="flex items-center gap-1"
+                >
+                  <Target className="h-4 w-4" />
+                  Score Région 1
+                </Label>
+                <Input
+                  id="score_region1"
+                  type="number"
+                  min="0"
+                  value={
+                    formData.score_region1 === undefined
+                      ? ""
+                      : formData.score_region1
+                  }
+                  onChange={(e) =>
+                    handleChange("score_region1", e.target.value)
+                  }
+                  placeholder="0"
+                  className={errors.score_region1 ? "border-red-500" : ""}
+                />
+                {errors.score_region1 && (
+                  <p className="text-red-500 text-xs">{errors.score_region1}</p>
+                )}
+              </div>
+
+              {/* Score Région 2 */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="score_region2"
+                  className="flex items-center gap-1"
+                >
+                  <Target className="h-4 w-4" />
+                  Score Région 2
+                </Label>
+                <Input
+                  id="score_region2"
+                  type="number"
+                  min="0"
+                  value={
+                    formData.score_region2 === undefined
+                      ? ""
+                      : formData.score_region2
+                  }
+                  onChange={(e) =>
+                    handleChange("score_region2", e.target.value)
+                  }
+                  placeholder="0"
+                  className={errors.score_region2 ? "border-red-500" : ""}
+                />
+                {errors.score_region2 && (
+                  <p className="text-red-500 text-xs">{errors.score_region2}</p>
+                )}
+              </div>
+
+              {/* Nulls */}
+              <div className="space-y-2">
+                <Label htmlFor="nulls" className="flex items-center gap-1">
+                  <Divide className="h-4 w-4" />
+                  Matchs Nuls
+                </Label>
+                <Input
+                  id="nulls"
+                  type="number"
+                  min="0"
+                  value={formData.nulls === undefined ? "" : formData.nulls}
+                  onChange={(e) => handleChange("nulls", e.target.value)}
+                  placeholder="0"
+                  className={errors.nulls ? "border-red-500" : ""}
+                />
+                {errors.nulls && (
+                  <p className="text-red-500 text-xs">{errors.nulls}</p>
+                )}
+              </div>
             </div>
 
             {/* Configuration des régions */}
@@ -621,39 +791,80 @@ export default function SubGroupForm({
               </div>
             </div>
 
-            {/* Ordre du sous-groupe */}
-            {/* <div className="space-y-2">
-              <Label htmlFor="sub_group_order">Ordre dans le groupe</Label>
-              <div className="relative">
-                <Input
-                  id="sub_group_order"
-                  type="number"
-                  min="1"
-                  value={formData.sub_group_order}
-                  onChange={(e) =>
-                    handleChange("sub_group_order", Number(e.target.value))
+            {/* Statut de la rencontre */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="status" className="flex items-center gap-1">
+                  <Activity className="h-4 w-4" />
+                  Statut de la rencontre
+                </Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) =>
+                    handleChange("status", value as SubGroupFormData["status"])
                   }
-                  className={cn(
-                    errors.sub_group_order ? "border-red-500" : "",
-                    "bg-muted"
-                  )}
-                  readOnly
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Typography variant="caption2" theme="muted">
-                    Automatique
-                  </Typography>
-                </div>
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionnez un statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="upcoming">À venir</SelectItem>
+                    <SelectItem value="ongoing">En cours</SelectItem>
+                    <SelectItem value="completed">Terminé</SelectItem>
+                    <SelectItem value="cancelled">Annulé</SelectItem>
+                    <SelectItem value="postponed">Reporté</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              {errors.sub_group_order && (
-                <p className="text-red-500 text-sm">
-                  {errors.sub_group_order}
-                </p>
-              )}
-              <Typography variant="caption2" theme="muted">
-                Basé sur le nombre de rencontres existantes dans le groupe
-              </Typography>
-            </div> */}
+
+              {/* Arbitre principal */}
+              <div className="space-y-2">
+                <Label htmlFor="main_referee_id">Arbitre Principal</Label>
+                <Select
+                  value={formData.main_referee_id?.toString() || ""}
+                  onValueChange={(value) =>
+                    handleChange("main_referee_id", Number(value))
+                  }
+                  disabled={loading.referees}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionnez un arbitre principal">
+                      {formData.main_referee_id && referees.length > 0 ? (
+                        renderRefereeOption(
+                          referees.find(
+                            (r) => r.id === formData.main_referee_id
+                          )
+                        )
+                      ) : (
+                        <div className="flex items-center space-x-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-muted">
+                              <Users className="h-5 w-5" />
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>Sélectionnez un arbitre</span>
+                        </div>
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {referees.map((referee) => (
+                      <SelectItem
+                        key={referee.id}
+                        value={referee.id.toString()}
+                      >
+                        {renderRefereeOption(referee)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {loading.referees && (
+                  <p className="text-muted-foreground text-sm">
+                    Chargement des arbitres...
+                  </p>
+                )}
+              </div>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
@@ -664,49 +875,6 @@ export default function SubGroupForm({
                 placeholder="Description de la rencontre..."
                 rows={3}
               />
-            </div>
-
-            {/* Arbitre principal */}
-            <div className="space-y-2">
-              <Label htmlFor="main_referee_id">Arbitre Principal</Label>
-              <Select
-                value={formData.main_referee_id?.toString() || ""}
-                onValueChange={(value) =>
-                  handleChange("main_referee_id", Number(value))
-                }
-                disabled={loading.referees}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionnez un arbitre principal">
-                    {formData.main_referee_id && referees.length > 0 ? (
-                      renderRefereeOption(
-                        referees.find((r) => r.id === formData.main_referee_id)
-                      )
-                    ) : (
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-muted">
-                            <Users className="h-5 w-5" />
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>Sélectionnez un arbitre</span>
-                      </div>
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {referees.map((referee) => (
-                    <SelectItem key={referee.id} value={referee.id.toString()}>
-                      {renderRefereeOption(referee)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {loading.referees && (
-                <p className="text-muted-foreground text-sm">
-                  Chargement des arbitres...
-                </p>
-              )}
             </div>
 
             {/* Statuts */}
@@ -799,18 +967,57 @@ export default function SubGroupForm({
                       )}
                     </div>
 
-                    {/* VS */}
+                    {/* VS avec informations */}
                     <div className="flex flex-col items-center">
                       <Badge variant="outline" className="text-lg px-4 py-2">
                         VS
                       </Badge>
-                      <Typography
-                        variant="caption2"
-                        theme="muted"
-                        className="mt-2"
-                      >
-                        Rencontre
-                      </Typography>
+                      <div className="mt-2 text-center">
+                        <Typography variant="caption2" theme="muted">
+                          Période:{" "}
+                          <span className="font-semibold">
+                            {formData.period === "matin" ? "Matin" : "Soir"}
+                          </span>
+                        </Typography>
+                        <Typography variant="caption2" theme="muted">
+                          Statut:{" "}
+                          <Badge
+                            variant={
+                              formData.status === "completed"
+                                ? "default"
+                                : formData.status === "ongoing"
+                                ? "secondary"
+                                : formData.status === "cancelled"
+                                ? "destructive"
+                                : formData.status === "postponed"
+                                ? "outline"
+                                : "secondary"
+                            }
+                          >
+                            {formData.status === "upcoming"
+                              ? "À venir"
+                              : formData.status === "ongoing"
+                              ? "En cours"
+                              : formData.status === "completed"
+                              ? "Terminé"
+                              : formData.status === "cancelled"
+                              ? "Annulé"
+                              : "Reporté"}
+                          </Badge>
+                        </Typography>
+                        {(formData.score_region1 !== undefined ||
+                          formData.score_region2 !== undefined) && (
+                          <Typography variant="caption2" theme="muted">
+                            Score:{" "}
+                            <span className="font-semibold">
+                              {formData.score_region1 || 0} -{" "}
+                              {formData.score_region2 || 0}
+                              {formData.nulls !== undefined &&
+                                ` (${formData.nulls} nuls)`}
+                            </span>
+                          </Typography>
+                        )}
+                      </div>
                     </div>
 
                     {/* Région 2 */}

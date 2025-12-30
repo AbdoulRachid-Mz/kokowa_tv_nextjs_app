@@ -1,59 +1,100 @@
 // app/ad/sub-groups/[subGroupId]/matches/[matchId]/audience-counter.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Typography } from "@/components/ui/typography";
-import { Badge } from "@/components/ui/badge";
-import { Eye, Plus, Minus, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Users, Plus, Minus, Save } from "lucide-react";
 import { toast } from "sonner";
 
 interface AudienceCounterProps {
   audienceCount: number;
   onUpdate: (count: number) => void;
-  isSaving: boolean;
 }
 
-export function AudienceCounter({ 
-  audienceCount, 
-  onUpdate, 
-  isSaving 
-}: AudienceCounterProps) {
-  const [localCount, setLocalCount] = useState(audienceCount);
+export function AudienceCounter({ audienceCount, onUpdate }: AudienceCounterProps) {
+  const [localCount, setLocalCount] = useState(audienceCount.toString());
+  const [isSaving, setIsSaving] = useState(false);
   
-  const increment = () => {
-    const newCount = localCount + 1;
-    setLocalCount(newCount);
-    onUpdate(newCount);
-    toast.success("Spectateur ajouté");
-  };
+  // Délai pour sauvegarde automatique
+  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   
-  const decrement = () => {
-    if (localCount > 0) {
-      const newCount = localCount - 1;
-      setLocalCount(newCount);
-      onUpdate(newCount);
-      toast.success("Spectateur retiré");
+  // Synchroniser avec la prop
+  useEffect(() => {
+    setLocalCount(audienceCount.toString());
+  }, [audienceCount]);
+  
+  const handleChange = (value: string) => {
+    // Nettoyer l'entrée
+    const cleanValue = value.replace(/[^0-9]/g, '');
+    setLocalCount(cleanValue);
+    
+    // Annuler le timeout précédent
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    
+    // Mettre en place un nouveau timeout pour sauvegarde automatique
+    const newCount = parseInt(cleanValue) || 0;
+    if (newCount !== audienceCount) {
+      const timeout = setTimeout(() => {
+        saveCount(newCount);
+      }, 2000); // 2 secondes de délai
+      
+      setSaveTimeout(timeout);
     }
   };
   
-  const handleManualUpdate = (value: string) => {
-    const numValue = parseInt(value);
-    if (!isNaN(numValue) && numValue >= 0) {
-      setLocalCount(numValue);
-      onUpdate(numValue);
+  const saveCount = useCallback(async (count: number) => {
+    if (count === audienceCount) return;
+    
+    setIsSaving(true);
+    try {
+      onUpdate(count);
+      toast.success(`Spectateurs mis à jour: ${count}`);
+    } catch (error) {
+      console.error("Erreur mise à jour spectateurs:", error);
+      toast.error("Erreur lors de la mise à jour");
+      setLocalCount(audienceCount.toString());
+    } finally {
+      setIsSaving(false);
+    }
+  }, [audienceCount, onUpdate]);
+  
+  const handleIncrement = () => {
+    const newCount = (parseInt(localCount) || 0) + 100;
+    setLocalCount(newCount.toString());
+    saveCount(newCount);
+  };
+  
+  const handleDecrement = () => {
+    const current = parseInt(localCount) || 0;
+    if (current >= 100) {
+      const newCount = current - 100;
+      setLocalCount(newCount.toString());
+      saveCount(newCount);
     }
   };
   
-  const resetCount = () => {
-    setLocalCount(0);
-    onUpdate(0);
-    toast.info("Compteur remis à zéro");
+  const handleManualSave = () => {
+    const count = parseInt(localCount) || 0;
+    saveCount(count);
   };
-
+  
+  // Nettoyer le timeout à la fermeture
+  useEffect(() => {
+    return () => {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+    };
+  }, [saveTimeout]);
+  
   return (
-    <Card className="p-3">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" />
@@ -61,102 +102,66 @@ export function AudienceCounter({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Compteur principal */}
         <div className="text-center">
-          <Typography variant="h1" className="font-bold text-6xl">
-            {localCount}
+          <Typography variant="h2" className="font-bold">
+            {parseInt(localCount).toLocaleString('fr-FR')}
           </Typography>
-          <Typography variant="body-sm" theme="muted" className="mt-2">
-            Personnes dans l'audience
+          <Typography variant="body-sm" theme="muted">
+            spectateurs
           </Typography>
         </div>
         
-        {/* Contrôles */}
-        <div className="grid grid-cols-3 gap-3">
-          <Button
-            onClick={decrement}
-            variant="outline"
-            size="lg"
-            className="gap-2"
-            disabled={isSaving || localCount <= 0}
-          >
-            <Minus className="h-5 w-5" />
-            -1
-          </Button>
-          
-          <div className="flex items-center justify-center">
-            <input
-              type="number"
+        <div className="space-y-3">
+          <Label>Nombre de spectateurs</Label>
+          <div className="flex gap-2">
+            <Input
               value={localCount}
-              onChange={(e) => handleManualUpdate(e.target.value)}
-              className="w-full p-2 border rounded text-center text-lg"
-              min="0"
-              disabled={isSaving}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder="0"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              className="text-center text-lg"
             />
+            <Button
+              onClick={handleManualSave}
+              variant="outline"
+              size="icon"
+              disabled={isSaving || parseInt(localCount) === audienceCount}
+            >
+              <Save className="h-4 w-4" />
+            </Button>
           </div>
           
-          <Button
-            onClick={increment}
-            variant="outline"
-            size="lg"
-            className="gap-2"
-            disabled={isSaving}
-          >
-            <Plus className="h-5 w-5" />
-            +1
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleDecrement}
+              variant="outline"
+              className="flex-1 gap-2"
+              disabled={isSaving || (parseInt(localCount) || 0) < 100}
+            >
+              <Minus className="h-4 w-4" />
+              -100
+            </Button>
+            <Button
+              onClick={handleIncrement}
+              variant="outline"
+              className="flex-1 gap-2"
+              disabled={isSaving}
+            >
+              <Plus className="h-4 w-4" />
+              +100
+            </Button>
+          </div>
         </div>
         
-        {/* Actions supplémentaires */}
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            onClick={() => handleManualUpdate("100")}
-            variant="ghost"
-            size="sm"
-            className="gap-1"
-            disabled={isSaving}
-          >
-            <Eye className="h-3 w-3" />
-            100
-          </Button>
-          
-          <Button
-            onClick={() => handleManualUpdate("500")}
-            variant="ghost"
-            size="sm"
-            className="gap-1"
-            disabled={isSaving}
-          >
-            <Eye className="h-3 w-3" />
-            500
-          </Button>
-        </div>
-        
-        <Button
-          onClick={resetCount}
-          variant="ghost"
-          size="sm"
-          className="w-full gap-2 text-destructive"
-          disabled={isSaving || localCount === 0}
-        >
-          <Minus className="h-4 w-4" />
-          Réinitialiser
-        </Button>
-        
-        {/* Statistiques */}
-        <div className="border-t pt-3 mt-2">
-          <div className="flex items-center justify-between text-sm">
+        {isSaving && (
+          <div className="text-center">
             <Typography variant="body-sm" theme="muted">
-              Dernière mise à jour
+              Sauvegarde...
             </Typography>
-            <Badge variant="outline">
-              {new Date().toLocaleTimeString('fr-FR', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}
-            </Badge>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

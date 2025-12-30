@@ -83,13 +83,13 @@ export const competitionSchema = z.object({
   ).default(true),
 });
 
-// Schema pour les éditions de compétition
+// Schema pour les éditions de compétition (mis à jour)
 export const competitionEditionSchema = z.object({
   competition_id: z.number().int().positive('Compétition invalide'),
   edition_number: z.number().int().min(1, 'Le numéro d\'édition doit être positif'),
   year: z.number().int().min(1900, 'Année invalide').max(new Date().getFullYear() + 5, 'Année invalide'),
   theme: z.string().max(255, 'Le thème est trop long').optional(),
-  is_active: z.boolean().default(true), // ✅ align with SQL default
+  is_active: z.boolean().default(true),
   start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').optional(),
   end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').optional(),
   winner_fighter_id: z.number().int().positive('Lutteur gagnant invalide').optional(),
@@ -97,10 +97,11 @@ export const competitionEditionSchema = z.object({
   region_id: z.number().int().positive('Région invalide').optional(),
   prize_pool: z.number().min(0, 'Le prix doit être positif').optional(),
   registration_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').optional(),
-  total_participants: z.number().int().min(0, 'Nombre de participants invalide').default(0), // ✅ added
+  total_participants: z.number().int().min(0, 'Nombre de participants invalide').default(0),
 });
 
-// Schema pour les phases
+
+// Schema pour les phases (mis à jour - phase_order est UNIQUE)
 export const phaseSchema = z.object({
   edition_id: z.number().int().positive('Édition invalide'),
   name: z.string().min(1, 'Le nom est requis').max(100, 'Le nom est trop long'),
@@ -113,15 +114,17 @@ export const phaseSchema = z.object({
   is_completed: z.boolean().default(false),
 });
 
-// Schema pour les groupes de phase
+// Schema pour les groupes de phase (mis à jour - ajout de date)
 export const phaseGroupSchema = z.object({
   phase_id: z.number().int().positive('Phase invalide'),
   name: z.string().min(1, 'Le nom est requis').max(100, 'Le nom est trop long'),
-  is_active: z.boolean().default(true),
   group_order: z.number().int().min(1, 'L\'ordre doit être positif'),
   description: z.string().optional(),
   is_completed: z.boolean().default(false),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').optional(),
+  is_active: z.boolean().default(true),
 });
+
 
 // Schema pour les sous-groupes
 export const subGroupSchema = z.object({
@@ -129,13 +132,18 @@ export const subGroupSchema = z.object({
   name: z.string().min(1, 'Le nom est requis').max(100, 'Le nom est trop long'),
   sub_group_order: z.number().int().min(1, 'L\'ordre doit être positif'),
   description: z.string().optional(),
-  is_active: z.boolean().default(true),
+  period: z.enum(['matin', 'soir']).default('matin'),
+  score_region1: z.number().int().min(0, 'Score invalide').optional(),
+  score_region2: z.number().int().min(0, 'Score invalide').optional(),
+  nulls: z.number().int().min(0, 'Nombre de nulls invalide').optional(),
+  status: z.enum(['upcoming', 'ongoing', 'completed', 'cancelled', 'postponed']).default('upcoming'),
   region1_id: z.number().int().positive('Région 1 invalide').optional(),
   region2_id: z.number().int().positive('Région 2 invalide').optional(),
   belt_region1: z.number().int().positive('Ceinture région 1 invalide').optional(),
   belt_region2: z.number().int().positive('Ceinture région 2 invalide').optional(),
   main_referee_id: z.number().int().positive('Arbitre principal invalide').optional(),
   is_completed: z.boolean().default(false),
+  is_active: z.boolean().default(false),
 });
 
 // Schema pour les ceintures
@@ -163,6 +171,9 @@ export const matchSchema = z.object({
   // Participants
   fighter1_id: z.number().int().positive('Lutteur 1 invalide').optional().or(z.literal('')),
   fighter2_id: z.number().int().positive('Lutteur 2 invalide').optional().or(z.literal('')),
+
+  fighter1_initial_state: z.enum(['eliminated', 'not_eliminated']).optional(),
+  fighter2_initial_state: z.enum(['eliminated', 'not_eliminated']).optional(),
 
   // Résultats
   winner_fighter_id: z.number().int().positive('Lutteur gagnant invalide').optional().or(z.literal('')),
@@ -198,18 +209,22 @@ export const matchSchema = z.object({
   notes: z.string().optional(),
 });
 
-// Schema pour l'inscription des lutteurs à une édition
+// Schema pour l'inscription des lutteurs à une édition (mis à jour)
 export const editionFighterSchema = z.object({
   edition_id: z.number().int().positive('Édition invalide'),
   fighter_id: z.number().int().positive('Lutteur invalide'),
   region_id: z.number().int().positive('Région invalide'),
+  is_champion: z.boolean().default(false),
+  is_eliminated: z.boolean().default(false),
   status: z.enum(['registered', 'qualified', 'disqualified', 'withdrawn']).default('registered'),
 });
 
-// Schema pour l'inscription des régions à une édition
+// Schema pour l'inscription des régions à une édition (mis à jour)
 export const editionRegionSchema = z.object({
   edition_id: z.number().int().positive('Édition invalide'),
   region_id: z.number().int().positive('Région invalide'),
+  is_eliminated: z.boolean().default(false),
+  points: z.number().int().min(0, 'Points invalides').default(0),
   status: z.enum(['registered', 'approved', 'rejected']).default('registered'),
 });
 

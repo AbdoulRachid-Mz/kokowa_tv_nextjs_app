@@ -220,7 +220,16 @@ export default function PhaseDetailPage() {
                     className="text-muted-foreground"
                   >
                     Ordre: {group.group_order}
+
                   </Typography>
+                  {group.date && (
+                    <Typography
+                      variant="body-sm"
+                      className="text-muted-foreground"
+                    >
+                      Date: {new Date(group.date).toLocaleDateString()}
+                    </Typography>
+                  )}
 
                   {group.description && (
                     <Typography

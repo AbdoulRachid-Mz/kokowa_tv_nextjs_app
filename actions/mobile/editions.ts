@@ -1,30 +1,30 @@
-'use server';
+"use server";
 
-import { query } from '@/lib/db/neon-client';
+import { query } from "@/lib/db/neon-client";
 
 export async function getMobileEditionById(editionId: number) {
   try {
     // Vérifier que l'édition existe
     const existsSql = "SELECT id FROM competition_editions WHERE id = $1";
     const existsResult = await query(existsSql, [editionId]);
-    
+
     if (existsResult.length === 0) {
       return {
         success: false,
         error: {
           code: 404,
-          message: 'Édition non trouvée',
-          timestamp: new Date().toISOString()
-        }
+          message: "Édition non trouvée",
+          timestamp: new Date().toISOString(),
+        },
       };
     }
 
     // Récupérer les informations de base de l'édition
     const editionInfo = await getEditionInfo(editionId);
-    
+
     // Récupérer les phases, groupes, sous-groupes
     const phases = await getPhasesWithGroupsAndSubgroups(editionId);
-    
+
     // Récupérer le match en direct
     const liveMatch = await getLiveMatchForEdition(editionId);
 
@@ -34,79 +34,77 @@ export async function getMobileEditionById(editionId: number) {
         edition: {
           ...editionInfo,
           phases,
-          liveMatch
-        }
+          liveMatch,
+        },
       },
-      message: 'Édition récupérée avec succès'
+      message: "Édition récupérée avec succès",
     };
   } catch (error) {
-    console.error('Error in getMobileEditionById:', error);
+    console.error("Error in getMobileEditionById:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la récupération de l\'édition',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la récupération de l'édition",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }
 
 export async function getMobileLatestEdition() {
   try {
-    // Récupérer la dernière édition active
+    // Récupérer la dernière édition active avec les nouveaux champs
     const latestEditionSql = `
-      SELECT id
-      FROM competition_editions 
-      WHERE is_active = TRUE
-      ORDER BY year DESC, edition_number DESC
+      SELECT 
+        ce.id,
+        ce.edition_number as "editionNumber",
+        ce.year,
+        ce.theme,
+        ce.start_date as "startDate",
+        ce.end_date as "endDate",
+        ce.is_active as "isActive",
+        c.name as "competitionName",
+        r.name as "regionName",
+        r.stadium_name as "stadiumName",
+        -- Statistiques des participants
+        (SELECT COUNT(*) FROM edition_fighters ef WHERE ef.edition_id = ce.id AND ef.is_champion = TRUE) as "championCount",
+        (SELECT COUNT(*) FROM edition_fighters ef WHERE ef.edition_id = ce.id AND ef.is_eliminated = TRUE) as "eliminatedFightersCount",
+        (SELECT COUNT(*) FROM edition_regions er WHERE er.edition_id = ce.id AND er.is_eliminated = TRUE) as "eliminatedRegionsCount"
+      FROM competition_editions ce
+      JOIN competitions c ON ce.competition_id = c.id
+      LEFT JOIN regions r ON ce.region_id = r.id
+      WHERE ce.is_active = TRUE
+      ORDER BY ce.year DESC, ce.edition_number DESC
       LIMIT 1
     `;
 
-    const latestResult = await query<{ id: number }>(latestEditionSql);
-    
+    const latestResult = await query(latestEditionSql);
+
     if (latestResult.length === 0) {
       return {
         success: false,
         error: {
           code: 404,
-          message: 'Aucune édition active trouvée',
-          timestamp: new Date().toISOString()
-        }
+          message: "Aucune édition active trouvée",
+          timestamp: new Date().toISOString(),
+        },
       };
     }
 
     const editionId = latestResult[0].id;
-    
-    // Récupérer les informations de base de l'édition
-    const editionInfo = await getEditionInfo(editionId);
-    
-    // Récupérer les phases, groupes, sous-groupes
-    const phases = await getPhasesWithGroupsAndSubgroups(editionId);
-    
-    // Récupérer le match en direct
-    const liveMatch = await getLiveMatchForEdition(editionId);
 
-    return {
-      success: true,
-      data: {
-        edition: {
-          ...editionInfo,
-          phases,
-          liveMatch
-        }
-      },
-      message: 'Dernière édition récupérée avec succès'
-    };
+    // Utiliser la fonction corrigée pour récupérer les détails
+    return await getMobileEditionById(editionId);
   } catch (error) {
-    console.error('Error in getMobileLatestEdition:', error);
+    console.error("Error in getMobileLatestEdition:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la récupération de la dernière édition',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la récupération de la dernière édition",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }
@@ -122,6 +120,7 @@ async function getEditionInfo(editionId: number) {
       ce.region_id as "regionId",
       r.name as "regionName",
       r.stadium_name as "stadiumName",
+      r.stadium_image as "stadiumImage", // NOUVEAU
       r.color as "regionColor",
       ce.start_date as "startDate",
       ce.end_date as "endDate",
@@ -130,6 +129,9 @@ async function getEditionInfo(editionId: number) {
       f.last_name as "winnerLastName",
       f.nickname as "winnerNickname",
       f.profile_image as "winnerProfileImage",
+      ce.winner_region_id as "winnerRegionId", // NOUVEAU
+      wr.name as "winnerRegionName", // NOUVEAU
+      wr.color as "winnerRegionColor", // NOUVEAU
       ce.is_active as "isActive",
       ce.total_participants as "totalParticipants",
       ce.prize_pool as "prizePool",
@@ -140,11 +142,15 @@ async function getEditionInfo(editionId: number) {
       c.slug as "competitionSlug",
       c.description as "competitionDescription",
       c.featured_image as "competitionFeaturedImage",
-      c.status as "competitionStatus"
+      c.status as "competitionStatus",
+      -- Nouveaux champs de statistiques
+      (SELECT COUNT(*) FROM edition_fighters ef WHERE ef.edition_id = ce.id AND ef.is_champion = TRUE) as "championCount",
+      (SELECT COUNT(*) FROM edition_regions er WHERE er.edition_id = ce.id AND er.is_eliminated = FALSE) as "activeRegionsCount"
     FROM competition_editions ce
     JOIN competitions c ON ce.competition_id = c.id
     LEFT JOIN regions r ON ce.region_id = r.id
     LEFT JOIN fighters f ON ce.winner_fighter_id = f.id
+    LEFT JOIN regions wr ON ce.winner_region_id = wr.id
     WHERE ce.id = $1
   `;
 
@@ -158,16 +164,57 @@ async function getEditionInfo(editionId: number) {
     slug: edition.competitionSlug,
     description: edition.competitionDescription,
     featuredImage: edition.competitionFeaturedImage,
-    status: edition.competitionStatus
+    status: edition.competitionStatus,
+  };
+
+  // Structurer les données du vainqueur
+  edition.winner = edition.winnerFighterId
+    ? {
+        fighter: {
+          id: edition.winnerFighterId,
+          firstName: edition.winnerFirstName,
+          lastName: edition.winnerLastName,
+          nickname: edition.winnerNickname,
+          profileImage: edition.winnerProfileImage,
+        },
+        region: edition.winnerRegionId
+          ? {
+              id: edition.winnerRegionId,
+              name: edition.winnerRegionName,
+              color: edition.winnerRegionColor,
+            }
+          : null,
+      }
+    : null;
+
+  // Statistiques de l'édition
+  edition.stats = {
+    championCount: edition.championCount,
+    activeRegionsCount: edition.activeRegionsCount,
+    totalParticipants: edition.totalParticipants,
   };
 
   // Nettoyer les données redondantes
-  delete edition.competitionId;
-  delete edition.competitionName;
-  delete edition.competitionSlug;
-  delete edition.competitionDescription;
-  delete edition.competitionFeaturedImage;
-  delete edition.competitionStatus;
+  const fieldsToDelete = [
+    "competitionId",
+    "competitionName",
+    "competitionSlug",
+    "competitionDescription",
+    "competitionFeaturedImage",
+    "competitionStatus",
+    "winnerFighterId",
+    "winnerFirstName",
+    "winnerLastName",
+    "winnerNickname",
+    "winnerProfileImage",
+    "winnerRegionId",
+    "winnerRegionName",
+    "winnerRegionColor",
+    "championCount",
+    "activeRegionsCount",
+  ];
+
+  fieldsToDelete.forEach((field) => delete edition[field]);
 
   return edition;
 }
@@ -233,6 +280,12 @@ async function getSubgroupsForGroup(groupId: number) {
       sg.id,
       sg.name,
       sg.sub_group_order as "subGroupOrder",
+      sg.description,
+      sg.period, // NOUVEAU CHAMP
+      sg.score_region1 as "scoreRegion1", // NOUVEAU CHAMP
+      sg.score_region2 as "scoreRegion2", // NOUVEAU CHAMP
+      sg.nulls, // NOUVEAU CHAMP
+      sg.status, // NOUVEAU CHAMP
       sg.region1_id as "region1Id",
       sg.region2_id as "region2Id",
       r1.name as "region1Name",
@@ -260,7 +313,18 @@ async function getSubgroupsForGroup(groupId: number) {
     ORDER BY sg.sub_group_order
   `;
 
-  return await query(sql, [groupId]);
+  const subGroups = await query(sql, [groupId]);
+
+  // Formater les sous-groupes avec les nouveaux champs
+  return subGroups.map((sg) => ({
+    ...sg,
+    scores: {
+      region1: sg.scoreRegion1,
+      region2: sg.scoreRegion2,
+      nulls: sg.nulls,
+    },
+    matchStatus: sg.status,
+  }));
 }
 
 async function getLiveMatchForEdition(editionId: number) {
@@ -344,8 +408,8 @@ async function getLiveMatchForEdition(editionId: number) {
         region: {
           id: liveMatch.fighter1RegionId,
           name: liveMatch.fighter1RegionName,
-          color: liveMatch.fighter1RegionColor
-        }
+          color: liveMatch.fighter1RegionColor,
+        },
       },
       fighter2: {
         id: liveMatch.fighter2Id,
@@ -356,9 +420,9 @@ async function getLiveMatchForEdition(editionId: number) {
         region: {
           id: liveMatch.fighter2RegionId,
           name: liveMatch.fighter2RegionName,
-          color: liveMatch.fighter2RegionColor
-        }
-      }
+          color: liveMatch.fighter2RegionColor,
+        },
+      },
     };
 
     // Nettoyer les données redondantes
@@ -381,4 +445,69 @@ async function getLiveMatchForEdition(editionId: number) {
   }
 
   return liveMatch;
+}
+
+export async function getEditionStats(editionId: number) {
+  const sql = `
+    SELECT 
+      -- Statistiques des lutteurs
+      (SELECT COUNT(*) FROM edition_fighters ef WHERE ef.edition_id = $1 AND ef.is_champion = TRUE) as champion_count,
+      (SELECT COUNT(*) FROM edition_fighters ef WHERE ef.edition_id = $1 AND ef.is_eliminated = TRUE) as eliminated_fighters,
+      (SELECT COUNT(*) FROM edition_fighters ef WHERE ef.edition_id = $1 AND ef.status = 'qualified') as qualified_fighters,
+      
+      -- Statistiques des régions
+      (SELECT COUNT(*) FROM edition_regions er WHERE er.edition_id = $1 AND er.is_eliminated = TRUE) as eliminated_regions,
+      (SELECT COUNT(*) FROM edition_regions er WHERE er.edition_id = $1 AND er.status = 'approved') as approved_regions,
+      (SELECT COALESCE(SUM(er.points), 0) FROM edition_regions er WHERE er.edition_id = $1) as total_points,
+      
+      -- Statistiques des matchs
+      (SELECT COUNT(*) FROM matches m 
+        JOIN sub_groups sg ON m.sub_group_id = sg.id
+        JOIN phase_groups pg ON sg.group_id = pg.id
+        JOIN phases p ON pg.phase_id = p.id
+        WHERE p.edition_id = $1) as total_matches,
+        
+      (SELECT COUNT(*) FROM matches m 
+        JOIN sub_groups sg ON m.sub_group_id = sg.id
+        JOIN phase_groups pg ON sg.group_id = pg.id
+        JOIN phases p ON pg.phase_id = p.id
+        WHERE p.edition_id = $1 AND m.status = 'completed') as completed_matches,
+        
+      (SELECT COUNT(*) FROM matches m 
+        JOIN sub_groups sg ON m.sub_group_id = sg.id
+        JOIN phase_groups pg ON sg.group_id = pg.id
+        JOIN phases p ON pg.phase_id = p.id
+        WHERE p.edition_id = $1 AND m.status IN ('live', 'round_break')) as live_matches
+  `;
+
+  const result = await query(sql, [editionId]);
+  return result[0];
+}
+
+// Fonction pour récupérer les champions d'une édition
+export async function getEditionChampions(editionId: number) {
+  const sql = `
+    SELECT 
+      ef.id,
+      ef.is_champion as "isChampion",
+      ef.is_eliminated as "isEliminated",
+      ef.status,
+      f.id as "fighterId",
+      f.first_name as "firstName",
+      f.last_name as "lastName",
+      f.nickname,
+      f.profile_image as "profileImage",
+      f.ranking,
+      r.id as "regionId",
+      r.name as "regionName",
+      r.color as "regionColor"
+    FROM edition_fighters ef
+    JOIN fighters f ON ef.fighter_id = f.id
+    LEFT JOIN regions r ON f.region_id = r.id
+    WHERE ef.edition_id = $1 
+      AND ef.is_champion = TRUE
+    ORDER BY f.ranking DESC
+  `;
+
+  return await query(sql, [editionId]);
 }

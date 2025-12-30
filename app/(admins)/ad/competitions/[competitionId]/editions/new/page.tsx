@@ -1,5 +1,5 @@
-// app/admin/competitions/[competitionId]/editions/new/page.tsx
-// app/admin/editions/[editionId]/edit/page.tsx
+// app/ad/competitions/[competitionId]/editions/new/page.tsx
+// app/ad/editions/[editionId]/edit/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";

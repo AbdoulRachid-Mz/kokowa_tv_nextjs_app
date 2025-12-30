@@ -120,10 +120,10 @@ export interface Competition extends BaseEntity {
   editions?: CompetitionEdition[];
 }
 
-// Édition de compétition
+// Édition de compétition (mis à jour - phase_order UNIQUE)
 export interface CompetitionEdition extends BaseEntity {
   competition_id: number;
-  edition_number: number;
+  edition_number: number; // UNIQUE dans la table
   year: number;
   theme?: string;
   start_date?: string;
@@ -146,12 +146,15 @@ export interface CompetitionEdition extends BaseEntity {
   phases?: Phase[];
 }
 
+
 // Lutteur participant à une édition
 export interface EditionFighter extends BaseEntity {
   edition_id: number;
   fighter_id: number;
   region_id: number;
   registration_date: string;
+  is_champion?: boolean; // NOUVEAU
+  is_eliminated?: boolean; // NOUVEAU
   status: 'registered' | 'qualified' | 'disqualified' | 'withdrawn';  
   // Relations
   edition?: CompetitionEdition;
@@ -165,6 +168,8 @@ export interface EditionRegion extends BaseEntity {
   region_id: number;
   registration_date: string;
   status: 'registered' | 'approved' | 'rejected';
+  is_eliminated?: boolean; // NOUVEAU
+  points?: number; // NOUVEAU
   
   // Relations
   edition?: CompetitionEdition;
@@ -196,6 +201,7 @@ export interface PhaseGroup extends BaseEntity {
   description?: string;
   is_completed: boolean;
   is_active?: boolean;
+  date?: string; // NOUVEAU
   
   // Relations
   phase?: Phase;
@@ -215,6 +221,12 @@ export interface SubGroup extends BaseEntity {
   main_referee_id?: number;
   is_completed: boolean;
   is_active?: boolean;
+
+  period?: 'matin' | 'soir'; // NOUVEAU
+  score_region1?: number; // NOUVEAU
+  score_region2?: number; // NOUVEAU
+  nulls?: number; // NOUVEAU
+  status?: 'upcoming' |'ongoing' |'completed' |'cancelled' |'postponed';
   
   // Relations
   group?: PhaseGroup;
@@ -224,8 +236,6 @@ export interface SubGroup extends BaseEntity {
   belt2?: Belt;
   main_referee?: Referee;
   matches?: Match[];
-  // phase?: Phase[];
-  // edition?: CompetitionEdition[]
   edition_fighters?: Fighter[];
   edition_regions?: Region[];
 }
@@ -237,28 +247,31 @@ export interface Match extends BaseEntity {
   match_date: string;
   start_time?: string;
   end_time?: string;
-  
+
   // Participants
   fighter1_id?: number;
   fighter2_id?: number;
-  
+
+  fighter1_initial_state?: 'eliminated' | 'not_eliminated';
+  fighter2_initial_state?: 'eliminated' | 'not_eliminated';
+
   // Résultat
   winner_fighter_id?: number;
   loser_fighter_id?: number;
-  
+
   // Score
   match_result?: 'fighter1_win' | 'fighter2_win' | 'draw' | 'cancelled' | 'postponed';
   total_duration?: string;
   break_count: number;
   status: 'scheduled' | 'live' | 'round_break' | 'completed' | 'cancelled' | 'postponed' | 'reclamation';
   is_active?: boolean;
-  
+
   // Informations supplémentaires
   audience_count?: number;
   video_url?: string;
   live_stream_url?: string;
   notes?: string;
-  
+
   // Relations
   sub_group?: SubGroup;
   fighter1?: Fighter;
@@ -369,7 +382,15 @@ export interface Article extends BaseEntity {
   
   // Relations
   author?: User;
-  media?: Media;
+  // Media relations – typed by file_type
+  images?: Media[];
+  videos?: Media[];
+  documents?: Media[];
+  audios?: Media[];
+
+  // Reverse relations
+  messages?: Message[];
+  interactions?: Interaction[];
 }
 
 // Média
@@ -564,6 +585,8 @@ export interface PhaseGroupFilters extends BaseFilters {
   phase_id?: number;
   is_completed?: boolean;
   is_active?: boolean;
+  date_from?: string; // NOUVEAU
+  date_to?: string; // NOUVEAU
   with_phase?: boolean;
   with_subGroups?: boolean;
   with_matches?: boolean;
@@ -577,6 +600,8 @@ export interface SubGroupFilters extends BaseFilters {
   belt_region2?: number;
   main_referee_id?: number;
   is_completed?: boolean;
+  period?: 'matin' | 'soir'; // NOUVEAU
+  status?: 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed';
   is_active?: boolean;
   with_group?: boolean;
   with_matches?: boolean;
@@ -590,13 +615,14 @@ export interface MatchFilters extends BaseFilters {
   edition_id?: number;
   phase_id?: number;
   group_id?: number;
-  status?: string;
+  status?: 'scheduled' | 'live' | 'round_break' | 'completed' | 'cancelled' | 'postponed' | 'reclamation';
   date_from?: string;
   date_to?: string;
   is_active?: boolean;
   with_sub_group?: boolean;
   with_fighters?: boolean;
   with_winner?: boolean;
+  with_cards?: boolean;
 }
 
 export interface EditionFighterFilters extends BaseFilters {
@@ -607,6 +633,8 @@ export interface EditionFighterFilters extends BaseFilters {
   with_fighter: boolean;
   with_region?: boolean;
   with_edition?: boolean;
+  is_champion?: boolean; // NOUVEAU
+  is_eliminated?: boolean; // NOUVEAU
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
 }
@@ -617,6 +645,9 @@ export interface EditionRegionFilters extends BaseFilters {
   status?: string;
   with_region: boolean;
   with_edition?: boolean;
+  is_eliminated?: boolean; // NOUVEAU
+  points_min?: number; // NOUVEAU
+  points_max?: number; // NOUVEAU
 }
 
 export interface FighterCardFilters extends BaseFilters {
@@ -699,6 +730,9 @@ export interface ArticleFilters extends BaseFilters {
   status?: 'draft' | 'published' | 'archived';
   language?: 'fr' | 'ha' | 'en';
   with_author?: boolean;
+  with_media?: boolean;
+  with_messages?: boolean;
+  with_interactions?: boolean;
 }
 
 export interface MediaFilters extends BaseFilters {

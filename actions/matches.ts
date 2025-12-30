@@ -559,10 +559,8 @@ export async function createMatch(formData: FormData) {
       notes: formData.get('notes'),
     };
 
-    // console.log('📥 Données reçues (create):', rawData);
-
-    // Nettoyer les données
-    const cleanedData = {
+    // Build object for schema validation
+    const schemaData = {
       sub_group_id: Number(rawData.sub_group_id),
       match_number: rawData.match_number && rawData.match_number !== '' ? Number(rawData.match_number) : undefined,
       match_date: (rawData.match_date as string) || new Date().toISOString().split('T')[0],
@@ -572,39 +570,39 @@ export async function createMatch(formData: FormData) {
       notes: rawData.notes ? (rawData.notes as string).trim() || 'Aucune note' : 'Aucune note',
     };
 
-    // Déterminer le numéro du match
-    let finalMatchNumber = cleanedData.match_number;
+    // Validate with schema
+    const validatedData = matchSchema.parse(schemaData);
+
+    // Determine match number
+    let finalMatchNumber = validatedData.match_number;
     
     if (finalMatchNumber === undefined || finalMatchNumber === null) {
-      // Récupérer le plus grand numéro de match existant pour ce sous-groupe
       const maxNumberResult = await query<{ max_number: number }>(
         `SELECT COALESCE(MAX(match_number), 0) as max_number 
          FROM matches WHERE sub_group_id = $1`,
-        [cleanedData.sub_group_id]
+        [validatedData.sub_group_id]
       );
       
       finalMatchNumber = maxNumberResult[0]?.max_number + 1 || 1;
     } else {
-      // Vérifier si le numéro existe déjà
       const existingNumberCheck = await query<{ id: number }>(
         `SELECT id FROM matches WHERE match_number = $1 AND sub_group_id = $2`,
-        [finalMatchNumber, cleanedData.sub_group_id]
+        [finalMatchNumber, validatedData.sub_group_id]
       );
       
       if (existingNumberCheck.length > 0) {
-        // Trouver le prochain numéro disponible
         const numbersResult = await query<{ match_number: number }>(
           `SELECT match_number FROM matches 
            WHERE sub_group_id = $1 
            ORDER BY match_number`,
-          [cleanedData.sub_group_id]
+          [validatedData.sub_group_id]
         );
         
         const existingNumbers = numbersResult.map(r => r.match_number);
         let nextNumber = finalMatchNumber;
         
-        while (existingNumbers.includes(nextNumber)) {
-          nextNumber++;
+        while (existingNumbers.includes(nextNumber as number)) {
+          nextNumber = (nextNumber as number) + 1;
         }
         
         finalMatchNumber = nextNumber;
@@ -620,23 +618,22 @@ export async function createMatch(formData: FormData) {
     `;
     
     const result = await query<{ id: number }>(sql, [
-      cleanedData.sub_group_id,
+      validatedData.sub_group_id,
       finalMatchNumber,
-      cleanedData.match_date,
-      cleanedData.start_time || null,
-      cleanedData.fighter1_id || null,
-      cleanedData.fighter2_id || null,
-      cleanedData.notes,
-      true, // is_active par défaut à true
+      validatedData.match_date,
+      validatedData.start_time || null,
+      validatedData.fighter1_id || null,
+      validatedData.fighter2_id || null,
+      validatedData.notes ?? null,
+      true,
     ]);
 
-    // Émettre l'événement temps réel
     await emitMatchEvent(result[0].id, 'match_created', {
       matchId: result[0].id,
-      subGroupId: cleanedData.sub_group_id
+      subGroupId: validatedData.sub_group_id
     });
 
-    revalidatePath(`/ad/sub-groups/${cleanedData.sub_group_id}/organisation`);
+    revalidatePath(`/ad/sub-groups/${validatedData.sub_group_id}/organisation`);
     
     return { 
       success: true, 
@@ -684,21 +681,11 @@ export async function updateMatch(id: number, formData: FormData) {
 
     console.log('📥 Données reçues:', rawData);
 
-    // Nettoyer les données avec gestion des valeurs vides
-    const cleanedData: any = {
-      sub_group_id: rawData.sub_group_id ? Number(rawData.sub_group_id) : existing.sub_group_id,
+    // Build object for partial schema validation
+    const schemaData: any = {
+      sub_group_id: rawData.sub_group_id ? Number(rawData.sub_group_id) : undefined,
       match_number: rawData.match_number && rawData.match_number !== '' ? Number(rawData.match_number) : undefined,
-      match_date: rawData.match_date && rawData.match_date !== '' 
-        ? rawData.match_date as string 
-        : (existing.match_date 
-            ? (typeof existing.match_date === 'string' 
-                ? existing.match_date.split('T')[0] 
-                : (existing.match_date as any) instanceof Date 
-                  ? ((existing.match_date as any) instanceof Date
-                      ? (existing.match_date as Date).toISOString().split('T')[0]
-                      : String(existing.match_date).split('T')[0])
-                  : String(existing.match_date).split('T')[0])
-            : undefined),
+      match_date: rawData.match_date && rawData.match_date !== '' ? rawData.match_date as string : undefined,
       start_time: rawData.start_time && rawData.start_time !== '' ? rawData.start_time as string : undefined,
       end_time: rawData.end_time && rawData.end_time !== '' ? rawData.end_time as string : undefined,
       fighter1_id: rawData.fighter1_id && rawData.fighter1_id !== '' ? Number(rawData.fighter1_id) : undefined,
@@ -707,136 +694,56 @@ export async function updateMatch(id: number, formData: FormData) {
       loser_fighter_id: rawData.loser_fighter_id && rawData.loser_fighter_id !== '' ? Number(rawData.loser_fighter_id) : undefined,
       match_result: rawData.match_result && rawData.match_result !== '' ? rawData.match_result as any : undefined,
       total_duration: rawData.total_duration && rawData.total_duration !== '' ? rawData.total_duration as string : undefined,
-      break_count: rawData.break_count && rawData.break_count !== '' ? Number(rawData.break_count) : existing.break_count || 0,
-      status: rawData.status && rawData.status !== '' ? rawData.status as any : existing.status,
+      break_count: rawData.break_count && rawData.break_count !== '' ? Number(rawData.break_count) : undefined,
+      status: rawData.status && rawData.status !== '' ? rawData.status as any : undefined,
       audience_count: rawData.audience_count && rawData.audience_count !== '' ? Number(rawData.audience_count) : undefined,
       video_url: rawData.video_url && rawData.video_url !== '' ? rawData.video_url as string : undefined,
       live_stream_url: rawData.live_stream_url && rawData.live_stream_url !== '' ? rawData.live_stream_url as string : undefined,
       notes: rawData.notes && rawData.notes !== '' ? rawData.notes as string : undefined,
     };
 
-    console.log('🧹 Données nettoyées:', cleanedData);
+    console.log('🧹 Données nettoyées:', schemaData);
 
-    // Utiliser partial() pour permettre les mises à jour partielles
-    const validatedData = matchSchema.partial().parse(cleanedData);
+    // Validate with partial schema
+    const validatedData = matchSchema.partial().parse(schemaData);
 
-
-    // Construire la requête SQL dynamiquement
+    // Build dynamic SQL
     const updates: string[] = [];
     const params: any[] = [];
     let paramIndex = 1;
 
-    // Ajouter chaque champ modifié
-    if (validatedData.sub_group_id !== undefined) {
-      updates.push(`sub_group_id = $${paramIndex}`);
-      params.push(validatedData.sub_group_id);
-      paramIndex++;
-    }
+    const addUpdate = (field: string, value: any) => {
+      if (value !== undefined) {
+        updates.push(`${field} = $${paramIndex}`);
+        params.push(value);
+        paramIndex++;
+      }
+    };
 
-    if (validatedData.match_number !== undefined) {
-      updates.push(`match_number = $${paramIndex}`);
-      params.push(validatedData.match_number);
-      paramIndex++;
-    }
+    addUpdate('sub_group_id', validatedData.sub_group_id);
+    addUpdate('match_number', validatedData.match_number);
+    addUpdate('match_date', validatedData.match_date);
+    addUpdate('start_time', validatedData.start_time);
+    addUpdate('end_time', validatedData.end_time);
+    addUpdate('fighter1_id', validatedData.fighter1_id);
+    addUpdate('fighter2_id', validatedData.fighter2_id);
+    addUpdate('winner_fighter_id', validatedData.winner_fighter_id);
+    addUpdate('loser_fighter_id', validatedData.loser_fighter_id);
+    addUpdate('match_result', validatedData.match_result);
+    addUpdate('total_duration', validatedData.total_duration);
+    addUpdate('break_count', validatedData.break_count);
+    addUpdate('status', validatedData.status);
+    addUpdate('audience_count', validatedData.audience_count);
+    addUpdate('video_url', validatedData.video_url);
+    addUpdate('live_stream_url', validatedData.live_stream_url);
+    addUpdate('notes', validatedData.notes);
 
-    if (validatedData.match_date !== undefined) {
-      updates.push(`match_date = $${paramIndex}`);
-      params.push(validatedData.match_date);
-      paramIndex++;
-    }
-
-    if (validatedData.start_time !== undefined) {
-      updates.push(`start_time = $${paramIndex}`);
-      params.push(validatedData.start_time);
-      paramIndex++;
-    }
-
-    if (validatedData.end_time !== undefined) {
-      updates.push(`end_time = $${paramIndex}`);
-      params.push(validatedData.end_time);
-      paramIndex++;
-    }
-
-    if (validatedData.fighter1_id !== undefined) {
-      updates.push(`fighter1_id = $${paramIndex}`);
-      params.push(validatedData.fighter1_id);
-      paramIndex++;
-    }
-
-    if (validatedData.fighter2_id !== undefined) {
-      updates.push(`fighter2_id = $${paramIndex}`);
-      params.push(validatedData.fighter2_id);
-      paramIndex++;
-    }
-
-    if (validatedData.winner_fighter_id !== undefined) {
-      updates.push(`winner_fighter_id = $${paramIndex}`);
-      params.push(validatedData.winner_fighter_id);
-      paramIndex++;
-    }
-
-    if (validatedData.loser_fighter_id !== undefined) {
-      updates.push(`loser_fighter_id = $${paramIndex}`);
-      params.push(validatedData.loser_fighter_id);
-      paramIndex++;
-    }
-
-    if (validatedData.match_result !== undefined) {
-      updates.push(`match_result = $${paramIndex}`);
-      params.push(validatedData.match_result);
-      paramIndex++;
-    }
-
-    if (validatedData.total_duration !== undefined) {
-      updates.push(`total_duration = $${paramIndex}`);
-      params.push(validatedData.total_duration);
-      paramIndex++;
-    }
-
-    if (validatedData.break_count !== undefined) {
-      updates.push(`break_count = $${paramIndex}`);
-      params.push(validatedData.break_count);
-      paramIndex++;
-    }
-
-    if (validatedData.status !== undefined) {
-      updates.push(`status = $${paramIndex}`);
-      params.push(validatedData.status);
-      paramIndex++;
-    }
-
-    if (validatedData.audience_count !== undefined) {
-      updates.push(`audience_count = $${paramIndex}`);
-      params.push(validatedData.audience_count);
-      paramIndex++;
-    }
-
-    if (validatedData.video_url !== undefined) {
-      updates.push(`video_url = $${paramIndex}`);
-      params.push(validatedData.video_url);
-      paramIndex++;
-    }
-
-    if (validatedData.live_stream_url !== undefined) {
-      updates.push(`live_stream_url = $${paramIndex}`);
-      params.push(validatedData.live_stream_url);
-      paramIndex++;
-    }
-
-    if (validatedData.notes !== undefined) {
-      updates.push(`notes = $${paramIndex}`);
-      params.push(validatedData.notes);
-      paramIndex++;
-    }
-
-    // Toujours mettre à jour updated_at
-    updates.push(`updated_at = CURRENT_TIMESTAMP`);
-
-    if (updates.length === 1) { // Seulement updated_at
+    if (updates.length === 0) {
       throw new Error('Aucune donnée à mettre à jour');
     }
 
-    // Ajouter l'ID à la fin
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+
     params.push(id);
 
     const sql = `
@@ -850,7 +757,6 @@ export async function updateMatch(id: number, formData: FormData) {
 
     await query(sql, params);
 
-    // Récupérer le match mis à jour
     const updatedMatch = await getMatchById(id, { 
       with_relations: true,
       relations: {
@@ -859,7 +765,6 @@ export async function updateMatch(id: number, formData: FormData) {
       }
     });
 
-    // Récupérer l'édition pour revalidation
     const editionInfo = await query(`
       SELECT ce.id as edition_id
       FROM matches m
@@ -872,7 +777,6 @@ export async function updateMatch(id: number, formData: FormData) {
 
     const editionId = editionInfo[0]?.edition_id;
 
-    // Émettre l'événement de mise à jour
     await emitMatchEvent(id, 'match_updated', {
       match: updatedMatch,
       changes: Object.keys(validatedData).filter(key => validatedData[key as keyof typeof validatedData] !== undefined)

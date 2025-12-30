@@ -166,7 +166,9 @@ CREATE TABLE IF NOT EXISTS competitions (
 CREATE TABLE IF NOT EXISTS competition_editions (
     id SERIAL PRIMARY KEY,
     competition_id INTEGER NOT NULL,
-    edition_number INTEGER NOT NULL,
+
+    edition_number INTEGER UNIQUE NOT NULL,
+
     year INTEGER NOT NULL,
     theme VARCHAR(255),
     start_date DATE,
@@ -220,8 +222,10 @@ CREATE TABLE IF NOT EXISTS edition_fighters (
     edition_id INTEGER NOT NULL,
     fighter_id INTEGER NOT NULL,
     region_id INTEGER NOT NULL,
+
     is_champion BOOLEAN DEFAULT FALSE,
     is_eliminated BOOLEAN DEFAULT FALSE,
+
     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) CHECK (
         status IN (
@@ -246,8 +250,10 @@ CREATE TABLE IF NOT EXISTS edition_regions (
     id SERIAL PRIMARY KEY,
     edition_id INTEGER NOT NULL,
     region_id INTEGER NOT NULL,
+
     is_eliminated BOOLEAN DEFAULT FALSE,
     points INTEGER DEFAULT 0,
+
     registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) CHECK (
         status IN (
@@ -269,7 +275,9 @@ CREATE TABLE IF NOT EXISTS phases (
     id SERIAL PRIMARY KEY,
     edition_id INTEGER NOT NULL,
     name VARCHAR(100) NOT NULL,
-    phase_order INTEGER NOT NULL,
+
+    phase_order INTEGER UNIQUE NOT NULL,
+    
     is_active BOOLEAN DEFAULT FALSE,
     phase_type VARCHAR(20) CHECK (
         phase_type IN (
@@ -296,6 +304,9 @@ CREATE TABLE IF NOT EXISTS phase_groups (
     group_order INTEGER NOT NULL,
     description TEXT,
     is_completed BOOLEAN DEFAULT FALSE,
+
+    date DATE,
+
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (phase_id) REFERENCES phases (id) ON DELETE CASCADE
@@ -315,6 +326,21 @@ CREATE TABLE IF NOT EXISTS sub_groups (
     name VARCHAR(100) NOT NULL,
     sub_group_order INTEGER NOT NULL,
     description TEXT,
+
+    period VARCHAR(10) CHECK (period IN ('matin', 'soir')) DEFAULT 'matin',
+    score_region1 INTEGER,
+    score_region2 INTEGER,
+    nulls INTEGER,
+    status VARCHAR(20) CHECK (
+        status IN (
+            'upcoming',
+            'ongoing',
+            'completed',
+            'cancelled',
+            'postponed'
+        )
+    ) DEFAULT 'upcoming',
+    
     region1_id INTEGER,
     region2_id INTEGER,
     belt_region1 INTEGER,
@@ -344,6 +370,9 @@ CREATE TABLE IF NOT EXISTS matches (
     -- Participants
     fighter1_id INTEGER,
     fighter2_id INTEGER,
+
+    fighter1_initial_state VARCHAR(50) CHECK (fighter1_initial_state IN ('eliminated', 'not_eliminated')),
+    fighter2_initial_state VARCHAR(50) CHECK (fighter2_initial_state IN ('eliminated', 'not_eliminated')),
     -- Résultat
     winner_fighter_id INTEGER,
     loser_fighter_id INTEGER,
@@ -496,6 +525,7 @@ CREATE TABLE IF NOT EXISTS articles (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (author_id) REFERENCES users (id)
 );
+
 CREATE TABLE IF NOT EXISTS media (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -822,3 +852,5 @@ INSERT
     OR
 UPDATE
     OR DELETE ON edition_regions FOR EACH ROW EXECUTE FUNCTION update_edition_participants();
+
+    

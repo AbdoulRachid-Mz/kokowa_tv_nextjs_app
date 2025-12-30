@@ -12,16 +12,17 @@ export async function GET(request: NextRequest) {
       edition_id: searchParams.get('edition_id') ? Number(searchParams.get('edition_id')) : undefined,
       phase_id: searchParams.get('phase_id') ? Number(searchParams.get('phase_id')) : undefined,
       group_id: searchParams.get('group_id') ? Number(searchParams.get('group_id')) : undefined,
-      status: searchParams.get('status') || undefined,
+      status: (searchParams.get('status') as MatchFilters['status']) || undefined,
       date_from: searchParams.get('date_from') || undefined,
       date_to: searchParams.get('date_to') || undefined,
       search: searchParams.get('search') || undefined,
+      is_active: searchParams.get('is_active') ? searchParams.get('is_active') === 'true' : undefined,
       page: searchParams.get('page') ? Number(searchParams.get('page')) : 1,
       limit: searchParams.get('limit') ? Number(searchParams.get('limit')) : 20,
       with_sub_group: searchParams.get('with_sub_group') !== 'false',
       with_fighters: searchParams.get('with_fighters') !== 'false',
-      // with_regions: searchParams.get('with_regions') !== 'false',
-      // with_referees: searchParams.get('with_referees') === 'true',
+      with_winner: searchParams.get('with_winner') === 'true',
+      with_cards: searchParams.get('with_cards') === 'true',
     };
     
     const result = await getMatches(filters);

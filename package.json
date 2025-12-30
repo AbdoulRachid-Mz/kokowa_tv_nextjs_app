@@ -17,7 +17,15 @@
     "db:seed:postgres": "psql -U $DB_USER -d kokowa_tv -f database/seed.sql",
     "db:test": "npx tsx lib/db/test-connection.ts",
     "db:setup": "npm run db:reset:postgres && npm run db:migrate:postgres && npm run db:seed:postgres",
-    "db:seed:fighters": "node scripts/seed-fighters.js"
+    "db:seed:fighters": "node scripts/seed-fighters.js",
+    "migrate-update": "node scripts/update-migration.js",
+    "migrate-report": "node scripts/update-migration.js --report",
+    "migrate:up": "node scripts/migrations-manager.js migrate",
+    "migrate:down": "node scripts/migrations-manager.js rollback",
+    "migrate:status": "node scripts/migrations-manager.js status",
+    "migrate:create": "node scripts/migrations-manager.js create",
+    "migrate:to": "node scripts/migrations-manager.js migrate",
+    "migrate:list": "node scripts/migrations-manager.js list"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -82,7 +90,8 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "vaul": "^1.1.2",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.16",

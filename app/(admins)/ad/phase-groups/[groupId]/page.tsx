@@ -211,6 +211,12 @@ export default function PhaseGroupDetailPage() {
                   {(hasBelt1 || hasBelt2) && (
                     <Badge variant="secondary">Ceintures</Badge>
                   )}
+
+                  {subGroup.period && (
+                    <Badge variant="outline">
+                      {subGroup.period === "matin" ? "Matin" : "Soir"}
+                    </Badge>
+                  )}
                 </div>
 
                 <div className="space-y-2 text-sm">
@@ -231,9 +237,7 @@ export default function PhaseGroupDetailPage() {
                           className="text-muted-foreground"
                         >
                           Ceinture 1:{" "}
-                          {subGroup.belt1
-                            ? `${subGroup.belt1.color}`
-                            : subGroup.belt1}
+                          {subGroup.belt1?.color || (typeof subGroup.belt1 === 'string' ? subGroup.belt1 : '')}
                         </Typography>
                       </div>
                     )}
@@ -246,9 +250,7 @@ export default function PhaseGroupDetailPage() {
                           className="text-muted-foreground"
                         >
                           Ceinture 2:{" "}
-                          {subGroup.belt2
-                            ? `${subGroup.belt2} ${subGroup.belt_region2}`
-                            : subGroup.belt_region2}
+                          {subGroup.belt2?.color || (typeof subGroup.belt2 === 'string' ? subGroup.belt2 : '')}
                         </Typography>
                       </div>
                     )}
@@ -371,7 +373,7 @@ export default function PhaseGroupDetailPage() {
           </Button>
           <div>
             <Typography variant="h5" weight="bold" animated>
-              {group.name}
+              {group.name}{group.date && ` • ${group.date}`}
             </Typography>
             <Typography variant="body-sm" theme="muted">
               {group.phase?.name} • Édition{" "}
@@ -584,6 +586,7 @@ export default function PhaseGroupDetailPage() {
                         >
                           {subGroup.is_completed ? "Terminé" : "En cours"}
                         </Badge>
+                        
                       </div>
                       <Typography
                         variant="body-sm"
@@ -591,13 +594,19 @@ export default function PhaseGroupDetailPage() {
                         className="mb-2"
                       >
                         Ordre {subGroup.sub_group_order} •{" "}
-                        {subGroup.matches?.length || 0} match(s)
+                        {subGroup.matches?.length || 0} match(s) {" "}
+                        {subGroup.period && (
+                    <Badge variant="outline">
+                      {subGroup.period === "matin" ? "Matin" : "Soir"}
+                    </Badge>
+                  )}
                       </Typography>
                       {subGroup.description && (
                         <Typography variant="body-sm" className="line-clamp-2">
                           {subGroup.description}
                         </Typography>
                       )}
+                      
                     </div>
                   ))}
                 </div>

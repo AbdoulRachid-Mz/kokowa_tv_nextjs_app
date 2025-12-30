@@ -144,14 +144,14 @@ export default function SubGroupDetailPage() {
                       <MapPin
                         className="h-4 w-4 text-muted-foreground"
                         style={{
-                          color: subGroup.belt2?.color || "blue",
+                          color: subGroup.belt2?.color || "green",
                         }}
                       />
                       {subGroup.belt2 && (
                         <span
                           className="w-3 h-3 block absolute -top-1 -right-1 animate-pulse bg-muted-foreground rounded-full"
                           style={{
-                            backgroundColor: subGroup.belt2.color || "blue",
+                            backgroundColor: subGroup.belt2.color || "green",
                           }}
                         ></span>
                       )}

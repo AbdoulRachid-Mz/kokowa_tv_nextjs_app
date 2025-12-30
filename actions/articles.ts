@@ -18,6 +18,9 @@ export async function getArticles(
       page = 1,
       limit = 20,
       with_author = true,
+      with_media = true,
+      with_messages = false,
+      with_interactions = false,
     } = filters;
 
     let whereClause = 'WHERE 1=1';
@@ -25,7 +28,7 @@ export async function getArticles(
     const selectFields: string[] = ['a.*'];
     const joins: string[] = [];
 
-    // Filtres de base
+    // Base filters
     if (author_id) {
       whereClause += ` AND a.author_id = $${params.length + 1}`;
       params.push(author_id);
@@ -50,7 +53,7 @@ export async function getArticles(
       params.push(`%${search}%`);
     }
 
-    // Jointures pour les relations
+    // Author relation
     if (with_author) {
       selectFields.push(`
         JSON_BUILD_OBJECT(
@@ -64,9 +67,135 @@ export async function getArticles(
       joins.push('LEFT JOIN users u ON a.author_id = u.id');
     }
 
-    // Requête pour le total
+    // Media relations – split by file_type
+    if (with_media) {
+      selectFields.push(`
+        COALESCE(
+          JSON_AGG(
+            DISTINCT CASE WHEN m.file_type = 'image' THEN
+              JSON_BUILD_OBJECT(
+                'id', m.id,
+                'title', m.title,
+                'file_path', m.file_path,
+                'file_type', m.file_type,
+                'mime_type', m.mime_type,
+                'file_size', m.file_size,
+                'alt_text', m.alt_text,
+                'description', m.description,
+                'is_featured', m.is_featured
+              )
+            END
+          ) FILTER (WHERE m.file_type = 'image'), '[]'
+        ) as images
+      `);
+      selectFields.push(`
+        COALESCE(
+          JSON_AGG(
+            DISTINCT CASE WHEN m.file_type = 'video' THEN
+              JSON_BUILD_OBJECT(
+                'id', m.id,
+                'title', m.title,
+                'file_path', m.file_path,
+                'file_type', m.file_type,
+                'mime_type', m.mime_type,
+                'file_size', m.file_size,
+                'alt_text', m.alt_text,
+                'description', m.description,
+                'is_featured', m.is_featured
+              )
+            END
+          ) FILTER (WHERE m.file_type = 'video'), '[]'
+        ) as videos
+      `);
+      selectFields.push(`
+        COALESCE(
+          JSON_AGG(
+            DISTINCT CASE WHEN m.file_type = 'document' THEN
+              JSON_BUILD_OBJECT(
+                'id', m.id,
+                'title', m.title,
+                'file_path', m.file_path,
+                'file_type', m.file_type,
+                'mime_type', m.mime_type,
+                'file_size', m.file_size,
+                'alt_text', m.alt_text,
+                'description', m.description,
+                'is_featured', m.is_featured
+              )
+            END
+          ) FILTER (WHERE m.file_type = 'document'), '[]'
+        ) as documents
+      `);
+      selectFields.push(`
+        COALESCE(
+          JSON_AGG(
+            DISTINCT CASE WHEN m.file_type = 'audio' THEN
+              JSON_BUILD_OBJECT(
+                'id', m.id,
+                'title', m.title,
+                'file_path', m.file_path,
+                'file_type', m.file_type,
+                'mime_type', m.mime_type,
+                'file_size', m.file_size,
+                'alt_text', m.alt_text,
+                'description', m.description,
+                'is_featured', m.is_featured
+              )
+            END
+          ) FILTER (WHERE m.file_type = 'audio'), '[]'
+        ) as audios
+      `);
+      joins.push(`LEFT JOIN media m ON m.entity_type = 'article' AND m.entity_id = a.id`);
+    }
+
+    // Messages reverse relation
+    if (with_messages) {
+      selectFields.push(`
+        COALESCE(
+          JSON_AGG(
+            DISTINCT json_build_object(
+              'id', msg.id,
+              'content', msg.content,
+              'message_type', msg.message_type,
+              'entity_type', msg.entity_type,
+              'entity_id', msg.entity_id,
+              'author_id', msg.author_id,
+              'parent_message_id', msg.parent_message_id,
+              'is_read', msg.is_read,
+              'like_count', msg.like_count,
+              'images', msg.images,
+              'video_url', msg.video_url,
+              'audio_url', msg.audio_url,
+              'created_at', msg.created_at
+            )
+          ) FILTER (WHERE msg.id IS NOT NULL), '[]'
+        ) as messages
+      `);
+      joins.push(`LEFT JOIN messages msg ON msg.entity_type = 'article' AND msg.entity_id = a.id AND msg.is_active = true AND msg.is_deleted = false`);
+    }
+
+    // Interactions reverse relation
+    if (with_interactions) {
+      selectFields.push(`
+        COALESCE(
+          JSON_AGG(
+            DISTINCT json_build_object(
+              'id', i.id,
+              'user_id', i.user_id,
+              'entity_type', i.entity_type,
+              'entity_id', i.entity_id,
+              'interaction_type', i.interaction_type,
+              'created_at', i.created_at
+            )
+          ) FILTER (WHERE i.id IS NOT NULL), '[]'
+        ) as interactions
+      `);
+      joins.push(`LEFT JOIN interactions i ON i.entity_type = 'article' AND i.entity_id = a.id`);
+    }
+
+    // Count query
     const countSql = `
-      SELECT COUNT(*) as total
+      SELECT COUNT(DISTINCT a.id) as total
       FROM articles a
       ${joins.join(' ')}
       ${whereClause}
@@ -81,12 +210,13 @@ export async function getArticles(
     const offset = (validatedPage - 1) * validatedLimit;
     const totalPages = Math.ceil(total / validatedLimit);
 
-    // Requête principale
+    // Main query
     const dataSql = `
       SELECT ${selectFields.join(', ')}
       FROM articles a
       ${joins.join(' ')}
       ${whereClause}
+      GROUP BY a.id ${with_author ? ', u.id' : ''}
       ORDER BY 
         CASE 
           WHEN a.status = 'published' THEN 1
@@ -99,7 +229,7 @@ export async function getArticles(
     `;
 
     const data = await query<Article>(
-      dataSql, 
+      dataSql,
       [...params, validatedLimit, offset]
     );
 
@@ -109,8 +239,8 @@ export async function getArticles(
         page: validatedPage,
         limit: validatedLimit,
         total,
-        totalPages
-      }
+        totalPages,
+      },
     };
   } catch (error) {
     console.error('Error in getArticles:', error);
@@ -137,10 +267,113 @@ export async function getArticleById(id: number, options: {
             'first_name', u.first_name,
             'last_name', u.last_name,
             'profile_picture', u.profile_picture
-          ) as author
+          ) as author,
+          COALESCE(
+            JSON_AGG(
+              DISTINCT CASE WHEN m.file_type = 'image' THEN
+                JSON_BUILD_OBJECT(
+                  'id', m.id,
+                  'title', m.title,
+                  'file_path', m.file_path,
+                  'file_type', m.file_type,
+                  'mime_type', m.mime_type,
+                  'file_size', m.file_size,
+                  'alt_text', m.alt_text,
+                  'description', m.description,
+                  'is_featured', m.is_featured
+                )
+              END
+            ) FILTER (WHERE m.file_type = 'image'), '[]'
+          ) as images,
+          COALESCE(
+            JSON_AGG(
+              DISTINCT CASE WHEN m.file_type = 'video' THEN
+                JSON_BUILD_OBJECT(
+                  'id', m.id,
+                  'title', m.title,
+                  'file_path', m.file_path,
+                  'file_type', m.file_type,
+                  'mime_type', m.mime_type,
+                  'file_size', m.file_size,
+                  'alt_text', m.alt_text,
+                  'description', m.description,
+                  'is_featured', m.is_featured
+                )
+              END
+            ) FILTER (WHERE m.file_type = 'video'), '[]'
+          ) as videos,
+          COALESCE(
+            JSON_AGG(
+              DISTINCT CASE WHEN m.file_type = 'document' THEN
+                JSON_BUILD_OBJECT(
+                  'id', m.id,
+                  'title', m.title,
+                  'file_path', m.file_path,
+                  'file_type', m.file_type,
+                  'mime_type', m.mime_type,
+                  'file_size', m.file_size,
+                  'alt_text', m.alt_text,
+                  'description', m.description,
+                  'is_featured', m.is_featured
+                )
+              END
+            ) FILTER (WHERE m.file_type = 'document'), '[]'
+          ) as documents,
+          COALESCE(
+            JSON_AGG(
+              DISTINCT CASE WHEN m.file_type = 'audio' THEN
+                JSON_BUILD_OBJECT(
+                  'id', m.id,
+                  'title', m.title,
+                  'file_path', m.file_path,
+                  'file_type', m.file_type,
+                  'mime_type', m.mime_type,
+                  'file_size', m.file_size,
+                  'alt_text', m.alt_text,
+                  'description', m.description,
+                  'is_featured', m.is_featured
+                )
+              END
+            ) FILTER (WHERE m.file_type = 'audio'), '[]'
+          ) as audios,
+          COALESCE(
+            JSON_AGG(
+              DISTINCT json_build_object(
+                'id', msg.id,
+                'content', msg.content,
+                'message_type', msg.message_type,
+                'entity_type', msg.entity_type,
+                'entity_id', msg.entity_id,
+                'author_id', msg.author_id,
+                'parent_message_id', msg.parent_message_id,
+                'is_read', msg.is_read,
+                'like_count', msg.like_count,
+                'images', msg.images,
+                'video_url', msg.video_url,
+                'audio_url', msg.audio_url,
+                'created_at', msg.created_at
+              )
+            ) FILTER (WHERE msg.id IS NOT NULL), '[]'
+          ) as messages,
+          COALESCE(
+            JSON_AGG(
+              DISTINCT json_build_object(
+                'id', i.id,
+                'user_id', i.user_id,
+                'entity_type', i.entity_type,
+                'entity_id', i.entity_id,
+                'interaction_type', i.interaction_type,
+                'created_at', i.created_at
+              )
+            ) FILTER (WHERE i.id IS NOT NULL), '[]'
+          ) as interactions
         FROM articles a
         LEFT JOIN users u ON a.author_id = u.id
+        LEFT JOIN media m ON m.entity_type = 'article' AND m.entity_id = a.id
+        LEFT JOIN messages msg ON msg.entity_type = 'article' AND msg.entity_id = a.id AND msg.is_active = true AND msg.is_deleted = false
+        LEFT JOIN interactions i ON i.entity_type = 'article' AND i.entity_id = a.id
         WHERE a.id = $1
+        GROUP BY a.id, u.id
       `;
     }
 

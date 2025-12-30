@@ -88,6 +88,11 @@ export default function EditSubGroupPage() {
     name: subGroup.name,
     sub_group_order: subGroup.sub_group_order,
     description: subGroup.description,
+    period: subGroup.period || 'matin',
+    score_region1: subGroup.score_region1,
+    score_region2: subGroup.score_region2,
+    nulls: subGroup.nulls,
+    status: subGroup.status || 'upcoming',
     region1_id: subGroup.region1_id,
     region2_id: subGroup.region2_id,
     belt_region1: subGroup.belt_region1,
@@ -96,6 +101,7 @@ export default function EditSubGroupPage() {
     is_completed: subGroup.is_completed || false,
     is_active: subGroup.is_active ?? true,
   };
+
 
   // Préparer les données du groupe
   const groupData = subGroup.group || {

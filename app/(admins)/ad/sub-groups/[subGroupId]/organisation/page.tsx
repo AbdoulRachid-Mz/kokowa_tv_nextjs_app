@@ -52,10 +52,8 @@ export default function SubGroupOrganizationPage() {
 
   const loadSubGroup = async () => {
     try {
-// app/ad/sub-groups/[subGroupId]/organisation/page.tsx
       setLoading(true);
-// app/ad/sub-groups/[subGroupId]/organisation/page.tsx
-      // Use getSubGroupById with relations for matches, regions, and belts
+
       const subGroupData = await getSubGroupById(id, {
         with_relations: true,
         relations: {
@@ -76,8 +74,14 @@ export default function SubGroupOrganizationPage() {
       setMatches(subGroupData.matches || []);
 
       const [r1, r2] = await Promise.all([
-        loadRegionFighters(subGroupData?.group?.phase?.edition?.id ?? 0, subGroupData.region1_id ?? 0),
-        loadRegionFighters(subGroupData?.group?.phase?.edition?.id ?? 0, subGroupData.region2_id ?? 0),
+        loadRegionFighters(
+          subGroupData?.group?.phase?.edition?.id ?? 0,
+          subGroupData.region1_id ?? 0
+        ),
+        loadRegionFighters(
+          subGroupData?.group?.phase?.edition?.id ?? 0,
+          subGroupData.region2_id ?? 0
+        ),
       ]);
       setRegion1Fighters(r1);
       setRegion2Fighters(r2);
@@ -107,8 +111,6 @@ export default function SubGroupOrganizationPage() {
       return [];
     }
   };
-
-  
 
   // Calculer les lutteurs utilisés dans les matchs existants
   const usedFighterIds = useMemo(() => {
@@ -525,11 +527,8 @@ export default function SubGroupOrganizationPage() {
           </div>
           {/* <div className="grid grid-cols-1 gap-2"> */}
 
-          <MatchesColumn
-            matches={matches}
-            subGroupId={id}
-            />
-            {/* </div> */}
+          <MatchesColumn matches={matches} subGroupId={id} />
+          {/* </div> */}
         </div>
 
         {/* Colonne Région 2 */}
@@ -591,8 +590,7 @@ function RegionColumn({
                   side === "left" ? "-right-1" : "-left-1"
                 }`}
                 style={{
-                  backgroundColor:
-                    side === "left" ? "red" : "blue",
+                  backgroundColor: side === "left" ? "red" : "blue",
                 }}
               ></span>
             )}
@@ -702,7 +700,13 @@ function FighterCard({
 }
 
 // Dans la page d'organisation (remplacement de MatchesColumn)
-function MatchesColumn({ matches, subGroupId }: { matches: Match[], subGroupId: number }) {
+function MatchesColumn({
+  matches,
+  subGroupId,
+}: {
+  matches: Match[];
+  subGroupId: number;
+}) {
   return (
     <Card className="p-3">
       <CardContent className="p-3">
@@ -713,7 +717,8 @@ function MatchesColumn({ matches, subGroupId }: { matches: Match[], subGroupId: 
                 Aucun match programmé
               </Typography>
               <Typography variant="body-sm" theme="muted">
-                Utilisez le bouton "Création multiple" pour créer plusieurs matchs
+                Utilisez le bouton "Création multiple" pour créer plusieurs
+                matchs
               </Typography>
             </div>
           ) : (

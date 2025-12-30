@@ -17,7 +17,9 @@ export async function getPhaseGroups(
       page = 1,
       limit = 20,
       is_active,
-      with_phase,
+      date_from,
+      date_to,
+      with_phase = true,
       with_subGroups = true,
       with_matches = true
     } = filters;
@@ -44,6 +46,17 @@ export async function getPhaseGroups(
       whereClause += ` AND pg.is_active = TRUE`;
     }
 
+    // Filtres de date
+    if (date_from) {
+      params.push(date_from);
+      whereClause += ` AND pg.date >= $${params.length}`;
+    }
+
+    if (date_to) {
+      params.push(date_to);
+      whereClause += ` AND pg.date <= $${params.length}`;
+    }
+
     // Jointures et relations
     if (with_phase) {
       selectFields.push(`
@@ -51,7 +64,8 @@ export async function getPhaseGroups(
           'id', p.id,
           'name', p.name,
           'phase_type', p.phase_type,
-          'phase_order', p.phase_order
+          'phase_order', p.phase_order,
+          'date', pg.date
         ) as phase
       `);
       joinClause += ` LEFT JOIN phases p ON pg.phase_id = p.id`;
@@ -68,6 +82,11 @@ export async function getPhaseGroups(
             'name', sg.name,
             'sub_group_order', sg.sub_group_order,
             'description', sg.description,
+            'period', sg.period,
+            'score_region1', sg.score_region1,
+            'score_region2', sg.score_region2,
+            'nulls', sg.nulls,
+            'status', sg.status,
             'region1_id', sg.region1_id,
             'region2_id', sg.region2_id,
             'belt_region1', sg.belt_region1,
@@ -75,30 +94,40 @@ export async function getPhaseGroups(
             'main_referee_id', sg.main_referee_id,
             'is_completed', sg.is_completed,
             'is_active', sg.is_active,
-            'region1', JSON_BUILD_OBJECT(
-              'id', r1.id,
-              'name', r1.name,
-              'code', r1.code
-            ),
-            'region2', JSON_BUILD_OBJECT(
-              'id', r2.id,
-              'name', r2.name,
-              'code', r2.code
-            ),
-            'belt1', JSON_BUILD_OBJECT(
-              'id', b1.id,
-              'color', b1.color
-            ),
-            'belt2', JSON_BUILD_OBJECT(
-              'id', b2.id,
-              'color', b2.color
-            ),
-            'main_referee', JSON_BUILD_OBJECT(
-              'id', ref.id,
-              'first_name', ref.first_name,
-              'last_name', ref.last_name,
-              'nickname', ref.nickname
-            )
+            'region1', CASE WHEN r1.id IS NOT NULL THEN
+              JSON_BUILD_OBJECT(
+                'id', r1.id,
+                'name', r1.name,
+                'code', r1.code
+              )
+            ELSE NULL END,
+            'region2', CASE WHEN r2.id IS NOT NULL THEN
+              JSON_BUILD_OBJECT(
+                'id', r2.id,
+                'name', r2.name,
+                'code', r2.code
+              )
+            ELSE NULL END,
+            'belt1', CASE WHEN b1.id IS NOT NULL THEN
+              JSON_BUILD_OBJECT(
+                'id', b1.id,
+                'color', b1.color
+              )
+            ELSE NULL END,
+            'belt2', CASE WHEN b2.id IS NOT NULL THEN
+              JSON_BUILD_OBJECT(
+                'id', b2.id,
+                'color', b2.color
+              )
+            ELSE NULL END,
+            'main_referee', CASE WHEN ref.id IS NOT NULL THEN
+              JSON_BUILD_OBJECT(
+                'id', ref.id,
+                'first_name', ref.first_name,
+                'last_name', ref.last_name,
+                'nickname', ref.nickname
+              )
+            ELSE NULL END
           ) ORDER BY sg.sub_group_order
         ) FROM sub_groups sg
         LEFT JOIN regions r1 ON sg.region1_id = r1.id
@@ -291,6 +320,8 @@ export async function getPhaseGroupById(id: number, options: {
                   JSON_BUILD_OBJECT(
                     'id', er.id,
                     'region_id', er.region_id,
+                    'is_eliminated', er.is_eliminated, -- NOUVEAU
+                    'points', er.points, -- NOUVEAU
                     'status', er.status,
                     'registration_date', er.registration_date,
                     'region', JSON_BUILD_OBJECT(
@@ -321,6 +352,8 @@ export async function getPhaseGroupById(id: number, options: {
                     'id', ef.id,
                     'fighter_id', ef.fighter_id,
                     'region_id', ef.region_id,
+                    'is_champion', ef.is_champion, -- NOUVEAU
+                    'is_eliminated', ef.is_eliminated, -- NOUVEAU
                     'status', ef.status,
                     'registration_date', ef.registration_date,
                     'fighter', JSON_BUILD_OBJECT(
@@ -371,6 +404,11 @@ export async function getPhaseGroupById(id: number, options: {
                 'name', sg.name,
                 'sub_group_order', sg.sub_group_order,
                 'description', sg.description,
+                'period', sg.period, -- NOUVEAU
+                'score_region1', sg.score_region1, -- NOUVEAU
+                'score_region2', sg.score_region2, -- NOUVEAU
+                'nulls', sg.nulls, -- NOUVEAU
+                'status', sg.status, -- NOUVEAU
                 'region1_id', sg.region1_id,
                 'region2_id', sg.region2_id,
                 'belt_region1', sg.belt_region1,
@@ -564,6 +602,9 @@ export async function createPhaseGroup(
       name: formData.get('name'),
       group_order: formData.get('group_order'),
       description: formData.get('description'),
+      date: formData.get('date'),
+      is_completed: formData.get('is_completed'),
+      is_active: formData.get('is_active'),
     };
 
     const cleanedData = {
@@ -571,24 +612,30 @@ export async function createPhaseGroup(
       name: rawData.name as string,
       group_order: rawData.group_order ? Number(rawData.group_order) : undefined,
       description: rawData.description as string || undefined,
+      date: rawData.date as string || undefined,
+      is_completed: rawData.is_completed === 'true',
+      is_active: rawData.is_active === 'true',
     };
 
+    // Validate with schema
+    const validatedData = phaseGroupSchema.parse(cleanedData);
+
     // Vérifier et ajuster le nom si nécessaire
-    let finalName = cleanedData.name;
+    let finalName = validatedData.name;
     let nameCounter = 1;
     
     const existingNameCheck = await query<{ id: number }>(
       `SELECT id FROM phase_groups WHERE name = $1 AND phase_id = $2`,
-      [finalName, cleanedData.phase_id]
+      [finalName, validatedData.phase_id]
     );
     
     while (existingNameCheck.length > 0) {
-      finalName = `${cleanedData.name} (${nameCounter})`;
+      finalName = `${validatedData.name} (${nameCounter})`;
       nameCounter++;
       
       const newCheck = await query<{ id: number }>(
         `SELECT id FROM phase_groups WHERE name = $1 AND phase_id = $2`,
-        [finalName, cleanedData.phase_id]
+        [finalName, validatedData.phase_id]
       );
       
       if (newCheck.length === 0) {
@@ -597,14 +644,14 @@ export async function createPhaseGroup(
     }
 
     // Déterminer l'ordre du groupe
-    let finalOrder = cleanedData.group_order;
+    let finalOrder = validatedData.group_order;
     
     if (finalOrder === undefined || finalOrder === null) {
       // Récupérer le plus grand ordre existant pour cette phase
       const maxOrderResult = await query<{ max_order: number }>(
         `SELECT COALESCE(MAX(group_order), 0) as max_order 
          FROM phase_groups WHERE phase_id = $1`,
-        [cleanedData.phase_id]
+        [validatedData.phase_id]
       );
       
       finalOrder = maxOrderResult[0]?.max_order + 1 || 1;
@@ -612,7 +659,7 @@ export async function createPhaseGroup(
       // Vérifier si l'ordre existe déjà
       const existingOrderCheck = await query<{ id: number }>(
         `SELECT id FROM phase_groups WHERE group_order = $1 AND phase_id = $2`,
-        [finalOrder, cleanedData.phase_id]
+        [finalOrder, validatedData.phase_id]
       );
       
       if (existingOrderCheck.length > 0) {
@@ -621,7 +668,7 @@ export async function createPhaseGroup(
           `SELECT group_order FROM phase_groups 
            WHERE phase_id = $1 
            ORDER BY group_order`,
-          [cleanedData.phase_id]
+          [validatedData.phase_id]
         );
         
         const existingOrders = ordersResult.map(r => r.group_order);
@@ -641,17 +688,19 @@ export async function createPhaseGroup(
     try {
       // 1. Créer le groupe de phase
       const groupSql = `
-        INSERT INTO phase_groups (phase_id, name, group_order, description, is_active)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO phase_groups (phase_id, name, group_order, description, date, is_completed, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id
       `;
       
       const groupResult = await query<{ id: number }>(groupSql, [
-        cleanedData.phase_id,
+        validatedData.phase_id,
         finalName,
         finalOrder,
-        cleanedData.description || null,
-        true, // is_active par défaut à true
+        validatedData.description || null,
+        validatedData.date || null,
+        validatedData.is_completed,
+        validatedData.is_active,
       ]);
 
       const groupId = groupResult[0].id;
@@ -699,7 +748,7 @@ export async function createPhaseGroup(
       // Commit de la transaction
       await query('COMMIT');
 
-      revalidatePath(`/ad/phases/${cleanedData.phase_id}`);
+      revalidatePath(`/ad/phases/${validatedData.phase_id}`);
       
       return { 
         success: true, 
@@ -730,6 +779,9 @@ export async function updatePhaseGroup(id: number, formData: FormData) {
       name: formData.get('name'),
       group_order: formData.get('group_order'),
       description: formData.get('description'),
+      date: formData.get('date'),
+      is_completed: formData.get('is_completed'),
+      is_active: formData.get('is_active'),
     };
 
     const cleanedData = {
@@ -737,6 +789,9 @@ export async function updatePhaseGroup(id: number, formData: FormData) {
       name: rawData.name as string,
       group_order: Number(rawData.group_order),
       description: rawData.description as string || undefined,
+      date: rawData.date as string || undefined,
+      is_completed: rawData.is_completed === 'true',
+      is_active: rawData.is_active === 'true',
     };
 
     const validatedData = phaseGroupSchema.parse(cleanedData);
@@ -744,8 +799,8 @@ export async function updatePhaseGroup(id: number, formData: FormData) {
     const sql = `
       UPDATE phase_groups 
       SET 
-        phase_id = $1, name = $2, group_order = $3, description = $4
-      WHERE id = $5
+        phase_id = $1, name = $2, group_order = $3, description = $4, date = $5, is_completed = $6, is_active = $7
+      WHERE id = $8
     `;
     
     await query(sql, [
@@ -753,6 +808,9 @@ export async function updatePhaseGroup(id: number, formData: FormData) {
       validatedData.name,
       validatedData.group_order,
       validatedData.description || null,
+      validatedData.date || null,
+      validatedData.is_completed,
+      validatedData.is_active,
       id,
     ]);
 

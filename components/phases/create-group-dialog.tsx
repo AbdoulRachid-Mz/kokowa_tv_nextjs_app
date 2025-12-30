@@ -33,6 +33,7 @@ export const phaseGroupSchema = z.object({
   phase_id: z.number().int().positive("Phase invalide"),
   name: z.string().min(1, "Le nom est requis").max(100, "Le nom est trop long"),
   is_active: z.boolean().default(true),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').optional(),
   group_order: z.number().int().min(1, "L'ordre doit être positif"),
   description: z.string().optional(),
   is_completed: z.boolean().default(false),
@@ -68,6 +69,7 @@ export function CreateGroupDialog({
     defaultValues: {
       phase_id: phaseId,
       name: "",
+      date: undefined,
       group_order: phase?.groups?.length ? phase.groups.length + 1 : 1,
       description: "",
       is_active: true,
@@ -162,6 +164,19 @@ export function CreateGroupDialog({
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="date">Date (YYYY-MM-DD)</Label>
+            <Input
+              id="date"
+              {...register("date")}
+              placeholder="2025-06-25"
+            />
+            {errors.date && (
+              <Typography variant="caption2" theme="destructive">
+                {errors.date.message}
+              </Typography>
+            )}
+          </div>
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea

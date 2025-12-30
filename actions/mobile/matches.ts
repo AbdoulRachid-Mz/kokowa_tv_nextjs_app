@@ -1,25 +1,25 @@
-'use server';
+"use server";
 
-import { query } from '@/lib/db/neon-client';
+import { query } from "@/lib/db/neon-client";
 
 export async function getMobileMatchesBySubGroup(subGroupId: number) {
   try {
     // Vérifier que le sous-groupe existe
     const existsSql = "SELECT id FROM sub_groups WHERE id = $1";
     const existsResult = await query(existsSql, [subGroupId]);
-    
+
     if (existsResult.length === 0) {
       return {
         success: false,
         error: {
           code: 404,
-          message: 'Sous-groupe non trouvé',
-          timestamp: new Date().toISOString()
-        }
+          message: "Sous-groupe non trouvé",
+          timestamp: new Date().toISOString(),
+        },
       };
     }
 
-    // Récupérer les informations du sous-groupe
+    // Récupérer les informations du sous-groupe (corrigé)
     const subGroupInfo = await getSubGroupInfo(subGroupId);
 
     // Récupérer tous les matchs du sous-groupe
@@ -30,7 +30,7 @@ export async function getMobileMatchesBySubGroup(subGroupId: number) {
     const otherMatches = [];
 
     for (const match of matches) {
-      if (['live', 'round_break'].includes(match.status)) {
+      if (["live", "round_break"].includes(match.status)) {
         liveMatch = match;
       } else {
         otherMatches.push(match);
@@ -39,10 +39,11 @@ export async function getMobileMatchesBySubGroup(subGroupId: number) {
 
     // Grouper les matchs par statut
     const groupedMatches = {
-      scheduled: otherMatches.filter(m => m.status === 'scheduled'),
-      completed: otherMatches.filter(m => m.status === 'completed'),
-      cancelled: otherMatches.filter(m => m.status === 'cancelled'),
-      postponed: otherMatches.filter(m => m.status === 'postponed')
+      scheduled: otherMatches.filter((m) => m.status === "scheduled"),
+      completed: otherMatches.filter((m) => m.status === "completed"),
+      cancelled: otherMatches.filter((m) => m.status === "cancelled"),
+      postponed: otherMatches.filter((m) => m.status === "postponed"),
+      reclamation: otherMatches.filter((m) => m.status === "reclamation"), // NOUVEAU
     };
 
     return {
@@ -51,13 +52,26 @@ export async function getMobileMatchesBySubGroup(subGroupId: number) {
         subGroup: subGroupInfo,
         liveMatch: liveMatch ? await enrichMatchData(liveMatch) : null,
         matches: {
-          all: await Promise.all(otherMatches.map(match => enrichMatchData(match))),
+          all: await Promise.all(
+            otherMatches.map((match) => enrichMatchData(match))
+          ),
           grouped: {
-            scheduled: await Promise.all(groupedMatches.scheduled.map(match => enrichMatchData(match))),
-            completed: await Promise.all(groupedMatches.completed.map(match => enrichMatchData(match))),
-            cancelled: await Promise.all(groupedMatches.cancelled.map(match => enrichMatchData(match))),
-            postponed: await Promise.all(groupedMatches.postponed.map(match => enrichMatchData(match)))
-          }
+            scheduled: await Promise.all(
+              groupedMatches.scheduled.map((match) => enrichMatchData(match))
+            ),
+            completed: await Promise.all(
+              groupedMatches.completed.map((match) => enrichMatchData(match))
+            ),
+            cancelled: await Promise.all(
+              groupedMatches.cancelled.map((match) => enrichMatchData(match))
+            ),
+            postponed: await Promise.all(
+              groupedMatches.postponed.map((match) => enrichMatchData(match))
+            ),
+            reclamation: await Promise.all(
+              groupedMatches.reclamation.map((match) => enrichMatchData(match))
+            ), // NOUVEAU
+          },
         },
         summary: {
           total: matches.length,
@@ -65,24 +79,26 @@ export async function getMobileMatchesBySubGroup(subGroupId: number) {
           scheduled: groupedMatches.scheduled.length,
           completed: groupedMatches.completed.length,
           cancelled: groupedMatches.cancelled.length,
-          postponed: groupedMatches.postponed.length
+          postponed: groupedMatches.postponed.length,
+          reclamation: groupedMatches.reclamation.length, // NOUVEAU
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
-      message: 'Matchs du sous-groupe récupérés avec succès'
+      message: "Matchs du sous-groupe récupérés avec succès",
     };
   } catch (error) {
-    console.error('Error in getMobileMatchesBySubGroup:', error);
+    console.error("Error in getMobileMatchesBySubGroup:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la récupération des matchs',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la récupération des matchs",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }
+
 
 // Fonctions auxiliaires
 async function getSubGroupInfo(subGroupId: number) {
@@ -91,29 +107,146 @@ async function getSubGroupInfo(subGroupId: number) {
       sg.id,
       sg.name,
       sg.sub_group_order as "subGroupOrder",
+      sg.description,
+      sg.period, // NOUVEAU
+      sg.score_region1 as "scoreRegion1", // NOUVEAU
+      sg.score_region2 as "scoreRegion2", // NOUVEAU
+      sg.nulls, // NOUVEAU
+      sg.status, // NOUVEAU
       sg.region1_id as "region1Id",
       sg.region2_id as "region2Id",
       r1.name as "region1Name",
       r2.name as "region2Name",
       r1.color as "region1Color",
       r2.color as "region2Color",
+      sg.belt_region1 as "beltRegion1Id", // NOUVEAU
+      sg.belt_region2 as "beltRegion2Id", // NOUVEAU
+      b1.color as "beltRegion1Color", // NOUVEAU
+      b2.color as "beltRegion2Color", // NOUVEAU
+      sg.main_referee_id as "mainRefereeId",
+      ref.first_name as "refereeFirstName",
+      ref.last_name as "refereeLastName",
+      ref.nickname as "refereeNickname",
       sg.is_completed as "isCompleted",
       sg.is_active as "isActive",
       sg.created_at as "createdAt",
       pg.id as "groupId",
       pg.name as "groupName",
+      pg.date as "groupDate", // NOUVEAU
       p.id as "phaseId",
-      p.name as "phaseName"
+      p.name as "phaseName",
+      p.phase_type as "phaseType", // NOUVEAU
+      -- Coach region1
+      c1.id as "coach1Id",
+      c1.first_name as "coach1FirstName",
+      c1.last_name as "coach1LastName",
+      c1.nickname as "coach1Nickname",
+      c1.profile_image as "coach1ProfileImage",
+      -- Coach region2
+      c2.id as "coach2Id",
+      c2.first_name as "coach2FirstName",
+      c2.last_name as "coach2LastName",
+      c2.nickname as "coach2Nickname",
+      c2.profile_image as "coach2ProfileImage"
     FROM sub_groups sg
     LEFT JOIN regions r1 ON sg.region1_id = r1.id
     LEFT JOIN regions r2 ON sg.region2_id = r2.id
+    LEFT JOIN belt b1 ON sg.belt_region1 = b1.id // NOUVEAU
+    LEFT JOIN belt b2 ON sg.belt_region2 = b2.id // NOUVEAU
     JOIN phase_groups pg ON sg.group_id = pg.id
     JOIN phases p ON pg.phase_id = p.id
+    LEFT JOIN referees ref ON sg.main_referee_id = ref.id
+    LEFT JOIN coaches c1 ON r1.id = c1.region_id AND c1.is_active = TRUE
+    LEFT JOIN coaches c2 ON r2.id = c2.region_id AND c2.is_active = TRUE
     WHERE sg.id = $1
   `;
 
   const result = await query(sql, [subGroupId]);
-  return result[0];
+  const subGroup = result[0];
+
+  if (subGroup) {
+    // Formater les données du sous-groupe
+    subGroup.scores = {
+      region1: subGroup.scoreRegion1,
+      region2: subGroup.scoreRegion2,
+      nulls: subGroup.nulls,
+    };
+
+    subGroup.belts = {
+      region1: subGroup.beltRegion1Id
+        ? {
+            id: subGroup.beltRegion1Id,
+            color: subGroup.beltRegion1Color,
+          }
+        : null,
+      region2: subGroup.beltRegion2Id
+        ? {
+            id: subGroup.beltRegion2Id,
+            color: subGroup.beltRegion2Color,
+          }
+        : null,
+    };
+
+    subGroup.referee = subGroup.mainRefereeId
+      ? {
+          id: subGroup.mainRefereeId,
+          firstName: subGroup.refereeFirstName,
+          lastName: subGroup.refereeLastName,
+          nickname: subGroup.refereeNickname,
+        }
+      : null;
+
+    // Ajouter les coachs
+    subGroup.coaches = {
+      region1: subGroup.coach1Id
+        ? {
+            id: subGroup.coach1Id,
+            firstName: subGroup.coach1FirstName,
+            lastName: subGroup.coach1LastName,
+            nickname: subGroup.coach1Nickname,
+            profileImage: subGroup.coach1ProfileImage,
+          }
+        : null,
+      region2: subGroup.coach2Id
+        ? {
+            id: subGroup.coach2Id,
+            firstName: subGroup.coach2FirstName,
+            lastName: subGroup.coach2LastName,
+            nickname: subGroup.coach2Nickname,
+            profileImage: subGroup.coach2ProfileImage,
+          }
+        : null,
+    };
+
+    // Nettoyer les données redondantes
+    const fieldsToDelete = [
+      "scoreRegion1",
+      "scoreRegion2",
+      "nulls",
+      "beltRegion1Id",
+      "beltRegion2Id",
+      "beltRegion1Color",
+      "beltRegion2Color",
+      "mainRefereeId",
+      "refereeFirstName",
+      "refereeLastName",
+      "refereeNickname",
+      "coach1Id",
+      "coach1FirstName",
+      "coach1LastName",
+      "coach1Nickname",
+      "coach1ProfileImage",
+      "coach2Id",
+      "coach2FirstName",
+      "coach2LastName",
+      "coach2Nickname",
+      "coach2ProfileImage",
+    ];
+
+    fieldsToDelete.forEach((field) => delete subGroup[field]);
+  }
+
+  return subGroup;
 }
 
 async function getAllMatchesForSubGroup(subGroupId: number) {
@@ -134,6 +267,8 @@ async function getAllMatchesForSubGroup(subGroupId: number) {
       m.notes,
       m.created_at as "createdAt",
       m.updated_at as "updatedAt",
+      m.fighter1_initial_state as "fighter1InitialState",
+      m.fighter2_initial_state as "fighter2InitialState",
       
       -- Lutteur 1
       m.fighter1_id as "fighter1Id",
@@ -188,10 +323,10 @@ async function getAllMatchesForSubGroup(subGroupId: number) {
     JOIN sub_groups sg ON m.sub_group_id = sg.id
     JOIN phase_groups pg ON sg.group_id = pg.id
     JOIN phases p ON pg.phase_id = p.id
-    JOIN fighters f1 ON m.fighter1_id = f1.id
-    JOIN fighters f2 ON m.fighter2_id = f2.id
-    JOIN regions r1 ON f1.region_id = r1.id
-    JOIN regions r2 ON f2.region_id = r2.id
+    LEFT JOIN fighters f1 ON m.fighter1_id = f1.id
+    LEFT JOIN fighters f2 ON m.fighter2_id = f2.id
+    LEFT JOIN regions r1 ON f1.region_id = r1.id
+    LEFT JOIN regions r2 ON f2.region_id = r2.id
     WHERE m.sub_group_id = $1
     ORDER BY 
       CASE 
@@ -231,9 +366,10 @@ async function enrichMatchData(match: any) {
       id: match.fighter1RegionId,
       name: match.fighter1RegionName,
       color: match.fighter1RegionColor,
-      code: match.fighter1RegionCode
+      code: match.fighter1RegionCode,
     },
-    cards: cards.filter((card: any) => card.fighterId === match.fighter1Id)
+    initialState: match.fighter1InitialState,
+    cards: cards.filter((card: any) => card.fighterId === match.fighter1Id),
   };
 
   const fighter2 = {
@@ -251,9 +387,10 @@ async function enrichMatchData(match: any) {
       id: match.fighter2RegionId,
       name: match.fighter2RegionName,
       color: match.fighter2RegionColor,
-      code: match.fighter2RegionCode
+      code: match.fighter2RegionCode,
     },
-    cards: cards.filter((card: any) => card.fighterId === match.fighter2Id)
+    initialState: match.fighter2InitialState,
+    cards: cards.filter((card: any) => card.fighterId === match.fighter2Id),
   };
 
   // Déterminer le vainqueur et le perdant
@@ -282,36 +419,38 @@ async function enrichMatchData(match: any) {
     notes: match.notes,
     createdAt: match.createdAt,
     updatedAt: match.updatedAt,
-    
+
     fighters: {
       fighter1,
-      fighter2
+      fighter2,
     },
-    
-    result: winner ? {
-      winner,
-      loser,
-      resultType: match.matchResult
-    } : null,
-    
+
+    result: winner
+      ? {
+          winner,
+          loser,
+          resultType: match.matchResult,
+        }
+      : null,
+
     context: {
       subGroup: {
         id: match.subGroupId,
-        name: match.subGroupName
+        name: match.subGroupName,
       },
       group: {
         id: match.groupId,
-        name: match.groupName
+        name: match.groupName,
       },
       phase: {
         id: match.phaseId,
         name: match.phaseName,
-        type: match.phaseType
-      }
+        type: match.phaseType,
+      },
     },
-    
+
     stats,
-    allCards: cards
+    allCards: cards,
   };
 
   // Nettoyer les données redondantes
@@ -352,7 +491,7 @@ async function getMatchStats(matchId: number) {
     yellowCards: cardsStats.yellow,
     redCards: cardsStats.red,
     duration,
-    breaks
+    breaks,
   };
 }
 
@@ -365,19 +504,20 @@ async function countCardsForMatch(matchId: number) {
     FROM fighter_cards 
     WHERE match_id = $1 AND is_cancelled = FALSE
   `;
-  
+
   const result = await query(sql, [matchId]);
   return result[0];
 }
 
 async function getMatchDuration(matchId: number) {
-  const sql = "SELECT total_duration as \"totalDuration\" FROM matches WHERE id = $1";
+  const sql =
+    'SELECT total_duration as "totalDuration" FROM matches WHERE id = $1';
   const result = await query(sql, [matchId]);
   return result[0]?.totalDuration || 0;
 }
 
 async function getBreakCount(matchId: number) {
-  const sql = "SELECT break_count as \"breakCount\" FROM matches WHERE id = $1";
+  const sql = 'SELECT break_count as "breakCount" FROM matches WHERE id = $1';
   const result = await query(sql, [matchId]);
   return result[0]?.breakCount || 0;
 }
