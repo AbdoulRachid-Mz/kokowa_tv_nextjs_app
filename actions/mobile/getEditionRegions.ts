@@ -49,8 +49,10 @@ export async function getEditionRegions(editionId: number) {
           totalRegions: regions.length,
           totalFighters: fighters.length,
           unbeatenFighters: unbeatenFighters.length,
-          eliminatedRegions: regionsWithStats.filter((r: any) => r.isEliminated).length,
-          activeRegions: regionsWithStats.filter((r: any) => !r.isEliminated).length,
+          eliminatedRegions: regionsWithStats.filter((r: any) => r.isEliminated)
+            .length,
+          activeRegions: regionsWithStats.filter((r: any) => !r.isEliminated)
+            .length,
         },
         timestamp: new Date().toISOString(),
       },
@@ -206,7 +208,7 @@ async function getFightersForEdition(editionId: number) {
       stats.total_matches DESC
   `;
 
-  return await query(sql, [editionId, editionId, editionId]);
+  return await query(sql, [editionId]);
 }
 
 function calculateRegionStats(regions: any[], fighters: any[]) {
@@ -218,14 +220,24 @@ function calculateRegionStats(regions: any[], fighters: any[]) {
 
     // Calculer les statistiques
     const totalFighters = regionFighters.length;
-    const unbeatenFighters = regionFighters.filter((f) => f.losses === 0).length;
-    const eliminatedFighters = regionFighters.filter((f) => f.isEliminated).length;
+    const unbeatenFighters = regionFighters.filter(
+      (f) => f.losses === 0
+    ).length;
+    const eliminatedFighters = regionFighters.filter(
+      (f) => f.isEliminated
+    ).length;
     const championFighters = regionFighters.filter((f) => f.isChampion).length;
 
     const totalWins = regionFighters.reduce((sum, f) => sum + f.wins, 0);
     const totalLosses = regionFighters.reduce((sum, f) => sum + f.losses, 0);
-    const totalTerraces = regionFighters.reduce((sum, f) => sum + f.terraces, 0);
-    const totalBeenTerraced = regionFighters.reduce((sum, f) => sum + f.beenTerraced, 0);
+    const totalTerraces = regionFighters.reduce(
+      (sum, f) => sum + f.terraces,
+      0
+    );
+    const totalBeenTerraced = regionFighters.reduce(
+      (sum, f) => sum + f.beenTerraced,
+      0
+    );
 
     // Ajouter les statistiques calculées
     region.stats = {
@@ -237,11 +249,18 @@ function calculateRegionStats(regions: any[], fighters: any[]) {
       totalLosses,
       totalTerraces,
       totalBeenTerraced,
-      winRate: totalWins + totalLosses > 0 ? Math.round((totalWins * 100) / (totalWins + totalLosses) * 10) / 10 : 0,
+      winRate:
+        totalWins + totalLosses > 0
+          ? Math.round(((totalWins * 100) / (totalWins + totalLosses)) * 10) /
+            10
+          : 0,
     };
 
     // Calculer le ratio de lutteurs invaincus
-    region.unbeatenRatio = totalFighters > 0 ? Math.round((unbeatenFighters * 100) / totalFighters * 10) / 10 : 0;
+    region.unbeatenRatio =
+      totalFighters > 0
+        ? Math.round(((unbeatenFighters * 100) / totalFighters) * 10) / 10
+        : 0;
 
     return region;
   });
@@ -255,7 +274,8 @@ function getUnbeatenFighters(fighters: any[]) {
     // Priorité: champion > nombre de terraces > nombre de matchs > win rate
     if (a.isChampion !== b.isChampion) return b.isChampion - a.isChampion;
     if (a.terraces !== b.terraces) return b.terraces - a.terraces;
-    if (a.totalMatches !== b.totalMatches) return b.totalMatches - a.totalMatches;
+    if (a.totalMatches !== b.totalMatches)
+      return b.totalMatches - a.totalMatches;
     return b.winRate - a.winRate;
   });
 
@@ -266,22 +286,27 @@ function rankRegions(regions: any[]) {
   // Trier les régions selon plusieurs critères
   regions.sort((a, b) => {
     // Priorité: éliminé ou non
-    if (a.isEliminated !== b.isEliminated) return (a.isEliminated ? 1 : 0) - (b.isEliminated ? 1 : 0); // Non éliminé d'abord
+    if (a.isEliminated !== b.isEliminated)
+      return (a.isEliminated ? 1 : 0) - (b.isEliminated ? 1 : 0); // Non éliminé d'abord
 
     // Points totaux
     if (a.points !== b.points) return b.points - a.points;
 
     // Nombre de lutteurs invaincus
-    if (a.stats.unbeatenFighters !== b.stats.unbeatenFighters) return b.stats.unbeatenFighters - a.stats.unbeatenFighters;
+    if (a.stats.unbeatenFighters !== b.stats.unbeatenFighters)
+      return b.stats.unbeatenFighters - a.stats.unbeatenFighters;
 
     // Ratio de lutteurs invaincus
-    if (a.unbeatenRatio !== b.unbeatenRatio) return b.unbeatenRatio - a.unbeatenRatio;
+    if (a.unbeatenRatio !== b.unbeatenRatio)
+      return b.unbeatenRatio - a.unbeatenRatio;
 
     // Nombre de victoires total
-    if (a.stats.totalWins !== b.stats.totalWins) return b.stats.totalWins - a.stats.totalWins;
+    if (a.stats.totalWins !== b.stats.totalWins)
+      return b.stats.totalWins - a.stats.totalWins;
 
     // Nombre de terraces
-    if (a.stats.totalTerraces !== b.stats.totalTerraces) return b.stats.totalTerraces - a.stats.totalTerraces;
+    if (a.stats.totalTerraces !== b.stats.totalTerraces)
+      return b.stats.totalTerraces - a.stats.totalTerraces;
 
     // Nombre de champions
     return b.stats.championFighters - a.stats.championFighters;
@@ -294,4 +319,3 @@ function rankRegions(regions: any[]) {
 
   return regions;
 }
-
