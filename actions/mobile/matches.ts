@@ -86,19 +86,19 @@ export async function getMobileMatchesBySubGroup(subGroupId: number) {
       },
       message: "Matchs du sous-groupe récupérés avec succès",
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in getMobileMatchesBySubGroup:", error);
+    // Return a safe fallback instead of re-throwing
     return {
       success: false,
       error: {
         code: 500,
-        message: "Erreur lors de la récupération des matchs",
+        message: error.message || "Erreur lors de la récupération des matchs",
         timestamp: new Date().toISOString(),
       },
     };
   }
 }
-
 
 // Fonctions auxiliaires
 async function getSubGroupInfo(subGroupId: number) {
@@ -108,21 +108,21 @@ async function getSubGroupInfo(subGroupId: number) {
       sg.name,
       sg.sub_group_order as "subGroupOrder",
       sg.description,
-      sg.period, // NOUVEAU
-      sg.score_region1 as "scoreRegion1", // NOUVEAU
-      sg.score_region2 as "scoreRegion2", // NOUVEAU
-      sg.nulls, // NOUVEAU
-      sg.status, // NOUVEAU
+      sg.period,
+      sg.score_region1 as "scoreRegion1",
+      sg.score_region2 as "scoreRegion2",
+      sg.nulls,
+      sg.status,
       sg.region1_id as "region1Id",
       sg.region2_id as "region2Id",
       r1.name as "region1Name",
       r2.name as "region2Name",
       r1.color as "region1Color",
       r2.color as "region2Color",
-      sg.belt_region1 as "beltRegion1Id", // NOUVEAU
-      sg.belt_region2 as "beltRegion2Id", // NOUVEAU
-      b1.color as "beltRegion1Color", // NOUVEAU
-      b2.color as "beltRegion2Color", // NOUVEAU
+      sg.belt_region1 as "beltRegion1Id",
+      sg.belt_region2 as "beltRegion2Id",
+      b1.color as "beltRegion1Color",
+      b2.color as "beltRegion2Color",
       sg.main_referee_id as "mainRefereeId",
       ref.first_name as "refereeFirstName",
       ref.last_name as "refereeLastName",
@@ -132,10 +132,10 @@ async function getSubGroupInfo(subGroupId: number) {
       sg.created_at as "createdAt",
       pg.id as "groupId",
       pg.name as "groupName",
-      pg.date as "groupDate", // NOUVEAU
+      pg.date as "groupDate",
       p.id as "phaseId",
       p.name as "phaseName",
-      p.phase_type as "phaseType", // NOUVEAU
+      p.phase_type as "phaseType",
       -- Coach region1
       c1.id as "coach1Id",
       c1.first_name as "coach1FirstName",
@@ -151,8 +151,8 @@ async function getSubGroupInfo(subGroupId: number) {
     FROM sub_groups sg
     LEFT JOIN regions r1 ON sg.region1_id = r1.id
     LEFT JOIN regions r2 ON sg.region2_id = r2.id
-    LEFT JOIN belt b1 ON sg.belt_region1 = b1.id // NOUVEAU
-    LEFT JOIN belt b2 ON sg.belt_region2 = b2.id // NOUVEAU
+    LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
+    LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
     JOIN phase_groups pg ON sg.group_id = pg.id
     JOIN phases p ON pg.phase_id = p.id
     LEFT JOIN referees ref ON sg.main_referee_id = ref.id
