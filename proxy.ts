@@ -12,6 +12,8 @@ const PUBLIC_ROUTES = [
   "/fighters",
   "/auth/forget-password",
   "/auth/reset-password",
+  "/articles",
+  "/regions",
 ];
 
 const AUTH_ROUTES = [
@@ -19,7 +21,7 @@ const AUTH_ROUTES = [
   "/auth/sign-up",
   "profile",
   "/profile/:path*",
-  "/ad/:path*",
+  // "/ad/:path*",
 ];
 
 function matches(routes: string[], path: string) {

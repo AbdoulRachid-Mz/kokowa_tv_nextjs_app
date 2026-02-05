@@ -25,7 +25,8 @@ export function useAuth() {
   const initServerSession = useCallback(async (firebaseUser: User) => {
     try {
       const token = await firebaseUser.getIdToken(true);
-      
+
+      // Créer la session avec le token
       await fetch("/api/auth/session", {
         method: "POST",
         headers: {
@@ -34,7 +35,7 @@ export function useAuth() {
         body: JSON.stringify({ token }),
       });
 
-      // Récupérer les données utilisateur
+      // Récupérer les données utilisateur (qui seront créées automatiquement si nécessaire)
       const response = await fetch("/api/auth/session");
       if (response.ok) {
         const data = await response.json();
@@ -53,7 +54,7 @@ export function useAuth() {
         setUserDocument(null);
         setLoading(false);
         setInitialized(true);
-        
+
         // Nettoyer la session côté serveur
         await fetch('/api/auth/session', { method: 'DELETE' });
         return;
@@ -69,7 +70,7 @@ export function useAuth() {
     // Écouter le refresh du token
     const unsubscribeToken = onIdTokenChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) return;
-      
+
       try {
         const token = await firebaseUser.getIdToken(true);
         await fetch("/api/auth/session", {
@@ -94,7 +95,7 @@ export function useAuth() {
       try {
         await auth.currentUser.reload();
         const token = await auth.currentUser.getIdToken(true);
-        
+
         await fetch("/api/auth/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -119,7 +120,7 @@ export function useAuth() {
       await auth.signOut();
       setUser(null);
       setUserDocument(null);
-      
+
       // Nettoyer la session côté serveur
       await fetch('/api/auth/session', { method: 'DELETE' });
     } catch (error: any) {
@@ -134,7 +135,7 @@ export function useAuth() {
 
   const hasPermission = useCallback((permission: string): boolean => {
     if (!userDocument) return false;
-    
+
     const rolePermissions: Record<string, string[]> = {
       admin: ['manage_users', 'manage_fighters', 'manage_competitions', 'manage_regions'],
       editor: ['manage_fighters', 'manage_competitions'],
@@ -152,8 +153,8 @@ export function useAuth() {
   const isModerator = hasRole('moderator');
   const isFighterManager = hasRole('fighter_manager');
 
-  return { 
-    user, 
+  return {
+    user,
     userDocument,
     loading: loading || !initialized,
     signOut: signOutUser,

@@ -1,0 +1,5 @@
+il faut m'aider a refactoriser les composents de la page de gestio d'un match. on commence par le composent de control des lutteurs (fighter-control.tsx)
+on enleve les drawer et on met juste deux boutons dont un pour le carton jaune au clic (donc on met automatiquement la raison et le temps du compteur de match) et un pour le designer le lutteur en question comme vainqueur. on n'a pas de carton rouge. on ajoute egalement  vs entre les deux lutteurs
+donc le composent drawer n'est plus necessaire. je vois aussi que quand on change les infos de match comme la note,ca change le status ce n'est pas bien. il faut que le status change uniquement quand on clique sur le bouton play, pause ou stop ou si on change le status du match manuellement.
+on ajuste aussi le design du composent match-control.tsx. il bien simplifier le design tout en gardant les interactions d'un match pour bien la gerer. on peut utiliser et optimiser le hook use-matches avec tanstack query.
+apres cela on corrige le context user et hook use-auth qui n'enregistre pas l'utilisateur rapidement et automatiquement si il est connecte mais les infos pas dans la db.

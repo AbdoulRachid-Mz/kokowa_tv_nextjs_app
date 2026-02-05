@@ -16,14 +16,24 @@ export async function GET(request: NextRequest) {
     }
 
     const decoded = await adminAuth.verifySessionCookie(session.value, true);
-    const userDocument = await getCompleteUserData(decoded.uid);
-    
+
+    // Passer les données Firebase pour permettre la création automatique si nécessaire
+    const firebaseUserData = {
+      uid: decoded.uid,
+      email: decoded.email,
+      displayName: decoded.name,
+      phoneNumber: decoded.phone_number,
+      photoURL: decoded.picture
+    };
+
+    const userDocument = await getCompleteUserData(decoded.uid, firebaseUserData);
+
     return NextResponse.json({
       user: userDocument,
       firebaseUser: { uid: decoded.uid, email: decoded.email },
       success: true
     });
-    
+
   } catch (error) {
     console.error('Error in session API:', error);
     return NextResponse.json({ user: null });
@@ -55,11 +65,11 @@ export async function POST(request: NextRequest) {
       maxAge: 5 * 24 * 60 * 60, // 5 jours en secondes
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      uid: decoded.uid 
+      uid: decoded.uid
     });
-    
+
   } catch (error: any) {
     console.error('Error creating session:', error);
     return NextResponse.json(
@@ -73,7 +83,7 @@ export async function DELETE() {
   try {
     const cookieStore = await cookies();
     cookieStore.delete(COOKIE_NAME);
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting session:', error);

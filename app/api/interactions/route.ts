@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
-    const result = await createInteraction(formData);
+    const json = await request.json();
+    const result = await createInteraction(json);
     
     return NextResponse.json(result);
   } catch (error: any) {

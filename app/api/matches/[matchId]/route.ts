@@ -74,8 +74,8 @@ export async function PUT(
       );
     }
 
-    const formData = await request.formData();
-    const result = await updateMatch(id, formData);
+   const body = await request.json();
+const result = await updateMatch(id, body);
     
     return NextResponse.json(result);
     

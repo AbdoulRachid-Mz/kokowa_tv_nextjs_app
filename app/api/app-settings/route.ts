@@ -38,17 +38,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const formData = await request.formData();
-    const result = await createAppSetting(formData);
+// export async function POST(request: NextRequest) {
+//   try {
+//     const formData = await request.formData();
+//     const result = await createAppSetting(formData);
     
-    return NextResponse.json(result);
-  } catch (error: any) {
-    console.error('API Error POST /api/app-settings:', error);
-    return NextResponse.json(
-      { error: error.message || 'Erreur lors de la création du paramètre' },
-      { status: 500 }
-    );
-  }
-}
+//     return NextResponse.json(result);
+//   } catch (error: any) {
+//     console.error('API Error POST /api/app-settings:', error);
+//     return NextResponse.json(
+//       { error: error.message || 'Erreur lors de la création du paramètre' },
+//       { status: 500 }
+//     );
+//   }
+// }

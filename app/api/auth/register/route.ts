@@ -7,6 +7,7 @@ import { adminAuth } from '@/lib/firebase-admin';
 interface RegisterRequest {
   email: string;
   password?: string;
+  fcm_token?: string;
   username: string;
   first_name?: string;
   last_name?: string;
@@ -24,7 +25,8 @@ export async function POST(request: NextRequest) {
       first_name, 
       last_name, 
       phone_number,
-      firebase_uid 
+      firebase_uid,
+      fcm_token 
     } = body;
 
     // Vérifier d'abord si l'utilisateur existe déjà
@@ -92,6 +94,7 @@ export async function POST(request: NextRequest) {
       first_name,
       last_name,
       phone_number,
+      fcm_token
     });
 
     if (!dbResult.success) {

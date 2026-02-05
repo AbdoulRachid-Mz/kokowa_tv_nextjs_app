@@ -22,6 +22,7 @@ export async function createUserInDatabase(
     first_name?: string;
     last_name?: string;
     phone_number?: string;
+    fcm_token?: string;
   }
 ): Promise<{ success: boolean; user?: UserDocument; error?: string }> {
   try {
@@ -32,17 +33,18 @@ export async function createUserInDatabase(
 
     const sql = `
       INSERT INTO users (
-        auth_id, email, username, password_hash, first_name, last_name, phone_number,
+        auth_id, email, username, password_hash, fcm_token, first_name, last_name, phone_number,
         profile_picture, role, is_active, is_verified
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
-    
+
     const result = await query<UserDocument>(sql, [
       uid,
       email,
       additionalData.username,
       defaultPasswordHash,
+      additionalData.fcm_token || null,
       additionalData.first_name || displayName?.split(' ')[0] || null,
       additionalData.last_name || displayName?.split(' ').slice(1).join(' ') || null,
       additionalData.phone_number || phoneNumber || null,
@@ -55,9 +57,9 @@ export async function createUserInDatabase(
     return { success: true, user: result[0] };
   } catch (error) {
     console.error('Error creating user in database:', error);
-    return { 
-      success: false, 
-      error: 'Erreur lors de la création du compte utilisateur' 
+    return {
+      success: false,
+      error: 'Erreur lors de la création du compte utilisateur'
     };
   }
 }
@@ -71,16 +73,39 @@ export async function updateLastLogin(uid: string): Promise<void> {
   }
 }
 
-export async function getCompleteUserData(uid: string): Promise<UserDocument | null> {
+export async function getCompleteUserData(uid: string, firebaseUser?: any): Promise<UserDocument | null> {
   try {
-    const user = await getUserByAuthId(uid, { 
+    // Vérifier si l'utilisateur existe déjà
+    let user = await getUserByAuthId(uid, {
       with_relations: true,
       relations: {
         with_messages: true,
         with_interactions: true,
-        with_notifications: true // Nouveau
+        with_notifications: true
       }
     });
+
+    // Si l'utilisateur n'existe pas dans la DB mais est connecté à Firebase, le créer
+    if (!user && firebaseUser) {
+      console.log('User authenticated in Firebase but not in DB, creating user...');
+
+      const username = `user_${uid.slice(0, 8)}`;
+      const createResult = await createUserInDatabase(firebaseUser, {
+        username,
+        first_name: firebaseUser.displayName?.split(' ')[0] || '',
+        last_name: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
+        phone_number: firebaseUser.phoneNumber || undefined
+      });
+
+      if (createResult.success && createResult.user) {
+        user = createResult.user as UserDocument;
+        console.log('User created successfully in database');
+      } else {
+        console.error('Failed to create user in database:', createResult.error);
+        return null;
+      }
+    }
+
     return user as UserDocument | null;
   } catch (error) {
     console.error('Error getting complete user data:', error);
@@ -92,7 +117,7 @@ export async function getCompleteUserData(uid: string): Promise<UserDocument | n
  * Vérifie si un utilisateur a les permissions nécessaires
  */
 export async function checkUserPermissions(
-  uid: string, 
+  uid: string,
   requiredPermissions: string[]
 ): Promise<{ hasPermission: boolean; user?: UserDocument }> {
   try {
@@ -104,7 +129,7 @@ export async function checkUserPermissions(
     // Pour l'instant, on vérifie seulement le rôle
     // Tu peux étendre cette logique avec un système de permissions plus complexe
     const hasPermission = requiredPermissions.includes(user.role);
-    
+
     return { hasPermission, user };
   } catch (error) {
     console.error('Error checking user permissions:', error);

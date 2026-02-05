@@ -4,7 +4,7 @@
 import { query, queryOne } from '@/lib/db/neon-client';
 import { interactionSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
-import { Interaction, InteractionFilters, PaginatedResponse } from '@/types';
+import { EntityType, Interaction, InteractionFilters, InteractionType, PaginatedResponse } from '@/types';
 
 export async function getInteractions(
   filters: InteractionFilters = {}
@@ -147,22 +147,21 @@ export async function getInteractionById(id: number, options: {
   }
 }
 
-export async function createInteraction(formData: FormData) {
+export async function createInteraction(jsonData: any) {
   try {
     const rawData = {
-      user_id: formData.get('user_id'),
-      entity_type: formData.get('entity_type'),
-      entity_id: formData.get('entity_id'),
-      interaction_type: formData.get('interaction_type'),
+      user_id: jsonData.user_id,
+      entity_type: jsonData.entity_type,
+      entity_id: jsonData.entity_id,
+      interaction_type: jsonData.interaction_type,
     };
 
     const cleanedData = {
-      user_id: Number("user_id"),
+      user_id: Number(rawData.user_id),
       entity_type: rawData.entity_type as string,
       entity_id: Number(rawData.entity_id),
-      interaction_type: rawData.interaction_type as 'like' | 'view' | 'share' | 'bookmark' | 'follow',
+      interaction_type: rawData.interaction_type as string,
     };
-    // console.log(cleanedData)
 
     const validatedData = interactionSchema.parse(cleanedData);
 
@@ -186,7 +185,7 @@ export async function createInteraction(formData: FormData) {
     await updateEntityInteractionCount(
       validatedData.entity_type,
       validatedData.entity_id,
-      validatedData.interaction_type,
+      validatedData.interaction_type as string,
       'increment'
     );
 

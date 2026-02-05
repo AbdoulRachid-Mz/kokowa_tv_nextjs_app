@@ -259,6 +259,7 @@ async function getGroupsWithSubgroups(phaseId: number) {
       pg.name,
       pg.group_order as "groupOrder",
       pg.is_active as "isActive",
+      pg.date as "date",
       pg.description,
       pg.is_completed as "isCompleted",
       pg.created_at as "createdAt"
@@ -380,7 +381,8 @@ async function getLiveMatchForEdition(editionId: number) {
       pg.id as "groupId",
       pg.name as "groupName",
       p.id as "phaseId",
-      p.name as "phaseName"
+      p.name as "phaseName",
+      pg.date as "date"
 
     FROM matches m
     JOIN sub_groups sg ON m.sub_group_id = sg.id
@@ -391,7 +393,7 @@ async function getLiveMatchForEdition(editionId: number) {
     JOIN regions r1 ON f1.region_id = r1.id
     JOIN regions r2 ON f2.region_id = r2.id
     WHERE p.edition_id = $1 
-    AND m.status IN ('live', 'round_break')
+    AND m.status IN ('live', 'round_break', 'reclamation')
     ORDER BY m.match_date DESC, m.start_time DESC
     LIMIT 1
   `;
@@ -480,7 +482,7 @@ export async function getEditionStats(editionId: number) {
         JOIN sub_groups sg ON m.sub_group_id = sg.id
         JOIN phase_groups pg ON sg.group_id = pg.id
         JOIN phases p ON pg.phase_id = p.id
-        WHERE p.edition_id = $1 AND m.status IN ('live', 'round_break')) as live_matches
+        WHERE p.edition_id = $1 AND m.status IN ('live', 'round_break', 'reclamation')) as live_matches
   `;
 
   const result = await query(sql, [editionId]);

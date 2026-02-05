@@ -428,12 +428,15 @@ export interface Video extends BaseEntity {
   published_at?: string;
 }
 
+export type EntityType = 'article' | 'video' | 'user' | 'region' | 'competition' | 'match' | 'fighter' | 'coach' | 'referee' | 'message' | 'interaction' | 'setting';
+export type InteractionType = 'like' | 'view' | 'share' | 'bookmark' | 'follow';
+
 // Interaction
 export interface Interaction extends BaseEntity {
   user_id: number;
-  entity_type: string;
+  entity_type: EntityType;
   entity_id: number;
-  interaction_type: 'like' | 'view' | 'share' | 'bookmark' | 'follow';
+  interaction_type: InteractionType;
   
   // Relations
   user?: User;
