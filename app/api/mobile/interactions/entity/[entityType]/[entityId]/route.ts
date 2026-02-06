@@ -1,18 +1,13 @@
-// app/api/mobile/interactions/entity/[entityType]/[entityId]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getMobileEntityInteractions } from '@/actions/mobile/interactions';
 import { EntityType, InteractionType } from '@/types';
 
-interface Props {
-  params: Promise<{ entityType: EntityType; entityId: string }>
-}
-
 export async function GET(
   request: NextRequest,
-  { params }: Props
+  context: { params: Promise<{ entityType: string; entityId: string }> }
 ) {
   try {
-    const { entityType, entityId } = await params;
+    const { entityType, entityId } = await context.params;
     const entityIdNum = Number(entityId);
     
     if (isNaN(entityIdNum)) {
@@ -35,7 +30,7 @@ export async function GET(
       withUser: searchParams.get('withUser') !== 'false'
     };
 
-    const result = await getMobileEntityInteractions(entityType, entityIdNum, filters);
+    const result = await getMobileEntityInteractions(entityType as EntityType, entityIdNum, filters);
     
     return NextResponse.json(result);
   } catch (error: any) {

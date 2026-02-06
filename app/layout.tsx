@@ -1,14 +1,40 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+// import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/auth-context";
 import { AppSettingsProvider } from "@/contexts/app-settings-context";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { MainLayout } from "@/components/layout/main-layout";
 import QueryProvider from "@/providers/query-provider";
+import localFont from 'next/font/local'
 
-const inter = Inter({ subsets: ["latin"] });
+// const inter = Inter({ subsets: ["latin"] });
+const inter = localFont({
+  src: [
+    {
+      path: './fonts/inter/static/Inter_18pt-Regular.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: './fonts/inter/static/Inter_24pt-BoldItalic.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+    {
+      path: './fonts/inter/static/Inter_18pt-Italic.woff2', 
+      weight: '400',
+      style: 'italic',
+    },
+    {
+      path: './fonts/inter/static/Inter_24pt-Italic.woff2',
+      weight: '700',
+      style: 'italic',
+    },
+    // thin
+  ],
+})
 
 export const metadata: Metadata = {
   title: {

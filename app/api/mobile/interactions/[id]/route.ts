@@ -2,9 +2,9 @@
 import { NextResponse } from 'next/server';
 import { getMobileInteractionById } from '@/actions/mobile/interactions';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { searchParams } = new URL(request.url);
     const withUser = searchParams.get('withUser');
 
