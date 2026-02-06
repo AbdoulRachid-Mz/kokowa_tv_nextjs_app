@@ -19,6 +19,9 @@ async function handler(request: NextRequest, context: ApiContext) {
 
   const { regionId } = await params;
   const regionIdNumber = Number(regionId);
+  const searchParams = request.nextUrl.searchParams;
+  const userId = searchParams.get("userId") ? Number(searchParams.get("userId")) : undefined;
+  const editionId = searchParams.get("editionId") ? Number(searchParams.get("editionId")) : undefined;
 
   if (isNaN(regionIdNumber) || regionIdNumber <= 0) {
     return NextResponse.json(
@@ -34,7 +37,7 @@ async function handler(request: NextRequest, context: ApiContext) {
     );
   }
 
-  const result = await getMobileRegionById(regionIdNumber);
+  const result = await getMobileRegionById(regionIdNumber, userId, editionId);
 
   if (!result.success) {
     return NextResponse.json(result, { 

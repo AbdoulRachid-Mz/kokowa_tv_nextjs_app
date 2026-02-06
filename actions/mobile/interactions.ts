@@ -199,13 +199,13 @@ export async function getMobileInteractionById(id: number, withUser: boolean = t
   }
 }
 
-export async function createMobileInteraction(formData: FormData) {
+export async function createMobileInteraction(formData: any) {
   try {
     const rawData = {
-      userId: formData.get('userId'),
-      entityType: formData.get('entityType'),
-      entityId: formData.get('entityId'),
-      interactionType: formData.get('interactionType')
+      userId: formData.userId,
+      entityType: formData.entityType,
+      entityId: formData.entityId,
+      interactionType: formData.interactionType
     };
 
     // Validation des données
@@ -362,6 +362,61 @@ export async function deleteMobileInteraction(id: number) {
 
 export async function getMobileUserInteractions(userId: number, filters: Omit<MobileInteractionFilters, 'userId'> = {}) {
   return getMobileInteractions({ ...filters, userId });
+}
+
+export async function isUserInteractionEntity(
+  userId: number,
+  entityType: EntityType,
+  entityId: number,
+  interactionType?: InteractionType
+): Promise<boolean> {
+  try {
+    const conditions: string[] = ['user_id = $1', 'entity_type = $2', 'entity_id = $3'];
+    const params: any[] = [userId, entityType, entityId];
+
+    if (interactionType) {
+      conditions.push('interaction_type = $4');
+      params.push(interactionType);
+    }
+
+    const sql = `
+      SELECT 1
+      FROM interactions
+      WHERE ${conditions.join(' AND ')}
+      LIMIT 1
+    `;
+
+    const result = await query(sql, params);
+    return result.length > 0;
+  } catch (error) {
+    console.error('Error in isUserInteractionEntity:', error);
+    return false;
+  }
+}
+
+// get entity interactions number
+export async function getMobileEntityInteractionsCount(entityType: EntityType, entityId: number, interactionType?: InteractionType) {
+  try {
+    const conditions: string[] = ['entity_type = $1', 'entity_id = $2'];
+    const params: any[] = [entityType, entityId];
+
+    if (interactionType) {
+      conditions.push('interaction_type = $3');
+      params.push(interactionType);
+    }
+
+    const sql = `
+      SELECT COUNT(*) as "count"
+      FROM interactions
+      WHERE ${conditions.join(' AND ')}
+    `;
+
+    const result = await query(sql, params);
+    return parseInt(result[0].count);
+  } catch (error) {
+    console.error('Error in getMobileEntityInteractionsCount:', error);
+    return 0;
+  }
 }
 
 export async function getMobileEntityInteractions(entityType: string, entityId: number, filters: Omit<MobileInteractionFilters, 'entityType' | 'entityId'> = {}) {

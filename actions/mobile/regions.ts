@@ -3,8 +3,26 @@
 import { query } from '@/lib/db/neon-client';
 import { Region } from '@/types';
 
-export async function getMobileRegions() {
+export async function getMobileRegions(filters?: {
+  page?: number;
+  limit?: number;
+  userId?: number;
+}) {
   try {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 20;
+    const offset = (page - 1) * limit;
+    const userId = filters?.userId;
+
+    // Compter le total
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM regions
+    `;
+    
+    const countResult = await query<{ total: string }>(countSql);
+    const total = parseInt(countResult[0]?.total || '0');
+
     const sql = `
       SELECT 
         id,
@@ -17,18 +35,54 @@ export async function getMobileRegions() {
         color,
         total_fighters as "totalFighters",
         total_champions as "totalChampions",
-        created_at as "createdAt"
+        created_at as "createdAt",
+        
+        -- Compter le nombre de likes
+        COALESCE((
+          SELECT COUNT(*)
+          FROM interactions i
+          WHERE i.entity_type = 'region'
+            AND i.entity_id = regions.id
+            AND i.interaction_type = 'like'
+        ), 0) as "likes",
+        
+        -- Vérifier si l'utilisateur a liké cette région
+        ${userId ? `
+        EXISTS(
+          SELECT 1
+          FROM interactions i
+          WHERE i.entity_type = 'region'
+            AND i.entity_id = regions.id
+            AND i.interaction_type = 'like'
+            AND i.user_id = $1
+        ) as "isMyFavorite"
+        ` : 'FALSE as "isMyFavorite"' }
+        
       FROM regions 
       ORDER BY name
+      LIMIT ${userId ? '$2' : '$1'} OFFSET ${userId ? '$3' : '$2'}
     `;
 
-    const regions = await query<Region>(sql);
+    const params = userId ? [userId, limit, offset] : [limit, offset];
+    const regions = await query<Region>(sql, params);
+
+    // Calculer la pagination
+    const totalPages = Math.ceil(total / limit);
 
     return {
       success: true,
       data: {
         regions,
         count: regions.length,
+        total: total,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        },
         timestamp: new Date().toISOString()
       },
       message: 'Régions récupérées avec succès'
@@ -46,10 +100,11 @@ export async function getMobileRegions() {
   }
 }
 
-export async function getMobileRegionById(regionId: number) {
+// Mettre à jour la fonction getMobileRegionById pour accepter editionId
+export async function getMobileRegionById(regionId: number, userId?: number, editionId?: number) {
   try {
-    // Vérifier que la région existe
-    const regionInfo = await getRegionInfo(regionId);
+    // Récupérer les informations de la région avec likes et favoris
+    const regionInfo = await getRegionInfo(regionId, userId);
     if (!regionInfo) {
       return {
         success: false,
@@ -63,7 +118,7 @@ export async function getMobileRegionById(regionId: number) {
 
     // Récupérer toutes les données de la région
     const fighters = await getRegionFighters(regionId);
-    const matches = await getRegionMatches(regionId);
+    const matches = await getRegionMatches(regionId, editionId);
     const transfers = await getRegionTransfers(regionId);
     const achievements = await getRegionAchievements(regionId);
     const stats = calculateRegionStats(fighters, matches, achievements);
@@ -82,7 +137,9 @@ export async function getMobileRegionById(regionId: number) {
           totalMatches: matches.length,
           totalTransfers: transfers.length,
           totalAchievements: achievements.length,
-          liveMatches: matches.filter(m => ['live', 'round_break'].includes(m.status)).length
+          liveMatches: matches.filter((m: any) => ['live', 'round_break'].includes(m.status)).length,
+          wins: matches.filter((m: any) => m.regionContext.isWinner).length,
+          losses: matches.filter((m: any) => m.regionContext.isInvolved && !m.regionContext.isWinner && m.result).length
         },
         timestamp: new Date().toISOString()
       },
@@ -101,22 +158,67 @@ export async function getMobileRegionById(regionId: number) {
   }
 }
 
-// Fonctions auxiliaires
-async function getRegionInfo(regionId: number) {
+// Fonction utilitaire pour récupérer les cartons (à ajouter)
+async function getCardsForMatch(matchId: number) {
   const sql = `
     SELECT 
-      id,
-      name,
-      code,
-      color,
-      stadium_name as "stadiumName",
-      description,
-      total_champions as "totalChampions"
-    FROM regions
-    WHERE id = $1
+      fc.id,
+      fc.fighter_id as "fighterId",
+      fc.card_type as "cardType",
+      fc.card_reason as "cardReason",
+      fc.minute_given as "minuteGiven",
+      fc.is_cancelled as "isCancelled"
+    FROM fighter_cards fc
+    WHERE fc.match_id = $1 AND fc.is_cancelled = FALSE
+    ORDER BY fc.minute_given
+  `;
+
+  return await query(sql, [matchId]);
+}
+
+
+async function getRegionInfo(regionId: number, userId?: number) {
+  const sql = `
+    SELECT 
+      r.id,
+      r.name,
+      r.code,
+      r.color,
+      r.stadium_name as "stadiumName",
+      r.description,
+      r.total_champions as "totalChampions",
+      r.flag_image as "flagImage",
+      r.stadium_image as "stadiumImage",
+      r.total_fighters as "totalFighters",
+      r.created_at as "createdAt",
+      
+      -- Compter le nombre de likes
+      COALESCE((
+        SELECT COUNT(*)
+        FROM interactions i
+        WHERE i.entity_type = 'region'
+          AND i.entity_id = r.id
+          AND i.interaction_type = 'like'
+      ), 0) as "likes",
+      
+      -- Vérifier si l'utilisateur a liké cette région
+      ${userId ? `
+      EXISTS(
+        SELECT 1
+        FROM interactions i
+        WHERE i.entity_type = 'region'
+          AND i.entity_id = r.id
+          AND i.interaction_type = 'like'
+          AND i.user_id = $2
+      ) as "isMyFavorite"
+      ` : 'FALSE as "isMyFavorite"' }
+      
+    FROM regions r
+    WHERE r.id = $1
   `;
   
-  const result = await query(sql, [regionId]);
+  const params = userId ? [regionId, userId] : [regionId];
+  const result = await query(sql, params);
   return result[0] || null;
 }
 
@@ -147,7 +249,24 @@ async function getRegionFighters(regionId: number) {
   return await query(sql, [regionId]);
 }
 
-async function getRegionMatches(regionId: number) {
+async function getRegionMatches(regionId: number, editionId?: number) {
+  let whereClause = "(f1.region_id = $1 OR f2.region_id = $1)";
+  const params: any[] = [regionId];
+  
+  // Ajouter le filtre par édition si fourni
+  if (editionId) {
+    whereClause += " AND p.edition_id = $2";
+    params.push(editionId);
+  } else {
+    // Sinon, récupérer la dernière édition
+    whereClause += ` AND p.edition_id = (
+      SELECT id 
+      FROM competition_editions 
+      ORDER BY year DESC, id DESC 
+      LIMIT 1
+    )`;
+  }
+
   const sql = `
     SELECT 
       m.id,
@@ -166,27 +285,55 @@ async function getRegionMatches(regionId: number) {
       m.loser_fighter_id as "loserFighterId",
       
       -- Lutteur 1
-      f1.id as "fighter1Id",
+      m.fighter1_id as "fighter1Id",
+      f1.first_name as "fighter1FirstName",
+      f1.last_name as "fighter1LastName",
       f1.nickname as "fighter1Nickname",
-      f1.region_id as "fighter1RegionId",
       f1.profile_image as "fighter1ProfileImage",
+      f1.birth_date as "fighter1BirthDate",
+      f1.height as "fighter1Height",
+      f1.weight as "fighter1Weight",
+      f1.fighting_style as "fighter1Style",
+      f1.ranking as "fighter1Ranking",
+      f1.region_id as "fighter1RegionId",
       r1.name as "fighter1RegionName",
       r1.color as "fighter1RegionColor",
+      r1.code as "fighter1RegionCode",
+      m.fighter1_initial_state as "fighter1InitialState",
       
       -- Lutteur 2
-      f2.id as "fighter2Id",
+      m.fighter2_id as "fighter2Id",
+      f2.first_name as "fighter2FirstName",
+      f2.last_name as "fighter2LastName",
       f2.nickname as "fighter2Nickname",
-      f2.region_id as "fighter2RegionId",
       f2.profile_image as "fighter2ProfileImage",
+      f2.birth_date as "fighter2BirthDate",
+      f2.height as "fighter2Height",
+      f2.weight as "fighter2Weight",
+      f2.fighting_style as "fighter2Style",
+      f2.ranking as "fighter2Ranking",
+      f2.region_id as "fighter2RegionId",
       r2.name as "fighter2RegionName",
       r2.color as "fighter2RegionColor",
+      r2.code as "fighter2RegionCode",
+      m.fighter2_initial_state as "fighter2InitialState",
       
       -- Contexte
+      sg.id as "subGroupId",
       sg.name as "subGroupName",
+      
+      pg.id as "groupId",
       pg.name as "groupName",
+      
+      p.id as "phaseId",
       p.name as "phaseName",
-      e.theme as "editionTheme",
-      e.year as "editionYear"
+      p.phase_type as "phaseType",
+      
+      ce.id as "editionId",
+      ce.theme as "editionTheme",
+      ce.year as "editionYear",
+      ce.competition_id as "competitionId",
+      c.name as "competitionName"
 
     FROM matches m
     JOIN fighters f1 ON m.fighter1_id = f1.id
@@ -196,8 +343,9 @@ async function getRegionMatches(regionId: number) {
     JOIN sub_groups sg ON m.sub_group_id = sg.id
     JOIN phase_groups pg ON sg.group_id = pg.id
     JOIN phases p ON pg.phase_id = p.id
-    JOIN competition_editions e ON p.edition_id = e.id
-    WHERE f1.region_id = $1 OR f2.region_id = $1
+    JOIN competition_editions ce ON p.edition_id = e.id
+    JOIN competitions c ON ce.competition_id = c.id
+    WHERE ${whereClause}
     ORDER BY 
       CASE 
         WHEN m.status IN ('live', 'round_break') THEN 0
@@ -209,8 +357,143 @@ async function getRegionMatches(regionId: number) {
       m.start_time DESC
   `;
   
-  return await query(sql, [regionId]);
+  const matches = await query(sql, params);
+  
+  // Enrichir les données des matchs
+  return Promise.all(matches.map(match => enrichRegionMatchData(match, regionId)));
 }
+
+async function enrichRegionMatchData(match: any, regionId: number) {
+  // Récupérer les cartons pour ce match
+  const cards = await getCardsForMatch(match.id);
+
+  // Formater les données des lutteurs
+  const fighter1 = {
+    id: match.fighter1Id,
+    firstName: match.fighter1FirstName,
+    lastName: match.fighter1LastName,
+    nickname: match.fighter1Nickname,
+    profileImage: match.fighter1ProfileImage,
+    birthDate: match.fighter1BirthDate,
+    height: match.fighter1Height,
+    weight: match.fighter1Weight,
+    fightingStyle: match.fighter1Style,
+    ranking: match.fighter1Ranking,
+    region: {
+      id: match.fighter1RegionId,
+      name: match.fighter1RegionName,
+      color: match.fighter1RegionColor,
+      code: match.fighter1RegionCode,
+    },
+    initialState: match.fighter1InitialState,
+    cards: cards.filter((card: any) => card.fighterId === match.fighter1Id),
+  };
+
+  const fighter2 = {
+    id: match.fighter2Id,
+    firstName: match.fighter2FirstName,
+    lastName: match.fighter2LastName,
+    nickname: match.fighter2Nickname,
+    profileImage: match.fighter2ProfileImage,
+    birthDate: match.fighter2BirthDate,
+    height: match.fighter2Height,
+    weight: match.fighter2Weight,
+    fightingStyle: match.fighter2Style,
+    ranking: match.fighter2Ranking,
+    region: {
+      id: match.fighter2RegionId,
+      name: match.fighter2RegionName,
+      color: match.fighter2RegionColor,
+      code: match.fighter2RegionCode,
+    },
+    initialState: match.fighter2InitialState,
+    cards: cards.filter((card: any) => card.fighterId === match.fighter2Id),
+  };
+
+  // Déterminer si la région est impliquée et si elle a gagné
+  const isRegionInvolved = match.fighter1RegionId === regionId || match.fighter2RegionId === regionId;
+  const isRegionWinner = match.winnerFighterId && (
+    (match.fighter1RegionId === regionId && match.winnerFighterId === match.fighter1Id) ||
+    (match.fighter2RegionId === regionId && match.winnerFighterId === match.fighter2Id)
+  );
+
+  // Déterminer le vainqueur et le perdant
+  let winner = null;
+  let loser = null;
+  let resultType = match.matchResult;
+
+  if (match.winnerFighterId) {
+    winner = match.winnerFighterId === match.fighter1Id ? fighter1 : fighter2;
+    loser = match.winnerFighterId === match.fighter1Id ? fighter2 : fighter1;
+  }
+
+  // Formater la réponse
+  const enrichedMatch = {
+    id: match.id,
+    matchNumber: match.matchNumber,
+    matchDate: match.matchDate,
+    startTime: match.startTime,
+    endTime: match.endTime,
+    status: match.status,
+    matchResult: resultType,
+    totalDuration: match.totalDuration,
+    breakCount: match.breakCount,
+    audienceCount: match.audienceCount,
+    videoUrl: match.videoUrl,
+    liveStreamUrl: match.liveStreamUrl,
+    notes: match.notes,
+    createdAt: match.createdAt,
+    updatedAt: match.updatedAt,
+
+    fighters: {
+      fighter1,
+      fighter2,
+    },
+
+    result: winner ? {
+      winner,
+      loser,
+      resultType,
+    } : null,
+
+    regionContext: {
+      isInvolved: isRegionInvolved,
+      isWinner: isRegionWinner,
+      regionRole: match.fighter1RegionId === regionId ? 'fighter1' : 
+                 match.fighter2RegionId === regionId ? 'fighter2' : 'none'
+    },
+
+    context: {
+      subGroup: {
+        id: match.subGroupId,
+        name: match.subGroupName,
+      },
+      group: {
+        id: match.groupId,
+        name: match.groupName,
+      },
+      phase: {
+        id: match.phaseId,
+        name: match.phaseName,
+        type: match.phaseType,
+      },
+      edition: {
+        id: match.editionId,
+        theme: match.editionTheme,
+        year: match.editionYear,
+      },
+      competition: {
+        id: match.competitionId,
+        name: match.competitionName,
+      }
+    },
+
+    allCards: cards,
+  };
+
+  return enrichedMatch;
+}
+
 
 async function getRegionTransfers(regionId: number) {
   const sql = `
@@ -283,13 +566,10 @@ function organizeMatches(matches: any[]) {
   // Grouper par édition
   const matchesByEdition: Record<string, any> = {};
   matches.forEach(match => {
-    const editionKey = `${match.editionTheme} ${match.editionYear}`;
+    const editionKey = `${match.context.edition.year} - ${match.context.edition.theme}`;
     if (!matchesByEdition[editionKey]) {
       matchesByEdition[editionKey] = {
-        edition: {
-          theme: match.editionTheme,
-          year: match.editionYear
-        },
+        edition: match.context.edition,
         matches: []
       };
     }

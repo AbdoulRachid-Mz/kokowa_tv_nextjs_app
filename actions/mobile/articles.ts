@@ -9,14 +9,16 @@ export async function getArticles(filters?: {
   page?: number;
   limit?: number;
   search?: string;
+  userId?: number; // Pour vérifier les favoris
 }) {
   try {
     const page = filters?.page || 1;
     const limit = filters?.limit || 20;
     const offset = (page - 1) * limit;
+    const userId = filters?.userId;
 
     // Build WHERE clause dynamically
-    const conditions: string[] = [];
+    const conditions: string[] = ["a.status = 'published'"]; // Par défaut, ne montrer que les publiés
     const params: any[] = [];
     let paramIndex = 1;
 
@@ -46,8 +48,7 @@ export async function getArticles(filters?: {
       paramIndex++;
     }
 
-    const whereClause =
-      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
     // Get total count
     const countSql = `
@@ -59,117 +60,87 @@ export async function getArticles(filters?: {
     const countResult = await query(countSql, params);
     const total = parseInt(countResult[0]?.total || "0");
 
+    // Build selection fields with likes and favorites
+    const selectFields = `
+      a.id,
+      a.title,
+      a.slug,
+      a.excerpt,
+      a.content,
+      a.featured_image as "featuredImage",
+      a.author_id as "authorId",
+      a.status,
+      a.language,
+      a.view_count as "viewCount",
+      a.like_count as "likes",  -- Renommer pour cohérence
+      a.share_count as "shareCount",
+      a.meta_title as "metaTitle",
+      a.meta_description as "metaDescription",
+      a.published_at as "publishedAt",
+      a.created_at as "createdAt",
+      a.updated_at as "updatedAt",
+      
+      -- Author information
+      JSON_BUILD_OBJECT(
+        'id', u.id,
+        'username', u.username,
+        'firstName', u.first_name,
+        'lastName', u.last_name,
+        'profilePicture', u.profile_picture
+      ) as author
+    `;
+
+    // Add likes from interactions table if needed
+    const likesField = userId ? `
+      , COALESCE((
+        SELECT COUNT(*)
+        FROM interactions i
+        WHERE i.entity_type = 'article'
+          AND i.entity_id = a.id
+          AND i.interaction_type = 'like'
+      ), 0) as "interactionLikes"
+    ` : '';
+
+    // Add favorite check for user
+    const favoriteField = userId ? `
+      , EXISTS(
+        SELECT 1
+        FROM interactions i
+        WHERE i.entity_type = 'article'
+          AND i.entity_id = a.id
+          AND i.interaction_type = 'like'
+          AND i.user_id = $${paramIndex}
+      ) as "isMyFavorite"
+    ` : ', FALSE as "isMyFavorite"';
+
     // Get articles with author information and media
     const articlesSql = `
       SELECT 
-        a.id,
-        a.title,
-        a.slug,
-        a.excerpt,
-        a.content,
-        a.featured_image as "featuredImage",
-        a.author_id as "authorId",
-        a.status,
-        a.language,
-        a.view_count as "viewCount",
-        a.like_count as "likeCount",
-        a.share_count as "shareCount",
-        a.meta_title as "metaTitle",
-        a.meta_description as "metaDescription",
-        a.published_at as "publishedAt",
-        a.created_at as "createdAt",
-        a.updated_at as "updatedAt",
-        
-        -- Author information
-        JSON_BUILD_OBJECT(
-          'id', u.id,
-          'username', u.username,
-          'firstName', u.first_name,
-          'lastName', u.last_name,
-          'profilePicture', u.profile_picture
-        ) as author,
-        
-        -- Media relations by type
-        COALESCE(
-          JSON_AGG(
-            CASE WHEN m.file_type = 'image' THEN
-              JSON_BUILD_OBJECT(
-                'id', m.id,
-                'title', m.title,
-                'filePath', m.file_path,
-                'fileType', m.file_type,
-                'mimeType', m.mime_type,
-                'fileSize', m.file_size,
-                'altText', m.alt_text,
-                'description', m.description,
-                'isFeatured', m.is_featured
-              )
-            END
-          ) FILTER (WHERE m.file_type = 'image'), '[]'
-        ) as images,
-        COALESCE(
-          JSON_AGG(
-            CASE WHEN m.file_type = 'video' THEN
-              JSON_BUILD_OBJECT(
-                'id', m.id,
-                'title', m.title,
-                'filePath', m.file_path,
-                'fileType', m.file_type,
-                'mimeType', m.mime_type,
-                'fileSize', m.file_size,
-                'altText', m.alt_text,
-                'description', m.description,
-                'isFeatured', m.is_featured
-              )
-            END
-          ) FILTER (WHERE m.file_type = 'video'), '[]'
-        ) as videos,
-        COALESCE(
-          JSON_AGG(
-            CASE WHEN m.file_type = 'document' THEN
-              JSON_BUILD_OBJECT(
-                'id', m.id,
-                'title', m.title,
-                'filePath', m.file_path,
-                'fileType', m.file_type,
-                'mimeType', m.mime_type,
-                'fileSize', m.file_size,
-                'altText', m.alt_text,
-                'description', m.description,
-                'isFeatured', m.is_featured
-              )
-            END
-          ) FILTER (WHERE m.file_type = 'document'), '[]'
-        ) as documents,
-        COALESCE(
-          JSON_AGG(
-            CASE WHEN m.file_type = 'audio' THEN
-              JSON_BUILD_OBJECT(
-                'id', m.id,
-                'title', m.title,
-                'filePath', m.file_path,
-                'fileType', m.file_type,
-                'mimeType', m.mime_type,
-                'fileSize', m.file_size,
-                'altText', m.alt_text,
-                'description', m.description,
-                'isFeatured', m.is_featured
-              )
-            END
-          ) FILTER (WHERE m.file_type = 'audio'), '[]'
-        ) as audios
+        ${selectFields}
+        ${likesField}
+        ${favoriteField}
         
       FROM articles a
       LEFT JOIN users u ON a.author_id = u.id
-      LEFT JOIN media m ON m.entity_type = 'article' AND m.entity_id = a.id
       ${whereClause}
-      GROUP BY a.id, u.id
       ORDER BY a.published_at DESC, a.created_at DESC
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      LIMIT $${userId ? paramIndex + 1 : paramIndex} 
+      OFFSET $${userId ? paramIndex + 2 : paramIndex + 1}
     `;
 
+    // Add user ID to params if provided
+    if (userId) {
+      params.push(userId);
+    }
     params.push(limit, offset);
+
     const articles = await query(articlesSql, params);
+
+    // Combine like counts from both tables
+    const processedArticles = articles.map(article => ({
+      ...article,
+      likes: article.interactionLikes || article.likes || 0
+    }));
 
     // Calculate pagination
     const totalPages = Math.ceil(total / limit);
@@ -177,7 +148,7 @@ export async function getArticles(filters?: {
     return {
       success: true,
       data: {
-        articles,
+        articles: processedArticles,
         pagination: {
           page,
           limit,
@@ -203,7 +174,7 @@ export async function getArticles(filters?: {
   }
 }
 
-export async function getArticleById(articleId: number) {
+export async function getArticleById(articleId: number, userId?: number) {
   try {
     // Check if article exists
     const existsSql = "SELECT id FROM articles WHERE id = $1";
@@ -220,119 +191,74 @@ export async function getArticleById(articleId: number) {
       };
     }
 
+    // Build selection fields with likes and favorites
+    const selectFields = `
+      a.id,
+      a.title,
+      a.slug,
+      a.excerpt,
+      a.content,
+      a.featured_image as "featuredImage",
+      a.author_id as "authorId",
+      a.status,
+      a.language,
+      a.view_count as "viewCount",
+      a.like_count as "likes",  -- Renommer pour cohérence
+      a.share_count as "shareCount",
+      a.meta_title as "metaTitle",
+      a.meta_description as "metaDescription",
+      a.published_at as "publishedAt",
+      a.created_at as "createdAt",
+      a.updated_at as "updatedAt",
+      
+      -- Author information
+      JSON_BUILD_OBJECT(
+        'id', u.id,
+        'username', u.username,
+        'firstName', u.first_name,
+        'lastName', u.last_name,
+        'profilePicture', u.profile_picture,
+        'bio', u.bio
+      ) as author
+    `;
+
+    // Add likes from interactions table
+    const likesField = `
+      , COALESCE((
+        SELECT COUNT(*)
+        FROM interactions i
+        WHERE i.entity_type = 'article'
+          AND i.entity_id = a.id
+          AND i.interaction_type = 'like'
+      ), 0) as "interactionLikes"
+    `;
+
+    // Add favorite check for user
+    const favoriteField = userId ? `
+      , EXISTS(
+        SELECT 1
+        FROM interactions i
+        WHERE i.entity_type = 'article'
+          AND i.entity_id = a.id
+          AND i.interaction_type = 'like'
+          AND i.user_id = $2
+      ) as "isMyFavorite"
+    ` : ', FALSE as "isMyFavorite"';
+
     // Get article with full details including media
     const articleSql = `
       SELECT 
-        a.id,
-        a.title,
-        a.slug,
-        a.excerpt,
-        a.content,
-        a.featured_image as "featuredImage",
-        a.author_id as "authorId",
-        a.status,
-        a.language,
-        a.view_count as "viewCount",
-        a.like_count as "likeCount",
-        a.share_count as "shareCount",
-        a.meta_title as "metaTitle",
-        a.meta_description as "metaDescription",
-        a.published_at as "publishedAt",
-        a.created_at as "createdAt",
-        a.updated_at as "updatedAt",
-        
-        -- Author information
-        JSON_BUILD_OBJECT(
-          'id', u.id,
-          'username', u.username,
-          'firstName', u.first_name,
-          'lastName', u.last_name,
-          'profilePicture', u.profile_picture,
-          'bio', u.bio
-        ) as author,
-        
-        -- Media relations by type
-        COALESCE(
-          JSON_AGG(
-            CASE WHEN m.file_type = 'image' THEN
-              JSON_BUILD_OBJECT(
-                'id', m.id,
-                'title', m.title,
-                'filePath', m.file_path,
-                'fileType', m.file_type,
-                'mimeType', m.mime_type,
-                'fileSize', m.file_size,
-                'altText', m.alt_text,
-                'description', m.description,
-                'isFeatured', m.is_featured,
-                'createdAt', m.created_at
-              )
-            END
-          ) FILTER (WHERE m.file_type = 'image'), '[]'
-        ) as images,
-        COALESCE(
-          JSON_AGG(
-            CASE WHEN m.file_type = 'video' THEN
-              JSON_BUILD_OBJECT(
-                'id', m.id,
-                'title', m.title,
-                'filePath', m.file_path,
-                'fileType', m.file_type,
-                'mimeType', m.mime_type,
-                'fileSize', m.file_size,
-                'altText', m.alt_text,
-                'description', m.description,
-                'isFeatured', m.is_featured,
-                'createdAt', m.created_at
-              )
-            END
-          ) FILTER (WHERE m.file_type = 'video'), '[]'
-        ) as videos,
-        COALESCE(
-          JSON_AGG(
-            CASE WHEN m.file_type = 'document' THEN
-              JSON_BUILD_OBJECT(
-                'id', m.id,
-                'title', m.title,
-                'filePath', m.file_path,
-                'fileType', m.file_type,
-                'mimeType', m.mime_type,
-                'fileSize', m.file_size,
-                'altText', m.alt_text,
-                'description', m.description,
-                'isFeatured', m.is_featured,
-                'createdAt', m.created_at
-              )
-            END
-          ) FILTER (WHERE m.file_type = 'document'), '[]'
-        ) as documents,
-        COALESCE(
-          JSON_AGG(
-            CASE WHEN m.file_type = 'audio' THEN
-              JSON_BUILD_OBJECT(
-                'id', m.id,
-                'title', m.title,
-                'filePath', m.file_path,
-                'fileType', m.file_type,
-                'mimeType', m.mime_type,
-                'fileSize', m.file_size,
-                'altText', m.alt_text,
-                'description', m.description,
-                'isFeatured', m.is_featured,
-                'createdAt', m.created_at
-              )
-            END
-          ) FILTER (WHERE m.file_type = 'audio'), '[]'
-        ) as audios
+        ${selectFields}
+        ${likesField}
+        ${favoriteField}
         
       FROM articles a
       LEFT JOIN users u ON a.author_id = u.id
-      LEFT JOIN media m ON m.entity_type = 'article' AND m.entity_id = a.id
       WHERE a.id = $1
-      GROUP BY a.id, u.id
     `;
 
-    const result = await query(articleSql, [articleId]);
+    const params = userId ? [articleId, userId] : [articleId];
+    const result = await query(articleSql, params);
     const article = result[0];
 
     if (!article) {
@@ -345,6 +271,9 @@ export async function getArticleById(articleId: number) {
         },
       };
     }
+
+    // Combine like counts from both tables
+    article.likes = article.interactionLikes || article.likes || 0;
 
     // Increment view count
     const updateViewSql = `

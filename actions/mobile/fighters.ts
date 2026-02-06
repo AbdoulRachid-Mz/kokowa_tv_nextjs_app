@@ -2,8 +2,28 @@
 
 import { query } from '@/lib/db/neon-client';
 
-export async function getMobileFighters() {
+export async function getMobileFighters(filters?: {
+  page?: number;
+  limit?: number;
+  userId?: number; // Pour vérifier les favoris
+}) {
   try {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 20;
+    const offset = (page - 1) * limit;
+    const userId = filters?.userId;
+
+    // Compter le total
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM fighters f
+      WHERE f.is_active = true
+    `;
+    
+    const countResult = await query(countSql);
+    const total = parseInt(countResult[0]?.total || '0');
+
+    // Requête principale avec likes et favoris
     const sql = `
       SELECT 
         f.id,
@@ -24,34 +44,68 @@ export async function getMobileFighters() {
         f.ranking,
         f.is_active as "isActive",
         f.is_champion as "isChampion",
-        f.social_links as "socialLinks",  -- Ce champ est déjà un objet JavaScript
+        f.social_links as "socialLinks",
         f.created_at as "createdAt",
         f.updated_at as "updatedAt",
         
         r.name as "regionName",
         r.code as "regionCode",
         r.color as "regionColor",
-        r.flag_image as "regionFlagImage"
+        r.flag_image as "regionFlagImage",
+        
+        -- Compter le nombre de likes
+        COALESCE((
+          SELECT COUNT(*)
+          FROM interactions i
+          WHERE i.entity_type = 'fighter'
+            AND i.entity_id = f.id
+            AND i.interaction_type = 'like'
+        ), 0) as "likes",
+        
+        -- Vérifier si l'utilisateur a liké ce lutteur
+        ${userId ? `
+        EXISTS(
+          SELECT 1
+          FROM interactions i
+          WHERE i.entity_type = 'fighter'
+            AND i.entity_id = f.id
+            AND i.interaction_type = 'like'
+            AND i.user_id = $1
+        ) as "isMyFavorite"
+        ` : 'FALSE as "isMyFavorite"' }
         
       FROM fighters f
       LEFT JOIN regions r ON f.region_id = r.id
       WHERE f.is_active = true
       ORDER BY f.ranking ASC, f.last_name ASC, f.first_name ASC
+      LIMIT ${userId ? '$2' : '$1'} OFFSET ${userId ? '$3' : '$2'}
     `;
 
-    const fighters = await query(sql);
+    const params = userId ? [userId, limit, offset] : [limit, offset];
+    const fighters = await query(sql, params);
 
-    // CORRECTION : socialLinks est déjà un objet, pas besoin de JSON.parse
     const fightersWithDecodedSocialLinks = fighters.map(fighter => ({
       ...fighter,
-      socialLinks: fighter.socialLinks || []  // Utiliser directement l'objet ou un tableau vide
+      socialLinks: fighter.socialLinks || []
     }));
+
+    // Calculer la pagination
+    const totalPages = Math.ceil(total / limit);
 
     return {
       success: true,
       data: {
         fighters: fightersWithDecodedSocialLinks,
         count: fighters.length,
+        total: total,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        },
         timestamp: new Date().toISOString()
       },
       message: 'Lutteurs récupérés avec succès'
@@ -69,7 +123,8 @@ export async function getMobileFighters() {
   }
 }
 
-export async function getMobileFighterById(fighterId: number) {
+
+export async function getMobileFighterById(fighterId: number, userId?: number) {
   try {
     // Vérifier que le lutteur existe
     const existsSql = "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
@@ -86,8 +141,8 @@ export async function getMobileFighterById(fighterId: number) {
       };
     }
 
-    // Récupérer les informations de base du lutteur
-    const fighterInfo = await getFighterInfo(fighterId);
+    // Récupérer les informations de base du lutteur avec likes et favoris
+    const fighterInfo = await getFighterInfo(fighterId, userId);
     
     // Récupérer les données associées
     const achievements = await getFighterAchievements(fighterId);
@@ -122,7 +177,7 @@ export async function getMobileFighterById(fighterId: number) {
 }
 
 // Fonctions auxiliaires
-async function getFighterInfo(fighterId: number) {
+async function getFighterInfo(fighterId: number, userId?: number) {
   const sql = `
     SELECT 
       f.id,
@@ -143,24 +198,45 @@ async function getFighterInfo(fighterId: number) {
       f.ranking,
       f.is_active as "isActive",
       f.is_champion as "isChampion",
-      f.social_links as "socialLinks",  -- Déjà un objet
+      f.social_links as "socialLinks",
       f.created_at as "createdAt",
       f.updated_at as "updatedAt",
       
       r.name as "regionName",
       r.code as "regionCode",
       r.color as "regionColor",
-      r.flag_image as "regionFlagImage"
+      r.flag_image as "regionFlagImage",
+      
+      -- Compter le nombre de likes
+      COALESCE((
+        SELECT COUNT(*)
+        FROM interactions i
+        WHERE i.entity_type = 'fighter'
+          AND i.entity_id = f.id
+          AND i.interaction_type = 'like'
+      ), 0) as "likes",
+      
+      -- Vérifier si l'utilisateur a liké ce lutteur
+      ${userId ? `
+      EXISTS(
+        SELECT 1
+        FROM interactions i
+        WHERE i.entity_type = 'fighter'
+          AND i.entity_id = f.id
+          AND i.interaction_type = 'like'
+          AND i.user_id = $2
+      ) as "isMyFavorite"
+      ` : 'FALSE as "isMyFavorite"' }
       
     FROM fighters f
     LEFT JOIN regions r ON f.region_id = r.id
     WHERE f.id = $1
   `;
 
-  const result = await query(sql, [fighterId]);
+  const params = userId ? [fighterId, userId] : [fighterId];
+  const result = await query(sql, params);
   const fighter = result[0];
   
-  // CORRECTION : socialLinks est déjà un objet
   if (!fighter.socialLinks) {
     fighter.socialLinks = [];
   }
@@ -289,7 +365,24 @@ async function getFighterCards(fighterId: number) {
   return await query(sql, [fighterId]);
 }
 
-async function getAllMatchesForFighter(fighterId: number) {
+async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
+  let whereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";
+  const params: any[] = [fighterId];
+  
+  // Ajouter le filtre par édition si fourni
+  if (editionId) {
+    whereClause += " AND p.edition_id = $2";
+    params.push(editionId);
+  } else {
+    // Sinon, récupérer la dernière édition
+    whereClause += ` AND p.edition_id = (
+      SELECT id 
+      FROM competition_editions 
+      ORDER BY year DESC, id DESC 
+      LIMIT 1
+    )`;
+  }
+
   const sql = `
     SELECT 
       m.id,
@@ -307,38 +400,61 @@ async function getAllMatchesForFighter(fighterId: number) {
       m.notes,
       m.created_at as "createdAt",
       m.updated_at as "updatedAt",
-      
+
+      -- Lutteur 1
       m.fighter1_id as "fighter1Id",
       f1.first_name as "fighter1FirstName",
       f1.last_name as "fighter1LastName",
       f1.nickname as "fighter1Nickname",
       f1.profile_image as "fighter1ProfileImage",
+      f1.birth_date as "fighter1BirthDate",
+      f1.height as "fighter1Height",
+      f1.weight as "fighter1Weight",
+      f1.fighting_style as "fighter1Style",
+      f1.ranking as "fighter1Ranking",
       f1.region_id as "fighter1RegionId",
       r1.name as "fighter1RegionName",
       r1.color as "fighter1RegionColor",
       r1.code as "fighter1RegionCode",
+      m.fighter1_initial_state as "fighter1InitialState",
       
+      -- Lutteur 2
       m.fighter2_id as "fighter2Id",
       f2.first_name as "fighter2FirstName",
       f2.last_name as "fighter2LastName",
       f2.nickname as "fighter2Nickname",
       f2.profile_image as "fighter2ProfileImage",
+      f2.birth_date as "fighter2BirthDate",
+      f2.height as "fighter2Height",
+      f2.weight as "fighter2Weight",
+      f2.fighting_style as "fighter2Style",
+      f2.ranking as "fighter2Ranking",
       f2.region_id as "fighter2RegionId",
       r2.name as "fighter2RegionName",
       r2.color as "fighter2RegionColor",
       r2.code as "fighter2RegionCode",
+      m.fighter2_initial_state as "fighter2InitialState",
       
+      -- Résultats
       m.winner_fighter_id as "winnerFighterId",
       m.loser_fighter_id as "loserFighterId",
       
+      -- Contexte du match
       sg.id as "subGroupId",
       sg.name as "subGroupName",
       
+      pg.id as "groupId",
       pg.name as "groupName",
+      
+      p.id as "phaseId",
       p.name as "phaseName",
       p.phase_type as "phaseType",
+      
+      ce.id as "editionId",
       ce.theme as "editionTheme",
-      ce.year as "editionYear"
+      ce.year as "editionYear",
+      ce.competition_id as "competitionId",
+      c.name as "competitionName"
 
     FROM matches m
     JOIN fighters f1 ON m.fighter1_id = f1.id
@@ -349,7 +465,8 @@ async function getAllMatchesForFighter(fighterId: number) {
     JOIN phase_groups pg ON sg.group_id = pg.id
     JOIN phases p ON pg.phase_id = p.id
     JOIN competition_editions ce ON p.edition_id = ce.id
-    WHERE (m.fighter1_id = $1 OR m.fighter2_id = $1)
+    JOIN competitions c ON ce.competition_id = c.id
+    WHERE ${whereClause}
     ORDER BY 
       CASE 
         WHEN m.status IN ('live', 'round_break') THEN 0
@@ -361,77 +478,129 @@ async function getAllMatchesForFighter(fighterId: number) {
       m.start_time DESC
   `;
 
-  const matches = await query(sql, [fighterId]);
+  const matches = await query(sql, params);
   
   // Enrichir les données des matchs
-  return Promise.all(matches.map(match => enrichMatchData(match, fighterId)));
+  return Promise.all(matches.map(match => enrichMatchData(match)));
 }
 
-async function enrichMatchData(match: any, fighterId: number) {
+async function enrichMatchData(match: any) {
   // Récupérer les cartons pour ce match
   const cards = await getCardsForMatch(match.id);
 
-  // Déterminer le rôle du lutteur dans ce match
-  const isFighter1 = match.fighter1Id === fighterId;
-  const opponent = isFighter1 ? {
-    id: match.fighter2Id,
-    firstName: match.fighter2FirstName,
-    lastName: match.fighter2LastName,
-    nickname: match.fighter2Nickname,
-    profileImage: match.fighter2ProfileImage,
-    region: {
-      id: match.fighter2RegionId,
-      name: match.fighter2RegionName,
-      color: match.fighter2RegionColor,
-      code: match.fighter2RegionCode
-    }
-  } : {
+  // Formater les données des lutteurs
+  const fighter1 = {
     id: match.fighter1Id,
     firstName: match.fighter1FirstName,
     lastName: match.fighter1LastName,
     nickname: match.fighter1Nickname,
     profileImage: match.fighter1ProfileImage,
+    birthDate: match.fighter1BirthDate,
+    height: match.fighter1Height,
+    weight: match.fighter1Weight,
+    fightingStyle: match.fighter1Style,
+    ranking: match.fighter1Ranking,
     region: {
       id: match.fighter1RegionId,
       name: match.fighter1RegionName,
       color: match.fighter1RegionColor,
-      code: match.fighter1RegionCode
-    }
+      code: match.fighter1RegionCode,
+    },
+    initialState: match.fighter1InitialState,
+    cards: cards.filter((card: any) => card.fighterId === match.fighter1Id),
   };
 
-  // Déterminer le résultat pour ce lutteur
-  const isWinner = match.winnerFighterId && (
-    (isFighter1 && match.winnerFighterId === match.fighter1Id) ||
-    (!isFighter1 && match.winnerFighterId === match.fighter2Id)
-  );
-
-  return {
-    ...match,
-    opponent: opponent,
-    result: {
-      isWinner: isWinner,
-      resultType: match.matchResult
+  const fighter2 = {
+    id: match.fighter2Id,
+    firstName: match.fighter2FirstName,
+    lastName: match.fighter2LastName,
+    nickname: match.fighter2Nickname,
+    profileImage: match.fighter2ProfileImage,
+    birthDate: match.fighter2BirthDate,
+    height: match.fighter2Height,
+    weight: match.fighter2Weight,
+    fightingStyle: match.fighter2Style,
+    ranking: match.fighter2Ranking,
+    region: {
+      id: match.fighter2RegionId,
+      name: match.fighter2RegionName,
+      color: match.fighter2RegionColor,
+      code: match.fighter2RegionCode,
     },
+    initialState: match.fighter2InitialState,
+    cards: cards.filter((card: any) => card.fighterId === match.fighter2Id),
+  };
+
+  // Déterminer le vainqueur et le perdant
+  let winner = null;
+  let loser = null;
+  let resultType = match.matchResult;
+
+  if (match.winnerFighterId) {
+    winner = match.winnerFighterId === match.fighter1Id ? fighter1 : fighter2;
+    loser = match.winnerFighterId === match.fighter1Id ? fighter2 : fighter1;
+  }
+
+  // Formater la réponse
+  const enrichedMatch = {
+    id: match.id,
+    matchNumber: match.matchNumber,
+    matchDate: match.matchDate,
+    startTime: match.startTime,
+    endTime: match.endTime,
+    status: match.status,
+    matchResult: resultType,
+    totalDuration: match.totalDuration,
+    breakCount: match.breakCount,
+    audienceCount: match.audienceCount,
+    videoUrl: match.videoUrl,
+    liveStreamUrl: match.liveStreamUrl,
+    notes: match.notes,
+    createdAt: match.createdAt,
+    updatedAt: match.updatedAt,
+
+    fighters: {
+      fighter1,
+      fighter2,
+    },
+
+    result: winner ? {
+      winner,
+      loser,
+      resultType,
+    } : null,
+
     context: {
       subGroup: {
         id: match.subGroupId,
-        name: match.subGroupName
+        name: match.subGroupName,
       },
       group: {
-        name: match.groupName
+        id: match.groupId,
+        name: match.groupName,
       },
       phase: {
+        id: match.phaseId,
         name: match.phaseName,
-        type: match.phaseType
+        type: match.phaseType,
       },
       edition: {
+        id: match.editionId,
         theme: match.editionTheme,
-        year: match.editionYear
+        year: match.editionYear,
+      },
+      competition: {
+        id: match.competitionId,
+        name: match.competitionName,
       }
     },
-    cards: cards
+
+    allCards: cards,
   };
+
+  return enrichedMatch;
 }
+
 
 async function getCardsForMatch(matchId: number) {
   const sql = `
@@ -519,7 +688,7 @@ async function calculateFighterStats(fighterId: number) {
   };
 }
 
-export async function getMobileFighterMatches(fighterId: number) {
+export async function getMobileFighterMatches(fighterId: number, editionId?: number) {
   try {
     // Vérifier que le lutteur existe
     const existsSql = "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
@@ -537,7 +706,7 @@ export async function getMobileFighterMatches(fighterId: number) {
     }
 
     // Récupérer tous les matchs du lutteur
-    const matches = await getAllMatchesForFighter(fighterId);
+    const matches = await getAllMatchesForFighter(fighterId, editionId);
 
     // Grouper par statut
     const liveMatches = matches.filter(m => ['live', 'round_break'].includes(m.status));
@@ -545,14 +714,17 @@ export async function getMobileFighterMatches(fighterId: number) {
     const completedMatches = matches.filter(m => m.status === 'completed');
     const otherMatches = matches.filter(m => !['live', 'round_break', 'scheduled', 'completed'].includes(m.status));
 
-    // Grouper par année
-    const matchesByYear: Record<string, any[]> = {};
+    // Grouper par année d'édition
+    const matchesByEdition: Record<string, any> = {};
     matches.forEach(match => {
-      const year = new Date(match.matchDate).getFullYear().toString();
-      if (!matchesByYear[year]) {
-        matchesByYear[year] = [];
+      const editionKey = `${match.context.edition.year} - ${match.context.edition.theme}`;
+      if (!matchesByEdition[editionKey]) {
+        matchesByEdition[editionKey] = {
+          edition: match.context.edition,
+          matches: []
+        };
       }
-      matchesByYear[year].push(match);
+      matchesByEdition[editionKey].matches.push(match);
     });
 
     return {
@@ -565,7 +737,7 @@ export async function getMobileFighterMatches(fighterId: number) {
             scheduled: scheduledMatches,
             completed: completedMatches,
             other: otherMatches,
-            byYear: matchesByYear
+            byEdition: Object.values(matchesByEdition)
           }
         },
         summary: {
@@ -573,7 +745,9 @@ export async function getMobileFighterMatches(fighterId: number) {
           live: liveMatches.length,
           scheduled: scheduledMatches.length,
           completed: completedMatches.length,
-          other: otherMatches.length
+          other: otherMatches.length,
+          wins: matches.filter(m => m.result?.winner?.id === fighterId).length,
+          losses: matches.filter(m => m.result?.loser?.id === fighterId).length
         }
       },
       message: 'Matchs du lutteur récupérés avec succès'

@@ -5,6 +5,8 @@ import { publicHandler, ApiContext } from '@/lib/api-handler';
 export const GET = publicHandler(async (request: NextRequest, context: ApiContext) => {
   const { fighterId } = await context.params!;
   const id = parseInt(fighterId);
+  const searchParams = request.nextUrl.searchParams;
+   const editionId = searchParams.get("editionId") ? Number(searchParams.get("editionId")) : undefined;
 
   if (isNaN(id) || id <= 0) {
     return Response.json({
@@ -17,7 +19,7 @@ export const GET = publicHandler(async (request: NextRequest, context: ApiContex
     }, { status: 400 });
   }
 
-  const result = await getMobileFighterMatches(id);
+  const result = await getMobileFighterMatches(id, editionId);
   
   if (!result.success) {
     return Response.json(result, { 

@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
       ? Number(searchParams.get("author_id"))
       : undefined,
     page: searchParams.get("page") ? Number(searchParams.get("page")) : 1,
+    userId: searchParams.get("userId") ? Number(searchParams.get("userId")) : undefined,
     limit: searchParams.get("limit") ? Number(searchParams.get("limit")) : 20,
     search: searchParams.get("search") || undefined,
   };

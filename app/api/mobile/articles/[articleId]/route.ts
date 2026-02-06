@@ -8,6 +8,8 @@ export async function GET(
 ) {
   const { articleId } = await params;
   const articleIdNum = Number(articleId);
+  const searchParams = request.nextUrl.searchParams;
+  const userId = searchParams.get("userId") ? Number(searchParams.get("userId")) : undefined;
 
   if (isNaN(articleIdNum)) {
     return NextResponse.json(
@@ -23,7 +25,7 @@ export async function GET(
     );
   }
 
-  const result = await getArticleById(articleIdNum);
+  const result = await getArticleById(articleIdNum, userId);
   return NextResponse.json(result, {
     status: result.success ? 200 : result.error?.code || 500,
   });

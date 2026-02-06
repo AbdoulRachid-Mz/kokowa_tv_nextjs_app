@@ -31,7 +31,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
+    // data in json format
+    const formData = await req.json();
     const result = await createMobileInteraction(formData);
     if (!result.success) {
       return NextResponse.json(result, { status: result.error?.code || 400 });
