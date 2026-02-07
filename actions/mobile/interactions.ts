@@ -202,38 +202,64 @@ export async function getMobileInteractionById(id: number, withUser: boolean = t
 export async function createMobileInteraction(formData: any) {
   try {
     const rawData = {
-      userId: formData.userId,
+      authUid: formData.auth_uid || formData.authUid,
       entityType: formData.entityType,
-      entityId: formData.entityId,
-      interactionType: formData.interactionType
+      entityId: Number(formData.entityId),
+      interactionType: formData.interactionType || "like",
     };
 
-    // Validation des données
-    if (!rawData.userId || !rawData.entityType || !rawData.entityId || !rawData.interactionType) {
+    // 🔴 Validation
+    if (
+      !rawData.authUid ||
+      !rawData.entityType ||
+      !rawData.entityId ||
+      !rawData.interactionType
+    ) {
       return {
         success: false,
         error: {
           code: 400,
-          message: 'Tous les champs sont requis: userId, entityType, entityId, interactionType',
-          timestamp: new Date().toISOString()
-        }
+          message:
+            "Champs requis: auth_uid, entityType, entityId, interactionType",
+          timestamp: new Date().toISOString(),
+        },
       };
     }
 
-    // Vérifier si l'interaction existe déjà
+    // 🔍 1️⃣ Résoudre l'utilisateur via auth_uid
+    const userSql = `
+      SELECT id FROM users WHERE auth_uid = $1 LIMIT 1
+    `;
+
+    const users = await query(userSql, [rawData.authUid]);
+
+    if (users.length === 0) {
+      return {
+        success: false,
+        error: {
+          code: 404,
+          message: "Utilisateur introuvable pour ce auth_uid",
+          timestamp: new Date().toISOString(),
+        },
+      };
+    }
+
+    const userId = users[0].id;
+
+    // 🔍 2️⃣ Vérifier si l'interaction existe déjà
     const checkSql = `
-      SELECT id FROM interactions 
-      WHERE user_id = $1 
-        AND entity_type = $2 
-        AND entity_id = $3 
+      SELECT id FROM interactions
+      WHERE user_id = $1
+        AND entity_type = $2
+        AND entity_id = $3
         AND interaction_type = $4
     `;
 
     const existing = await query(checkSql, [
-      rawData.userId as string,
-      rawData.entityType as string,
-      rawData.entityId as string,
-      rawData.interactionType as string
+      userId,
+      rawData.entityType,
+      rawData.entityId,
+      rawData.interactionType,
     ]);
 
     if (existing.length > 0) {
@@ -241,17 +267,17 @@ export async function createMobileInteraction(formData: any) {
         success: true,
         data: {
           interaction: existing[0],
-          message: 'Interaction déjà existante'
+          message: "Interaction déjà existante",
         },
-        message: 'Interaction déjà existante'
+        message: "Interaction déjà existante",
       };
     }
 
-    // Créer l'interaction
+    // ➕ 3️⃣ Créer l'interaction
     const insertSql = `
       INSERT INTO interactions (user_id, entity_type, entity_id, interaction_type)
       VALUES ($1, $2, $3, $4)
-      RETURNING 
+      RETURNING
         id,
         user_id as "userId",
         entity_type as "entityType",
@@ -261,42 +287,43 @@ export async function createMobileInteraction(formData: any) {
     `;
 
     const result = await query(insertSql, [
-      rawData.userId as string,
-      rawData.entityType as EntityType,
-      rawData.entityId as string,
-      rawData.interactionType as InteractionType
+      userId,
+      rawData.entityType,
+      rawData.entityId,
+      rawData.interactionType,
     ]);
 
     const interaction = result[0];
 
-    // Mettre à jour les compteurs selon le type d'entité
+    // 🔄 4️⃣ Mettre à jour les compteurs
     await updateEntityInteractionCount(
       rawData.entityType as EntityType,
-      parseInt(rawData.entityId as string),
+      rawData.entityId,
       rawData.interactionType as InteractionType,
-      'increment'
+      "increment"
     );
 
     return {
       success: true,
       data: {
         interaction,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
-      message: 'Interaction créée avec succès'
+      message: "Interaction créée avec succès",
     };
   } catch (error) {
-    console.error('Error in createMobileInteraction:', error);
+    console.error("❌ Error in createMobileInteraction:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la création de l\'interaction',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la création de l'interaction",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }
+
 
 export async function deleteMobileInteraction(id: number) {
   try {
