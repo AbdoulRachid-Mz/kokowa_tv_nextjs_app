@@ -52,7 +52,6 @@ export async function POST(req: NextRequest) {
     data.userId = Number(data.userId);
     data.entityId = Number(data.entityId);
 
-    console.log("📥 Mobile interaction payload:", data);
 
     const result = await createMobileInteraction(data);
 

@@ -158,7 +158,7 @@ export async function getMobileRegionById(regionId: number, userId?: number, edi
   }
 }
 
-// Fonction utilitaire pour récupérer les cartons (à ajouter)
+// Si getCardsForMatch n'est pas dans ce fichier, ajoutez-la :
 async function getCardsForMatch(matchId: number) {
   const sql = `
     SELECT 
@@ -343,7 +343,7 @@ async function getRegionMatches(regionId: number, editionId?: number) {
     JOIN sub_groups sg ON m.sub_group_id = sg.id
     JOIN phase_groups pg ON sg.group_id = pg.id
     JOIN phases p ON pg.phase_id = p.id
-    JOIN competition_editions ce ON p.edition_id = e.id
+    JOIN competition_editions ce ON p.edition_id = ce.id  -- CORRECTION ICI: ce.id au lieu de e.id
     JOIN competitions c ON ce.competition_id = c.id
     WHERE ${whereClause}
     ORDER BY 
@@ -610,9 +610,10 @@ function organizeAchievements(achievements: any[]) {
 function calculateRegionStats(fighters: any[], matches: any[], achievements: any[]) {
   const totalMatches = matches.length;
   const wins = matches.filter(match => {
-    if (!match.winnerFighterId) return false;
+    // Correction: utiliser le résultat du match
+    if (!match.result) return false;
     // Vérifier si le vainqueur est de cette région
-    return fighters.some(fighter => fighter.id === match.winnerFighterId);
+    return fighters.some(fighter => fighter.id === match.result?.winner?.id);
   }).length;
 
   const losses = totalMatches - wins;

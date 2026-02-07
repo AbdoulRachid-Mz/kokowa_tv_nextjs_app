@@ -202,7 +202,7 @@ export async function getMobileInteractionById(id: number, withUser: boolean = t
 export async function createMobileInteraction(formData: any) {
   try {
     const rawData = {
-      authUid: formData.auth_uid || formData.authUid,
+      authId: formData.authId || formData.authId,
       entityType: formData.entityType,
       entityId: Number(formData.entityId),
       interactionType: formData.interactionType || "like",
@@ -210,7 +210,7 @@ export async function createMobileInteraction(formData: any) {
 
     // 🔴 Validation
     if (
-      !rawData.authUid ||
+      !rawData.authId ||
       !rawData.entityType ||
       !rawData.entityId ||
       !rawData.interactionType
@@ -220,25 +220,24 @@ export async function createMobileInteraction(formData: any) {
         error: {
           code: 400,
           message:
-            "Champs requis: auth_uid, entityType, entityId, interactionType",
+            "Champs requis: auth_id, entityType, entityId, interactionType",
           timestamp: new Date().toISOString(),
         },
       };
     }
-
-    // 🔍 1️⃣ Résoudre l'utilisateur via auth_uid
+    // 🔍 1️⃣ Résoudre l'utilisateur via auth_id
     const userSql = `
-      SELECT id FROM users WHERE auth_uid = $1 LIMIT 1
+      SELECT id FROM users WHERE auth_id = $1 LIMIT 1
     `;
 
-    const users = await query(userSql, [rawData.authUid]);
+    const users = await query(userSql, [rawData.authId]);
 
     if (users.length === 0) {
       return {
         success: false,
         error: {
           code: 404,
-          message: "Utilisateur introuvable pour ce auth_uid",
+          message: "Utilisateur introuvable pour ce auth_id",
           timestamp: new Date().toISOString(),
         },
       };
@@ -319,6 +318,7 @@ export async function createMobileInteraction(formData: any) {
         code: 500,
         message: "Erreur lors de la création de l'interaction",
         timestamp: new Date().toISOString(),
+        error
       },
     };
   }
