@@ -8,6 +8,7 @@ export async function getMobileTransfers(filters: {
   status?: string;
   limit?: number;
   offset?: number;
+  search?: string;
 } = {}) {
   try {
     const {
@@ -15,7 +16,8 @@ export async function getMobileTransfers(filters: {
       region_id,
       status,
       limit = 50,
-      offset = 0
+      offset = 0,
+      search
     } = filters;
 
     // Valider le statut si fourni
@@ -51,7 +53,7 @@ export async function getMobileTransfers(filters: {
 }
 
 // Fonctions auxiliaires
-async function getAllTransfers(status: string | null = null, limit: number = 50, offset: number = 0) {
+async function getAllTransfers(status: string | null = null, limit: number = 50, offset: number = 0, search?: string) {
   let sql = `
     SELECT 
       ft.id,
@@ -61,7 +63,6 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
       ft.contract_duration as "contractDuration",
       ft.is_permanent as "isPermanent",
       ft.status,
-      ft.created_at as "createdAt",
       
       -- Lutteur
       ft.fighter_id as "fighterId",
@@ -74,14 +75,10 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
       -- Région d'origine
       ft.from_region_id as "fromRegionId",
       fr.name as "fromRegionName",
-      fr.code as "fromRegionCode",
-      fr.color as "fromRegionColor",
       
       -- Région de destination
       ft.to_region_id as "toRegionId",
       tr.name as "toRegionName",
-      tr.code as "toRegionCode",
-      tr.color as "toRegionColor",
       
       -- Approbateur
       ft.approved_by_user_id as "approvedByUserId",
@@ -109,10 +106,15 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
 
   params.push(limit, offset);
 
+  if (search) {
+    sql += ` AND (f.id = $${params.length + 1} OR fr.id = $${params.length + 1} OR tr.id = $${params.length + 1} OR u.username LIKE $${params.length + 1})`;
+    params.push(`%${search}%`);
+  }
+
   const transfers = await query(sql, params);
 
   // Compter le total pour la pagination
-  const total = await getTotalTransfers(status);
+  const total = await getTotalTransfers(status, search);
 
   return {
     success: true,
@@ -125,7 +127,8 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
         hasMore: (offset + transfers.length) < total
       },
       filters: {
-        status
+        status,
+        search
       },
       timestamp: new Date().toISOString()
     },
@@ -133,7 +136,7 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
   };
 }
 
-async function getTransfersByFighter(fighterId: number, status: string | null = null, limit: number = 50, offset: number = 0) {
+async function getTransfersByFighter(fighterId: number, status: string | null = null, limit: number = 50, offset: number = 0, search?: string) {
   // D'abord vérifier que le lutteur existe
   const fighterExists = await query("SELECT id FROM fighters WHERE id = $1", [fighterId]);
   
@@ -157,7 +160,7 @@ async function getTransfersByFighter(fighterId: number, status: string | null = 
       ft.contract_duration as "contractDuration",
       ft.is_permanent as "isPermanent",
       ft.status,
-      ft.created_at as "createdAt",
+
       
       -- Lutteur
       ft.fighter_id as "fighterId",
@@ -200,6 +203,11 @@ async function getTransfersByFighter(fighterId: number, status: string | null = 
     params.push(status);
   }
 
+  if (search) {
+    sql += ` AND (f.id = $${params.length + 1} OR fr.id = $${params.length + 1} OR tr.id = $${params.length + 1} OR u.username LIKE $${params.length + 1})`;
+    params.push(`%${search}%`);
+  }
+
   sql += ` ORDER BY ft.transfer_date DESC, ft.created_at DESC
           LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
 
@@ -208,7 +216,7 @@ async function getTransfersByFighter(fighterId: number, status: string | null = 
   const transfers = await query(sql, params);
 
   // Compter le total pour la pagination
-  const total = await getTotalTransfersByFighter(fighterId, status);
+  const total = await getTotalTransfersByFighter(fighterId, status, search);
 
   // Récupérer les infos du lutteur
   const fighterInfo = await getFighterInfo(fighterId);
@@ -226,7 +234,8 @@ async function getTransfersByFighter(fighterId: number, status: string | null = 
       },
       filters: {
         fighter_id: fighterId,
-        status
+        status,
+        search
       },
       timestamp: new Date().toISOString()
     },
@@ -234,7 +243,7 @@ async function getTransfersByFighter(fighterId: number, status: string | null = 
   };
 }
 
-async function getTransfersByRegion(regionId: number, status: string | null = null, limit: number = 50, offset: number = 0) {
+async function getTransfersByRegion(regionId: number, status: string | null = null, limit: number = 50, offset: number = 0, search?: string) {
   // D'abord vérifier que la région existe
   const regionExists = await query("SELECT id FROM regions WHERE id = $1", [regionId]);
   
@@ -309,7 +318,7 @@ async function getTransfersByRegion(regionId: number, status: string | null = nu
   const transfers = await query(sql, params);
 
   // Compter le total pour la pagination
-  const total = await getTotalTransfersByRegion(regionId, status);
+  const total = await getTotalTransfersByRegion(regionId, status, search);
 
   // Récupérer les infos de la région
   const regionInfo = await getRegionInfo(regionId);
@@ -379,7 +388,7 @@ function formatTransfers(transfers: any[]) {
 }
 
 // Méthodes utilitaires
-async function getTotalTransfers(status: string | null = null) {
+async function getTotalTransfers(status: string | null = null, search?: string) {
   let sql = "SELECT COUNT(*) as total FROM fighter_transfers WHERE 1=1";
   const params: any[] = [];
   
@@ -388,11 +397,16 @@ async function getTotalTransfers(status: string | null = null) {
     params.push(status);
   }
 
+  if (search) {
+    sql += " AND (fighter_id = $2 OR from_region_id = $2 OR to_region_id = $2 OR approved_by_user_id = $2)";
+    params.push(search);
+  }
+
   const result = await query<{ total: string }>(sql, params);
   return parseInt(result[0]?.total ?? '0');
 }
 
-async function getTotalTransfersByFighter(fighterId: number, status: string | null = null) {
+async function getTotalTransfersByFighter(fighterId: number, status: string | null = null, search?: string) {
   let sql = "SELECT COUNT(*) as total FROM fighter_transfers WHERE fighter_id = $1";
   const params: any[] = [fighterId];
   
@@ -405,13 +419,18 @@ async function getTotalTransfersByFighter(fighterId: number, status: string | nu
   return parseInt(result[0]?.total ?? '0');
 }
 
-async function getTotalTransfersByRegion(regionId: number, status: string | null = null) {
+async function getTotalTransfersByRegion(regionId: number, status: string | null = null, search?: string) {
   let sql = "SELECT COUNT(*) as total FROM fighter_transfers WHERE from_region_id = $1 OR to_region_id = $1";
   const params: any[] = [regionId];
   
   if (status) {
     sql += " AND status = $2";
     params.push(status);
+  }
+
+  if (search) {
+    sql += " AND (fighter_id = $3 OR from_region_id = $3 OR to_region_id = $3 OR approved_by_user_id = $3)";
+    params.push(search);
   }
 
   const result = await query<{ total: string }>(sql, params);
@@ -434,7 +453,7 @@ async function getFighterInfo(fighterId: number) {
 async function getRegionInfo(regionId: number) {
   const sql = `
     SELECT 
-      id, name, code, color, stadium_name as "stadiumName"
+      id, name, stadium_name as "stadiumName"
     FROM regions 
     WHERE id = $1
   `;

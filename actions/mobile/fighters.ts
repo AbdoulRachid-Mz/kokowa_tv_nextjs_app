@@ -6,90 +6,154 @@ export async function getMobileFighters(filters?: {
   page?: number;
   limit?: number;
   userId?: number; // Pour vérifier les favoris
+  search?: string;
+  sortOrder?: 'asc' | 'desc';
+  regionId?: number;
+  isChampion?: boolean;
+  isActive?: boolean;
+  achievementFilter?: 'champion' | 'finalist' | 'medalist' | 'all';
 }) {
   try {
     const page = filters?.page || 1;
     const limit = filters?.limit || 20;
     const offset = (page - 1) * limit;
     const userId = filters?.userId;
+    const search = filters?.search;
+    const sortOrder = filters?.sortOrder || 'asc';
+    const regionId = filters?.regionId;
+    const isChampion = filters?.isChampion;
+    const isActive = filters?.isActive ?? true; // default true
+    const achievementFilter = filters?.achievementFilter;
 
-    // Compter le total
+    // Build dynamic WHERE clauses
+    const whereConditions: string[] = [];
+    const countWhereConditions: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    // Base active filter
+    if (isActive !== undefined) {
+      whereConditions.push(`f.is_active = $${paramIndex}`);
+      countWhereConditions.push(`f.is_active = $${paramIndex}`);
+      params.push(isActive);
+      paramIndex++;
+    }
+
+    // Search filter
+    if (search) {
+      whereConditions.push(
+        `(f.first_name ILIKE $${paramIndex} OR f.last_name ILIKE $${paramIndex} OR f.nickname ILIKE $${paramIndex})`
+      );
+      countWhereConditions.push(
+        `(f.first_name ILIKE $${paramIndex} OR f.last_name ILIKE $${paramIndex} OR f.nickname ILIKE $${paramIndex})`
+      );
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    // Region filter
+    if (regionId !== undefined) {
+      whereConditions.push(`f.region_id = $${paramIndex}`);
+      countWhereConditions.push(`f.region_id = $${paramIndex}`);
+      params.push(regionId);
+      paramIndex++;
+    }
+
+    // Champion filter
+    if (isChampion !== undefined) {
+      whereConditions.push(`f.is_champion = $${paramIndex}`);
+      countWhereConditions.push(`f.is_champion = $${paramIndex}`);
+      params.push(isChampion);
+      paramIndex++;
+    }
+
+    // Achievement filter
+    if (achievementFilter && achievementFilter !== 'all') {
+      let achievementCondition = '';
+      if (achievementFilter === 'champion') {
+        achievementCondition = `EXISTS (
+          SELECT 1 FROM fighter_achievements fa
+          WHERE fa.fighter_id = f.id AND fa.position = '1st'
+        )`;
+      } else if (achievementFilter === 'finalist') {
+        achievementCondition = `EXISTS (
+          SELECT 1 FROM fighter_achievements fa
+          WHERE fa.fighter_id = f.id AND fa.position IN ('1st', '2nd')
+        )`;
+      } else if (achievementFilter === 'medalist') {
+        achievementCondition = `EXISTS (
+          SELECT 1 FROM fighter_achievements fa
+          WHERE fa.fighter_id = f.id AND fa.position IN ('1st', '2nd', '3rd')
+        )`;
+      }
+      whereConditions.push(achievementCondition);
+      countWhereConditions.push(achievementCondition);
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const countWhereClause = countWhereConditions.length > 0 ? `WHERE ${countWhereConditions.join(' AND ')}` : '';
+
+    // Count total
     const countSql = `
       SELECT COUNT(*) as total
       FROM fighters f
-      WHERE f.is_active = true
+      ${countWhereClause}
     `;
     
-    const countResult = await query(countSql);
+    const countResult = await query(countSql, params.slice(0, paramIndex - 1));
     const total = parseInt(countResult[0]?.total || '0');
 
-    // Requête principale avec likes et favoris
+    // Determine ORDER BY
+    let orderBy = '';
+    if (sortOrder === 'asc') {
+      orderBy = 'f.ranking ASC, f.last_name ASC, f.first_name ASC';
+    } else {
+      orderBy = 'f.ranking DESC, f.last_name DESC, f.first_name DESC';
+    }
+
+    // Main query with likes and favorites
     const sql = `
       SELECT 
         f.id,
         f.first_name as "firstName",
         f.last_name as "lastName",
         f.nickname,
-        f.slug,
         f.birth_date as "birthDate",
         f.birth_place as "birthPlace",
         f.region_id as "regionId",
         f.height,
         f.weight,
         f.profile_image as "profileImage",
-        f.cover_image as "coverImage",
-        f.bio,
-        f.fighting_style as "fightingStyle",
         f.debut_year as "debutYear",
-        f.ranking,
         f.is_active as "isActive",
-        f.is_champion as "isChampion",
-        f.social_links as "socialLinks",
-        f.created_at as "createdAt",
-        f.updated_at as "updatedAt",
-        
+        f.is_champion as "isChampion",        
         r.name as "regionName",
-        r.code as "regionCode",
-        r.color as "regionColor",
         r.flag_image as "regionFlagImage",
         
-        -- Compter le nombre de likes
+        -- Count likes
         COALESCE((
           SELECT COUNT(*)
           FROM interactions i
           WHERE i.entity_type = 'fighter'
             AND i.entity_id = f.id
             AND i.interaction_type = 'like'
-        ), 0) as "likes",
-        
-        -- Vérifier si l'utilisateur a liké ce lutteur
-        ${userId ? `
-        EXISTS(
-          SELECT 1
-          FROM interactions i
-          WHERE i.entity_type = 'fighter'
-            AND i.entity_id = f.id
-            AND i.interaction_type = 'like'
-            AND i.user_id = $1
-        ) as "isMyFavorite"
-        ` : 'FALSE as "isMyFavorite"' }
+        ), 0) as "likes"
         
       FROM fighters f
       LEFT JOIN regions r ON f.region_id = r.id
-      WHERE f.is_active = true
-      ORDER BY f.ranking ASC, f.last_name ASC, f.first_name ASC
-      LIMIT ${userId ? '$2' : '$1'} OFFSET ${userId ? '$3' : '$2'}
+      ${whereClause}
+      ORDER BY ${orderBy}
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
-    const params = userId ? [userId, limit, offset] : [limit, offset];
-    const fighters = await query(sql, params);
+    const queryParams = userId ? [...params, userId, limit, offset] : [...params, limit, offset];
+    const fighters = await query(sql, queryParams);
 
     const fightersWithDecodedSocialLinks = fighters.map(fighter => ({
       ...fighter,
-      socialLinks: fighter.socialLinks || []
     }));
 
-    // Calculer la pagination
+    // Calculate pagination
     const totalPages = Math.ceil(total / limit);
 
     return {

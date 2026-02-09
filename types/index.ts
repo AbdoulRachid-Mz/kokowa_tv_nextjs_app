@@ -411,6 +411,23 @@ export interface Media extends BaseEntity {
   uploader?: User;
 }
 
+export interface MobileMedia extends Media {
+   title: string;
+  filePath: string;
+  fileType: 'image' | 'video' | 'document' | 'audio';
+  mimeType?: string;
+  fileSize?: number;
+  altText?: string;
+  description?: string;
+  uploaderId: number;
+  isFeatured: boolean;
+  entityType?: string;
+  entityId?: number;
+  
+  // Relations
+  uploader?: User;
+}
+
 // Vidéo
 export interface Video extends BaseEntity {
   title: string;

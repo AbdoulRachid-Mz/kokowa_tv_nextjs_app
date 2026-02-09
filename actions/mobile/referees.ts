@@ -119,10 +119,12 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
     params.push(limit, offset);
     const referees = await query(refereesSql, params);
 
-    // Récupérer les sous-groupes pour chaque arbitre si demandé
+    // Récupérer les compteurs de sous-groupes et de matches si demandé
     if (filters.withSubGroups === true && referees.length > 0) {
       for (const referee of referees) {
-        referee.subGroups = await getRefereeSubGroups(referee.id);
+        const stats = await getRefereeCounts(referee.id);
+        referee.subGroupsCount = stats.subGroupsCount;
+        referee.matchesCount = stats.matchesCount;
       }
     }
 
@@ -162,6 +164,23 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
       }
     };
   }
+}
+
+// getRefereeCounts
+async function getRefereeCounts(refereeId: number) {
+  const sql = `
+    SELECT 
+      COUNT(DISTINCT sg.id) as "subGroupsCount",
+      COUNT(DISTINCT m.id) as "matchesCount"
+    FROM sub_groups sg
+    LEFT JOIN matches m ON sg.id = m.sub_group_id
+    WHERE sg.referee_id = $1
+  `;
+  const result = await query<{ subGroupsCount: string, matchesCount: string }>(sql, [refereeId]);
+  return {
+    subGroupsCount: parseInt(result[0]?.subGroupsCount || '0'),
+    matchesCount: parseInt(result[0]?.matchesCount || '0')
+  };
 }
 
 export async function getMobileRefereeById(id: number, options: {
@@ -248,14 +267,11 @@ export async function getMobileRefereeById(id: number, options: {
       };
     }
 
-    // Récupérer les sous-groupes si demandé
-    if (withSubGroups) {
-      referee.subGroups = await getRefereeSubGroups(id);
-    }
-
-    // Récupérer les statistiques si demandé
-    if (withStatistics) {
-      referee.statistics = await getRefereeStatistics(id);
+    // Récupérer les compteurs si demandé
+    if (withSubGroups || withStatistics) {
+      const counts = await getRefereeCounts(id);
+      referee.subGroupsCount = counts.subGroupsCount;
+      referee.matchesCount = counts.matchesCount;
     }
 
     return {

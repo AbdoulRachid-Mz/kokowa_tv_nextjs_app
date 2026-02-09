@@ -6,6 +6,7 @@ export const GET = publicHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   
   // Récupérer les paramètres de filtrage
+  const search = searchParams.get('search');
   const fighterId = searchParams.get('fighter_id');
   const regionId = searchParams.get('region_id');
   const status = searchParams.get('status');
@@ -49,6 +50,10 @@ export const GET = publicHandler(async (request: NextRequest) => {
     filters.status = status;
   }
 
+  if (search) {
+    filters.search = search;
+  }
+  
   if (limit) {
     const limitNum = parseInt(limit);
     if (!isNaN(limitNum) && limitNum > 0) {
@@ -63,6 +68,10 @@ export const GET = publicHandler(async (request: NextRequest) => {
     }
   }
 
+  if (search) {
+    filters.search = search;
+  }
+  
   const result = await getMobileTransfers(filters);
   
   if (!result.success) {

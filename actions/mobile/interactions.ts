@@ -355,8 +355,8 @@ export async function deleteMobileInteraction(id: number) {
     const interaction = result[0];
 
     // Supprimer l'interaction
-    const deleteSql = 'DELETE FROM interactions WHERE id = $1';
-    await query(deleteSql, [id]);
+    // const deleteSql = 'DELETE FROM interactions WHERE id = $1';
+    // await query(deleteSql, [id]);
 
     // Mettre à jour les compteurs
     await updateEntityInteractionCount(
@@ -503,64 +503,83 @@ async function updateEntityInteractionCount(
   entityType: string,
   entityId: number,
   interactionType: string,
-  operation: 'increment' | 'decrement'
+  operation: "increment" | "decrement"
 ) {
   try {
-    const value = operation === 'increment' ? 1 : -1;
-    let updateSql = '';
+    const delta = operation === "increment" ? 1 : -1;
+    let updateSql: string | null = null;
+    let params: any[] = [];
 
     switch (entityType) {
-      case 'article':
-        if (interactionType === 'like') {
+      case "article":
+        if (interactionType === "like") {
           updateSql = `
-            UPDATE articles 
+            UPDATE articles
             SET like_count = GREATEST(0, like_count + $1)
             WHERE id = $2
           `;
-        } else if (interactionType === 'view') {
+        }
+
+        if (interactionType === "view" || interactionType === "like") {
           updateSql = `
-            UPDATE articles 
+            UPDATE articles
             SET view_count = GREATEST(0, view_count + $1)
             WHERE id = $2
           `;
         }
         break;
 
-      case 'video':
-        if (interactionType === 'like') {
+      case "video":
+        if (interactionType === "like") {
           updateSql = `
-            UPDATE videos 
+            UPDATE videos
             SET like_count = GREATEST(0, like_count + $1)
             WHERE id = $2
           `;
-        } else if (interactionType === 'view') {
+        }
+
+        if (interactionType === "view") {
           updateSql = `
-            UPDATE videos 
+            UPDATE videos
             SET view_count = GREATEST(0, view_count + $1)
             WHERE id = $2
           `;
         }
         break;
 
-      case 'fighter':
-        // Pour les lutteurs, on pourrait mettre à jour des statistiques spécifiques
-        if (interactionType === 'follow') {
+      case "fighter":
+        if (interactionType === "follow" || interactionType === "like") {
           updateSql = `
-            UPDATE fighters 
-            SET social_links = COALESCE(social_links, '{}'::jsonb) || 
-              jsonb_build_object('followers', 
-                COALESCE((social_links->>'followers')::int, 0) + $1
-              )
+            UPDATE fighters
+            SET social_links = jsonb_set(
+              COALESCE(social_links, '{}'::jsonb),
+              '{followers}',
+              to_jsonb(
+                GREATEST(
+                  0,
+                  COALESCE((social_links->>'followers')::int, 0) + $1
+                )
+              ),
+              true
+            )
             WHERE id = $2
           `;
         }
         break;
     }
 
-    if (updateSql) {
-      await query(updateSql, [value, entityId]);
+    if (!updateSql) {
+      console.warn(
+        "⚠️ No counter update for:",
+        entityType,
+        interactionType
+      );
+      return;
     }
+
+    params = [delta, entityId];
+    await query(updateSql, params);
   } catch (error) {
-    console.error('Error updating entity interaction count:', error);
+    console.error("❌ Error updating entity interaction count:", error);
   }
 }

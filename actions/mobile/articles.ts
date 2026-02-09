@@ -1,6 +1,7 @@
 "use server";
 
 import { query } from "@/lib/db/neon-client";
+import { Media, MobileMedia } from "@/types";
 
 export async function getArticles(filters?: {
   status?: "draft" | "published" | "archived";
@@ -77,8 +78,6 @@ export async function getArticles(filters?: {
       a.meta_title as "metaTitle",
       a.meta_description as "metaDescription",
       a.published_at as "publishedAt",
-      a.created_at as "createdAt",
-      a.updated_at as "updatedAt",
       
       -- Author information
       JSON_BUILD_OBJECT(
@@ -208,8 +207,6 @@ export async function getArticleById(articleId: number, userId?: number) {
       a.meta_title as "metaTitle",
       a.meta_description as "metaDescription",
       a.published_at as "publishedAt",
-      a.created_at as "createdAt",
-      a.updated_at as "updatedAt",
       
       -- Author information
       JSON_BUILD_OBJECT(
@@ -275,6 +272,89 @@ export async function getArticleById(articleId: number, userId?: number) {
     // Combine like counts from both tables
     article.likes = article.interactionLikes || article.likes || 0;
 
+    // Fetch media grouped by type
+    const mediaSql = `
+      SELECT 
+        id,
+        file_path as "filePath",
+        file_type as "fileType",
+        mime_type as "mimeType"
+      FROM media
+      WHERE entity_type = 'article' AND entity_id = $1
+      ORDER BY is_featured DESC, created_at ASC
+    `;
+    const mediaRows = await query(mediaSql, [articleId]);
+
+    // Build arrays of paths
+    const images: string[] = [];
+    const videos: string[] = [];
+    const documents: string[] = [];
+    const audios: string[] = [];
+    const others: string[] = [];
+
+    mediaRows.forEach(
+      (m: {
+        id: number;
+        filePath: string;
+        fileType: string;
+        mimeType?: string;
+      }) => {
+        switch (m.fileType) {
+          case "image":
+            images.push(m.filePath);
+            break;
+
+          case "video":
+            videos.push(m.filePath);
+            break;
+
+          case "document":
+            documents.push(m.filePath);
+            break;
+
+          case "audio":
+            audios.push(m.filePath);
+            break;
+
+          default:
+            others.push(m.filePath);
+        }
+      }
+    );
+
+    // Fetch comments (messages) for the article
+    const commentsSql = `
+      SELECT 
+        c.id,
+        c.content,
+        c.created_at as "createdAt",
+        JSON_BUILD_OBJECT(
+          'id', u.id,
+          'username', u.username,
+          'firstName', u.first_name,
+          'lastName', u.last_name,
+          'profilePicture', u.profile_picture
+        ) as user
+      FROM messages c
+      JOIN users u ON c.author_id = u.id
+      WHERE c.entity_type = 'article' 
+        AND c.entity_id = $1
+        AND c.message_type = 'comment'
+        AND c.is_active = TRUE
+        AND c.is_deleted = FALSE
+      ORDER BY c.created_at ASC
+    `;
+    const comments = await query(commentsSql, [articleId]);
+
+    // Attach media and comments to article
+    // article.media = {
+    //   images,
+    //   videos,
+    //   documents,
+    //   others,
+    // };
+    article.comments = comments;
+
     // Increment view count
     const updateViewSql = `
       UPDATE articles 
@@ -287,6 +367,10 @@ export async function getArticleById(articleId: number, userId?: number) {
       success: true,
       data: {
         article,
+        images,
+        videos,
+        documents,
+        audios,
         timestamp: new Date().toISOString(),
       },
       message: "Article récupéré avec succès",
@@ -303,3 +387,4 @@ export async function getArticleById(articleId: number, userId?: number) {
     };
   }
 }
+
