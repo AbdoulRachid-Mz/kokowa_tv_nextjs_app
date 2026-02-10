@@ -745,6 +745,14 @@ export interface MessageFilters extends BaseFilters {
   parent_message_id?: number;
 }
 
+export interface MobileMessageFilters {
+  authId?: string;
+  entityType?: 'article' | 'fighter' | 'match' | 'competition';
+  entityId?: number;
+  page?: number;
+  limit?: number;
+}
+
 export interface ArticleFilters extends BaseFilters {
   author_id?: number;
   status?: 'draft' | 'published' | 'archived';
