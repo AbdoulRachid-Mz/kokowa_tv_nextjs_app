@@ -5,7 +5,7 @@ import { query } from '@/lib/db/neon-client';
 import { EntityType, InteractionType } from '@/types';
 
 export interface MobileInteractionFilters {
-  userId?: number;
+  authId?: string;
   entityType?: string;
   entityId?: number;
   interactionType?: InteractionType;
@@ -14,116 +14,192 @@ export interface MobileInteractionFilters {
   withUser?: boolean;
 }
 
-export async function getMobileInteractions(filters: MobileInteractionFilters = {}) {
+export async function getMobileInteractions(
+  filters: MobileInteractionFilters & { authId?: string } = {}
+) {
   try {
     const page = filters.page || 1;
     const limit = filters.limit || 20;
     const offset = (page - 1) * limit;
 
-    // Construire la clause WHERE dynamiquement
+    // 🔹 Mobile = like par défaut
+    const interactionType = filters.interactionType || "like";
+
+    // 🔍 1️⃣ authId → userId
+    let userId: number | undefined;
+
+    if (filters.authId) {
+      const userRes = await query(
+        `SELECT id FROM users WHERE auth_id = $1 LIMIT 1`,
+        [filters.authId]
+      );
+
+      if (!userRes.length) {
+        return {
+          success: false,
+          error: {
+            code: 404,
+            message: "Utilisateur introuvable",
+            timestamp: new Date().toISOString(),
+          },
+        };
+      }
+
+      userId = userRes[0].id;
+    }
+
+    // 🔹 WHERE dynamique
     const conditions: string[] = [];
     const params: any[] = [];
-    let paramIndex = 1;
+    let i = 1;
 
-    if (filters.userId) {
-      conditions.push(`i.user_id = $${paramIndex}`);
-      params.push(filters.userId);
-      paramIndex++;
+    if (userId) {
+      conditions.push(`i.user_id = $${i++}`);
+      params.push(userId);
     }
 
     if (filters.entityType) {
-      conditions.push(`i.entity_type = $${paramIndex}`);
+      conditions.push(`i.entity_type = $${i++}`);
       params.push(filters.entityType);
-      paramIndex++;
     }
 
-    if (filters.entityId) {
-      conditions.push(`i.entity_id = $${paramIndex}`);
-      params.push(filters.entityId);
-      paramIndex++;
-    }
+    conditions.push(`i.interaction_type = $${i++}`);
+    params.push(interactionType);
 
-    if (filters.interactionType) {
-      conditions.push(`i.interaction_type = $${paramIndex}`);
-      params.push(filters.interactionType);
-      paramIndex++;
-    }
+    const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-    // Obtenir le total
+    // 🔢 COUNT
     const countSql = `
       SELECT COUNT(*) as total
       FROM interactions i
       ${whereClause}
     `;
+    const countRes = await query<{ total: string }>(countSql, params);
+    const total = Number(countRes[0]?.total || 0);
 
-    const countResult = await query<{ total: string }>(countSql, params);
-    const total = parseInt(countResult[0]?.total || '0');
+    // 📦 DATA : récupération DES ENTITÉS
+    const dataSql = `
+      SELECT
+        i.entity_type,
+        i.created_at,
 
-    // Construire les champs de sélection
-    const selectFields = [
-      'i.id',
-      'i.user_id as "userId"',
-      'i.entity_type as "entityType"',
-      'i.entity_id as "entityId"',
-      'i.interaction_type as "interactionType"',
-      'i.created_at as "createdAt"'
-    ];
+        -- ARTICLE
+        a.id as article_id,
+        a.title as article_title,
+        a.featured_image as article_image,
 
-    if (filters.withUser !== false) {
-      selectFields.push(`
-        JSON_BUILD_OBJECT(
-          'id', u.id,
-          'username', u.username,
-          'firstName', u.first_name,
-          'lastName', u.last_name,
-          'profilePicture', u.profile_picture
-        ) as user
-      `);
-    }
+        -- FIGHTER
+        f.id as fighter_id,
+        f.first_name as fighter_name,
+        f.nickname,
+        f.profile_image as fighter_photo,
 
-    // Requête principale
-    const interactionsSql = `
-      SELECT ${selectFields.join(', ')}
+        -- REGION
+        r.id as region_id,
+        r.name as region_name,
+        r.flag_image as region_image,
+
+        -- USER (if requested)
+        ${
+          filters.withUser
+            ? `JSON_BUILD_OBJECT(
+                 'id', u.id,
+                 'username', u.username,
+                 'firstName', u.first_name,
+                 'lastName', u.last_name,
+                 'profilePicture', u.profile_picture
+               ) as user`
+            : `NULL as user`
+        }
+
       FROM interactions i
-      ${filters.withUser !== false ? 'LEFT JOIN users u ON i.user_id = u.id' : ''}
+      LEFT JOIN articles a 
+        ON i.entity_type = 'article' AND i.entity_id = a.id
+      LEFT JOIN fighters f 
+        ON i.entity_type = 'fighter' AND i.entity_id = f.id
+      LEFT JOIN regions r 
+        ON i.entity_type = 'region' AND i.entity_id = r.id
+      ${
+        filters.withUser
+          ? `LEFT JOIN users u ON i.user_id = u.id`
+          : ``
+      }
+
       ${whereClause}
       ORDER BY i.created_at DESC
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      LIMIT $${i} OFFSET $${i + 1}
     `;
 
     params.push(limit, offset);
-    const interactions = await query(interactionsSql, params);
+    const rows = await query(dataSql, params);
 
-    // Calculer la pagination
+    // 🌳 Organisation en arbre
+    const tree: Record<string, Record<string, any[]>> = {};
+
+    for (const row of rows) {
+      const type = interactionType;
+      const entityType = row.entity_type;
+
+      if (!tree[type]) tree[type] = {};
+      if (!tree[type][entityType]) tree[type][entityType] = [];
+
+      const baseItem = {
+        id: row[`${entityType}_id`],
+        likedAt: row.created_at,
+        ...(row.user && { user: row.user }),
+      };
+
+      if (entityType === "article") {
+        tree[type][entityType].push({
+          ...baseItem,
+          title: row.article_title,
+          image: row.article_image,
+        });
+      }
+
+      if (entityType === "fighter") {
+        tree[type][entityType].push({
+          ...baseItem,
+          name: row.fighter_name,
+          photo: row.fighter_photo,
+        });
+      }
+
+      if (entityType === "region") {
+        tree[type][entityType].push({
+          ...baseItem,
+          name: row.region_name,
+        });
+      }
+    }
+
     const totalPages = Math.ceil(total / limit);
 
     return {
       success: true,
       data: {
-        interactions,
+        interactions: tree,
         pagination: {
           page,
           limit,
           total,
           totalPages,
           hasNext: page < totalPages,
-          hasPrev: page > 1
+          hasPrev: page > 1,
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
-      message: 'Interactions récupérées avec succès'
+      message: "Entités likées récupérées avec succès",
     };
   } catch (error) {
-    console.error('Error in getMobileInteractions:', error);
+    console.error("❌ getMobileInteractions:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la récupération des interactions',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la récupération des interactions",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }
@@ -387,8 +463,8 @@ export async function deleteMobileInteraction(id: number) {
   }
 }
 
-export async function getMobileUserInteractions(userId: number, filters: Omit<MobileInteractionFilters, 'userId'> = {}) {
-  return getMobileInteractions({ ...filters, userId });
+export async function getMobileUserInteractions(authId: string, filters: Omit<MobileInteractionFilters, 'authId'> = {}) {
+  return getMobileInteractions({ ...filters, authId });
 }
 
 export async function isUserInteractionEntity(

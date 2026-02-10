@@ -1,6 +1,6 @@
 // app/api/mobile/interactions/user/[userId]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getMobileUserInteractions } from '@/actions/mobile/interactions';
+import { getMobileInteractions, getMobileUserInteractions } from '@/actions/mobile/interactions';
 import { EntityType, InteractionType } from '@/types';
 
 interface Props {
@@ -9,13 +9,12 @@ interface Props {
 
 export async function GET(
   request: NextRequest,
-  { params }: Props
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const { userId } = await params;
-    const userIdNum = Number(userId);
-    
-    if (isNaN(userIdNum)) {
+
+    if (!userId) {
       return NextResponse.json({
         success: false,
         error: {
@@ -23,33 +22,39 @@ export async function GET(
           message: 'ID utilisateur invalide',
           timestamp: new Date().toISOString()
         }
-      }, { status: 400 });
+      });
     }
 
     const { searchParams } = new URL(request.url);
-    
+
     const filters = {
-      entityType: searchParams.get('entityType') as EntityType || undefined,
-      entityId: searchParams.get('entityId') ? parseInt(searchParams.get('entityId')!) : undefined,
-      interactionType: searchParams.get('interactionType') as InteractionType,
-      page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20,
-      withUser: searchParams.get('withUser') !== 'false'
+      authId: userId,
+      entityType: searchParams.get("entityType") || undefined,
+      entityId: searchParams.get("entityId")
+        ? Number(searchParams.get("entityId"))
+        : undefined,
+      interactionType:
+        (searchParams.get("interactionType") as InteractionType) || "like",
+      page: searchParams.get("page")
+        ? Number(searchParams.get("page"))
+        : 1,
+      limit: searchParams.get("limit")
+        ? Number(searchParams.get("limit"))
+        : 20,
     };
 
-    const result = await getMobileUserInteractions(userIdNum, filters);
-    
+    const result = await getMobileInteractions(filters);
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error('API Error GET /api/mobile/interactions/user/[userId]:', error);
+    console.error("API Error GET interactions:", error);
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: {
           code: 500,
-          message: error.message || 'Erreur lors de la récupération des interactions utilisateur',
-          timestamp: new Date().toISOString()
-        }
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        },
       },
       { status: 500 }
     );

@@ -11,7 +11,7 @@ export const GET = publicHandler(async (request: NextRequest) => {
     limit: searchParams.has('limit') ? Number(searchParams.get('limit')) : undefined,
     userId: searchParams.has('userId') ? Number(searchParams.get('userId')) : undefined,
     search: searchParams.get('search') || undefined,
-    sortOrder: searchParams.get('sortOrder') as 'asc' | 'desc' | undefined,
+    sortOrder: searchParams.get('sortOrder') as 'asc' | 'desc' || 'asc',
     regionId: searchParams.has('regionId') ? Number(searchParams.get('regionId')) : undefined,
     isChampion: searchParams.has('isChampion') ? searchParams.get('isChampion') === 'true' : undefined,
     isActive: searchParams.has('isActive') ? searchParams.get('isActive') === 'true' : undefined,

@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
       page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20,
       withRegion: searchParams.get('withRegion') !== 'false',
-      withSubGroups: searchParams.get('withSubGroups') === 'true'
+      withSubGroups: searchParams.get('withSubGroups') === 'true',
+      sortOrder: searchParams.get('sortOrder') as 'asc' | 'desc' || 'asc',
     };
 
     const result = await getMobileReferees(filters);

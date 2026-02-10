@@ -1,5 +1,5 @@
-// @/actions/mobile/referees.ts
 'use server';
+// @/actions/mobile/referees.ts
 
 import { query } from '@/lib/db/neon-client';
 
@@ -13,7 +13,9 @@ export interface MobileRefereeFilters {
   limit?: number;
   withRegion?: boolean;
   withSubGroups?: boolean;
+  sortOrder?: 'asc' | 'desc';
 }
+
 
 export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
   try {
@@ -107,12 +109,13 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
     }
 
     // Requête principale
+    const sortOrder = filters.sortOrder === 'desc' ? 'DESC' : 'ASC';
     const refereesSql = `
       SELECT ${selectFields.join(', ')}
       FROM referees r
       ${joins.join(' ')}
       ${whereClause}
-      ORDER BY r.last_name, r.first_name
+      ORDER BY r.last_name ${sortOrder}, r.first_name ${sortOrder}, r.id ${sortOrder}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
