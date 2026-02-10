@@ -30,43 +30,43 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// export async function POST(req: NextRequest) {
-//   try {
-//     const contentType = req.headers.get("content-type") || "";
+export async function POST(req: NextRequest) {
+  try {
+    const contentType = req.headers.get("content-type") || "";
 
-//     let data: any;
+    let data: any;
 
-//     if (contentType.includes("application/json")) {
-//       data = await req.json();
-//     } else if (contentType.includes("application/x-www-form-urlencoded")) {
-//       const text = await req.text();
-//       const params = new URLSearchParams(text);
-//       data = Object.fromEntries(params.entries());
-//     } else {
-//       return NextResponse.json(
-//         { success: false, error: "Unsupported Content-Type" },
-//         { status: 415 }
-//       );
-//     }
+    if (contentType.includes("application/json")) {
+      data = await req.json();
+    } else if (contentType.includes("application/x-www-form-urlencoded")) {
+      const text = await req.text();
+      const params = new URLSearchParams(text);
+      data = Object.fromEntries(params.entries());
+    } else {
+      return NextResponse.json(
+        { success: false, error: "Unsupported Content-Type" },
+        { status: 415 }
+      );
+    }
 
-//     // Normalisation des types
-//     data.userId = Number(data.userId);
-//     data.entityId = Number(data.entityId);
+    // Normalisation des types
+    data.userId = Number(data.userId);
+    data.entityId = Number(data.entityId);
 
 
-//     const result = await createMobileInteraction(data);
+    const result = await createMobileInteraction(data);
 
-//     if (!result.success) {
-//       return NextResponse.json(result, { status: result.error?.code || 400 });
-//     }
+    if (!result.success) {
+      return NextResponse.json(result, { status: result.error?.code || 400 });
+    }
 
-//     return NextResponse.json(result, { status: 201 });
-//   } catch (error) {
-//     console.error("Error creating mobile interaction:", error);
-//     return NextResponse.json(
-//       { success: false, error: "Failed to create mobile interaction" },
-//       { status: 500 }
-//     );
-//   }
-// }
+    return NextResponse.json(result, { status: 201 });
+  } catch (error) {
+    console.error("Error creating mobile interaction:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to create mobile interaction" },
+      { status: 500 }
+    );
+  }
+}
 
