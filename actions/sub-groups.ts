@@ -1,7 +1,7 @@
 // @/actions/sub-groups.ts - VERSION CORRIGÉE
 'use server';
 
-import { query, queryOne } from '@/lib/db/neon-client';
+import { pool, query, queryOne } from '@/lib/db/neon-client';
 import { subGroupSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
 import { SubGroup, SubGroupFilters, PaginatedResponse, Region } from '@/types';
@@ -833,6 +833,72 @@ export async function getSubGroupById(id: number, options: {
   } catch (error) {
     console.error('Error in getSubGroupById:', error);
     throw error;
+  }
+}
+
+// actions/sub-groups.ts - AJOUTER CETTE FONCTION
+
+/**
+ * 🏁 Terminer manuellement un sous-groupe (admin)
+ */
+export async function completeSubGroup(subGroupId: number) {
+  try {
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // 1️⃣ Vérifier que TOUS les matchs sont completed
+      const checkRes = await client.query(
+        `SELECT 
+           COUNT(*) as total,
+           COUNT(*) FILTER (WHERE status = 'completed') as completed
+         FROM matches
+         WHERE sub_group_id = $1 AND is_active = true`,
+        [subGroupId]
+      );
+      
+      const { total, completed } = checkRes.rows[0];
+      
+      if (total === 0) {
+        throw new Error("Ce sous-groupe n'a aucun match");
+      }
+      
+      if (completed !== total) {
+        throw new Error(
+          `Impossible de terminer : ${completed}/${total} matchs terminés`
+        );
+      }
+      
+      // 2️⃣ Marquer comme terminé
+      await client.query(
+        `UPDATE sub_groups
+         SET status = 'completed',
+             is_completed = true
+         WHERE id = $1`,
+        [subGroupId]
+      );
+      
+      await client.query('COMMIT');
+      
+      // Revalidation
+      revalidatePath(`/ad/sub-groups/${subGroupId}`);
+      revalidatePath(`/ad/sub-groups/${subGroupId}/organisation`);
+      
+      return {
+        success: true,
+        message: "Sous-groupe marqué comme terminé avec succès"
+      };
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('❌ Error in completeSubGroup:', error);
+    throw new Error('Erreur lors de la finalisation du sous-groupe');
   }
 }
 

@@ -538,7 +538,7 @@ async function getMatchEditionId(matchId: number): Promise<number | null> {
 
 
 // Fonction utilitaire pour émettre des événements match
-async function emitMatchEvent(matchId: number, eventType: string, data: any) {
+export async function emitMatchEvent(matchId: number, eventType: string, data: any) {
   try {
     // Récupérer les infos de l'édition pour broadcast
     const editionInfo = await query(`
@@ -632,6 +632,18 @@ async function ensureEditionFightersQualified(editionId: number, fighterIds: num
 // ✅ NOUVELLE FONCTION updateMatch avec recomputation
 export async function updateMatch(id: number, data: Record<string, any>) {
   try {
+    // 1️⃣ Vérifier si le sous-groupe est déjà terminé
+    const subGroupCheck = await queryOne<{ is_completed: boolean }>(`
+      SELECT sg.is_completed
+      FROM matches m
+      JOIN sub_groups sg ON m.sub_group_id = sg.id
+      WHERE m.id = $1
+    `, [id]);
+    
+    if (subGroupCheck?.is_completed) {
+      throw new Error("Ce sous-groupe est terminé. Aucune modification n'est autorisée.");
+    }
+
     console.log('📥 Mise à jour du match:', id, data);
 
     // Validation des données

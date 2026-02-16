@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
+
   if (isNaN(filters.page) || filters.page < 1) {
     return NextResponse.json(
       {

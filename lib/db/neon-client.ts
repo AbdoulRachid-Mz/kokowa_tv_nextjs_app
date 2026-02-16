@@ -12,9 +12,22 @@ class NeonClient {
   private static instance: Pool;
 
   static getInstance(): Pool {
+    // Utiliser globalThis pour éviter de créer plusieurs pools en développement
+    const globalForNeon = global as unknown as { neonPool: Pool };
+
+    if (globalForNeon.neonPool) {
+      return globalForNeon.neonPool;
+    }
+
     if (!NeonClient.instance) {
-      console.log("🔄 Connexion à Neon PostgreSQL...");
+      console.log("🔄 Initialisation du pool Neon PostgreSQL...");
       NeonClient.instance = new Pool(dbConfig);
+      
+      // En développement, on attache au global
+      if (process.env.NODE_ENV !== "production") {
+        globalForNeon.neonPool = NeonClient.instance;
+      }
+      
       NeonClient.testConnection();
     }
     return NeonClient.instance;

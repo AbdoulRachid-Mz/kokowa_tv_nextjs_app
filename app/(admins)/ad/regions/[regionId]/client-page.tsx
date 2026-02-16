@@ -210,7 +210,7 @@ export default function ClientRegionDetail({ regionId }: { regionId: number }) {
         <div className="flex justify-between items-center mb-3">
           <Typography variant="h4">Lutteurs</Typography>
           <Button variant="default" asChild>
-            <Link href={`/fighters/create?regionId=${regionId}`}>
+            <Link href={`/ad/fighters/create?regionId=${regionId}`}>
               Ajouter un lutteur
             </Link>
           </Button>

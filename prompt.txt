@@ -1,335 +1,202 @@
-<?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: GET");
-header("Access-Control-Max-Age: 3600");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+🧠 CONTEXTE
 
-// Inclure la configuration de la base de données
-require_once '../config/database.php';
+Je développe une plateforme de gestion de compétition avec :
 
-// Inclure les fonctions utilitaires
-require_once '../utils/functions.php';
+Editions
 
-try {
-    // Connexion à la base de données
-    $db = Database::getConnection();
-    
-    // Initialiser la réponse
-    $response = [
-        'success' => false,
-        'message' => '',
-        'data' => [
-            'fighters' => [],
-            'pagination' => []
-        ]
-    ];
-    
-    // Récupérer les paramètres de requête
-    $queryParams = $_GET;
-    
-    // Paramètres de pagination
-    $page = isset($queryParams['page']) ? (int)$queryParams['page'] : 1;
-    $limit = isset($queryParams['limit']) ? (int)$queryParams['limit'] : 20;
-    $offset = ($page - 1) * $limit;
-    
-    // Paramètres de recherche
-    $search = isset($queryParams['search']) ? trim($queryParams['search']) : '';
-    
-    // Paramètres de tri
-    $sortOrder = isset($queryParams['sort_order']) && strtoupper($queryParams['sort_order']) === 'DESC' ? 'DESC' : 'ASC';
-    
-    // Paramètres de filtre
-    $regionId = isset($queryParams['region_id']) ? (int)$queryParams['region_id'] : null;
-    $isChampion = isset($queryParams['is_champion']) ? $queryParams['is_champion'] : null;
-    $isActive = isset($queryParams['is_active']) ? $queryParams['is_active'] : true;
-    $achievementFilter = isset($queryParams['achievement']) ? $queryParams['achievement'] : null;
-    
-    // Construction de la requête SQL de base
-    $sql = "
-        SELECT 
-            f.id,
-            f.first_name,
-            f.last_name,
-            f.nickname,
-            f.slug,
-            f.birth_date,
-            f.birth_place,
-            f.region_id,
-            f.height,
-            f.weight,
-            f.profile_image,
-            f.cover_image,
-            f.bio,
-            f.fighting_style,
-            f.debut_year,
-            f.ranking,
-            f.is_active,
-            f.is_champion,
-            f.social_links,
-            f.created_at,
-            f.updated_at,
-            r.name as region_name,
-            r.code as region_code,
-            r.color as region_color,
-            r.flag_image as region_flag_image,
-            r.stadium_name,
-            -- Statistiques calculées
-            COALESCE(stats.total_matches, 0) as total_matches,
-            COALESCE(stats.total_wins, 0) as total_wins,
-            COALESCE(stats.total_losses, 0) as total_losses,
-            COALESCE(stats.win_rate, 0) as win_rate,
-            COALESCE(ach.achievement_count, 0) as achievement_count,
-            COALESCE(ach.last_achievement_year, 0) as last_achievement_year,
-            COALESCE(cards.yellow_cards, 0) as yellow_cards,
-            COALESCE(cards.red_cards, 0) as red_cards,
-            -- Calcul de l'âge
-            EXTRACT(YEAR FROM AGE(CURRENT_DATE, f.birth_date)) as age
-        FROM fighters f
-        LEFT JOIN regions r ON f.region_id = r.id
-        -- Sous-requête pour les statistiques
-        LEFT JOIN (
-            SELECT 
-                fighter_id,
-                COUNT(*) as total_matches,
-                SUM(CASE WHEN winner_fighter_id = fighter_id THEN 1 ELSE 0 END) as total_wins,
-                SUM(CASE WHEN loser_fighter_id = fighter_id THEN 1 ELSE 0 END) as total_losses,
-                CASE 
-                    WHEN COUNT(*) > 0 THEN 
-                        ROUND((SUM(CASE WHEN winner_fighter_id = fighter_id THEN 1 ELSE 0 END)::DECIMAL / COUNT(*)) * 100, 2)
-                    ELSE 0 
-                END as win_rate
-            FROM (
-                SELECT fighter1_id as fighter_id, winner_fighter_id, loser_fighter_id 
-                FROM matches 
-                WHERE fighter1_id IS NOT NULL AND status = 'completed'
-                UNION ALL
-                SELECT fighter2_id as fighter_id, winner_fighter_id, loser_fighter_id 
-                FROM matches 
-                WHERE fighter2_id IS NOT NULL AND status = 'completed'
-            ) as all_fighter_matches
-            GROUP BY fighter_id
-        ) stats ON f.id = stats.fighter_id
-        -- Sous-requête pour les achievements
-        LEFT JOIN (
-            SELECT 
-                fighter_id,
-                COUNT(*) as achievement_count,
-                MAX(year) as last_achievement_year
-            FROM fighter_achievements
-            GROUP BY fighter_id
-        ) ach ON f.id = ach.fighter_id
-        -- Sous-requête pour les cartons
-        LEFT JOIN (
-            SELECT 
-                fighter_id,
-                SUM(CASE WHEN card_type = 'yellow' AND is_cancelled = false THEN 1 ELSE 0 END) as yellow_cards,
-                SUM(CASE WHEN card_type = 'red' AND is_cancelled = false THEN 1 ELSE 0 END) as red_cards
-            FROM fighter_cards
-            GROUP BY fighter_id
-        ) cards ON f.id = cards.fighter_id
-        WHERE f.is_active = :is_active
-    ";
-    
-    $params = [':is_active' => $isActive];
-    
-    // Ajouter les filtres
-    if (!empty($search)) {
-        $sql .= " AND (
-            f.first_name ILIKE :search OR 
-            f.last_name ILIKE :search OR 
-            f.nickname ILIKE :search OR
-            f.birth_place ILIKE :search
-        )";
-        $params[':search'] = "%$search%";
-    }
-    
-    if ($regionId !== null) {
-        $sql .= " AND f.region_id = :region_id";
-        $params[':region_id'] = $regionId;
-    }
-    
-    if ($isChampion !== null) {
-        $isChampionBool = filter_var($isChampion, FILTER_VALIDATE_BOOLEAN);
-        $sql .= " AND f.is_champion = :is_champion";
-        $params[':is_champion'] = $isChampionBool;
-    }
-    
-    if ($minAge !== null) {
-        $sql .= " AND EXTRACT(YEAR FROM AGE(CURRENT_DATE, f.birth_date)) >= :min_age";
-        $params[':min_age'] = $minAge;
-    }
-    
-    if ($maxAge !== null) {
-        $sql .= " AND EXTRACT(YEAR FROM AGE(CURRENT_DATE, f.birth_date)) <= :max_age";
-        $params[':max_age'] = $maxAge;
-    }
-    
-    if ($minRank !== null) {
-        $sql .= " AND f.ranking >= :min_rank";
-        $params[':min_rank'] = $minRank;
-    }
-    
-    if ($maxRank !== null) {
-        $sql .= " AND f.ranking <= :max_rank";
-        $params[':max_rank'] = $maxRank;
-    }
-    
-    // Filtre par achievement
-    if ($achievementFilter !== null) {
-        if ($achievementFilter === 'has_achievements') {
-            $sql .= " AND ach.achievement_count > 0";
-        } elseif ($achievementFilter === 'champion') {
-            $sql .= " AND EXISTS (
-                SELECT 1 FROM fighter_achievements fa 
-                WHERE fa.fighter_id = f.id AND fa.position IN ('1st', 'Gold', 'Champion')
-            )";
-        }
-    }
-    
-    // Requête pour le comptage total (pour la pagination)
-    $countSql = "SELECT COUNT(*) as total FROM ($sql) as subquery";
-    $countStmt = $db->prepare($countSql);
-    
-    foreach ($params as $key => $value) {
-        $countStmt->bindValue($key, $value);
-    }
-    
-    $countStmt->execute();
-    $totalCount = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
-    
-    // Ajouter le tri
-    $validSortColumns = [
-        'name', 'nickname', 'ranking', 'age', 'region_name', 
-        'total_matches', 'total_wins', 'win_rate', 'achievement_count',
-        'last_achievement_year', 'created_at', 'weight', 'height'
-    ];
-    
-    $validatedSortBy = in_array($sortBy, $validSortColumns) ? $sortBy : 'ranking';
-    
-    // Mapping des colonnes de tri
-    $sortColumnMapping = [
-        'name' => 'f.first_name',
-        'nickname' => 'f.nickname',
-        'ranking' => 'f.ranking',
-        'age' => 'age',
-        'region_name' => 'r.name',
-        'total_matches' => 'total_matches',
-        'total_wins' => 'total_wins',
-        'win_rate' => 'win_rate',
-        'achievement_count' => 'achievement_count',
-        'last_achievement_year' => 'last_achievement_year',
-        'created_at' => 'f.created_at',
-        'weight' => 'f.weight',
-        'height' => 'f.height'
-    ];
-    
-    $sortColumn = $sortColumnMapping[$validatedSortBy] ?? 'f.ranking';
-    $sql .= " ORDER BY $sortColumn $sortOrder";
-    
-    // Ajouter la pagination
-    $sql .= " LIMIT :limit OFFSET :offset";
-    $params[':limit'] = $limit;
-    $params[':offset'] = $offset;
-    
-    // Exécuter la requête principale
-    $stmt = $db->prepare($sql);
-    
-    foreach ($params as $key => $value) {
-        $type = PDO::PARAM_STR;
-        
-        if (is_int($value) && ($key === ':limit' || $key === ':offset' || 
-            strpos($key, '_id') !== false || strpos($key, '_rank') !== false || 
-            strpos($key, '_age') !== false)) {
-            $type = PDO::PARAM_INT;
-        } elseif (is_bool($value)) {
-            $type = PDO::PARAM_BOOL;
-        }
-        
-        $stmt->bindValue($key, $value, $type);
-    }
-    
-    $stmt->execute();
-    $fighters = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Formater les données des lutteurs
-    foreach ($fighters as &$fighter) {
-        // Formater les dates
-        $fighter['birth_date'] = $fighter['birth_date'] ? date('Y-m-d', strtotime($fighter['birth_date'])) : null;
-        $fighter['created_at'] = $fighter['created_at'] ? date('c', strtotime($fighter['created_at'])) : null;
-        $fighter['updated_at'] = $fighter['updated_at'] ? date('c', strtotime($fighter['updated_at'])) : null;
-        
-        // Parser les liens sociaux JSON
-        $fighter['social_links'] = $fighter['social_links'] ? json_decode($fighter['social_links'], true) : [];
-        
-        // Calculer les statistiques détaillées
-        $fighter['stats'] = [
-            'total_matches' => (int)$fighter['total_matches'],
-            'wins' => (int)$fighter['total_wins'],
-            'losses' => (int)$fighter['total_losses'],
-            'win_rate' => (float)$fighter['win_rate'],
-            'yellow_cards' => (int)$fighter['yellow_cards'],
-            'red_cards' => (int)$fighter['red_cards']
-        ];
-        
-        // Informations de la région
-        $fighter['region'] = $fighter['region_id'] ? [
-            'id' => (int)$fighter['region_id'],
-            'name' => $fighter['region_name'],
-            'code' => $fighter['region_code'],
-            'color' => $fighter['region_color'],
-            'flag_image' => $fighter['region_flag_image'],
-            'stadium_name' => $fighter['stadium_name']
-        ] : null;
-        
-        // Retirer les colonnes temporaires
-        unset(
-            $fighter['region_id'], $fighter['region_name'], $fighter['region_code'],
-            $fighter['region_color'], $fighter['region_flag_image'], $fighter['stadium_name'],
-            $fighter['total_matches'], $fighter['total_wins'], $fighter['total_losses'],
-            $fighter['win_rate'], $fighter['yellow_cards'], $fighter['red_cards']
-        );
-    }
-    
-    // Calculer les informations de pagination
-    $totalPages = ceil($totalCount / $limit);
-    
-    $response['success'] = true;
-    $response['message'] = 'Liste des lutteurs récupérée avec succès';
-    $response['data']['fighters'] = $fighters;
-    $response['data']['pagination'] = [
-        'total_items' => (int)$totalCount,
-        'total_pages' => $totalPages,
-        'current_page' => $page,
-        'items_per_page' => $limit,
-        'has_next_page' => $page < $totalPages,
-        'has_prev_page' => $page > 1
-    ];
-    $response['data']['filters'] = [
-        'applied' => [
-            'search' => $search,
-            'sort_by' => $validatedSortBy,
-            'sort_order' => $sortOrder,
-            'region_id' => $regionId,
-            'is_champion' => $isChampion,
-            'is_active' => $isActive,
-            'min_age' => $minAge,
-            'max_age' => $maxAge,
-            'min_rank' => $minRank,
-            'max_rank' => $maxRank,
-            'achievement_filter' => $achievementFilter
-        ],
-        'available_regions' => getAvailableRegions($db)
-    ];
-    
-    http_response_code(200);
-    echo json_encode($response);
-    
-} catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Erreur serveur: ' . $e->getMessage(),
-        'data' => []
-    ]);
-}"
+Phase Groups
+
+SubGroups
+
+Matches
+
+Fighters
+
+Regions
+
+Stack :
+
+Next.js (App Router)
+
+Server Actions
+
+Neon PostgreSQL
+
+shadcn/ui
+
+Hooks déjà existants
+
+Navigation actuelle conservée
+
+⚠️ Contraintes :
+
+Ne PAS ajouter de colonnes dans sub_groups
+
+Les champs status et is_completed existent déjà
+
+Utiliser les couleurs primaires / secondaires de shadcn
+
+Éviter le rechargement de page
+
+Réutiliser les server actions existantes (API seulement si vraiment nécessaire)
+
+🎯 OBJECTIFS
+
+Supprimer les resets globaux inutiles
+
+Mettre en place un recalcul incrémental des scores
+
+Mettre à jour l’UI sans reload
+
+Améliorer le design avec shadcn (propre, moderne)
+
+Permettre de marquer un SubGroup comme terminé
+
+Bloquer les modifications après completion
+
+🧠 PARTIE 1 — BACKEND PROPRE (INCRÉMENTAL)
+❌ Supprimer totalement :
+
+resetEditionState()
+
+recalcul global complet
+
+✅ Implémenter recalcul incrémental
+
+Quand un match :
+
+Passe de upcoming → completed
+
+Ou est modifié après completion
+
+Alors :
+
+1️⃣ rollbackMatchImpact(oldMatch)
+
+Retirer points ancien gagnant
+
+Restaurer ancien perdant si nécessaire
+
+Ajuster score_region1 / score_region2
+
+2️⃣ applyMatchImpact(newMatch)
+
+Ajouter points nouveau gagnant
+
+Mettre à jour score_region1 / score_region2
+
+Mettre à jour belts si nécessaire
+
+🔐 Toujours utiliser transaction
+BEGIN
+SELECT ... FOR UPDATE (sub_group)
+rollback
+apply
+COMMIT
+
+🏁 PARTIE 2 — TERMINER UN SUB_GROUP
+
+⚠️ Ne PAS ajouter de champ.
+
+On utilise :
+
+status
+
+is_completed
+
+🎯 Logique pour terminer :
+
+Conditions :
+
+Tous les matches du sub_group ont status = 'completed'
+
+
+Alors :
+
+Server Action :
+
+completeSubGroup(subGroupId)
+
+
+Cette action :
+
+Vérifie que tous les matches sont completed
+
+Met :
+
+status = 'completed'
+is_completed = true
+
+Empêche toute modification future des matches
+
+🔒 Protection
+
+Dans updateMatch :
+
+if (subGroup.is_completed) {
+  throw new Error("Sous-groupe déjà terminé")
+}
+
+🚀 PARTIE 4 — SUPPRIMER LES RELOADS
+❌ Interdit :
+window.location.reload()
+router.refresh() (sauf si nécessaire)
+
+✅ À utiliser :
+
+Server Actions
+
+useOptimistic
+
+useTransition
+
+Mise à jour locale state
+
+Event revalidation ciblée si nécessaire
+
+🧠 PARTIE 5 — DERNIER MATCH INTELLIGENT
+
+Quand le dernier match passe à completed :
+
+UI détecte :
+
+matches.every(m => m.status === 'completed')
+
+
+Affiche bloc :
+
+🎯 Tous les matchs sont terminés
+[ Marquer le sous-groupe comme terminé ]
+
+🔒 BLOQUER APRÈS COMPLETION
+
+Si :
+
+subGroup.is_completed === true
+
+
+Alors :
+
+Désactiver boutons édition
+
+Désactiver score update
+
+Afficher badge "Terminé"
+
+Style muted
+
+🎯 RÉSULTAT ATTENDU
+
+Après refactor :
+
+✅ Pas de recalcul global
+
+✅ Pas de reload
+
+✅ UI fluide
+
+✅ Architecture propre
+
+✅ Sécurisé côté backend
+
+✅ Extensible

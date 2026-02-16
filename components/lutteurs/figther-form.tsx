@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AdvancedUpload } from "../ui/advanced-upload";
 import { ImageIcon } from "lucide-react";
 import { Region } from "@/types";
+import { getRegionById } from "@/actions/regions";
+
 interface FighterFormData {
   id?: number;
   first_name: string;
@@ -27,7 +29,7 @@ interface FighterFormData {
 
 interface FighterFormProps {
   fighter?: FighterFormData; // Pour l'édition
-  region?: Region; // Region présélectionnée
+  region?: Region; // Region présélectionnée (priorité 1)
   onSuccess?: () => void; // Callback après succès
 }
 
@@ -37,16 +39,24 @@ export default function FighterForm({
   onSuccess,
 }: FighterFormProps) {
   const router = useRouter();
-  const regionId = region?.id;
+  const searchParams = useSearchParams();
+  
+  // Priorité : 1. Props region, 2. Paramètre URL, 3. undefined
+  const regionIdFromProps = region?.id;
+  const regionIdFromUrl = searchParams?.get("regionId") 
+    ? Number(searchParams.get("regionId")) 
+    : undefined;
+      console.log(regionIdFromProps, regionIdFromUrl)
+  
   const [formData, setFormData] = useState<FighterFormData>({
     first_name: "",
     last_name: "",
     nickname: "",
     birth_date: "",
     birth_place: "",
-    region_id: regionId ? Number(regionId) : undefined,
-    height: undefined,
-    weight: undefined,
+    region_id: regionIdFromProps || regionIdFromUrl || undefined,
+    height: 1.7,
+    weight: 80,
     profile_image: "",
     cover_image: "",
     bio: "",
@@ -56,13 +66,14 @@ export default function FighterForm({
     is_active: true,
     is_champion: false,
   });
+  
   const [regions, setRegions] = useState<Region[]>([]);
   const [errors, setErrors] = useState<
     Partial<Record<keyof FighterFormData, string>>
   >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingRegions, setLoadingRegions] = useState(true);
-  const total_fighters = regions.map((r) => r?.total_fighters || 0);
+  const [preselectedRegion, setPreselectedRegion] = useState<Region | null>(region || null);
 
   // Initialiser les données si on est en mode édition
   useEffect(() => {
@@ -71,6 +82,11 @@ export default function FighterForm({
         ...fighter,
         birth_date: fighter.birth_date ? fighter.birth_date.split("T")[0] : "", // Format pour input date
       });
+      
+      // Si on édite un lutteur, la région présélectionnée est celle du lutteur
+      if (fighter.region_id) {
+        setPreselectedRegion(null); // On ne force pas la région via props en mode édition
+      }
     }
   }, [fighter]);
 
@@ -78,6 +94,7 @@ export default function FighterForm({
   useEffect(() => {
     async function loadRegions() {
       try {
+        setLoadingRegions(true);
         const response = await fetch("/api/regions");
         if (response.ok) {
           const result = await response.json();
@@ -96,12 +113,31 @@ export default function FighterForm({
     loadRegions();
   }, []);
 
-  // When a region is pre-selected via query param, set it in formData
+  // Mettre à jour le formulaire quand la région présélectionnée change
   useEffect(() => {
-    if (regionId) {
-      setFormData((prev) => ({ ...prev, region_id: Number(regionId) }));
+    if (preselectedRegion?.id && !fighter) {
+      setFormData((prev) => ({ ...prev, region_id: preselectedRegion.id }));
     }
-  }, [regionId]);
+  }, [preselectedRegion, fighter]);
+
+  // Charger les informations de la région présélectionnée depuis l'URL si elle n'est pas fournie en props
+  useEffect(() => {
+    async function loadPreselectedRegion() {
+      if (regionIdFromUrl && !region && !fighter) {
+        try {
+          // Appel de l'action côté serveur au lieu de l'API
+          const regionData = await getRegionById(regionIdFromUrl, { with_relations: false });
+          setPreselectedRegion(regionData);
+        } catch (error) {
+          console.error("Erreur lors du chargement de la région présélectionnée:", error);
+        }
+      }
+    }
+    
+    if (regionIdFromUrl && !region && !fighter) {
+      loadPreselectedRegion();
+    }
+  }, [regionIdFromUrl, region, fighter]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -179,6 +215,18 @@ export default function FighterForm({
       const result = await response.json();
 
       if (!response.ok) {
+        // Gestion des erreurs de validation
+        if (result.errors) {
+          const fieldErrors: Partial<Record<keyof FighterFormData, string>> = {};
+          result.errors.forEach((err: any) => {
+            if (err.path && err.path.length > 0) {
+              fieldErrors[err.path[0] as keyof FighterFormData] = err.message;
+            }
+          });
+          setErrors(fieldErrors);
+          throw new Error("Veuillez corriger les erreurs du formulaire");
+        }
+        
         throw new Error(
           result.error ||
             `Erreur lors de ${
@@ -191,35 +239,65 @@ export default function FighterForm({
         if (onSuccess) {
           onSuccess();
         } else {
-          router.back();
+          // Rediriger vers la liste des lutteurs ou vers la région
+          if (formData.region_id) {
+            router.push(`/regions/${formData.region_id}?tab=fighters`);
+          } else {
+            router.push("/lutteurs");
+          }
+          router.refresh();
         }
       } else {
         throw new Error(result.message || "Erreur inconnue");
       }
     } catch (error) {
       console.error("Erreur:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : `Erreur lors de ${
-              fighter ? "la modification" : "la création"
-            } du lutteur`
-      );
+      
+      // Ne pas afficher d'alerte si ce sont des erreurs de validation
+      if (!(error instanceof Error && error.message === "Veuillez corriger les erreurs du formulaire")) {
+        alert(
+          error instanceof Error
+            ? error.message
+            : `Erreur lors de ${
+                fighter ? "la modification" : "la création"
+              } du lutteur`
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Trouver le nom de la région présélectionnée pour l'afficher
+  const getPreselectedRegionName = () => {
+    if (preselectedRegion) {
+      return preselectedRegion.name;
+    }
+    if (regionIdFromProps) {
+      const found = regions.find(r => r.id === regionIdFromProps);
+      return found?.name;
+    }
+    return null;
+  };
+
+  const preselectedRegionName = getPreselectedRegionName();
+
   return (
     <div className="max-w-5xl mx-auto bg-white p-4 rounded-lg shadow-md">
       <h1 className="text-2xl font-bold mb-4">
         {fighter ? "Modifier le Lutteur" : "Ajouter un Lutteur"}
+        {preselectedRegionName && !fighter && (
+          <span className="text-sm font-normal text-gray-500 ml-2">
+            pour la région {preselectedRegionName}
+          </span>
+        )}
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Section des images */}
         <div className="relative w-full mb-10">
           {/* Photo de profil */}
-          <div className="">
+          <div className="absolute left-10 -bottom-10 z-20">
             <AdvancedUpload
               value={formData.profile_image || ""}
               onChange={(url) =>
@@ -229,43 +307,48 @@ export default function FighterForm({
               uploadPath="fighters/profiles"
               isRounded
               maxWidthOrHeight={200}
-              className="absolute left-10 -bottom-10 z-20 shadow-md rounded-full"
-              //   emptyPreview={
-              //     <div className="text-center text-muted-foreground">
-              //       <ImageIcon className="h-10 w-10 mx-auto mb-2" />
-              //       <p className="text-sm">Photo de profil</p>
-              //     </div>
-              //   }
-            />
-          </div>
-          {/* Image de couverture */}
-          <div className="">
-            <label
-              htmlFor="cover_image"
-              className="block text-sm font-medium mb-1"
-            >
-              Image de couverture
-            </label>
-            <AdvancedUpload
-              value={formData.cover_image || ""}
-              onChange={(url) =>
-                setFormData((prev) => ({ ...prev, cover_image: url }))
-              }
-              maxSizeMB={5}
-              uploadPath="fighters/covers"
-              showInternalSelection
-              internalImagesFolder="fighters/covers"
               emptyPreview={
-                <div className="text-center text-muted-foreground">
-                  <ImageIcon className="h-10 w-10 mx-auto mb-2" />
-                  <p className="text-sm">Image de couverture</p>
+                <div className="text-center text-muted-foreground p-4 bg-gray-100 rounded-full w-32 h-32 flex items-center justify-center">
+                  <ImageIcon className="h-10 w-10" />
                 </div>
               }
             />
           </div>
-          {/* Prénom */}
+          
+          {/* Image de couverture */}
+          <div className="w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
+            {formData.cover_image ? (
+              <img 
+                src={formData.cover_image} 
+                alt="Couverture" 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <AdvancedUpload
+                  value={formData.cover_image || ""}
+                  onChange={(url) =>
+                    setFormData((prev) => ({ ...prev, cover_image: url }))
+                  }
+                  maxSizeMB={5}
+                  uploadPath="fighters/covers"
+                  showInternalSelection
+                  internalImagesFolder="fighters/covers"
+                  emptyPreview={
+                    <div className="text-center text-muted-foreground">
+                      <ImageIcon className="h-10 w-10 mx-auto mb-2" />
+                      <p className="text-sm">Ajouter une image de couverture</p>
+                    </div>
+                  }
+                />
+              </div>
+            )}
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {/* Informations de base */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-16">
+          {/* Prénom */}
           <div>
             <label
               htmlFor="first_name"
@@ -316,7 +399,7 @@ export default function FighterForm({
           </div>
         </div>
 
-        {/* Région */}
+        {/* Surnom et Région */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Surnom */}
           <div>
@@ -336,25 +419,40 @@ export default function FighterForm({
               placeholder="Surnom (optionnel)"
             />
           </div>
+
+          {/* Région */}
           <div>
             <label
               htmlFor="region_id"
               className="block text-sm font-medium mb-1"
             >
-              Région
+              Région {!fighter && preselectedRegion ? (
+                <span className="text-blue-600 text-xs ml-2">
+                  (Présélectionnée)
+                </span>
+              ) : (
+                <span className="text-red-500">*</span>
+              )}
             </label>
             <select
               id="region_id"
               name="region_id"
               value={formData.region_id || ""}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              disabled={loadingRegions}
+              className={`w-full border rounded px-3 py-2 ${
+                errors.region_id ? "border-red-500" : "border-gray-300"
+              }`}
+              disabled={loadingRegions || (!!preselectedRegion && !fighter)}
             >
               <option value="">Sélectionnez une région</option>
               {regions.map((region) => (
-                <option key={region.id} value={region.id}>
+                <option 
+                  key={region.id} 
+                  value={region.id}
+                  className={region.id === preselectedRegion?.id ? "bg-blue-50" : ""}
+                >
                   {region.name} {region.code ? `(${region.code})` : ""}
+                  {region.id === preselectedRegion?.id && " ✓"}
                 </option>
               ))}
             </select>
@@ -363,9 +461,18 @@ export default function FighterForm({
                 Chargement des régions...
               </p>
             )}
+            {errors.region_id && (
+              <p className="text-red-500 text-sm mt-1">{errors.region_id}</p>
+            )}
+            {preselectedRegion && !fighter && (
+              <p className="text-blue-600 text-xs mt-1">
+                Région verrouillée pour ce formulaire
+              </p>
+            )}
           </div>
         </div>
 
+        {/* Date et lieu de naissance */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Date de naissance */}
           <div>
@@ -405,6 +512,7 @@ export default function FighterForm({
           </div>
         </div>
 
+        {/* Taille et Poids */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Taille */}
           <div>
@@ -445,6 +553,7 @@ export default function FighterForm({
           </div>
         </div>
 
+        {/* Année de début, Classement, Style */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Année de début */}
           <div>
@@ -499,7 +608,7 @@ export default function FighterForm({
               value={formData.fighting_style || ""}
               onChange={handleChange}
               className="w-full border border-gray-300 rounded px-3 py-2"
-              placeholder="Description du style de combat"
+              placeholder="Ex: Lutte traditionnelle, combat au sol..."
             />
           </div>
         </div>
@@ -516,7 +625,7 @@ export default function FighterForm({
             onChange={handleChange}
             rows={4}
             className="w-full border border-gray-300 rounded px-3 py-2"
-            placeholder="Biographie du lutteur..."
+            placeholder="Biographie du lutteur, parcours, palmarès..."
           />
         </div>
 
@@ -552,7 +661,7 @@ export default function FighterForm({
               htmlFor="is_champion"
               className="ml-2 block text-sm text-gray-900"
             >
-              Champion
+              Champion en titre
             </label>
           </div>
         </div>
@@ -561,7 +670,13 @@ export default function FighterForm({
         <div className="flex justify-end gap-3 pt-4 border-t">
           <button
             type="button"
-            onClick={() => router.push("/lutteurs")}
+            onClick={() => {
+              if (formData.region_id && !fighter) {
+                router.push(`/regions/${formData.region_id}?tab=fighters`);
+              } else {
+                router.back();
+              }
+            }}
             className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
           >
             Annuler
@@ -569,11 +684,19 @@ export default function FighterForm({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors"
+            className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-colors flex items-center gap-2"
           >
-            {isSubmitting
-              ? `${fighter ? "Modification..." : "Création..."}`
-              : `${fighter ? "Modifier le lutteur" : "Créer le lutteur"}`}
+            {isSubmitting ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {fighter ? "Modification..." : "Création..."}
+              </>
+            ) : (
+              fighter ? "Modifier le lutteur" : "Créer le lutteur"
+            )}
           </button>
         </div>
       </form>
