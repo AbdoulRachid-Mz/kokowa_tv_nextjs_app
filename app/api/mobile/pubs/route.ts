@@ -1,4 +1,5 @@
 import { getMobileAdvertisements } from "@/actions/mobile/advertisements";
+import { AdvertisementMediaType, AdvertisementPosition } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 // GET /api/mobile/pubs
 export async function GET(req: NextRequest) {
@@ -7,8 +8,8 @@ export async function GET(req: NextRequest) {
 
     // Build filters from query parameters
     const filters = {
-      position: searchParams.get("position") || undefined,
-      media_type: searchParams.get("media_type") || undefined,
+      position: searchParams.get("position") as AdvertisementPosition | undefined,
+      media_type: searchParams.get("media_type") as AdvertisementMediaType | undefined,
       is_active: searchParams.has("is_active")
         ? searchParams.get("is_active") === "true"
         : undefined,
