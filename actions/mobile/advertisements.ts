@@ -1,6 +1,8 @@
 'use server';
 
 import { query } from '@/lib/db/neon-client';
+import { Advertisement, AdvertisementFilters, PaginatedResponse, AdvertisementStats, AdvertisementPosition, AdvertisementMediaType } from '@/types';
+
 
 export async function getMobileAdvertisements(filters?: {
   position?: AdvertisementPosition;
