@@ -903,6 +903,65 @@ export interface AppSettings {
   analytics_tracking_id: string;
 }
 
+
+// =============================================
+// GESTION DES PUBLICITÉS / ADVERTISEMENT TYPES
+// =============================================
+
+export type AdvertisementMediaType = 'image' | 'video' | 'html';
+export type AdvertisementPosition =
+  | 'header'
+  | 'sidebar'
+  | 'footer'
+  | 'in_content'
+  | 'popup'
+  | 'banner_top'
+  | 'banner_bottom'
+  | 'mobile_sticky';
+
+export interface Advertisement extends BaseEntity {
+  title: string;
+  description?: string;
+  media?: string; // file path or html snippet
+  media_type: AdvertisementMediaType;
+  price: number;
+  link_url?: string;
+  position: AdvertisementPosition;
+  priority: number;
+  start_date?: string;
+  end_date?: string;
+  is_active: boolean;
+  click_count: number;
+  impression_count: number;
+  target_audience?: string;
+  advertiser_name?: string;
+  advertiser_contact?: string;
+}
+
+export interface AdvertisementFilters extends BaseFilters {
+  position?: AdvertisementPosition;
+  media_type?: AdvertisementMediaType;
+  is_active?: boolean;
+  start_date_from?: string;
+  start_date_to?: string;
+  end_date_from?: string;
+  end_date_to?: string;
+  advertiser_name?: string;
+  target_audience?: string;
+  with_clicks?: boolean; // include click_count & impression_count
+}
+
+export interface AdvertisementStats {
+  totalAds: number;
+  activeAds: number;
+  totalClicks: number;
+  totalImpressions: number;
+  avgCTR: number; // click-through rate
+  byPosition: Record<AdvertisementPosition, { impressions: number; clicks: number }>;
+  byMediaType: Record<AdvertisementMediaType, { impressions: number; clicks: number }>;
+}
+
+
 // types/index.ts - Ajouter ces types
 
 export interface User extends BaseEntity {

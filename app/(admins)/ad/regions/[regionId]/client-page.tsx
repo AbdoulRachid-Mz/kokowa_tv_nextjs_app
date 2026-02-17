@@ -15,6 +15,8 @@ import Image from "next/image";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { getRegionById } from "@/actions/regions";
+import { useEntityList } from "@/hooks/use-entity-list";
+import { EntityList } from "@/components/entities/entity-list";
 
 export default function ClientRegionDetail({ regionId }: { regionId: number }) {
   const router = useRouter();
@@ -23,6 +25,34 @@ export default function ClientRegionDetail({ regionId }: { regionId: number }) {
   const [fighters, setFighters] = useState<Fighter[]>([]);
   const [loading, setLoading] = useState(true);
   const [fighterDialogOpen, setFighterDialogOpen] = useState(false);
+
+   const {
+      data,
+      total,
+      loading: fightersLoading,
+      page,
+      limit,
+      searchTerm,
+      filters,
+      viewMode,
+      setPage,
+      setLimit,
+      setSearchTerm,
+      setFilters,
+      setViewMode,
+      onAdd,
+      onEdit,
+      onView,
+      onExport,
+      onRefresh,
+    } = useEntityList<Fighter>({
+      entityType: 'fighters',
+      defaultFilters: {
+        with_fighters: true,
+        region_id: regionId,
+        limit: '20',
+      },
+    });
 
   useEffect(() => {
     loadRegionData();
@@ -107,7 +137,7 @@ export default function ClientRegionDetail({ regionId }: { regionId: number }) {
   }
 
   return (
-    <div className="mx-auto ">
+    <div className="mx-auto">
       {/* En-tête */}
       <div className="flex justify-between items-start mb-2">
         <div>
@@ -206,33 +236,34 @@ export default function ClientRegionDetail({ regionId }: { regionId: number }) {
       </div>
 
       {/* Liste des lutteurs */}
-      <div className="mb-3">
-        <div className="flex justify-between items-center mb-3">
-          <Typography variant="h4">Lutteurs</Typography>
-          <Button variant="default" asChild>
-            <Link href={`/ad/fighters/create?regionId=${regionId}`}>
-              Ajouter un lutteur
-            </Link>
-          </Button>
-        </div>
-
-        {fighters.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {fighters.map((fighter) => (
-              <FighterCard
-                key={fighter.id}
-                viewMode="grid"
-                fighter={fighter}
-                onView={() => router.push(`/ad/fighters/${fighter.id}`)}
-              />
-            ))}
-          </div>
-        ) : (
-          <Typography theme="muted">
-            Aucun lutteur enregistré pour cette région.
-          </Typography>
+      <EntityList<Fighter>
+        title={`Lutteurs de la région ${region.name}`}
+        entityType="fighter"
+        data={data}
+        total={total}
+        loading={fightersLoading}
+        page={page}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={filters}
+        onFilterChange={setFilters}
+        onAdd={() => router.push(`/ad/fighters/create?regionId=${regionId}`)}
+        onRefresh={onRefresh}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        renderCard={(fighter, mode) => (
+          <FighterCard
+            key={fighter.id}
+            viewMode={mode}
+            fighter={fighter}
+            onView={() => router.push(`/ad/fighters/${fighter.id}`)}
+            onEdit={() => router.push(`/ad/fighters/${fighter.id}/edit`)}
+          />
         )}
-      </div>
+      />
 
       {/* Dialog pour lutteur */}
       <FighterDialog

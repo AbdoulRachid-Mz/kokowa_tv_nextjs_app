@@ -1,5 +1,6 @@
 // @/api/mobile/editions/editionId/regions
-import { getEditionRegions } from '@/actions/mobile/getEditionRegions';
+// import { getEditionRegions } from '@/actions/mobile/getEditionRegions';
+import { getMobileEditionRegions } from '@/actions/mobile/getEditionRegions';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -16,6 +17,6 @@ export async function GET(
     );
   }
 
-  const result = await getEditionRegions(editionIdNum);
+  const result = await getMobileEditionRegions(editionIdNum);
   return NextResponse.json(result, { status: result.success ? 200 : result.error?.code || 500 });
 }

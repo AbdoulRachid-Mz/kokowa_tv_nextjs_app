@@ -21,7 +21,7 @@ const AUTH_ROUTES = [
   "/auth/sign-up",
   "profile",
   "/profile/:path*",
-  // "/ad/:path*",
+  "/ad/:path*",
 ];
 
 function matches(routes: string[], path: string) {

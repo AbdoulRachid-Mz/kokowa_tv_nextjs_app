@@ -303,16 +303,16 @@ export default function AdminPage() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualiser
           </Button>
-          <Button size="lg">
+          {/* <Button size="lg">
             <Trophy className="w-4 h-4 mr-2" />
             Nouvelle Action
-          </Button>
+          </Button> */}
         </div>
       </div>
 
       {/* Tabs de navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 mb-6">
+        <TabsList className="grid grid-cols-2 w-full md:grid-cols-4 lg:grid-cols-4 mb-6">
           {tablist.slice(0, 3).map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value}>
               {tab.icon && <tab.icon className="h-4 w-4 mr-2 inline" />}

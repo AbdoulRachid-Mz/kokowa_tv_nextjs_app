@@ -367,6 +367,37 @@ export const videoSchema = z.object({
 });
 
 
+// Schema pour les publicités
+export const advertisementSchema = z.object({
+  title: z.string().min(1, 'Le titre est requis').max(255, 'Le titre est trop long'),
+  description: z.string().optional(),
+  media: z.string().max(255).optional(),
+  media_type: z.enum(['image', 'video', 'html']).default('image'),
+  price: z.number().min(0, 'Le prix doit être positif').default(0.00),
+  link_url: z.string().url('URL invalide').max(255).optional(),
+  position: z.enum([
+    'header',
+    'sidebar',
+    'footer',
+    'in_content',
+    'popup',
+    'banner_top',
+    'banner_bottom',
+    'mobile_sticky'
+  ]),
+  priority: z.number().int().min(0).default(0),
+  start_date: z.string().datetime().optional(),
+  end_date: z.string().datetime().optional(),
+  is_active: z.boolean().default(true),
+  click_count: z.number().int().min(0).default(0),
+  impression_count: z.number().int().min(0).default(0),
+  target_audience: z.string().max(50).optional(),
+  advertiser_name: z.string().max(255).optional(),
+  advertiser_contact: z.string().max(255).optional(),
+});
+
+export type AdvertisementInput = z.infer<typeof advertisementSchema>;
+
 
 // Schema pour les interactions
 export const interactionSchema = z.object({

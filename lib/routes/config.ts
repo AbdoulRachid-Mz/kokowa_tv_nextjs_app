@@ -103,7 +103,7 @@ export const ROUTE_CONFIG: RouteConfig[] = [
   
   // Routes auth spécifiques (elles héritent de /auth/**)
   {
-    path: "/auth/login",
+    path: "/auth/sign-in",
     name: "Connexion",
     parentPath: "/auth/**",
     description: "Connectez-vous à votre compte",
@@ -113,7 +113,7 @@ export const ROUTE_CONFIG: RouteConfig[] = [
     }
   },
   {
-    path: "/auth/register",
+    path: "/auth/sign-up",
     name: "Inscription",
     parentPath: "/auth/**",
     description: "Créez votre compte",
@@ -162,6 +162,16 @@ export const ROUTE_CONFIG: RouteConfig[] = [
   {
     path: "/ad/regions",
     name: "Régions",
+    parentPath: "/ad/**"
+  },
+  {
+    path: "/ad/regions/[regionId]",
+    name: "Detail Région",
+    parentPath: "/ad/**"
+  },
+  {
+    path: "/ad/regions/[regionId]/edit",
+    name: "Edit Région",
     parentPath: "/ad/**"
   },
   {

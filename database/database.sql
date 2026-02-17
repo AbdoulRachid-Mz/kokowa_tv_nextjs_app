@@ -584,6 +584,65 @@ CREATE TABLE IF NOT EXISTS videos (
     published_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- =============================================
+-- GESTION DES PUBLICITÉS
+-- =============================================
+CREATE TABLE IF NOT EXISTS advertisements (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    media VARCHAR(255),
+    media_type VARCHAR(20) CHECK (
+        media_type IN ('image', 'video', 'html')
+    ) DEFAULT 'image',
+    price DECIMAL(10, 2) DEFAULT 0.00,
+    link_url VARCHAR(255),
+    position VARCHAR(30) CHECK (
+        position IN (
+            'header',
+            'sidebar',
+            'footer',
+            'in_content',
+            'popup',
+            'banner_top',
+            'banner_bottom',
+            'mobile_sticky'
+        )
+    ) NOT NULL,
+    priority INTEGER DEFAULT 0,
+    start_date TIMESTAMP,
+    end_date TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    click_count INTEGER DEFAULT 0,
+    impression_count INTEGER DEFAULT 0,
+    target_audience VARCHAR(50),
+    advertiser_name VARCHAR(255),
+    advertiser_contact VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Trigger to auto-update updated_at
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger
+    WHERE tgname = 'update_advertisements_updated_at'
+  ) THEN
+    CREATE TRIGGER update_advertisements_updated_at
+    BEFORE UPDATE ON advertisements
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+END $$;
+
+-- Index for performance
+CREATE INDEX idx_advertisements_position ON advertisements (position);
+CREATE INDEX idx_advertisements_active ON advertisements (is_active, start_date, end_date);
+CREATE INDEX idx_advertisements_priority ON advertisements (priority DESC);
+
 -- =============================================
 -- INTERACTIONS ET AUTRES
 -- =============================================

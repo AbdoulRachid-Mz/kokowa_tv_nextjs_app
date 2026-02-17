@@ -30,6 +30,7 @@ import { useMatchState } from "./match-state";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { MatchControls } from "./match-controls";
 import { completeSubGroup } from "@/actions/sub-groups";
+import { getEditionFighters } from "@/actions/editions";
 
 // Helpers
 const formatSecondsToDuration = (totalSeconds: number): string => {
@@ -72,29 +73,38 @@ export default function MatchDetailPage() {
       const editionId = sg.group?.phase?.edition?.id;
       if (!editionId) return;
 
-      console.log("🔄 Chargement des lutteurs pour l'édition:", editionId);
-
-      const fightersResponse = await api.get(`/api/editions/${editionId}/fighters`, {
-        params: { 
-          limit: 100, 
-          with_fighter: true, 
+      // Charger les lutteurs par région
+      const [region1Response, region2Response] = await Promise.all([
+        sg.region1_id ? getEditionFighters(editionId, {
+          region_id: sg.region1_id,
+          status: 'qualified',
+          limit: 100,
+          with_fighter: true,
           with_region: true,
-          status: 'qualified'
-        }
+        }) : Promise.resolve({ data: [] }),
+        sg.region2_id ? getEditionFighters(editionId, {
+          region_id: sg.region2_id,
+          status: 'qualified',
+          limit: 100,
+          with_fighter: true,
+          with_region: true,
+        }) : Promise.resolve({ data: [] })
+      ]);
+
+      const extractFighters = (response: any): Fighter[] =>
+        response?.data?.map((item: any) => item.fighter).filter(Boolean) || [];
+      
+      const region1Fighters = extractFighters(region1Response);
+      const region2Fighters = extractFighters(region2Response);
+      console.log( 'region1Response',region1Response)
+      console.log( 'region2Response',region2Response)
+
+      setAvailableFighters({
+        region1: region1Fighters,
+        region2: region2Fighters
       });
 
-      if (fightersResponse && Array.isArray(fightersResponse)) {
-        const fighters = fightersResponse
-          .map((item: any) => item.fighter)
-          .filter(Boolean);
-
-        setAvailableFighters({
-          region1: sg.region1_id ? fighters.filter((f: Fighter) => f.region_id === sg.region1_id) : [],
-          region2: sg.region2_id ? fighters.filter((f: Fighter) => f.region_id === sg.region2_id) : []
-        });
-
-        console.log(`✅ Lutteurs chargés: Region1: ${fighters.filter((f: Fighter) => f.region_id === sg.region1_id).length}, Region2: ${fighters.filter((f: Fighter) => f.region_id === sg.region2_id).length}`);
-      }
+      console.log(`✅ Lutteurs chargés: Region1: ${region1Fighters.length}, Region2: ${region2Fighters.length}`);
     } catch (error) {
       console.error("❌ Erreur chargement lutteurs:", error);
     }
@@ -188,7 +198,7 @@ export default function MatchDetailPage() {
       } else if (variables.fighterId === match?.fighter2_id) {
         matchState.incrementFighter2Cards();
       }
-      
+
       // Rafraîchir les données
       queryClient.invalidateQueries({ queryKey: ['match', matchId] });
       toast.success(`🟨 Carton jaune ajouté`);
@@ -230,12 +240,12 @@ export default function MatchDetailPage() {
   useEffect(() => {
     if (matchData) {
       setMatch(matchData);
-      
+
       // Compter les cartons
       const fighter1Cards = matchData.cards?.filter(
         card => card.fighter?.id === matchData.fighter1_id && card.card_type === 'yellow'
       ).length || 0;
-      
+
       const fighter2Cards = matchData.cards?.filter(
         card => card.fighter?.id === matchData.fighter2_id && card.card_type === 'yellow'
       ).length || 0;
@@ -256,11 +266,11 @@ export default function MatchDetailPage() {
   useEffect(() => {
     if (subGroupData) {
       setSubGroup(subGroupData);
-      
+
       const matches = subGroupData.matches || [];
       const index = matches.findIndex((m: Match) => m.id === parseInt(matchId as string));
       setCurrentIndex(index >= 0 ? index : 0);
-      
+
       loadAvailableFighters(subGroupData);
     }
   }, [subGroupData, matchId, loadAvailableFighters]);
@@ -280,9 +290,9 @@ export default function MatchDetailPage() {
     matchState.setBreakCount(newBreakCount);
     matchState.setIsRunning(false);
     matchState.setStatus('round_break');
-    handleUpdateMatch({ 
-      break_count: newBreakCount, 
-      status: 'round_break' 
+    handleUpdateMatch({
+      break_count: newBreakCount,
+      status: 'round_break'
     });
   }, [matchState.breakCount]);
 
@@ -355,9 +365,9 @@ export default function MatchDetailPage() {
 
         {/* Navigation entre matchs */}
         <div className="flex justify-between items-center bg-card p-4 rounded-lg border">
-          <Button 
-            variant="outline" 
-            onClick={() => navigateToMatch("prev")} 
+          <Button
+            variant="outline"
+            onClick={() => navigateToMatch("prev")}
             disabled={currentIndex === 0}
           >
             <ChevronLeft className="h-4 w-4 mr-2" />
@@ -371,9 +381,9 @@ export default function MatchDetailPage() {
               {currentMatch.status === "live" ? "🔴 EN DIRECT" : currentMatch.status}
             </Badge>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => navigateToMatch("next")} 
+          <Button
+            variant="outline"
+            onClick={() => navigateToMatch("next")}
             disabled={currentIndex === totalMatches - 1}
           >
             Suivant
@@ -436,13 +446,13 @@ export default function MatchDetailPage() {
               isSubGroupCompleted={currentSubGroup.is_completed}
               matchStatus={matchState.status}
             />
-            
+
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:block">
               <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-4 border-background">
                 <Typography variant="body-lg" weight="bold">VS</Typography>
               </div>
             </div>
-            
+
             <FighterControl
               fighter={currentMatch.fighter2}
               fighterType="fighter2"

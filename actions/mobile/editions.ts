@@ -173,21 +173,21 @@ async function getEditionInfo(editionId: number) {
   // Structurer les données du vainqueur
   edition.winner = edition.winnerFighterId
     ? {
-        fighter: {
-          id: edition.winnerFighterId,
-          firstName: edition.winnerFirstName,
-          lastName: edition.winnerLastName,
-          nickname: edition.winnerNickname,
-          profileImage: edition.winnerProfileImage,
-        },
-        region: edition.winnerRegionId
-          ? {
-              id: edition.winnerRegionId,
-              name: edition.winnerRegionName,
-              color: edition.winnerRegionColor,
-            }
-          : null,
-      }
+      fighter: {
+        id: edition.winnerFighterId,
+        firstName: edition.winnerFirstName,
+        lastName: edition.winnerLastName,
+        nickname: edition.winnerNickname,
+        profileImage: edition.winnerProfileImage,
+      },
+      region: edition.winnerRegionId
+        ? {
+          id: edition.winnerRegionId,
+          name: edition.winnerRegionName,
+          color: edition.winnerRegionColor,
+        }
+        : null,
+    }
     : null;
 
   // Statistiques de l'édition

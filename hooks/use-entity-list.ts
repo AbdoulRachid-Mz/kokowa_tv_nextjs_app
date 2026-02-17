@@ -21,7 +21,8 @@ import {
   CoachFilters,
   FighterTransferFilters,
   ArchiveFighterAchievementFilters,
-  InteractionFilters
+  InteractionFilters,
+  AdvertisementFilters
 } from '@/types';
 
 // Types pour les filtres par entité
@@ -45,6 +46,7 @@ export type EntityFilters =
   | FighterTransferFilters
   | ArchiveFighterAchievementFilters
   | InteractionFilters
+  | AdvertisementFilters
   | Record<string, any>;
 
 export interface UseEntityListProps<T> {
@@ -67,6 +69,7 @@ export interface UseEntityListProps<T> {
     | 'phase-groups'
     | 'sub-groups'
     | 'notifications'
+    | 'advertisements'
     | 'users';
   defaultFilters?: EntityFilters;
   defaultLimit?: number;
@@ -157,6 +160,17 @@ export function useEntityList<T>({
         addFilter('date_to', userFilters.date_to);
         if (userFilters.with_profile) params.with_profile = 'true';
         if (userFilters.with_permissions) params.with_permissions = 'true';
+        break;
+      
+      case 'advertisements':
+        const advertisementFilters = stableFilters as AdvertisementFilters;
+        addFilter('position', advertisementFilters.position);
+        addFilter('media_type', advertisementFilters.media_type);
+        addFilter('is_active', advertisementFilters.is_active);
+        addFilter('start_date_from', advertisementFilters.start_date_from);
+        addFilter('start_date_to', advertisementFilters.start_date_to);
+        addFilter('end_date_from', advertisementFilters.end_date_from);
+        addFilter('end_date_to', advertisementFilters.end_date_to);
         break;
       
       case 'fighters':

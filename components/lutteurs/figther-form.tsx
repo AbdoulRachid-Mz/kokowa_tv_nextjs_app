@@ -6,6 +6,7 @@ import { AdvancedUpload } from "../ui/advanced-upload";
 import { ImageIcon } from "lucide-react";
 import { Region } from "@/types";
 import { getRegionById } from "@/actions/regions";
+import { toast } from "sonner";
 
 interface FighterFormData {
   id?: number;
@@ -40,14 +41,14 @@ export default function FighterForm({
 }: FighterFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Priorité : 1. Props region, 2. Paramètre URL, 3. undefined
   const regionIdFromProps = region?.id;
-  const regionIdFromUrl = searchParams?.get("regionId") 
-    ? Number(searchParams.get("regionId")) 
+  const regionIdFromUrl = searchParams?.get("regionId")
+    ? Number(searchParams.get("regionId"))
     : undefined;
-      console.log(regionIdFromProps, regionIdFromUrl)
-  
+  console.log(regionIdFromProps, regionIdFromUrl)
+
   const [formData, setFormData] = useState<FighterFormData>({
     first_name: "",
     last_name: "",
@@ -66,7 +67,7 @@ export default function FighterForm({
     is_active: true,
     is_champion: false,
   });
-  
+
   const [regions, setRegions] = useState<Region[]>([]);
   const [errors, setErrors] = useState<
     Partial<Record<keyof FighterFormData, string>>
@@ -82,7 +83,7 @@ export default function FighterForm({
         ...fighter,
         birth_date: fighter.birth_date ? fighter.birth_date.split("T")[0] : "", // Format pour input date
       });
-      
+
       // Si on édite un lutteur, la région présélectionnée est celle du lutteur
       if (fighter.region_id) {
         setPreselectedRegion(null); // On ne force pas la région via props en mode édition
@@ -133,7 +134,7 @@ export default function FighterForm({
         }
       }
     }
-    
+
     if (regionIdFromUrl && !region && !fighter) {
       loadPreselectedRegion();
     }
@@ -204,63 +205,42 @@ export default function FighterForm({
       formDataToSend.append("is_active", formData.is_active.toString());
       formDataToSend.append("is_champion", formData.is_champion.toString());
 
-      const url = fighter ? `/api/fighters/${fighter.id}` : "/api/fighters";
-      const method = fighter ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        body: formDataToSend,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        // Gestion des erreurs de validation
-        if (result.errors) {
-          const fieldErrors: Partial<Record<keyof FighterFormData, string>> = {};
-          result.errors.forEach((err: any) => {
-            if (err.path && err.path.length > 0) {
-              fieldErrors[err.path[0] as keyof FighterFormData] = err.message;
-            }
-          });
-          setErrors(fieldErrors);
-          throw new Error("Veuillez corriger les erreurs du formulaire");
-        }
-        
-        throw new Error(
-          result.error ||
-            `Erreur lors de ${
-              fighter ? "la modification" : "la création"
-            } du lutteur`
-        );
-      }
-
-      if (result.success) {
-        if (onSuccess) {
-          onSuccess();
-        } else {
-          // Rediriger vers la liste des lutteurs ou vers la région
-          if (formData.region_id) {
-            router.push(`/regions/${formData.region_id}?tab=fighters`);
-          } else {
-            router.push("/lutteurs");
-          }
-          router.refresh();
-        }
+      let result;
+      if (fighter) {
+        // Update existing fighter
+        const { updateFighter } = await import("@/actions/fighters");
+        if (!fighter.id) throw new Error("Fighter ID is missing");
+        result = await updateFighter(fighter.id, formDataToSend);
       } else {
-        throw new Error(result.message || "Erreur inconnue");
+        // Create new fighter
+        const { createFighter } = await import("@/actions/fighters");
+        const rawData: Record<string, any> = {};
+        formDataToSend.forEach((value, key) => {
+          rawData[key] = value;
+        });
+        result = await createFighter(rawData);
       }
-    } catch (error) {
+
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        // Redirect to region or back
+        toast.success(`Lutteur ${fighter ? "modifié" : "créé"} avec succès`);
+        router.back();
+      }
+    } catch (error: any) {
       console.error("Erreur:", error);
-      
-      // Ne pas afficher d'alerte si ce sont des erreurs de validation
-      if (!(error instanceof Error && error.message === "Veuillez corriger les erreurs du formulaire")) {
-        alert(
-          error instanceof Error
-            ? error.message
-            : `Erreur lors de ${
-                fighter ? "la modification" : "la création"
-              } du lutteur`
+
+      // Handle validation errors from actions
+      if (error.message?.includes("Veuillez corriger les erreurs du formulaire")) {
+        // Validation errors already set in state, do nothing
+      } else if (error.message) {
+        // Show toast for other errors
+        toast.error(error.message);
+      } else {
+        toast.error(
+          `Erreur lors de ${fighter ? "la modification" : "la création"
+          } du lutteur`
         );
       }
     } finally {
@@ -314,13 +294,13 @@ export default function FighterForm({
               }
             />
           </div>
-          
+
           {/* Image de couverture */}
           <div className="w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
             {formData.cover_image ? (
-              <img 
-                src={formData.cover_image} 
-                alt="Couverture" 
+              <img
+                src={formData.cover_image}
+                alt="Couverture"
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -363,9 +343,8 @@ export default function FighterForm({
               required
               value={formData.first_name}
               onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${
-                errors.first_name ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full border rounded px-3 py-2 ${errors.first_name ? "border-red-500" : "border-gray-300"
+                }`}
               placeholder="Prénom du lutteur"
             />
             {errors.first_name && (
@@ -388,9 +367,8 @@ export default function FighterForm({
               required
               value={formData.last_name}
               onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${
-                errors.last_name ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full border rounded px-3 py-2 ${errors.last_name ? "border-red-500" : "border-gray-300"
+                }`}
               placeholder="Nom du lutteur"
             />
             {errors.last_name && (
@@ -439,15 +417,14 @@ export default function FighterForm({
               name="region_id"
               value={formData.region_id || ""}
               onChange={handleChange}
-              className={`w-full border rounded px-3 py-2 ${
-                errors.region_id ? "border-red-500" : "border-gray-300"
-              }`}
+              className={`w-full border rounded px-3 py-2 ${errors.region_id ? "border-red-500" : "border-gray-300"
+                }`}
               disabled={loadingRegions || (!!preselectedRegion && !fighter)}
             >
               <option value="">Sélectionnez une région</option>
               {regions.map((region) => (
-                <option 
-                  key={region.id} 
+                <option
+                  key={region.id}
                   value={region.id}
                   className={region.id === preselectedRegion?.id ? "bg-blue-50" : ""}
                 >

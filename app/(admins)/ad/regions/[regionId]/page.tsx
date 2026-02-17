@@ -1,5 +1,8 @@
 import ClientRegionDetail from "./client-page";
 
+//mise en cache
+export const revalidate = 60
+
 interface Props {
   params: Promise<{ regionId: string }>;
 }
