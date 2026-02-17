@@ -841,7 +841,7 @@ export async function createMatch(formData: FormData) {
       start_time: (rawData.start_time as string) || undefined,
       fighter1_id: rawData.fighter1_id && rawData.fighter1_id !== '' ? Number(rawData.fighter1_id) : undefined,
       fighter2_id: rawData.fighter2_id && rawData.fighter2_id !== '' ? Number(rawData.fighter2_id) : undefined,
-      notes: rawData.notes ? (rawData.notes as string).trim() || 'Aucune note' : 'Aucune note',
+      notes: rawData.notes ? (rawData.notes as string).trim() || '' : '',
     };
 
     // Validate with schema
