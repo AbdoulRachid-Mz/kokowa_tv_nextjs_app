@@ -384,10 +384,10 @@ export const advertisementSchema = z.object({
     'banner_top',
     'banner_bottom',
     'mobile_sticky'
-  ]),
+  ]).default('banner_top'),
   priority: z.number().int().min(0).default(0),
-  start_date: z.string().datetime().optional(),
-  end_date: z.string().datetime().optional(),
+  start_date: z.coerce.date().optional(),
+  end_date: z.coerce.date().optional(),
   is_active: z.boolean().default(true),
   click_count: z.number().int().min(0).default(0),
   impression_count: z.number().int().min(0).default(0),
@@ -396,7 +396,7 @@ export const advertisementSchema = z.object({
   advertiser_contact: z.string().max(255).optional(),
 });
 
-export type AdvertisementInput = z.infer<typeof advertisementSchema>;
+export type AdvertisementInput = z.input<typeof advertisementSchema>;
 
 
 // Schema pour les interactions

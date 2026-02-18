@@ -358,6 +358,28 @@ export async function deleteArchiveFighterAchievement(id: number) {
 
 export async function getArchiveFighterAchievementsStats() {
   try {
+    // Vérifier que la table existe avant d'exécuter la requête
+    const tableExists = await queryOne<{ exists: boolean }>(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'fighter_achievements_archives'
+      )`
+    );
+
+    if (!tableExists?.exists) {
+      console.warn('Table fighter_achievements_archives does not exist – returning default stats');
+      return {
+        total_archives: 0,
+        correction_archives: 0,
+        duplicate_archives: 0,
+        error_archives: 0,
+        avg_year: 0,
+        oldest_year: 0,
+        newest_year: 0,
+      };
+    }
+
     const sql = `
       SELECT
         COUNT(*) as total_archives,
@@ -402,3 +424,4 @@ export async function getArchiveFighterAchievementsStats() {
     };
   }
 }
+

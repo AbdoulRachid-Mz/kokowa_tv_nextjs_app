@@ -13,6 +13,7 @@ import {
   FighterTransfer,
   SubGroup,
   User,
+  Advertisement,
 } from "@/types";
 import {
   MapPin,
@@ -31,9 +32,17 @@ import {
   DollarSign,
   Phone,
   Mail,
+  Pencil,
+  MousePointer,
+  TrendingUp,
+  CodeIcon,
+  VideoIcon,
+  ImageIcon,
+  Building,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { Progress } from "../ui/progress";
 
 // Carte pour les Lutteurs
 interface FighterCardProps {
@@ -1409,6 +1418,290 @@ export function UserCard({ user, viewMode, onEdit, onView }: UserCardProps) {
   );
 }
 
+// Ajouter dans components/entities/entity-cards.tsx
+
+export const AdvertisementCard: React.FC<{
+  advertisement: Advertisement;
+  viewMode: 'grid' | 'list';
+  onEdit?: (ad: Advertisement) => void;
+  onView?: (ad: Advertisement) => void;
+}> = ({ advertisement, viewMode, onEdit, onView }) => {
+  const isActive = advertisement.is_active;
+  const now = new Date();
+  const startDate = advertisement.start_date ? new Date(advertisement.start_date) : null;
+  const endDate = advertisement.end_date ? new Date(advertisement.end_date) : null;
+  const isScheduled = startDate && startDate > now;
+  const isExpired = endDate && endDate < now;
+  
+  const getStatusBadge = () => {
+    if (!isActive) return <Badge variant="outline" className="bg-gray-100">Inactive</Badge>;
+    if (isExpired) return <Badge variant="outline" className="bg-red-100 text-red-700">Expirée</Badge>;
+    if (isScheduled) return <Badge variant="outline" className="bg-blue-100 text-blue-700">Planifiée</Badge>;
+    return <Badge variant="default" className="bg-green-600">Active</Badge>;
+  };
+
+  const getMediaTypeIcon = () => {
+    switch (advertisement.media_type) {
+      case 'image':
+        return <ImageIcon className="h-4 w-4" />;
+      case 'video':
+        return <VideoIcon className="h-4 w-4" />;
+      case 'html':
+        return <CodeIcon className="h-4 w-4" />;
+      default:
+        return null;
+    }
+  };
+
+  const formatPosition = (position: string) => {
+    const positions: Record<string, string> = {
+      header: 'En-tête',
+      sidebar: 'Barre latérale',
+      footer: 'Pied de page',
+      in_content: 'Dans le contenu',
+      popup: 'Pop-up',
+      banner_top: 'Bannière haut',
+      banner_bottom: 'Bannière bas',
+      mobile_sticky: 'Mobile collant'
+    };
+    return positions[position] || position;
+  };
+
+  if (viewMode === 'list') {
+    return (
+      <Card className="hover:shadow-md transition-shadow">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 flex-1">
+              {/* Media preview */}
+              <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden flex items-center justify-center">
+                {advertisement.media && advertisement.media_type === 'image' ? (
+                  <img 
+                    src={advertisement.media} 
+                    alt={advertisement.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="text-muted-foreground">
+                    {getMediaTypeIcon()}
+                  </div>
+                )}
+              </div>
+
+              {/* Info */}
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Typography variant="body-base" weight="medium">
+                    {advertisement.title}
+                  </Typography>
+                  {getStatusBadge()}
+                </div>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {formatPosition(advertisement.position)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" />
+                    Priorité {advertisement.priority}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-3 w-3" />
+                    {advertisement.impression_count} vues
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MousePointer className="h-3 w-3" />
+                    {advertisement.click_count} clics
+                  </span>
+                </div>
+                {advertisement.advertiser_name && (
+                  <Typography variant="body-sm" theme="muted" className="mt-1">
+                    Annonceur: {advertisement.advertiser_name}
+                  </Typography>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onView?.(advertisement)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEdit?.(advertisement)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Mode grille
+  return (
+    <Card className="hover:shadow-lg transition-all duration-300 h-full flex flex-col">
+      {/* Media header */}
+      <div className="relative h-40 bg-gradient-to-br from-primary/10 to-primary/5 rounded-t-lg overflow-hidden">
+        {advertisement.media && advertisement.media_type === 'image' ? (
+          <img 
+            src={advertisement.media} 
+            alt={advertisement.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-4xl mb-2 text-primary/30">
+                {getMediaTypeIcon()}
+              </div>
+              <Typography variant="body-sm" theme="muted">
+                {advertisement.media_type === 'video' ? 'Vidéo' : 
+                 advertisement.media_type === 'html' ? 'HTML' : 'Image'}
+              </Typography>
+            </div>
+          </div>
+        )}
+        
+        {/* Status badge */}
+        <div className="absolute top-2 right-2">
+          {getStatusBadge()}
+        </div>
+
+        {/* Position badge */}
+        <div className="absolute bottom-2 left-2">
+          <Badge variant="secondary" className="bg-black/50 text-white border-0">
+            <MapPin className="h-3 w-3 mr-1" />
+            {formatPosition(advertisement.position)}
+          </Badge>
+        </div>
+      </div>
+
+      <CardContent className="flex-1 p-4">
+        <div className="flex justify-between items-start mb-2">
+          <Typography variant="body-base" weight="bold" className="line-clamp-1">
+            {advertisement.title}
+          </Typography>
+          <div className="flex items-center gap-1">
+            <Badge variant="outline" className="text-xs">
+              P{advertisement.priority}
+            </Badge>
+          </div>
+        </div>
+
+        {advertisement.description && (
+          <Typography variant="body-sm" theme="muted" className="mb-3 line-clamp-2">
+            {advertisement.description}
+          </Typography>
+        )}
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="text-center p-2 bg-muted/30 rounded">
+            <Typography variant="body-sm" weight="bold">
+              {advertisement.impression_count}
+            </Typography>
+            <Typography variant="body-sm" theme="muted">
+              Vues
+            </Typography>
+          </div>
+          <div className="text-center p-2 bg-muted/30 rounded">
+            <Typography variant="body-sm" weight="bold">
+              {advertisement.click_count}
+            </Typography>
+            <Typography variant="body-sm" theme="muted">
+              Clics
+            </Typography>
+          </div>
+        </div>
+
+        {/* CTR */}
+        <div className="mb-3">
+          <div className="flex justify-between text-xs mb-1">
+            <span>CTR</span>
+            <span className="font-medium">
+              {advertisement.impression_count > 0 
+                ? ((advertisement.click_count / advertisement.impression_count) * 100).toFixed(2)
+                : 0}%
+            </span>
+          </div>
+          <Progress 
+            value={advertisement.impression_count > 0 
+              ? (advertisement.click_count / advertisement.impression_count) * 100 
+              : 0} 
+            className="h-1"
+          />
+        </div>
+
+        {/* Annonceur */}
+        {advertisement.advertiser_name && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
+            <Building className="h-3 w-3" />
+            <span className="truncate">{advertisement.advertiser_name}</span>
+          </div>
+        )}
+
+        {/* Dates */}
+        {(advertisement.start_date || advertisement.end_date) && (
+          <div className="text-xs text-muted-foreground space-y-1">
+            {advertisement.start_date && (
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                <span>Début: {new Date(advertisement.start_date).toLocaleDateString('fr-FR')}</span>
+              </div>
+            )}
+            {advertisement.end_date && (
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                <span>Fin: {new Date(advertisement.end_date).toLocaleDateString('fr-FR')}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Prix */}
+        {advertisement.price > 0 && (
+          <div className="mt-3 pt-3 border-t flex justify-between items-center">
+            <Typography variant="body-sm" theme="muted">Prix</Typography>
+            <Typography variant="body-base" weight="bold" className="text-green-600">
+              {advertisement.price.toLocaleString()} FCFA
+            </Typography>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-2 mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => onView?.(advertisement)}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Détails
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            className="flex-1"
+            onClick={() => onEdit?.(advertisement)}
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            Modifier
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 
 // Export des composants de cartes
 export const EntityCards = {
@@ -1420,4 +1713,5 @@ export const EntityCards = {
   Transfer: TransferCard, // AJOUT
   SubGroup: SubGroupCard,
   User: UserCard,
+  Advertisement: AdvertisementCard, // Nouveau
 };

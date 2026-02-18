@@ -142,7 +142,6 @@ export function FighterControl({
 
     onAddCard(fighter.id);
   };
- console.log(availableFighters)
   // Si pas de lutteur assigné
   if (!fighter) {
     return (

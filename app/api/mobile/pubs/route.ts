@@ -38,7 +38,19 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    return NextResponse.json(result.data);
+    return NextResponse.json({
+      success: true,
+      // message: "Publicités récupérées avec succès",
+      data: result.data?.advertisements || [],
+      pagination: {
+        count: result.data?.count || 0,
+        total: result.data?.total || 0,
+        page: result.data?.page || 1,
+        limit: result.data?.limit || 10,
+        totalPages: result.data?.totalPages || 1,
+      },
+      timestamp: result.data?.timestamp || new Date().toISOString(),
+    });
   } catch (error) {
     console.error("Error in GET /api/mobile/pubs:", error);
     return NextResponse.json(

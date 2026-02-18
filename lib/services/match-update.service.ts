@@ -2,6 +2,7 @@
 import { emitMatchEvent } from "@/actions/matches";
 import { pool } from "../db/neon-client";
 import type { PoolClient } from "pg";
+import { sendPushNotification } from "../push";
 
 export interface MatchUpdate {
   sub_group_id?: number;
@@ -31,6 +32,7 @@ export interface MatchUpdate {
  * - Apply du nouveau résultat
  * - Transaction sécurisée avec verrouillage
  */
+// lib/services/match-update.service.ts
 export async function updateMatchAndRecompute(
   matchId: number,
   updates: MatchUpdate
@@ -85,6 +87,47 @@ export async function updateMatchAndRecompute(
     await checkAndCompleteSubGroup(client, oldMatch.sub_group_id);
 
     await client.query("COMMIT");
+
+    // Push notifications for live or completed status
+    if (updates.status === 'live') {
+      const subscribers = await client.query<{ fcm_token: string }>(
+        `SELECT u.fcm_token
+         FROM users u
+         JOIN user_match_subscriptions s ON s.user_id = u.id
+         WHERE s.match_id = $1
+           AND u.fcm_token IS NOT NULL`,
+        [matchId]
+      );
+
+      for (const user of subscribers.rows) {
+        await sendPushNotification(
+          user.fcm_token,
+          '🔥 Match en direct !',
+          'Le match vient de commencer',
+          { matchId: matchId.toString() }
+        );
+      }
+    }
+
+    if (updates.status === 'completed') {
+      const subscribers = await client.query<{ fcm_token: string }>(
+        `SELECT u.fcm_token
+         FROM users u
+         JOIN user_match_subscriptions s ON s.user_id = u.id
+         WHERE s.match_id = $1
+           AND u.fcm_token IS NOT NULL`,
+        [matchId]
+      );
+
+      for (const user of subscribers.rows) {
+        await sendPushNotification(
+          user.fcm_token,
+          '✅ Match terminé',
+          'Le match est terminé, découvrez le résultat',
+          { matchId: matchId.toString() }
+        );
+      }
+    }
 
     // Émettre événement temps réel
     await emitMatchEvent(matchId, 'match_updated', { match: updatedMatch });

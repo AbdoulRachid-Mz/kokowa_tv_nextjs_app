@@ -64,6 +64,11 @@ export default function MatchDetailPage() {
     region2: Fighter[];
   }>({ region1: [], region2: [] });
 
+  console.log({
+    'region1:': availableFighters.region1,
+    'region2:': availableFighters.region2
+  })
+
   const { isConnected, subscribeToMatch } = useRealtime();
   const matchState = useMatchState();
 
@@ -74,41 +79,48 @@ export default function MatchDetailPage() {
       if (!editionId) return;
 
       // Charger les lutteurs par région
-      const [region1Response, region2Response] = await Promise.all([
-        sg.region1_id ? getEditionFighters(editionId, {
-          region_id: sg.region1_id,
-          status: 'qualified',
-          limit: 100,
-          with_fighter: true,
-          with_region: true,
-        }) : Promise.resolve({ data: [] }),
-        sg.region2_id ? getEditionFighters(editionId, {
-          region_id: sg.region2_id,
-          status: 'qualified',
-          limit: 100,
-          with_fighter: true,
-          with_region: true,
-        }) : Promise.resolve({ data: [] })
+      const [region1Fighters, region2Fighters] = await Promise.all([
+        sg.region1_id ? loadRegionFighters(editionId, sg.region1_id) : Promise.resolve([]),
+        sg.region2_id ? loadRegionFighters(editionId, sg.region2_id) : Promise.resolve([])
       ]);
-
-      const extractFighters = (response: any): Fighter[] =>
-        response?.data?.map((item: any) => item.fighter).filter(Boolean) || [];
-      
-      const region1Fighters = extractFighters(region1Response);
-      const region2Fighters = extractFighters(region2Response);
-      console.log( 'region1Response',region1Response)
-      console.log( 'region2Response',region2Response)
 
       setAvailableFighters({
         region1: region1Fighters,
         region2: region2Fighters
       });
 
-      console.log(`✅ Lutteurs chargés: Region1: ${region1Fighters.length}, Region2: ${region2Fighters.length}`);
     } catch (error) {
       console.error("❌ Erreur chargement lutteurs:", error);
+      toast.error("Erreur lors du chargement des lutteurs");
     }
   }, []);
+
+  const fighterStatus = {
+    registered: 'registered',
+    qualified: 'qualified',
+    disqualified: 'disqualified',
+    withdrawn: 'withdrawn'
+  };
+
+  // Helper function to load fighters for a specific region
+  const loadRegionFighters = async (
+    editionId: number,
+    regionId: number
+  ): Promise<Fighter[]> => {
+    try {
+      const response = await getEditionFighters(editionId, {
+        region_id: regionId,
+        status: fighterStatus.registered || fighterStatus.qualified || fighterStatus.disqualified,
+        limit: 100,
+        with_fighter: true,
+        with_region: false,
+      });
+      return response.data?.map((e: any) => e.fighter) || [];
+    } catch (error) {
+      console.error(`Erreur chargement lutteurs région ${regionId}:`, error);
+      return [];
+    }
+  };
 
   // Récupérer le match
   const { data: matchData, isLoading: isLoadingMatch } = useQuery({

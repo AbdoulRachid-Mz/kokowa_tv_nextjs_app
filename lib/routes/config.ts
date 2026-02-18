@@ -310,6 +310,27 @@ export const ROUTE_CONFIG: RouteConfig[] = [
     parentPath: "/ad/**",
     excludeLayout: true
   },
+  {
+    path: "/ad/advertisements/**",
+    name: "Gestion des publicités",
+    description: "Routes de gestion des publicités",
+    parentPath: "/ad/**",
+    excludeLayout: true
+  },
+  {
+    path: "/ad/advertisements/[id]",
+    name: "Détail publicité",
+    description: "Routes de détail d'une publicité",
+    parentPath: "/ad/**",
+    excludeLayout: true
+  },
+  {
+    path: "/ad/advertisements/[id]/edit",
+    name: "Edition une publicité",
+    description: "Routes de gestion des publicités",
+    parentPath: "/ad/**",
+    excludeLayout: true
+  },
   // Plus besoin de définir chaque sous-route individuellement
 
   // =============================================

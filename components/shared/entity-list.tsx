@@ -58,7 +58,8 @@ export interface EntityListProps<T> {
     | "message"
     | "phase-groups"
     | "sub-group"
-    | "notification";
+    | "notification"
+    | "advertisements";
   data: T[];
   total: number;
   loading?: boolean;

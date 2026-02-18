@@ -8,6 +8,7 @@ import { Match, MatchFilters, PaginatedResponse } from '@/types';
 import { connectionManager } from '@/lib/realtime/connection-manager';
 import { z } from 'zod';
 import { updateMatchAndRecompute } from '@/lib/services/match-update.service';
+import { sendPushNotification } from '@/lib/push';
 
 export async function getMatches(
   filters: MatchFilters = {}
@@ -988,12 +989,32 @@ export async function updateMatchStatus(id: number, status: string) {
     
     await query(sql, [status, id]);
 
-       // Émettre l'événement de changement de statut
+    // Émettre l'événement de changement de statut
     await emitMatchEvent(id, 'match_status_changed', {
       match: updateMatch,
       previousStatus: 'scheduled', // Vous pourriez vouloir stocker l'ancien statut
       newStatus: status
     });
+
+    if (status === 'live') {
+      // Récupérer les abonnés au match
+      const subscribers = await query<{ fcm_token: string }>(`
+        SELECT u.fcm_token
+        FROM users u
+        JOIN user_match_subscriptions s ON s.user_id = u.id
+        WHERE s.match_id = $1
+          AND u.fcm_token IS NOT NULL
+      `, [id]);
+
+      for (const user of subscribers) {
+        await sendPushNotification(
+          user.fcm_token,
+          '🔥 Match en direct !',
+          'Le match vient de commencer',
+          { matchId: id.toString() }
+        );
+      }
+    }
 
     revalidatePath('/matches');
     revalidatePath(`/matches/${id}`);

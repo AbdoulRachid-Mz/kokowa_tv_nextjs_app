@@ -490,11 +490,11 @@ export async function getActiveAdvertisements(position?: string, limit: number =
     const params: any[] = [];
     
     if (position) {
-      sql += ` AND position = $${params.length + 1}`;
+      sql += ` AND advertisements.position = $${params.length + 1}`;
       params.push(position);
     }
     
-    sql += ` ORDER BY priority DESC, created_at DESC LIMIT $${params.length + 1}`;
+    sql += ` ORDER BY advertisements.priority DESC, advertisements.created_at DESC LIMIT $${params.length + 1}`;
     params.push(limit);
 
     const result = await query<Advertisement>(sql, params);

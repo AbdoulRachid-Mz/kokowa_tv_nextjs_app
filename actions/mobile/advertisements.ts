@@ -117,7 +117,7 @@ export async function getMobileAdvertisements(filters?: {
       params.push(end_date_to);
     }
 
-    if (!is_active) {
+    if (is_active === true) {
       sql += ` AND (a.start_date IS NULL OR a.start_date <= CURRENT_TIMESTAMP)
                AND (a.end_date IS NULL OR a.end_date >= CURRENT_TIMESTAMP)`;
     }
@@ -210,6 +210,7 @@ export async function getMobileAdvertisements(filters?: {
     };
   }
 }
+
 
 export async function getMobileAdvertisementById(adId: number, userId?: number) {
   try {

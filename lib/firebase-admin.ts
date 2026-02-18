@@ -10,10 +10,10 @@ if (!admin.apps.length) {
           projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
           // La clé privée doit être formatée correctement pour les nouvelles lignes
-          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+          privateKey: process.env.FCM_PRIVATE_KEY?.replace(/\\n/g, '\n'),
         }),
       });
-    } 
+    }
     // Option 2: Application Default Credentials (pour Google Cloud)
     else {
       admin.initializeApp({

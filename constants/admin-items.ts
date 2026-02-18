@@ -187,8 +187,8 @@ export const regionItems = [
 
 export const fighterItems = [
   { title: "Lutteurs", url: "/ad/fighters", icon: Users, description: "Gestion des lutteurs" },
-  { title: "Palmarès", url: "/ad/fighters/achievements", icon: Award, description: "Titres et distinctions" },
-  { title: "Transferts", url: "/ad/fighters/transfers", icon: Repeat, description: "Transferts entre régions" },
+  { title: "Palmarès", url: "/ad/achievements", icon: Award, description: "Titres et distinctions" },
+  { title: "Transferts", url: "/ad/transfers", icon: Repeat, description: "Transferts entre régions" },
 ]
 
 export const refereeItems = [
@@ -213,6 +213,7 @@ export const contentItems = [
 export const communicationItems = [
   { title: "Messages", url: "/ad/messages", icon: MessageSquare, description: "Messagerie et commentaires" },
   { title: "Notifications", url: "/ad/notifications", icon: Bell, description: "Alertes et notifications" },
+  { title: "Publicités", url: "/ad/advertisements", icon: Bell, description: "Gestion des publicités" },
 ]
 
 export const systemItems = [
