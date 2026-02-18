@@ -177,6 +177,51 @@ async function getCardsForMatch(matchId: number) {
 }
 
 
+// async function getRegionInfo(regionId: number, userId?: number) {
+//   const sql = `
+//     SELECT 
+//       r.id,
+//       r.name,
+//       r.code,
+//       r.color,
+//       r.stadium_name as "stadiumName",
+//       r.description,
+//       r.total_champions as "totalChampions",
+//       r.flag_image as "flagImage",
+//       r.stadium_image as "stadiumImage",
+//       r.total_fighters as "totalFighters",
+//       r.created_at as "createdAt",
+      
+//       -- Compter le nombre de likes
+//       COALESCE((
+//         SELECT COUNT(*)
+//         FROM interactions i
+//         WHERE i.entity_type = 'region'
+//           AND i.entity_id = r.id
+//           AND i.interaction_type = 'like'
+//       ), 0) as "likes",
+      
+//       -- Vérifier si l'utilisateur a liké cette région
+//       ${userId ? `
+//       EXISTS(
+//         SELECT 1
+//         FROM interactions i
+//         WHERE i.entity_type = 'region'
+//           AND i.entity_id = r.id
+//           AND i.interaction_type = 'like'
+//           AND i.user_id = $2
+//       ) as "isMyFavorite"
+//       ` : 'FALSE as "isMyFavorite"' }
+      
+//     FROM regions r
+//     WHERE r.id = $1
+//   `;
+  
+//   const params = userId ? [regionId, userId] : [regionId];
+//   const result = await query(sql, params);
+//   return result[0] || null;
+// }
+
 async function getRegionInfo(regionId: number, userId?: number) {
   const sql = `
     SELECT 
@@ -211,16 +256,52 @@ async function getRegionInfo(regionId: number, userId?: number) {
           AND i.interaction_type = 'like'
           AND i.user_id = $2
       ) as "isMyFavorite"
-      ` : 'FALSE as "isMyFavorite"' }
+      ` : 'FALSE as "isMyFavorite"' },
+      
+      -- Récupérer les informations du coach
+      c.id as "coachId",
+      c.first_name as "coachFirstName",
+      c.last_name as "coachLastName",
+      c.nickname as "coachNickname",
+      c.profile_image as "coachProfileImage",
+      c.license_number as "coachLicenseNumber",
+      c.certification_level as "coachCertificationLevel",
+      c.experience_years as "coachExperienceYears",
+      c.specialties as "coachSpecialties"
       
     FROM regions r
+    LEFT JOIN coaches c ON r.id = c.region_id AND c.is_active = TRUE
     WHERE r.id = $1
   `;
   
   const params = userId ? [regionId, userId] : [regionId];
   const result = await query(sql, params);
-  return result[0] || null;
+  const raw = result[0] || null;
+  
+  if (!raw) return null;
+  
+  // Formater les données du coach
+  const coach = raw.coachId ? {
+    id: raw.coachId,
+    firstName: raw.coachFirstName,
+    lastName: raw.coachLastName,
+    nickname: raw.coachNickname,
+    profileImage: raw.coachProfileImage,
+    licenseNumber: raw.coachLicenseNumber,
+    certificationLevel: raw.coachCertificationLevel,
+    experienceYears: raw.coachExperienceYears,
+    specialties: raw.coachSpecialties
+  } : null;
+  
+  // Retourner les données de la région sans les champs bruts du coach
+  const { coachId, coachFirstName, coachLastName, coachNickname, coachProfileImage, coachLicenseNumber, coachCertificationLevel, coachExperienceYears, coachSpecialties, ...region } = raw;
+  
+  return {
+    ...region,
+    coach
+  };
 }
+
 
 async function getRegionFighters(regionId: number) {
   const sql = `

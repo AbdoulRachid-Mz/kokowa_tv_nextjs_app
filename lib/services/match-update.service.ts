@@ -93,10 +93,15 @@ export async function updateMatchAndRecompute(
       const subscribers = await client.query<{ fcm_token: string }>(
         `SELECT u.fcm_token
          FROM users u
-         JOIN user_match_subscriptions s ON s.user_id = u.id
-         WHERE s.match_id = $1
-           AND u.fcm_token IS NOT NULL`,
-        [matchId]
+         WHERE u.fcm_token IS NOT NULL
+           AND u.is_active = true
+           AND EXISTS (
+             SELECT 1
+             FROM fighters f
+             WHERE f.id IN ($1, $2)
+               AND f.region_id = u.region_id
+           )`,
+        [updatedMatch.fighter1_id, updatedMatch.fighter2_id]
       );
 
       for (const user of subscribers.rows) {
@@ -113,10 +118,15 @@ export async function updateMatchAndRecompute(
       const subscribers = await client.query<{ fcm_token: string }>(
         `SELECT u.fcm_token
          FROM users u
-         JOIN user_match_subscriptions s ON s.user_id = u.id
-         WHERE s.match_id = $1
-           AND u.fcm_token IS NOT NULL`,
-        [matchId]
+         WHERE u.fcm_token IS NOT NULL
+           AND u.is_active = true
+           AND EXISTS (
+             SELECT 1
+             FROM fighters f
+             WHERE f.id IN ($1, $2)
+               AND f.region_id = u.region_id
+           )`,
+        [updatedMatch.fighter1_id, updatedMatch.fighter2_id]
       );
 
       for (const user of subscribers.rows) {
