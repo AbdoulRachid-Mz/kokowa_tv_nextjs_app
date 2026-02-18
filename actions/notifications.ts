@@ -5,7 +5,7 @@ import { query, queryOne } from '@/lib/db/neon-client';
 import { notificationSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
 import { Notification, NotificationFilters, PaginatedResponse } from '@/types';
-import { sendPushNotification } from '@/lib/push';
+import { sendPushNotification, sendPushToTopic } from '@/lib/push';
 
 export async function getNotifications(
   filters: NotificationFilters = {}
@@ -214,15 +214,10 @@ export async function createNotification(formData: FormData) {
       validatedData.expires_at || null,
     ]);
 
-    // Récupérer le token du user
-    const user = await queryOne<{ fcm_token: string }>(
-      `SELECT fcm_token FROM users WHERE id = $1`,
-      [validatedData.user_id]
-    );
-
-    if (user?.fcm_token) {
-      await sendPushNotification(
-        user.fcm_token,
+    // Send push notification to the user's topic
+    if (validatedData.notification_type === 'match_update' && validatedData.entity_type === 'match') {
+      await sendPushToTopic(
+        `match_${validatedData.entity_id}`,
         validatedData.title,
         validatedData.message,
         {
@@ -230,6 +225,24 @@ export async function createNotification(formData: FormData) {
           type: validatedData.notification_type,
         }
       );
+    } else {
+      // Fallback to user token
+      const user = await queryOne<{ fcm_token: string }>(
+        `SELECT fcm_token FROM users WHERE id = $1`,
+        [validatedData.user_id]
+      );
+
+      if (user?.fcm_token) {
+        await sendPushNotification(
+          user.fcm_token,
+          validatedData.title,
+          validatedData.message,
+          {
+            notificationId: result[0].id.toString(),
+            type: validatedData.notification_type,
+          }
+        );
+      }
     }
 
     revalidatePath('/notifications');

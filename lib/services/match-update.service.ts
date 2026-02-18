@@ -2,7 +2,7 @@
 import { emitMatchEvent } from "@/actions/matches";
 import { pool } from "../db/neon-client";
 import type { PoolClient } from "pg";
-import { sendPushNotification } from "../push";
+import { sendPushNotification, sendPushToTopic } from "../push";
 
 export interface MatchUpdate {
   sub_group_id?: number;
@@ -90,53 +90,21 @@ export async function updateMatchAndRecompute(
 
     // Push notifications for live or completed status
     if (updates.status === 'live') {
-      const subscribers = await client.query<{ fcm_token: string }>(
-        `SELECT u.fcm_token
-         FROM users u
-         WHERE u.fcm_token IS NOT NULL
-           AND u.is_active = true
-           AND EXISTS (
-             SELECT 1
-             FROM fighters f
-             WHERE f.id IN ($1, $2)
-               AND f.region_id = u.region_id
-           )`,
-        [updatedMatch.fighter1_id, updatedMatch.fighter2_id]
+      await sendPushToTopic(
+        `match_${matchId}`,
+        '🔥 Match en direct !',
+        'Le match vient de commencer',
+        { matchId: matchId.toString() }
       );
-
-      for (const user of subscribers.rows) {
-        await sendPushNotification(
-          user.fcm_token,
-          '🔥 Match en direct !',
-          'Le match vient de commencer',
-          { matchId: matchId.toString() }
-        );
-      }
     }
 
     if (updates.status === 'completed') {
-      const subscribers = await client.query<{ fcm_token: string }>(
-        `SELECT u.fcm_token
-         FROM users u
-         WHERE u.fcm_token IS NOT NULL
-           AND u.is_active = true
-           AND EXISTS (
-             SELECT 1
-             FROM fighters f
-             WHERE f.id IN ($1, $2)
-               AND f.region_id = u.region_id
-           )`,
-        [updatedMatch.fighter1_id, updatedMatch.fighter2_id]
+      await sendPushToTopic(
+        `match_${matchId}`,
+        '✅ Match terminé',
+        'Le match est terminé, découvrez le résultat',
+        { matchId: matchId.toString() }
       );
-
-      for (const user of subscribers.rows) {
-        await sendPushNotification(
-          user.fcm_token,
-          '✅ Match terminé',
-          'Le match est terminé, découvrez le résultat',
-          { matchId: matchId.toString() }
-        );
-      }
     }
 
     // Émettre événement temps réel

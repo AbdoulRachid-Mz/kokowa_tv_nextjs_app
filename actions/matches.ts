@@ -8,7 +8,7 @@ import { Match, MatchFilters, PaginatedResponse } from '@/types';
 import { connectionManager } from '@/lib/realtime/connection-manager';
 import { z } from 'zod';
 import { updateMatchAndRecompute } from '@/lib/services/match-update.service';
-import { sendPushNotification } from '@/lib/push';
+import { sendPushNotification, sendPushToTopic } from '@/lib/push';
 
 export async function getMatches(
   filters: MatchFilters = {}
@@ -997,23 +997,21 @@ export async function updateMatchStatus(id: number, status: string) {
     });
 
     if (status === 'live') {
-      // Récupérer les abonnés au match
-      // Pas de table d'abonnement match → on récupère tous les tokens actifs
-      const subscribers = await query<{ fcm_token: string }>(`
-        SELECT fcm_token
-        FROM users
-        WHERE is_active = true
-          AND fcm_token IS NOT NULL
-      `, []);
+      await sendPushToTopic(
+        `match_${id}`,
+        '🔥 Match en direct !',
+        'Le match vient de commencer',
+        { matchId: id.toString() }
+      );
+    }
 
-      for (const user of subscribers) {
-        await sendPushNotification(
-          user.fcm_token,
-          '🔥 Match en direct !',
-          'Le match vient de commencer',
-          { matchId: id.toString() }
-        );
-      }
+    if (status === 'completed') {
+      await sendPushToTopic(
+        `match_${id}`,
+        '✅ Match terminé',
+        'Le match est terminé, découvrez le résultat',
+        { matchId: id.toString() }
+      );
     }
 
     revalidatePath('/matches');
