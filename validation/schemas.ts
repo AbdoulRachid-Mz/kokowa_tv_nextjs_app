@@ -386,8 +386,8 @@ export const advertisementSchema = z.object({
     'mobile_sticky'
   ]).default('banner_top'),
   priority: z.number().int().min(0).default(0),
-  start_date: z.coerce.date().optional(),
-  end_date: z.coerce.date().optional(),
+  start_date: z.string().datetime().optional(),
+  end_date: z.string().datetime().optional(),
   is_active: z.boolean().default(true),
   click_count: z.number().int().min(0).default(0),
   impression_count: z.number().int().min(0).default(0),

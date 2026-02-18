@@ -42,7 +42,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
   CalendarIcon,
-  Image,
+  Image as ImageIcon,
   Video,
   Code,
   Globe,
@@ -56,6 +56,7 @@ import {
   Eye,
 } from "lucide-react";
 import { Typography } from "../ui/typography";
+import Image from "next/image";
 
 interface AdvertisementFormProps {
   initialData?: Advertisement;
@@ -74,7 +75,7 @@ const POSITIONS = [
 ];
 
 const MEDIA_TYPES = [
-  { value: "image", label: "Image", icon: Image },
+  { value: "image", label: "Image", icon: ImageIcon },
   { value: "video", label: "Vidéo", icon: Video },
   { value: "html", label: "HTML", icon: Code },
 ];
@@ -127,7 +128,7 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
   const onSubmit = async (data: AdvertisementInput) => {
     try {
       setIsSubmitting(true);
-      
+
       // Créer un FormData pour l'action
       const formData = new FormData();
       Object.entries(data).forEach(([key, value]) => {
@@ -145,8 +146,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
 
       if (result.success) {
         toast.success(
-          isEditing 
-            ? "Publicité modifiée avec succès" 
+          isEditing
+            ? "Publicité modifiée avec succès"
             : "Publicité créée avec succès"
         );
         router.push(`/ad/advertisements`);
@@ -161,7 +162,7 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
 
   const getMediaIcon = (type: string) => {
     switch (type) {
-      case "image": return <Image className="h-5 w-5" />;
+      case "image": return <ImageIcon className="h-5 w-5" />;
       case "video": return <Video className="h-5 w-5" />;
       case "html": return <Code className="h-5 w-5" />;
       default: return null;
@@ -178,8 +179,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
               {isEditing ? "Modifier la publicité" : "Nouvelle publicité"}
             </h2>
             <p className="text-muted-foreground">
-              {isEditing 
-                ? "Modifiez les informations de la publicité" 
+              {isEditing
+                ? "Modifiez les informations de la publicité"
                 : "Créez une nouvelle campagne publicitaire"}
             </p>
           </div>
@@ -229,8 +230,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                           {field.value ? "Publicité active" : "Publicité inactive"}
                         </FormLabel>
                         <FormDescription>
-                          {field.value 
-                            ? "Visible sur le site selon les dates définies" 
+                          {field.value
+                            ? "Visible sur le site selon les dates définies"
                             : "Masquée sur le site"}
                         </FormDescription>
                       </div>
@@ -278,8 +279,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Description de la publicité..." 
+                        <Textarea
+                          placeholder="Description de la publicité..."
                           className="resize-none"
                           rows={3}
                           {...field}
@@ -298,8 +299,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Position *</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
+                        <Select
+                          onValueChange={field.onChange}
                           defaultValue={field.value}
                         >
                           <FormControl>
@@ -330,8 +331,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                       <FormItem>
                         <FormLabel>Priorité</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             min="0"
                             {...field}
                             onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -355,8 +356,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                       <FormControl>
                         <div className="flex items-center gap-2">
                           <Globe className="h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            placeholder="https://example.com" 
+                          <Input
+                            placeholder="https://example.com"
                             {...field}
                             value={field.value || ""}
                           />
@@ -442,7 +443,6 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="end_date"
@@ -516,9 +516,9 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                       Période sélectionnée
                     </Typography>
                     <Typography variant="body-sm" theme="muted">
-                      Du {format(new Date(watchStartDate), "dd MMMM yyyy à HH:mm", { locale: fr})}
+                      Du {format(new Date(watchStartDate), "dd MMMM yyyy à HH:mm", { locale: fr })}
                       <br />
-                      Au {format(new Date(watchEndDate), "dd MMMM yyyy à HH:mm", { locale: fr})}
+                      Au {format(new Date(watchEndDate), "dd MMMM yyyy à HH:mm", { locale: fr })}
                     </Typography>
                   </div>
                 )}
@@ -593,7 +593,7 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                       </FormLabel>
                       <FormControl>
                         {watchMediaType === "html" ? (
-                          <Textarea 
+                          <Textarea
                             placeholder="<div>Votre code HTML ici...</div>"
                             className="font-mono text-sm"
                             rows={5}
@@ -601,10 +601,10 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                             value={field.value || ""}
                           />
                         ) : (
-                          <Input 
+                          <Input
                             placeholder={
-                              watchMediaType === "image" 
-                                ? "https://example.com/image.jpg" 
+                              watchMediaType === "image"
+                                ? "https://example.com/image.jpg"
                                 : "https://example.com/video.mp4"
                             }
                             {...field}
@@ -627,9 +627,9 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                   <div className="mt-4">
                     <FormLabel>Prévisualisation</FormLabel>
                     <div className="border rounded-lg overflow-hidden">
-                      <img 
-                        src={watchMedia} 
-                        alt="Prévisualisation" 
+                      <Image
+                        src={watchMedia}
+                        alt="Prévisualisation"
                         className="w-full h-auto max-h-64 object-contain bg-muted/30"
                         onError={() => setMediaPreview(null)}
                       />
@@ -640,9 +640,9 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                 {watchMedia && watchMediaType === "video" && (
                   <div className="mt-4">
                     <FormLabel>Prévisualisation</FormLabel>
-                    <video 
-                      src={watchMedia} 
-                      controls 
+                    <video
+                      src={watchMedia}
+                      controls
                       className="w-full rounded-lg border"
                     />
                   </div>
@@ -665,8 +665,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                     <FormItem>
                       <FormLabel>Nom de l'annonceur</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Ex: Entreprise XYZ" 
+                        <Input
+                          placeholder="Ex: Entreprise XYZ"
                           {...field}
                           value={field.value || ""}
                         />
@@ -685,8 +685,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                       <FormControl>
                         <div className="flex items-center gap-2">
                           <Phone className="h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            placeholder="Email ou téléphone" 
+                          <Input
+                            placeholder="Email ou téléphone"
                             {...field}
                             value={field.value || ""}
                           />
@@ -706,8 +706,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                       <FormControl>
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            placeholder="Ex: Jeunes, amateurs de sport..." 
+                          <Input
+                            placeholder="Ex: Jeunes, amateurs de sport..."
                             {...field}
                             value={field.value || ""}
                           />
@@ -734,8 +734,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                       <FormControl>
                         <div className="flex items-center gap-2">
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             min="0"
                             step="0.01"
                             {...field}
@@ -770,8 +770,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                           <FormControl>
                             <div className="flex items-center gap-2">
                               <Eye className="h-4 w-4 text-muted-foreground" />
-                              <Input 
-                                type="number" 
+                              <Input
+                                type="number"
                                 min="0"
                                 {...field}
                                 onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -792,8 +792,8 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                           <FormControl>
                             <div className="flex items-center gap-2">
                               <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                              <Input 
-                                type="number" 
+                              <Input
+                                type="number"
                                 min="0"
                                 {...field}
                                 onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
