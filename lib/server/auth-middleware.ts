@@ -20,6 +20,10 @@ export async function verifyFirebaseToken(request: NextRequest) {
       return { user: null, error: "Token manquant" };
     }
 
+    if (!adminAuth) {
+  return { user: null, error: "Firebase non initialisé" };
+}
+
     const decodedToken = await adminAuth.verifyIdToken(token);
 
     return {

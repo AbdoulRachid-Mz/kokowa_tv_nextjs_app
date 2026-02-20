@@ -1,29 +1,39 @@
 import * as admin from 'firebase-admin';
 
-// Vérifier si l'application Admin est déjà initialisée
-if (!admin.apps.length) {
+function initializeFirebaseAdmin() {
+  if (admin.apps.length > 0) {
+    console.log('✅ Firebase Admin déjà initialisé');
+    return;
+  }
+
   try {
-    // Option 1: Utiliser les variables d'environnement (recommandé pour Vercel/Production)
-    if (process.env.FIREBASE_PRIVATE_KEY) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          // La clé privée doit être formatée correctement pour les nouvelles lignes
-          privateKey: process.env.FCM_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        }),
-      });
+    console.log('🔄 Initialisation Firebase Admin...');
+
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+    if (!projectId || !clientEmail || !privateKey) {
+      throw new Error('Variables Firebase manquantes');
     }
-    // Option 2: Application Default Credentials (pour Google Cloud)
-    else {
-      admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
-      });
-    }
+
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId,
+        clientEmail,
+        privateKey: privateKey.replace(/\\n/g, '\n'),
+      }),
+    });
+
+    console.log('✅ Firebase Admin initialisé correctement');
   } catch (error) {
-    console.error('Firebase admin initialization error:', error);
+    console.error('❌ Erreur initialisation Firebase Admin:', error);
   }
 }
 
-export const adminAuth = admin.auth();
+initializeFirebaseAdmin();
+
+export const adminAuth =
+  admin.apps.length > 0 ? admin.auth() : null;
+
 export default admin;

@@ -1,8 +1,7 @@
 // lib/services/match-update.service.ts - VERSION CORRIGÉE
-import { emitMatchEvent } from "@/actions/matches";
+import { emitMatchEvent, sendMatchPush } from "@/actions/matches";
 import { pool } from "../db/neon-client";
 import type { PoolClient } from "pg";
-import { sendPushNotification, sendPushToTopic } from "../push";
 
 export interface MatchUpdate {
   sub_group_id?: number;
@@ -87,24 +86,9 @@ export async function updateMatchAndRecompute(
     await checkAndCompleteSubGroup(client, oldMatch.sub_group_id);
 
     await client.query("COMMIT");
-
-    // Push notifications for live or completed status
-    if (updates.status === 'live') {
-      await sendPushToTopic(
-        `match_${matchId}`,
-        '🔥 Match en direct !',
-        'Le match vient de commencer',
-        { matchId: matchId.toString() }
-      );
-    }
-
+// lib/services/match-update.service.ts
     if (updates.status === 'completed') {
-      await sendPushToTopic(
-        `match_${matchId}`,
-        '✅ Match terminé',
-        'Le match est terminé, découvrez le résultat',
-        { matchId: matchId.toString() }
-      );
+      await sendMatchPush(matchId);
     }
 
     // Émettre événement temps réel

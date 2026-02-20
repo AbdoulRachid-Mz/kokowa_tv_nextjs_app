@@ -31,6 +31,8 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { MatchControls } from "./match-controls";
 import { completeSubGroup } from "@/actions/sub-groups";
 import { getEditionFighters } from "@/actions/editions";
+import { sendMatchPush } from "@/actions/matches";
+import { createFighterCard } from "@/actions/fighter-cards";
 
 // Helpers
 const formatSecondsToDuration = (totalSeconds: number): string => {
@@ -194,13 +196,14 @@ export default function MatchDetailPage() {
   // Mutation pour ajouter un carton
   const addCardMutation = useMutation({
     mutationFn: async ({ fighterId }: { fighterId: number }) => {
-      const response = await api.post('/api/fighter-cards', {
-        match_id: parseInt(matchId as string),
-        fighter_id: fighterId,
-        card_type: 'yellow',
-        card_reason: 'Carton jaune',
-        minute_given: formatSecondsToDuration(matchState.time)
-      });
+      const formData = new FormData();
+      formData.append('fighter_id', fighterId.toString());
+      formData.append('match_id', matchId as string);
+      formData.append('card_type', 'yellow');
+      formData.append('card_reason', 'Carton jaune');
+      formData.append('minute_given', formatSecondsToDuration(matchState.time));
+
+      const response = await createFighterCard(formData);
       return response;
     },
     onSuccess: (data, variables) => {
@@ -263,10 +266,6 @@ export default function MatchDetailPage() {
       ).length || 0;
 
       matchState.initialize({
-        time: matchData.total_duration ? parseDurationToSeconds(matchData.total_duration) : 0,
-        breakCount: matchData.break_count || 0,
-        isRunning: matchData.status === 'live',
-        status: matchData.status,
         audienceCount: matchData.audience_count || 0,
         fighter1Cards,
         fighter2Cards
@@ -289,33 +288,55 @@ export default function MatchDetailPage() {
 
   // Handlers
   const handleUpdateMatch = (updates: Partial<Match>) => {
-    updateMatchMutation.mutate(updates);
+    const base = match || matchData;
+    if (!base) {
+      updateMatchMutation.mutate(updates);
+      return;
+    }
+
+    const filteredUpdates: Partial<Match> = {};
+    (Object.keys(updates) as (keyof Match)[]).forEach((key) => {
+      const newValue = updates[key];
+      if (newValue !== undefined && newValue !== base[key]) {
+        (filteredUpdates as any)[key] = newValue;
+      }
+    });
+
+    if (Object.keys(filteredUpdates).length === 0) return;
+
+    updateMatchMutation.mutate(filteredUpdates);
   };
 
-  const handleTimeUpdate = useCallback((seconds: number) => {
+  const handleTimerTimeChange = useCallback((seconds: number) => {
     matchState.setTime(seconds);
-    handleUpdateMatch({ total_duration: formatSecondsToDuration(seconds) });
-  }, []);
-
-  const handleAddBreak = useCallback(() => {
-    const newBreakCount = matchState.breakCount + 1;
-    matchState.setBreakCount(newBreakCount);
-    matchState.setIsRunning(false);
-    matchState.setStatus('round_break');
-    handleUpdateMatch({
-      break_count: newBreakCount,
-      status: 'round_break'
-    });
-  }, [matchState.breakCount]);
-
-  const handleTimerToggle = useCallback((running: boolean) => {
-    matchState.setIsRunning(running);
-    handleUpdateMatch({ status: running ? 'live' : 'round_break' });
-  }, []);
+  }, [matchState]);
 
   const handleAddCard = useCallback((fighterId: number) => {
     addCardMutation.mutate({ fighterId });
   }, [addCardMutation]);
+
+  // Dans page.tsx - Gestion du premier match
+  const handleMatchStart = useCallback(() => {
+    if (subGroup && subGroup.status === 'upcoming') {
+      // Mettre à jour le statut du sous-groupe à 'ongoing'
+      updateSubGroupStatus.mutate({
+        id: parseInt(subGroupId as string),
+        status: 'ongoing'
+      });
+    }
+  }, [subGroup, subGroupId]);
+
+  // Mutation pour mettre à jour le sous-groupe
+  const updateSubGroupStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const response = await api.put(`/api/sub-groups/${id}`, { status });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sub-group', subGroupId] });
+      toast.success('Sous-groupe démarré');
+    }
+  });
 
   const navigateToMatch = (direction: "prev" | "next") => {
     if (!subGroup?.matches) return;
@@ -357,6 +378,12 @@ export default function MatchDetailPage() {
 
   const currentMatch = match || matchData;
   const currentSubGroup = subGroup || subGroupData;
+
+  const initialTimerDuration =
+    matchState.time > 0 &&
+    (currentMatch.status === 'live' || currentMatch.status === 'round_break')
+      ? formatSecondsToDuration(matchState.time)
+      : currentMatch.total_duration;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 p-3 md:p-4">
@@ -456,7 +483,7 @@ export default function MatchDetailPage() {
               currentTime={matchState.time}
               yellowCardCount={matchState.fighter1Cards}
               isSubGroupCompleted={currentSubGroup.is_completed}
-              matchStatus={matchState.status}
+              matchStatus={currentMatch.status}
             />
 
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:block">
@@ -475,7 +502,7 @@ export default function MatchDetailPage() {
               currentTime={matchState.time}
               yellowCardCount={matchState.fighter2Cards}
               isSubGroupCompleted={currentSubGroup.is_completed}
-              matchStatus={matchState.status}
+              matchStatus={currentMatch.status}
             />
           </div>
 
@@ -483,9 +510,6 @@ export default function MatchDetailPage() {
           <MatchControls
             match={currentMatch}
             onUpdateMatch={handleUpdateMatch}
-            onAddBreak={handleAddBreak}
-            isTimerRunning={matchState.isRunning}
-            onTimerToggle={handleTimerToggle}
             isSaving={updateMatchMutation.isPending}
             isSubGroupCompleted={currentSubGroup.is_completed}
             onResetMatch={() => resetMatchMutation.mutate()}
@@ -495,15 +519,28 @@ export default function MatchDetailPage() {
         {/* Colonne de droite (1/3) */}
         <div className="space-y-6">
           <MatchTimer
-            match={currentMatch}
-            initialTime={matchState.time}
-            breakCount={matchState.breakCount}
-            isRunning={matchState.isRunning}
-            onTimeUpdate={handleTimeUpdate}
-            onStatusChange={(status) => handleUpdateMatch({ status })}
-            onBreakCountChange={(count) => matchState.setBreakCount(count)}
-            onTimerToggle={handleTimerToggle}
+            matchId={currentMatch.id}
+            initialDuration={initialTimerDuration}
+            initialBreakCount={currentMatch.break_count}
+            initialStatus={currentMatch.status}
             isSubGroupCompleted={currentSubGroup.is_completed}
+            areBothFightersAssigned={!!(currentMatch.fighter1_id && currentMatch.fighter2_id)}
+            onMatchStart={handleMatchStart}
+            onDurationSave={(seconds) => {
+              handleUpdateMatch({ total_duration: formatSecondsToDuration(seconds) });
+            }}
+            onBreakCountSave={(count) => {
+              handleUpdateMatch({ break_count: count });
+            }}
+            onStatusChange={(status) => {
+              handleUpdateMatch({ status: status as Match['status'] });
+
+              // Envoyer notification push
+              if (status === 'live') {
+                sendMatchPush(currentMatch.id);
+              }
+            }}
+            onTimeChange={handleTimerTimeChange}
           />
 
           <AudienceCounter

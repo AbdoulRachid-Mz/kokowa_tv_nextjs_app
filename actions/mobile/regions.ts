@@ -221,7 +221,6 @@ async function getCardsForMatch(matchId: number) {
 //   const result = await query(sql, params);
 //   return result[0] || null;
 // }
-
 async function getRegionInfo(regionId: number, userId?: number) {
   const sql = `
     SELECT 
@@ -258,16 +257,11 @@ async function getRegionInfo(regionId: number, userId?: number) {
       ) as "isMyFavorite"
       ` : 'FALSE as "isMyFavorite"' },
       
-      -- Récupérer les informations du coach
+      -- Infos du coach directement dans les champs de la région
       c.id as "coachId",
       c.first_name as "coachFirstName",
       c.last_name as "coachLastName",
-      c.nickname as "coachNickname",
-      c.profile_image as "coachProfileImage",
-      c.license_number as "coachLicenseNumber",
-      c.certification_level as "coachCertificationLevel",
-      c.experience_years as "coachExperienceYears",
-      c.specialties as "coachSpecialties"
+      c.profile_image as "coachProfileImage"
       
     FROM regions r
     LEFT JOIN coaches c ON r.id = c.region_id AND c.is_active = TRUE
@@ -276,30 +270,7 @@ async function getRegionInfo(regionId: number, userId?: number) {
   
   const params = userId ? [regionId, userId] : [regionId];
   const result = await query(sql, params);
-  const raw = result[0] || null;
-  
-  if (!raw) return null;
-  
-  // Formater les données du coach
-  const coach = raw.coachId ? {
-    id: raw.coachId,
-    firstName: raw.coachFirstName,
-    lastName: raw.coachLastName,
-    nickname: raw.coachNickname,
-    profileImage: raw.coachProfileImage,
-    licenseNumber: raw.coachLicenseNumber,
-    certificationLevel: raw.coachCertificationLevel,
-    experienceYears: raw.coachExperienceYears,
-    specialties: raw.coachSpecialties
-  } : null;
-  
-  // Retourner les données de la région sans les champs bruts du coach
-  const { coachId, coachFirstName, coachLastName, coachNickname, coachProfileImage, coachLicenseNumber, coachCertificationLevel, coachExperienceYears, coachSpecialties, ...region } = raw;
-  
-  return {
-    ...region,
-    coach
-  };
+  return result[0] || null;
 }
 
 

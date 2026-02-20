@@ -331,12 +331,7 @@ async function getAllMatchesForSubGroup(subGroupId: number) {
     ORDER BY 
       CASE 
         WHEN m.status IN ('live', 'round_break') THEN 0
-        WHEN m.status = 'scheduled' THEN 1
-        WHEN m.status = 'completed' THEN 2
-        ELSE 3
       END,
-      m.match_date ASC,
-      m.start_time ASC,
       m.match_number ASC
   `;
 

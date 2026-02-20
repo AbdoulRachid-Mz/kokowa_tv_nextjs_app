@@ -935,6 +935,14 @@ export async function createMatch(formData: FormData) {
   }
 }
 
+export async function sendMatchPush(matchId: number) {
+  await sendPushToTopic(
+    `global`,
+    '🔥 Match en direct',
+    'Le match commence'
+  );
+}
+
 
 
 export async function deleteMatch(id: number) {
@@ -990,15 +998,15 @@ export async function updateMatchStatus(id: number, status: string) {
     await query(sql, [status, id]);
 
     // Émettre l'événement de changement de statut
+    // previousStatus: 'live', // Vous pourriez vouloir stocker l'ancien statut
     await emitMatchEvent(id, 'match_status_changed', {
       match: updateMatch,
-      previousStatus: 'scheduled', // Vous pourriez vouloir stocker l'ancien statut
       newStatus: status
     });
 
     if (status === 'live') {
       await sendPushToTopic(
-        `match_${id}`,
+        `global`,
         '🔥 Match en direct !',
         'Le match vient de commencer',
         { matchId: id.toString() }
@@ -1007,7 +1015,7 @@ export async function updateMatchStatus(id: number, status: string) {
 
     if (status === 'completed') {
       await sendPushToTopic(
-        `match_${id}`,
+        `global`,
         '✅ Match terminé',
         'Le match est terminé, découvrez le résultat',
         { matchId: id.toString() }

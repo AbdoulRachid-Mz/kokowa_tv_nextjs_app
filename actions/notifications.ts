@@ -258,6 +258,7 @@ export async function createNotification(formData: FormData) {
   }
 }
 
+
 export async function markNotificationAsRead(id: number) {
   try {
     const sql = `

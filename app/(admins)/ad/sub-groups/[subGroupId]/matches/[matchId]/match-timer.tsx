@@ -1,210 +1,114 @@
 // app/ad/sub-groups/[subGroupId]/matches/[matchId]/match-timer.tsx
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Typography } from "@/components/ui/typography";
 import { Badge } from "@/components/ui/badge";
-import { Match } from "@/types";
 import { Play, Pause, RotateCcw, Timer, Square, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
+import { useMatchTimer } from "@/hooks/use-match-timer";
+import { useEffect, useState } from "react";
 
 interface MatchTimerProps {
-  match: Match;
-  initialTime: number;
-  breakCount: number;
-  isRunning: boolean;
-  onTimeUpdate: (seconds: number) => void;
-  onStatusChange: (status: Match['status']) => void;
-  onBreakCountChange: (count: number) => void;
-  onTimerToggle: (running: boolean) => void;
+  matchId: number;
+  initialDuration?: string;
+  initialBreakCount?: number;
+  initialStatus?: string;
   isSubGroupCompleted: boolean;
+  areBothFightersAssigned: boolean;
+  onMatchStart?: () => void;
+  onMatchComplete?: (result: any) => void;
+  onDurationSave?: (seconds: number) => void;
+  onBreakCountSave?: (count: number) => void;
+  onStatusChange?: (status: string) => void;
+  onTimeChange?: (seconds: number) => void;
 }
 
 export function MatchTimer({
-  match,
-  initialTime,
-  breakCount,
-  isRunning,
-  onTimeUpdate,
+  matchId,
+  initialDuration,
+  initialBreakCount = 0,
+  initialStatus = 'scheduled',
+  isSubGroupCompleted,
+  areBothFightersAssigned,
+  onMatchStart,
+  onMatchComplete,
+  onDurationSave,
+  onBreakCountSave,
   onStatusChange,
-  onBreakCountChange,
-  onTimerToggle,
-  isSubGroupCompleted
+  onTimeChange
 }: MatchTimerProps) {
-  const [time, setIsBreak] = useState(initialTime);
-  const [isMedicalBreak, setIsMedicalBreak] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [localBreakCount, setLocalBreakCount] = useState(breakCount);
-  
-  const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const isRunningRef = useRef(isRunning);
-  const breakTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  // Utiliser un state local pour éviter les réinitialisations intempestives
+  const [localDuration, setLocalDuration] = useState(initialDuration);
+  const [localBreakCount, setLocalBreakCount] = useState(initialBreakCount);
+  const [localStatus, setLocalStatus] = useState(initialStatus);
 
-  // Synchroniser les refs
+  const {
+    time,
+    formattedTime,
+    breakCount,
+    isRunning,
+    status,
+    startMatch,
+    pauseMatch,
+    addMedicalBreak,
+    completeMatch,
+    resetMatch,
+    syncWithDatabase
+  } = useMatchTimer({
+    initialDuration: localDuration,
+    initialBreakCount: localBreakCount,
+    initialStatus: localStatus,
+    onDurationChange: (seconds) => {
+      // Sauvegarder seulement à des moments clés
+      if (!isRunning || status === 'completed') {
+        onDurationSave?.(seconds);
+      }
+    },
+    onBreakCountChange: onBreakCountSave,
+    onStatusChange: (newStatus) => {
+      setLocalStatus(newStatus);
+      onStatusChange?.(newStatus);
+    },
+    onTimeChange
+  });
+
+  // Mettre à jour les props locales quand les props initiales changent
   useEffect(() => {
-    isRunningRef.current = isRunning;
-  }, [isRunning]);
+    setLocalDuration(initialDuration);
+    setLocalBreakCount(initialBreakCount);
+    setLocalStatus(initialStatus);
+  }, [initialDuration, initialBreakCount, initialStatus, syncWithDatabase]);
 
-  // Synchroniser le temps initial
-  useEffect(() => {
-    if (match.total_duration) {
-      const dbTime = parseDurationToSeconds(match.total_duration);
-      if (Math.abs(dbTime - time) > 2 || !isRunning) {
-        setIsBreak(dbTime);
-      }
-    }
-  }, [match.total_duration, time, isRunning]);
+  const canControl = !isSubGroupCompleted && status !== 'completed';
+  const canStart = canControl && areBothFightersAssigned && status !== 'live';
+  const canPause = canControl && isRunning;
+  const canAddMedicalBreak = canControl && isRunning && status === 'live';
 
-  // Gestion du timer
-  useEffect(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = undefined;
-    }
+  const handleStart = () => {
+    startMatch();
+    onMatchStart?.();
 
-    if (isRunning && !isMedicalBreak && match.status !== 'completed' && !isSubGroupCompleted) {
-      timerRef.current = setInterval(() => {
-        setIsBreak(prev => {
-          const newTime = prev + 1;
-          // Mettre à jour toutes les 60 secondes
-          if (newTime % 60 === 0) {
-            onTimeUpdate(newTime);
-          }
-          return newTime;
-        });
-      }, 1000);
-    }
+    // Sauvegarder immédiatement
+    onDurationSave?.(time);
+  };
 
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = undefined;
-      }
-    };
-  }, [isRunning, isMedicalBreak, match.status, onTimeUpdate, isSubGroupCompleted]);
+  const handlePause = () => {
+    pauseMatch();
+    // Sauvegarder la durée à la pause
+    onDurationSave?.(time);
+  };
 
-  // Formater le temps
-  const formatTime = useCallback((seconds: number) => {
-    try {
-      const safeSeconds = isNaN(seconds) ? 0 : Math.max(0, seconds);
-      const hours = Math.floor(safeSeconds / 3600);
-      const minutes = Math.floor((safeSeconds % 3600) / 60);
-      const secs = safeSeconds % 60;
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    } catch {
-      return "00:00:00";
-    }
-  }, []);
+  const handleMedicalBreak = () => {
+    addMedicalBreak();
+    // La durée est sauvegardée dans le hook
+  };
 
-  // Démarrer/Arrêter le timer
-  const toggleTimer = useCallback(() => {
-    if (match.status === 'completed' || isSubGroupCompleted) {
-      setError("Match déjà terminé");
-      return;
-    }
-
-    if (!match.fighter1_id || !match.fighter2_id) {
-      setError("Les deux lutteurs doivent être assignés");
-      return;
-    }
-
-    const newRunningState = !isRunning;
-    
-    if (newRunningState) {
-      // Démarrer
-      setIsMedicalBreak(false);
-      onTimerToggle(true);
-      onStatusChange('live');
-      if (!match.start_time) {
-        onTimeUpdate(0);
-      }
-      toast.success("Match démarré");
-    } else {
-      // Mettre en pause
-      onTimerToggle(false);
-      onStatusChange('round_break');
-      toast.info("Match en pause");
-    }
-    
-    setError(null);
-  }, [isRunning, match.status, match.fighter1_id, match.fighter2_id, match.start_time, isSubGroupCompleted, onTimerToggle, onStatusChange, onTimeUpdate]);
-
-  // Ajouter une pause médicale
-  const addMedicalBreak = useCallback(() => {
-    if (match.status === 'completed' || isSubGroupCompleted) {
-      setError("Impossible d'ajouter une pause");
-      return;
-    }
-
-    if (!isRunning) {
-      setError("Le match doit être en cours");
-      return;
-    }
-
-    // Mettre en pause
-    setIsMedicalBreak(true);
-    onTimerToggle(false);
-    onStatusChange('round_break');
-
-    // Incrémenter le compteur de pauses
-    const newBreakCount = localBreakCount + 1;
-    setLocalBreakCount(newBreakCount);
-    onBreakCountChange(newBreakCount);
-
-    toast.info(`Pause médicale #${newBreakCount}`);
-
-    // Reprise automatique après 30 secondes
-    if (breakTimeoutRef.current) {
-      clearTimeout(breakTimeoutRef.current);
-    }
-
-    breakTimeoutRef.current = setTimeout(() => {
-      if (!isSubGroupCompleted && match.status !== 'completed') {
-        setIsMedicalBreak(false);
-        onTimerToggle(true);
-        onStatusChange('live');
-        toast.success("Reprise du match");
-      }
-    }, 30000);
-
-  }, [isRunning, match.status, localBreakCount, isSubGroupCompleted, onTimerToggle, onStatusChange, onBreakCountChange]);
-
-  // Réinitialiser
-  const resetTimer = useCallback(() => {
-    if (match.status === 'completed' || isSubGroupCompleted) {
-      setError("Impossible de réinitialiser");
-      return;
-    }
-
-    setIsBreak(0);
-    setIsMedicalBreak(false);
-    setLocalBreakCount(0);
-    setError(null);
-    
-    onTimeUpdate(0);
-    onTimerToggle(false);
-    onStatusChange('scheduled');
-    onBreakCountChange(0);
-
-    if (breakTimeoutRef.current) {
-      clearTimeout(breakTimeoutRef.current);
-    }
-
-    toast.info("Timer réinitialisé");
-  }, [match.status, isSubGroupCompleted, onTimeUpdate, onTimerToggle, onStatusChange, onBreakCountChange]);
-
-  // Nettoyer les timeouts
-  useEffect(() => {
-    return () => {
-      if (breakTimeoutRef.current) {
-        clearTimeout(breakTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const canControl = !isSubGroupCompleted && match.status !== 'completed';
+  const handleReset = () => {
+    resetMatch();
+    onDurationSave?.(0);
+    onBreakCountSave?.(0);
+  };
 
   return (
     <Card>
@@ -214,84 +118,109 @@ export function MatchTimer({
           Chronomètre
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {/* Affichage du temps */}
         <div className="text-center">
           <Typography variant="h2" className="font-mono tracking-wider text-4xl font-bold">
-            {formatTime(time)}
+            {formattedTime}
           </Typography>
           <Typography variant="body-sm" theme="muted" className="mt-1">
             Durée du match
           </Typography>
         </div>
 
-        {error && (
-          <div className="p-2 bg-red-50 border border-red-200 rounded-md">
-            <div className="flex items-center gap-2 text-red-700 text-xs">
+        {!areBothFightersAssigned && status === 'scheduled' && (
+          <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+            <div className="flex items-center gap-2 text-yellow-700 text-xs">
               <AlertCircle className="h-3 w-3" />
-              <span>{error}</span>
+              <span>Les deux lutteurs doivent être assignés pour démarrer</span>
             </div>
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <Button
-            onClick={toggleTimer}
-            variant={isRunning ? "destructive" : "default"}
-            size="lg"
-            className="gap-2"
-            disabled={!canControl}
-          >
-            {isRunning ? (
-              <>
-                <Pause className="h-5 w-5" />
-                Pause
-              </>
-            ) : (
-              <>
-                <Play className="h-5 w-5" />
-                {match.status === 'scheduled' ? 'Démarrer' : 'Reprendre'}
-              </>
-            )}
-          </Button>
+          {status !== 'completed' ? (
+            <>
+              {!isRunning ? (
+                <Button
+                  onClick={handleStart}
+                  variant="default"
+                  size="lg"
+                  className="gap-2"
+                  disabled={!canStart}
+                >
+                  <Play className="h-5 w-5" />
+                  {status === 'scheduled' ? 'Démarrer' : 'Reprendre'}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handlePause}
+                  variant="destructive"
+                  size="lg"
+                  className="gap-2"
+                  disabled={!canPause}
+                >
+                  <Pause className="h-5 w-5" />
+                  Pause
+                </Button>
+              )}
 
-          <Button
-            onClick={addMedicalBreak}
-            variant="outline"
-            size="lg"
-            className="gap-2"
-            disabled={!canControl || !isRunning}
-          >
-            <Square className="h-5 w-5" />
-            Pause médicale
-          </Button>
+              <Button
+                onClick={handleMedicalBreak}
+                variant="outline"
+                size="lg"
+                className="gap-2"
+                disabled={!canAddMedicalBreak}
+              >
+                <Square className="h-5 w-5" />
+                Pause médicale
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="secondary"
+              size="lg"
+              className="col-span-2 gap-2 bg-green-500 text-white hover:bg-green-600"
+              disabled
+            >
+              ✓ Match terminé
+            </Button>
+          )}
         </div>
 
-        <Button
-          onClick={resetTimer}
-          variant="ghost"
-          size="sm"
-          className="w-full gap-2"
-          disabled={!canControl}
-        >
-          <RotateCcw className="h-4 w-4" />
-          Réinitialiser
-        </Button>
+        {status !== 'completed' && (
+          <Button
+            onClick={handleReset}
+            variant="ghost"
+            size="sm"
+            className="w-full gap-2"
+            disabled={!canControl}
+          >
+            <RotateCcw className="h-4 w-4" />
+            Réinitialiser
+          </Button>
+        )}
 
         <div className="flex items-center justify-between pt-2 border-t">
           <Badge variant="outline" className="gap-1">
             <Square className="h-3 w-3" />
-            {localBreakCount} pause{localBreakCount > 1 ? 's' : ''}
+            {breakCount} pause{breakCount > 1 ? 's' : ''}
           </Badge>
-          
-          {isMedicalBreak && (
+
+          {status === 'live' && (
             <Badge variant="destructive" className="animate-pulse">
-              PAUSE MÉDICALE
+              🔴 EN DIRECT
             </Badge>
           )}
-          
-          {match.status === 'completed' && (
+
+          {status === 'round_break' && (
+            <Badge variant="destructive">
+              ⏸️ PAUSE
+            </Badge>
+          )}
+
+          {status === 'completed' && (
             <Badge variant="secondary" className="bg-green-500 text-white">
               TERMINÉ
             </Badge>
@@ -300,16 +229,4 @@ export function MatchTimer({
       </CardContent>
     </Card>
   );
-}
-
-// Helper pour parser la durée
-function parseDurationToSeconds(duration?: any): number {
-  if (!duration) return 0;
-  if (typeof duration === 'number') return duration;
-  if (typeof duration === 'string') {
-    const parts = duration.split(':').map(Number);
-    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    if (parts.length === 2) return parts[0] * 60 + parts[1];
-  }
-  return 0;
 }

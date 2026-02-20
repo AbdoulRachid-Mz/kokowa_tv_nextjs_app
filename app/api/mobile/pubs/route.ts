@@ -41,7 +41,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       // message: "Publicités récupérées avec succès",
-      data: result.data?.advertisements || [],
+      data: {
+        advertisements: result.data?.advertisements || [],
+      },
       pagination: {
         count: result.data?.count || 0,
         total: result.data?.total || 0,

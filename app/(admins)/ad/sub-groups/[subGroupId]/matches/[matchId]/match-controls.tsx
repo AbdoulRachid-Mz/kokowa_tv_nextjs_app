@@ -10,14 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Match } from "@/types";
 import {
-  Play,
-  Pause,
   CheckCircle,
   XCircle,
   Save,
   AlertTriangle,
   Users,
-  Timer,
   RotateCcw,
   Flag
 } from "lucide-react";
@@ -26,10 +23,7 @@ import { toast } from "sonner";
 interface MatchControlsProps {
   match: Match;
   onUpdateMatch: (updates: Partial<Match>) => void;
-  onAddBreak: () => void;
   isSaving: boolean;
-  isTimerRunning: boolean;
-  onTimerToggle: (running: boolean) => void;
   isSubGroupCompleted: boolean;
   onResetMatch: () => void;
 }
@@ -37,10 +31,7 @@ interface MatchControlsProps {
 export function MatchControls({
   match,
   onUpdateMatch,
-  onAddBreak,
   isSaving,
-  isTimerRunning,
-  onTimerToggle,
   isSubGroupCompleted,
   onResetMatch
 }: MatchControlsProps) {
@@ -78,7 +69,6 @@ export function MatchControls({
   const handleReclamation = () => {
     setIsReclamationMode(true);
     onUpdateMatch({ status: 'reclamation' });
-    onTimerToggle(false);
     toast.warning("Mode réclamation activé - Vous pouvez maintenant modifier le résultat");
   };
 
@@ -99,7 +89,6 @@ export function MatchControls({
   const handleCancelMatch = () => {
     if (window.confirm("Êtes-vous sûr de vouloir annuler ce match ?")) {
       onUpdateMatch({ status: 'cancelled' });
-      onTimerToggle(false);
       toast.success("Match annulé");
     }
   };
@@ -125,40 +114,6 @@ export function MatchControls({
       </CardHeader>
 
       <CardContent className="space-y-5">
-        {/* Contrôles principaux */}
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            onClick={() => onTimerToggle(!isTimerRunning)}
-            variant={isTimerRunning ? "destructive" : "default"}
-            size="lg"
-            className="gap-2"
-            disabled={!canModify || match.status === 'completed' || isReclamationMode}
-          >
-            {isTimerRunning ? (
-              <>
-                <Pause className="h-5 w-5" />
-                Pause
-              </>
-            ) : (
-              <>
-                <Play className="h-5 w-5" />
-                {match.status === 'scheduled' ? 'Démarrer' : 'Reprendre'}
-              </>
-            )}
-          </Button>
-
-          <Button
-            onClick={onAddBreak}
-            variant="outline"
-            size="lg"
-            className="gap-2"
-            disabled={!canModify || !isTimerRunning || match.status === 'completed' || isReclamationMode}
-          >
-            <Timer className="h-5 w-5" />
-            Pause médicale
-          </Button>
-        </div>
-
         {/* Actions de réclamation */}
         <div className="space-y-3">
           {!isReclamationMode ? (
