@@ -22,6 +22,10 @@ export async function verifySessionCookie(request: Request) {
     const session = cookies[COOKIE_NAME];
     if (!session) return null;
 
+       if (!adminAuth) {
+      return { user: null, error: "Firebase non initialisé" };
+    }
+
     const decoded = await adminAuth.verifySessionCookie(session, true);
     return {
       uid: decoded.uid,
@@ -34,6 +38,9 @@ export async function verifySessionCookie(request: Request) {
 
 export async function createSessionCookie(token: string) {
   try {
+       if (!adminAuth) {
+      return { user: null, error: "Firebase non initialisé" };
+    }
     // ⏱️ cookie de session (5 jours max Firebase)
     const sessionCookie = await adminAuth.createSessionCookie(token, {
       expiresIn: 5 * 24 * 60 * 60 * 1000,
@@ -47,6 +54,9 @@ export async function createSessionCookie(token: string) {
 
 export async function verifyAndRefreshToken(token: string) {
   try {
+       if (!adminAuth) {
+      return { user: null, error: "Firebase non initialisé" };
+    }
     const decoded = await adminAuth.verifyIdToken(token);
     return { uid: decoded.uid, email: decoded.email };
   } catch (error) {
