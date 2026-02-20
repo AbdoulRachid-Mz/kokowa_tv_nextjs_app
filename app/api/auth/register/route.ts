@@ -43,6 +43,14 @@ export async function POST(request: NextRequest) {
 
     let firebaseUser = null;
 
+    // Vérifier si Firebase est initialisé
+    if (!adminAuth) {
+      return NextResponse.json(
+        { error: 'Firebase non initialisé' },
+        { status: 500 }
+      );
+    }
+
     // Si on a un UID Firebase, on utilise l'utilisateur existant
     if (firebase_uid) {
       try {
