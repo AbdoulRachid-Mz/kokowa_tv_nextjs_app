@@ -14,8 +14,8 @@ export async function GET(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ user: null });
     }
-       if (!adminAuth) {
-      return { user: null, error: "Firebase non initialisé" };
+    if (!adminAuth) {
+      return NextResponse.json({ user: null, error: "Firebase non initialisé" });
     }
 
     const decoded = await adminAuth.verifySessionCookie(session.value, true);
@@ -50,8 +50,8 @@ export async function POST(request: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "Token manquant" }, { status: 400 });
     }
-       if (!adminAuth) {
-      return { user: null, error: "Firebase non initialisé" };
+    if (!adminAuth) {
+      return NextResponse.json({ user: null, error: "Firebase non initialisé" }, { status: 500 });
     }
 
     // Vérifier le token
