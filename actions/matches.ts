@@ -998,9 +998,9 @@ export async function updateMatchStatus(id: number, status: string) {
     await query(sql, [status, id]);
 
     // Émettre l'événement de changement de statut
-    // previousStatus: 'live', // Vous pourriez vouloir stocker l'ancien statut
     await emitMatchEvent(id, 'match_status_changed', {
       match: updateMatch,
+      previousStatus: 'live', // Vous pourriez vouloir stocker l'ancien statut
       newStatus: status
     });
 

@@ -402,6 +402,7 @@ export async function getPhaseGroupById(id: number, options: {
               JSON_BUILD_OBJECT(
                 'id', sg.id,
                 'name', sg.name,
+                'video_url', sg.video_url, -- NOUVEAU
                 'sub_group_order', sg.sub_group_order,
                 'description', sg.description,
                 'period', sg.period, -- NOUVEAU

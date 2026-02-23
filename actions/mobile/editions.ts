@@ -516,3 +516,38 @@ export async function getEditionChampions(editionId: number) {
 
   return await query(sql, [editionId]);
 }
+
+
+// Get editions a region or fighter participated in
+export async function getParticipatedEditions(id: number, type: 'region' | 'fighter') {
+  let sql: string;
+  const params: any[] = [id];
+
+  if (type === 'region') {
+    sql = `
+      SELECT DISTINCT
+        ce.id,
+        ce.year,
+        ce.edition_number as "editionNumber",
+        r.name as "regionName"
+      FROM competition_editions ce
+      JOIN edition_regions er ON er.edition_id = ce.id AND er.region_id = $1
+      LEFT JOIN regions r ON er.region_id = r.id
+      ORDER BY ce.year DESC, ce.edition_number DESC
+    `;
+  } else { // fighter
+    sql = `
+ SELECT DISTINCT
+      ce.id,
+      ce.year,
+      ce.edition_number as "editionNumber",
+      r.name as "regionName"
+    FROM competition_editions ce
+    JOIN edition_fighters ef ON ef.edition_id = ce.id AND ef.fighter_id = $1
+    LEFT JOIN regions r ON ce.region_id = r.id
+    ORDER BY ce.year DESC, ce.edition_number DESC
+    `;
+  }
+
+  return await query(sql, params);
+}

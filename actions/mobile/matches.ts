@@ -113,6 +113,7 @@ async function getSubGroupInfo(subGroupId: number) {
       sg.score_region2 as "scoreRegion2",
       sg.nulls,
       sg.status,
+      sg.video_url as "videoUrl",
       sg.region1_id as "region1Id",
       sg.region2_id as "region2Id",
       r1.name as "region1Name",
@@ -170,6 +171,7 @@ async function getSubGroupInfo(subGroupId: number) {
       region1: subGroup.scoreRegion1,
       region2: subGroup.scoreRegion2,
       nulls: subGroup.nulls,
+      videoUrl: subGroup.videoUrl,
     };
 
     subGroup.belts = {

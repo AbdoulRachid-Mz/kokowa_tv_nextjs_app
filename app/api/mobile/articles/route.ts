@@ -1,5 +1,7 @@
 // @/api/mobile/articles
 import { getArticles } from "@/actions/mobile/articles";
+import { getUserIdFromAuthId } from "@/actions/users";
+import { ArticleType } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -12,15 +14,19 @@ export async function GET(request: NextRequest) {
       | "published"
       | "archived"
       | undefined,
+    type: searchParams.get("type") as ArticleType | undefined,
     language: searchParams.get("language") as "fr" | "ha" | "en" | undefined,
     author_id: searchParams.get("author_id")
       ? Number(searchParams.get("author_id"))
       : undefined,
     page: searchParams.get("page") ? Number(searchParams.get("page")) : 1,
-    userId: searchParams.get("userId") ? Number(searchParams.get("userId")) : undefined,
+    authId: searchParams.get("authId") || undefined,
     limit: searchParams.get("limit") ? Number(searchParams.get("limit")) : 20,
     search: searchParams.get("search") || undefined,
   };
+
+  // Récupérer l'userId interne à partir de l'auth_id
+  const userId = filters.authId ? await getUserIdFromAuthId(filters.authId) : undefined;
 
   // Validate numeric parameters
   if (filters.author_id && isNaN(filters.author_id)) {
@@ -66,7 +72,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const result = await getArticles(filters);
+  const result = await getArticles({
+    ...filters,
+    userId,
+  });
   return NextResponse.json(result, {
     status: result.success ? 200 : result.error?.code || 500,
   });

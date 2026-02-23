@@ -255,6 +255,7 @@ export default function SubGroupDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Info label="Groupe" value={subGroup.group?.name} />
                 <Info label="Ordre" value={subGroup.sub_group_order} />
+                <Info label="Groupe" value={subGroup?.video_url} />
                 <Info label="Phase" value={subGroup.group?.phase?.name} />
                 <Info
                   label="Édition"

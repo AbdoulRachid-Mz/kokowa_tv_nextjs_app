@@ -2,6 +2,7 @@
 
 import { query } from '@/lib/db/neon-client';
 import { Region } from '@/types';
+import { getParticipatedEditions } from './editions';
 
 export async function getMobileRegions(filters?: {
   page?: number;
@@ -157,6 +158,63 @@ export async function getMobileRegionById(regionId: number, userId?: number, edi
     };
   }
 }
+// Mettre à jour la fonction getMobileRegionById pour accepter editionId
+export async function getMobileRegionById2(regionId: number, userId?: number, editionId?: number) {
+  try {
+    // Récupérer les informations de la région avec likes et favoris
+    const regionInfo = await getRegionInfo(regionId, userId);
+    if (!regionInfo) {
+      return {
+        success: false,
+        error: {
+          code: 404,
+          message: 'Région non trouvée',
+          timestamp: new Date().toISOString()
+        }
+      };
+    }
+
+    // Récupérer toutes les données de la région
+    const fighters = await getRegionFighters(regionId);
+    const editions = await getParticipatedEditions(regionId, "region");
+    const transfers = await getRegionTransfers(regionId);
+    const achievements = await getRegionAchievements(regionId);
+    const stats = calculateRegionStats(fighters, [], achievements);
+
+    return {
+      success: true,
+      data: {
+        region: regionInfo,
+        fighters: fighters,
+        editions: editions,
+        transfers: transfers,
+        achievements: organizeAchievements(achievements),
+        stats: stats,
+        summary: {
+          totalFighters: fighters.length,
+          totalEditions: editions.length,
+          totalTransfers: transfers.length,
+          totalAchievements: achievements.length,
+          liveMatches: 0,
+          wins: 0,
+          losses: 0
+        },
+        timestamp: new Date().toISOString()
+      },
+      message: 'Données de la région récupérées avec succès'
+    };
+  } catch (error) {
+    console.error('Error in getMobileRegionById:', error);
+    return {
+      success: false,
+      error: {
+        code: 500,
+        message: 'Erreur lors de la récupération des données de la région',
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+}
 
 // Si getCardsForMatch n'est pas dans ce fichier, ajoutez-la :
 async function getCardsForMatch(matchId: number) {
@@ -273,6 +331,41 @@ async function getRegionInfo(regionId: number, userId?: number) {
   return result[0] || null;
 }
 
+// // Get editions a region or fighter participated in
+// async function getParticipatedEditions(id: number, type: 'region' | 'fighter') {
+//   let sql: string;
+//   const params: any[] = [id];
+
+//   if (type === 'region') {
+//     sql = `
+//       SELECT DISTINCT
+//         ce.id,
+//         ce.year,
+//         ce.edition_number as "editionNumber",
+//         r.name as "regionName"
+//       FROM competition_editions ce
+//       JOIN edition_regions er ON er.edition_id = ce.id AND er.region_id = $1
+//       LEFT JOIN regions r ON er.region_id = r.id
+//       ORDER BY ce.year DESC, ce.edition_number DESC
+//     `;
+//   } else { // fighter
+//     sql = `
+//       SELECT DISTINCT
+//         ce.id,
+//         ce.year,
+//         ce.edition_number as "editionNumber",
+//         r.name as "regionName"
+//       FROM competition_editions ce
+//       JOIN matches m ON m.edition_id = ce.id
+//       JOIN fighters f ON (m.fighter1_id = f.id OR m.fighter2_id = f.id)
+//       JOIN regions r ON f.region_id = r.id
+//       WHERE f.id = $1
+//       ORDER BY ce.year DESC, ce.edition_number DESC
+//     `;
+//   }
+
+//   return await query(sql, params);
+// }
 
 async function getRegionFighters(regionId: number) {
   const sql = `
@@ -301,7 +394,7 @@ async function getRegionFighters(regionId: number) {
   return await query(sql, [regionId]);
 }
 
-async function getRegionMatches(regionId: number, editionId?: number) {
+export async function getRegionMatches(regionId: number, editionId?: number) {
   let whereClause = "(f1.region_id = $1 OR f2.region_id = $1)";
   const params: any[] = [regionId];
   

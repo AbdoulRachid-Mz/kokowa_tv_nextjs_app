@@ -1,11 +1,12 @@
 "use server";
 
 import { query } from "@/lib/db/neon-client";
-import { Media, MobileMedia } from "@/types";
+import { ArticleType, Media, MobileMedia } from "@/types";
 
 export async function getArticles(filters?: {
   status?: "draft" | "published" | "archived";
   language?: "fr" | "ha" | "en";
+  type?: ArticleType;
   author_id?: number;
   page?: number;
   limit?: number;
@@ -17,11 +18,18 @@ export async function getArticles(filters?: {
     const limit = filters?.limit || 20;
     const offset = (page - 1) * limit;
     const userId = filters?.userId;
+    const type = filters?.type;
 
     // Build WHERE clause dynamically
     const conditions: string[] = ["a.status = 'published'"]; // Par défaut, ne montrer que les publiés
     const params: any[] = [];
     let paramIndex = 1;
+
+    if (type) {
+      conditions.push(`a.type = $${paramIndex}`);
+      params.push(type);
+      paramIndex++;
+    }
 
     if (filters?.status) {
       conditions.push(`a.status = $${paramIndex}`);
@@ -66,6 +74,7 @@ export async function getArticles(filters?: {
       a.id,
       a.title,
       a.slug,
+      a.type,
       a.excerpt,
       a.content,
       a.featured_image as "featuredImage",
@@ -195,6 +204,7 @@ export async function getArticleById(articleId: number, userId?: number) {
       a.id,
       a.title,
       a.slug,
+      a.type,
       a.excerpt,
       a.content,
       a.featured_image as "featuredImage",

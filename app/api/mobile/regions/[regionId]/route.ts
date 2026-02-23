@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMobileRegionById } from '@/actions/mobile/regions';
+import { getMobileRegionById2 } from '@/actions/mobile/regions';
 import { publicHandler, ApiContext } from '@/lib/api-handler';
+import { getUserIdFromAuthId } from '@/actions/users';
 async function handler(request: NextRequest, context: ApiContext) {
   const { params } = context;
   if (!params) {
@@ -20,8 +21,11 @@ async function handler(request: NextRequest, context: ApiContext) {
   const { regionId } = await params;
   const regionIdNumber = Number(regionId);
   const searchParams = request.nextUrl.searchParams;
-  const userId = searchParams.get("userId") ? Number(searchParams.get("userId")) : undefined;
-  const editionId = searchParams.get("editionId") ? Number(searchParams.get("editionId")) : undefined;
+  const authId = searchParams.get("authId");
+
+  // Récupérer l'userId interne à partir de l'auth_id
+  const userId = authId ? await getUserIdFromAuthId(authId) : undefined;
+  // const editionId = searchParams.get("editionId") ? Number(searchParams.get("editionId")) : undefined;
 
   if (isNaN(regionIdNumber) || regionIdNumber <= 0) {
     return NextResponse.json(
@@ -37,10 +41,10 @@ async function handler(request: NextRequest, context: ApiContext) {
     );
   }
 
-  const result = await getMobileRegionById(regionIdNumber, userId, editionId);
+  const result = await getMobileRegionById2(regionIdNumber, userId);
 
   if (!result.success) {
-    return NextResponse.json(result, { 
+    return NextResponse.json(result, {
       status: (result as any).error?.code || 500,
     });
   }

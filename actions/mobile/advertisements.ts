@@ -47,6 +47,7 @@ export async function getMobileAdvertisements(filters?: {
         a.media_type as "mediaType",
         a.price,
         a.link_url as "linkUrl",
+        a.cta_text as "ctaText",
         a.position,
         a.priority,
         a.is_active as "isActive",
@@ -220,10 +221,10 @@ export async function getMobileAdvertisementById(adId: number, userId?: number) 
       FROM advertisements 
       WHERE id = $1 
         AND is_active = true
-        AND (start_date IS NULL OR start_date <= CURRENT_TIMESTAMP)
-        AND (end_date IS NULL OR end_date >= CURRENT_TIMESTAMP)
-    `;
-    const existsResult = await query(existsSql, [adId]);
+        `;
+        // AND (start_date IS NULL OR start_date <= CURRENT_TIMESTAMP)
+        // AND (end_date IS NULL OR end_date >= CURRENT_TIMESTAMP)
+        const existsResult = await query(existsSql, [adId]);
     
     if (existsResult.length === 0) {
       return {
@@ -246,6 +247,7 @@ export async function getMobileAdvertisementById(adId: number, userId?: number) 
         a.media_type as "mediaType",
         a.price,
         a.link_url as "linkUrl",
+        a.cta_text as "ctaText",
         a.position,
         a.priority,
         a.start_date as "startDate",
@@ -394,6 +396,7 @@ export async function getMobileAdvertisementsByPosition(position: string, limit:
         a.media,
         a.media_type as "mediaType",
         a.link_url as "linkUrl",
+        a.cta_text as "ctaText",
         a.position,
         a.priority,
         a.advertiser_name as "advertiserName"

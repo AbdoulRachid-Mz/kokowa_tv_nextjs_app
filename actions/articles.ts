@@ -4,7 +4,7 @@
 import { query, queryOne } from "@/lib/db/neon-client";
 import { articleSchema } from "@/validation/schemas";
 import { revalidatePath } from "next/cache";
-import { Article, ArticleFilters, PaginatedResponse } from "@/types";
+import { Article, ArticleFilters, PaginatedResponse, ArticleType } from "@/types";
 
 export async function getArticles(
   filters: ArticleFilters = {}
@@ -16,6 +16,7 @@ export async function getArticles(
       language,
       search = "",
       page = 1,
+      type,
       limit = 20,
       with_author = true,
       with_media = true,
@@ -42,6 +43,11 @@ export async function getArticles(
     if (language) {
       whereClause += ` AND a.language = $${params.length + 1}`;
       params.push(language);
+    }
+
+    if (type) {
+      whereClause += ` AND a.type = $${params.length + 1}`;
+      params.push(type);
     }
 
     if (search) {

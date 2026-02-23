@@ -200,6 +200,7 @@ export async function createAdvertisement(formData: FormData) {
       media_type: formData.get('media_type'),
       price: formData.get('price'),
       link_url: formData.get('link_url'),
+      cta_text: formData.get('cta_text'),
       position: formData.get('position'),
       priority: formData.get('priority'),
       start_date: formData.get('start_date'),
@@ -217,6 +218,7 @@ export async function createAdvertisement(formData: FormData) {
       media_type: (rawData.media_type as 'image' | 'video' | 'html') || 'image',
       price: rawData.price ? Number(rawData.price) : 0.00,
       link_url: rawData.link_url as string || undefined,
+      cta_text: rawData.cta_text as string || undefined,
       position: rawData.position as any,
       priority: rawData.priority ? Number(rawData.priority) : 0,
       start_date: rawData.start_date as string || undefined,
@@ -231,11 +233,11 @@ export async function createAdvertisement(formData: FormData) {
 
     const sql = `
       INSERT INTO advertisements (
-        title, description, media, media_type, price, link_url,
+        title, description, media, media_type, price, link_url, cta_text,
         position, priority, start_date, end_date, is_active,
         target_audience, advertiser_name, advertiser_contact,
         click_count, impression_count
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 0, 0)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 0, 0)
       RETURNING id
     `;
     
@@ -246,6 +248,7 @@ export async function createAdvertisement(formData: FormData) {
       validatedData.media_type,
       validatedData.price,
       validatedData.link_url || null,
+      validatedData.cta_text || null,
       validatedData.position,
       validatedData.priority,
       validatedData.start_date || null,
@@ -283,6 +286,7 @@ export async function updateAdvertisement(id: number, formData: FormData) {
       description: formData.get('description'),
       media: formData.get('media'),
       media_type: formData.get('media_type'),
+      cta_text: formData.get('cta_text'),
       price: formData.get('price'),
       link_url: formData.get('link_url'),
       position: formData.get('position'),
@@ -302,6 +306,7 @@ export async function updateAdvertisement(id: number, formData: FormData) {
       media_type: (rawData.media_type as 'image' | 'video' | 'html') || existing.media_type,
       price: rawData.price ? Number(rawData.price) : existing.price,
       link_url: rawData.link_url as string || undefined,
+      cta_text: rawData.cta_text as string || undefined,
       position: (rawData.position as any) || existing.position,
       priority: rawData.priority ? Number(rawData.priority) : existing.priority,
       start_date: rawData.start_date as string || existing.start_date,
@@ -318,11 +323,11 @@ export async function updateAdvertisement(id: number, formData: FormData) {
       UPDATE advertisements 
       SET 
         title = $1, description = $2, media = $3, media_type = $4,
-        price = $5, link_url = $6, position = $7, priority = $8,
-        start_date = $9, end_date = $10, is_active = $11,
-        target_audience = $12, advertiser_name = $13, advertiser_contact = $14,
+        price = $5, link_url = $6, cta_text = $7, position = $8, priority = $9,
+        start_date = $10, end_date = $11, is_active = $12,
+        target_audience = $13, advertiser_name = $14, advertiser_contact = $15,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $15
+      WHERE id = $16
     `;
     
     await query(sql, [
@@ -332,6 +337,7 @@ export async function updateAdvertisement(id: number, formData: FormData) {
       validatedData.media_type,
       validatedData.price,
       validatedData.link_url || null,
+      validatedData.cta_text || null,
       validatedData.position,
       validatedData.priority,
       validatedData.start_date || null,
@@ -371,7 +377,7 @@ export async function deleteAdvertisement(id: number) {
     await query(sql, [id]);
 
     revalidatePath('/advertisements');
-    revalidatePath('/admin/advertisements');
+    revalidatePath('/ad/advertisements');
     
     return { 
       success: true, 

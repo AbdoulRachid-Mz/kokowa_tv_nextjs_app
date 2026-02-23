@@ -136,6 +136,7 @@ export const subGroupSchema = z.object({
   score_region1: z.number().int().min(0, 'Score invalide').optional(),
   score_region2: z.number().int().min(0, 'Score invalide').optional(),
   nulls: z.number().int().min(0, 'Nombre de nulls invalide').optional(),
+  video_url: z.string().url('URL de la vidéo invalide').optional(),
   status: z.enum(['upcoming', 'ongoing', 'completed', 'cancelled', 'postponed']).default('upcoming'),
   region1_id: z.number().int().positive('Région 1 invalide').optional(),
   region2_id: z.number().int().positive('Région 2 invalide').optional(),
@@ -289,32 +290,40 @@ export const messageSchema = z.object({
 
 // Schema pour les articles
 export const articleSchema = z.object({
-  title: z.string().min(1, 'Le titre est requis').max(255),
-  slug: z.string().min(1, 'Le slug est requis').max(255),
+  title: z.string().min(1).max(255),
+  slug: z.string().min(1).max(255),
+
+  type: z.enum([
+    'news',
+    'event',
+    'announcement',
+    'highlight',
+    'interview',
+    'analyse'
+  ]),
+
   excerpt: z.string().optional(),
 
-  content: z.string().min(1, 'Le contenu est requis'),
+  content: z.string().min(1),
 
   featured_image: z.union([
     z.string().url(),
     z.instanceof(File),
-    z.literal(""),
+    z.literal("")
   ]).optional(),
 
   author_id: z.number().int().positive(),
 
-  // ❗ Retirer default()
   status: z.enum(['draft', 'published', 'archived']),
 
   language: z.enum(['fr', 'ha', 'en']),
 
-  view_count: z.number().int().min(0),
-  like_count: z.number().int().min(0),
-  share_count: z.number().int().min(0),
+  view_count: z.number().int().min(0).default(0),
+  like_count: z.number().int().min(0).default(0),
+  share_count: z.number().int().min(0).default(0),
 
   meta_title: z.string().max(255).optional(),
   meta_description: z.string().optional(),
-
   published_at: z.string().datetime().optional(),
 });
 
@@ -375,6 +384,7 @@ export const advertisementSchema = z.object({
   media_type: z.enum(['image', 'video', 'html']).default('image'),
   price: z.number().min(0, 'Le prix doit être positif').default(0.00),
   link_url: z.string().url('URL invalide').max(255).optional(),
+  cta_text: z.string().max(255).optional(),
   position: z.enum([
     'header',
     'sidebar',
@@ -457,9 +467,10 @@ export type FighterCardInput = z.infer<typeof fighterCardSchema>;
 export type FighterTransferInput = z.infer<typeof fighterTransferSchema>;
 export type UserInput = z.infer<typeof userSchema>;
 export type MessageInput = z.infer<typeof messageSchema>;
-export type ArticleInput = z.infer<typeof articleSchema>;
+export type ArticleInput = z.input<typeof articleSchema>;
+export type Article = z.output<typeof articleSchema>;
 export type MediaInput = z.infer<typeof mediaSchema>;
 export type VideoInput = z.infer<typeof videoSchema>;
 export type InteractionInput = z.infer<typeof interactionSchema>;
 export type NotificationInput = z.infer<typeof notificationSchema>;
-export type AppSettinInput = z.infer<typeof appSettingSchema>;
+export type AppSettingInput = z.infer<typeof appSettingSchema>;

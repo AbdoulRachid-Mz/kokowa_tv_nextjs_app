@@ -80,9 +80,18 @@ export function MatchControls({
   };
 
   // Sauvegarder les modifications après réclamation
+// app/ad/sub-groups/[subGroupId]/matches/[matchId]/match-controls.tsx
   const handleSaveReclamation = () => {
     setIsReclamationMode(false);
-    toast.success("Modifications enregistrées après réclamation");
+    // Remettre le statut à 'live' si on veut continuer le match
+    // ou à 'completed' si on a modifié le résultat
+    if (match.status === 'reclamation' && match.match_result) {
+      onUpdateMatch({ status: 'completed' });
+      toast.success("Résultat modifié et enregistré");
+    } else {
+      onUpdateMatch({ status: 'live' }); // ← Pour reprendre le match
+      toast.success("Modifications enregistrées, match repris");
+    }
   };
 
   // Annuler le match

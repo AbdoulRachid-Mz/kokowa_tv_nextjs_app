@@ -550,7 +550,7 @@ export function RefereeCard({
                     {Math.floor(
                       (new Date().getTime() -
                         new Date(referee.birth_date).getTime()) /
-                        3.15576e10
+                      3.15576e10
                     )}{" "}
                     ans
                   </span>
@@ -1091,6 +1091,7 @@ export const SubGroupCard = ({
                 >
                   <Edit className="h-4 w-4" />
                 </Button>
+                
               </div>
             </div>
           </div>
@@ -1432,7 +1433,7 @@ export const AdvertisementCard: React.FC<{
   const endDate = advertisement.end_date ? new Date(advertisement.end_date) : null;
   const isScheduled = startDate && startDate > now;
   const isExpired = endDate && endDate < now;
-  
+
   const getStatusBadge = () => {
     if (!isActive) return <Badge variant="outline" className="bg-gray-100">Inactive</Badge>;
     if (isExpired) return <Badge variant="outline" className="bg-red-100 text-red-700">Expirée</Badge>;
@@ -1476,11 +1477,13 @@ export const AdvertisementCard: React.FC<{
               {/* Media preview */}
               <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden flex items-center justify-center">
                 {advertisement.media && advertisement.media_type === 'image' ? (
-                  <img 
-                    src={advertisement.media} 
-                    alt={advertisement.title}
-                    className="w-full h-full object-cover"
-                  />
+                  <div className="w-full h-full relative">
+                    <img
+                      src={advertisement.media}
+                      alt={advertisement.title}
+                      className="w-full h-full absolute object-cover"
+                    />
+                  </div>
                 ) : (
                   <div className="text-muted-foreground">
                     {getMediaTypeIcon()}
@@ -1496,6 +1499,11 @@ export const AdvertisementCard: React.FC<{
                   </Typography>
                   {getStatusBadge()}
                 </div>
+                {advertisement.cta_text && (
+                  <Typography variant="body-sm" theme="muted" className="mb-3 line-clamp-2">
+                    {advertisement.cta_text}
+                  </Typography>
+                )}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
@@ -1551,11 +1559,14 @@ export const AdvertisementCard: React.FC<{
       {/* Media header */}
       <div className="relative h-40 bg-gradient-to-br from-primary/10 to-primary/5 rounded-t-lg overflow-hidden">
         {advertisement.media && advertisement.media_type === 'image' ? (
-          <img 
-            src={advertisement.media} 
-            alt={advertisement.title}
-            className="w-full h-full object-cover"
-          />
+          <div className="w-full h-hull relative">
+            <Image
+              src={advertisement.media}
+              alt={advertisement.title}
+              fill
+              className="w-full h-full absolute object-cover"
+            />
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <div className="text-center">
@@ -1563,13 +1574,13 @@ export const AdvertisementCard: React.FC<{
                 {getMediaTypeIcon()}
               </div>
               <Typography variant="body-sm" theme="muted">
-                {advertisement.media_type === 'video' ? 'Vidéo' : 
-                 advertisement.media_type === 'html' ? 'HTML' : 'Image'}
+                {advertisement.media_type === 'video' ? 'Vidéo' :
+                  advertisement.media_type === 'html' ? 'HTML' : 'Image'}
               </Typography>
             </div>
           </div>
         )}
-        
+
         {/* Status badge */}
         <div className="absolute top-2 right-2">
           {getStatusBadge()}
@@ -1596,6 +1607,11 @@ export const AdvertisementCard: React.FC<{
           </div>
         </div>
 
+        {advertisement.cta_text && (
+          <Typography variant="body-sm" theme="muted" className="mb-3 line-clamp-2">
+            {advertisement.cta_text}
+          </Typography>
+        )}
         {advertisement.description && (
           <Typography variant="body-sm" theme="muted" className="mb-3 line-clamp-2">
             {advertisement.description}
@@ -1627,15 +1643,15 @@ export const AdvertisementCard: React.FC<{
           <div className="flex justify-between text-xs mb-1">
             <span>CTR</span>
             <span className="font-medium">
-              {advertisement.impression_count > 0 
+              {advertisement.impression_count > 0
                 ? ((advertisement.click_count / advertisement.impression_count) * 100).toFixed(2)
                 : 0}%
             </span>
           </div>
-          <Progress 
-            value={advertisement.impression_count > 0 
-              ? (advertisement.click_count / advertisement.impression_count) * 100 
-              : 0} 
+          <Progress
+            value={advertisement.impression_count > 0
+              ? (advertisement.click_count / advertisement.impression_count) * 100
+              : 0}
             className="h-1"
           />
         </div>

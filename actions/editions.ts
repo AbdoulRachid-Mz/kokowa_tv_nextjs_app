@@ -223,6 +223,7 @@ export async function getEditions(options: EditionFilters = {}) {
                 'id', sg.id,
                 'group_id', sg.group_id,
                 'name', sg.name,
+                'video_url', sg.video_url, -- NOUVEAU
                 'sub_group_order', sg.sub_group_order,
                 'description', sg.description,
                 'region1_id', sg.region1_id,
@@ -642,6 +643,7 @@ export async function getEditionById(
                                 JSON_BUILD_OBJECT(
                                   'id', sg.id,
                                   'name', sg.name,
+                                  'video_url', sg.video_url, -- NOUVEAU
                                   'sub_group_order', sg.sub_group_order,
                                   'description', sg.description,
                                   'region1_id', sg.region1_id,

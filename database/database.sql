@@ -331,6 +331,7 @@ CREATE TABLE IF NOT EXISTS sub_groups (
     score_region1 INTEGER,
     score_region2 INTEGER,
     nulls INTEGER,
+    video_url VARCHAR(255),
     status VARCHAR(20) CHECK (
         status IN (
             'upcoming',
@@ -503,6 +504,16 @@ CREATE TABLE IF NOT EXISTS articles (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
+    type VARCHAR(20) CHECK (
+        type IN (
+            'news',
+            'event',
+            'announcement',
+            'highlight',
+            'interview',
+            'analyse',
+        )
+    ) DEFAULT 'news',
     excerpt TEXT,
     content TEXT NOT NULL,
     featured_image VARCHAR(255),
@@ -598,6 +609,7 @@ CREATE TABLE IF NOT EXISTS advertisements (
     ) DEFAULT 'image',
     price DECIMAL(10, 2) DEFAULT 0.00,
     link_url VARCHAR(255),
+    cta_text VARCHAR(255),
     position VARCHAR(30) CHECK (
         position IN (
             'header',

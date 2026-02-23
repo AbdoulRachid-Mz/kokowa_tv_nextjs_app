@@ -47,12 +47,16 @@ export default function ArticleFormPage() {
     defaultValues: {
       title: "",
       slug: "",
+      type: "news",
       excerpt: "",
       content: "",
       featured_image: "",
-      author_id: 1, // TODO: Récupérer l'ID de l'utilisateur connecté
+      author_id: 1,
       status: "draft",
       language: "fr",
+      view_count: 0,
+      like_count: 0,
+      share_count: 0,
       meta_title: "",
       meta_description: "",
     },
@@ -60,6 +64,7 @@ export default function ArticleFormPage() {
 
   const title = watch("title");
   const slug = watch("slug");
+  const type = watch("type");
   const status = watch("status");
   const featuredImage = watch("featured_image");
 
@@ -107,6 +112,7 @@ export default function ArticleFormPage() {
             const formValues: ArticleInput = {
               title: data?.title ?? "",
               slug: data?.slug ?? "",
+              type: data?.type ?? "news",
               excerpt: data?.excerpt ?? "",
               content: data?.content ?? "",
               featured_image: data?.featured_image ?? "",
@@ -209,6 +215,16 @@ export default function ArticleFormPage() {
     { value: "archived", label: "Archivé" },
   ];
 
+  const typeOptions = [
+    { value: "news", label: "Actualité" },
+    { value: "event", label: "Événement" },
+    { value: "analyse", label: "Analyse" },
+    { value: "announcement", label: "Annonce" },
+    { value: "highlight", label: "Mise en avant" },
+    { value: "interview", label: "Interviews" },
+
+  ];
+
   const languageOptions = [
     { value: "fr", label: "Français" },
     { value: "ha", label: "Hausa" },
@@ -259,6 +275,25 @@ export default function ArticleFormPage() {
                   {errors.title.message}
                 </p>
               )}
+            </div>
+
+            <div>
+              <Label htmlFor="type">Type d'article</Label>
+              <Select
+                value={type}
+                onValueChange={(value) => setValue("type", value as any)}
+              >
+                <SelectTrigger id="type">
+                  <SelectValue placeholder="Sélectionner un type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {typeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

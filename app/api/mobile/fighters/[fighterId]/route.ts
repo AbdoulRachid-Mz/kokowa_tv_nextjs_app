@@ -1,12 +1,16 @@
 import { NextRequest } from 'next/server';
 import { getMobileFighterById } from '@/actions/mobile/fighters';
 import { publicHandler, ApiContext } from '@/lib/api-handler';
+import { getUserIdFromAuthId } from '@/actions/users';
 
 export const GET = publicHandler(async (request: NextRequest, context: ApiContext) => {
   const { fighterId } = await context.params!;
   const id = parseInt(fighterId);
   const searchParams = request.nextUrl.searchParams;
-  const userId = searchParams.get("userId") ? Number(searchParams.get("userId")) : undefined;
+  const authId = searchParams.get("authId");
+
+  // Récupérer l'userId interne à partir de l'auth_id
+  const userId = authId ? await getUserIdFromAuthId(authId) : undefined;
 
   if (isNaN(id) || id <= 0) {
     return Response.json({
@@ -20,9 +24,9 @@ export const GET = publicHandler(async (request: NextRequest, context: ApiContex
   }
 
   const result = await getMobileFighterById(id, userId);
-  
+
   if (!result.success) {
-    return Response.json(result, { 
+    return Response.json(result, {
       status: (result as any).error?.code || 500
     });
   }

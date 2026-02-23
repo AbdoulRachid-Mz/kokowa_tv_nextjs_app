@@ -97,6 +97,7 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
       media_type: initialData?.media_type || "image",
       price: initialData?.price || 0,
       link_url: initialData?.link_url || "",
+      cta_text: initialData?.cta_text || "",
       position: initialData?.position || "header",
       priority: initialData?.priority || 0,
       start_date: initialData?.start_date || undefined,
@@ -286,6 +287,20 @@ export function AdvertisementForm({ initialData, isEditing = false }: Advertisem
                           {...field}
                           value={field.value || ""}
                         />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="cta_text"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Texte d'appel à l'action</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: En savoir plus" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

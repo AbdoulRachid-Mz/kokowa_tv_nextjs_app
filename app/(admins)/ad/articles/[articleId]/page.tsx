@@ -25,7 +25,7 @@ import {
   BookOpen,
   TrendingUp,
 } from "lucide-react";
-import { Article } from "@/types";
+import { Article, ArticleType } from "@/types";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Image from "next/image";
@@ -97,6 +97,26 @@ export default function ArticleDetailPage() {
         return "Archivé";
       default:
         return article.status;
+    }
+  };
+
+  // typelabel
+  const getTypeLabel = (type: ArticleType) => {
+    switch (type) {
+      case "news":
+        return "Actualité";
+      case "event":
+        return "Événement";
+      case "announcement":
+        return "Annonce";
+      case "highlight":
+        return "Emphasis";
+      case "interview":
+        return "Interviews";
+      case "analyse":
+        return "Analyse";
+      default:
+        return type;
     }
   };
 
@@ -302,6 +322,10 @@ export default function ArticleDetailPage() {
             <Typography variant="h5" weight="bold" animated className="line-clamp-1">
               {article.title}
             </Typography>
+            {/* Type */}
+            <Badge variant="outline" className="ml-2">
+              {getTypeLabel(article.type)}
+            </Badge>
             {article.excerpt && (
               <Typography variant="body-sm" theme="muted" className="line-clamp-1">
                 {article.excerpt}

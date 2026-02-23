@@ -1,5 +1,6 @@
 // @/api/mobile/articles/[articleId]
 import { getArticleById } from "@/actions/mobile/articles";
+import { getUserIdFromAuthId } from "@/actions/users";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -9,7 +10,8 @@ export async function GET(
   const { articleId } = await params;
   const articleIdNum = Number(articleId);
   const searchParams = request.nextUrl.searchParams;
-  const userId = searchParams.get("userId") ? Number(searchParams.get("userId")) : undefined;
+  const authId = searchParams.get("authId");
+  const userId = authId ? await getUserIdFromAuthId(authId) : undefined;
 
   if (isNaN(articleIdNum)) {
     return NextResponse.json(

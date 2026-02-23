@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Typography } from "@/components/ui/typography";
-import { Article } from "@/types";
+import { Article, ArticleType } from "@/types";
 import {
   Calendar,
   User,
@@ -45,6 +45,26 @@ export function ArticleCard({
         return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // typelabel
+  const getTypeLabel = (type: ArticleType) => {
+    switch (type) {
+      case "news":
+        return "Actualité";
+      case "event":
+        return "Événement";
+      case "announcement":
+        return "Annonce";
+      case "highlight":
+        return "Emphasis";
+      case "interview":
+        return "Interviews";
+      case "analyse":
+        return "Analyse";
+      default:
+        return type;
     }
   };
 
@@ -114,6 +134,10 @@ export function ArticleCard({
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
+              {/* Type */}
+              <Badge variant="outline" className="absolute top-2 right-2">
+                {getTypeLabel(article.type)}
+              </Badge>
             </div>
           </div>
         )}
@@ -128,6 +152,10 @@ export function ArticleCard({
                 fill
                 className="object-cover"
               />
+              {/* Type */}
+              <Badge variant="outline" className="absolute top-2 right-2">
+                {getTypeLabel(article.type)}
+              </Badge>
             </div>
           </div>
         )}

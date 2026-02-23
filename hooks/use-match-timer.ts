@@ -25,12 +25,12 @@ export function useMatchTimer({
   const [time, setTime] = useState(() => parseDurationToSeconds(initialDuration));
   const [breakCount, setBreakCount] = useState(initialBreakCount);
   const [isRunning, setIsRunning] = useState(false);
-  const [status, setStatus] = useState(initialStatus);
+  const [timerStatus, setTimerStatus] = useState<'idle' | 'running' | 'paused'>('idle');
+  const [matchStatus, setMatchStatus] = useState(initialStatus); // ← Statut métier
   
   const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const breakTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const lastSyncTimeRef = useRef(Date.now());
-// hooks/use-match-timer.ts
   const timeChangeCallbackRef = useRef<typeof onTimeChange>(undefined);
 
   // Formater le temps
@@ -43,7 +43,7 @@ export function useMatchTimer({
 
   // Gestion du timer
   useEffect(() => {
-    if (isRunning && status === 'live') {
+    if (isRunning && matchStatus === 'live') {
       timerRef.current = setInterval(() => {
         setTime(prev => prev + 1);
       }, 1000);
@@ -58,7 +58,7 @@ export function useMatchTimer({
         clearInterval(timerRef.current);
       }
     };
-  }, [isRunning, status]);
+  }, [isRunning, matchStatus]);
 
   useEffect(() => {
     timeChangeCallbackRef.current = onTimeChange;
@@ -72,27 +72,41 @@ export function useMatchTimer({
 
   // Démarrer le match
   const startMatch = useCallback(() => {
-    if (status !== 'completed' && status !== 'cancelled') {
+    if (matchStatus !== 'completed' && matchStatus !== 'cancelled') {
       setIsRunning(true);
-      setStatus('live');
-      onStatusChange?.('live');
+      setTimerStatus('running');
+      
+      // Mettre à jour le statut métier si nécessaire
+      if (matchStatus === 'scheduled') {
+        setMatchStatus('live');
+        onStatusChange?.('live');
+      }
     }
-  }, [status, onStatusChange]);
+  }, [matchStatus, onStatusChange]);
 
-  // Mettre en pause
+  // Mettre en pause (seulement le timer, pas le statut métier)
   const pauseMatch = useCallback(() => {
     setIsRunning(false);
-    setStatus('round_break');
-    onStatusChange?.('round_break');
-  }, [onStatusChange]);
+    setTimerStatus('paused');
+    // ⚠️ NE PAS changer le statut métier ici
+  }, []);
 
-  // Ajouter une pause médicale
+  // Reprendre (seulement le timer)
+  const resumeMatch = useCallback(() => {
+    if (matchStatus === 'live') {
+      setIsRunning(true);
+      setTimerStatus('running');
+    }
+  }, [matchStatus]);
+
+  // Pause médicale (change le statut métier)
   const addMedicalBreak = useCallback(() => {
-    if (status !== 'live' || !isRunning) return;
+    if (matchStatus !== 'live' || !isRunning) return;
 
     // Pause le timer
     setIsRunning(false);
-    setStatus('round_break');
+    setTimerStatus('paused');
+    setMatchStatus('round_break'); // ← Ici on change le statut métier
     onStatusChange?.('round_break');
 
     // Incrémenter le compteur
@@ -107,11 +121,11 @@ export function useMatchTimer({
 
     breakTimeoutRef.current = setTimeout(() => {
       setIsRunning(true);
-      setStatus('live');
+      setTimerStatus('running');
+      setMatchStatus('live');
       onStatusChange?.('live');
     }, 30000);
-
-  }, [status, isRunning, breakCount, onBreakCountChange, onStatusChange]);
+  }, [matchStatus, isRunning, breakCount, onBreakCountChange, onStatusChange]);
 
   // Terminer le match
   const completeMatch = useCallback((result: {
@@ -120,17 +134,17 @@ export function useMatchTimer({
     matchResult?: string;
   }) => {
     setIsRunning(false);
-    setStatus('completed');
+    setTimerStatus('idle');
+    setMatchStatus('completed');
     onStatusChange?.('completed');
-    
-    // Sauvegarder la durée finale
     onDurationChange?.(time);
   }, [time, onDurationChange, onStatusChange]);
 
   // Réinitialiser
   const resetMatch = useCallback(() => {
     setIsRunning(false);
-    setStatus('scheduled');
+    setTimerStatus('idle');
+    setMatchStatus('scheduled');
     setTime(0);
     setBreakCount(0);
     onStatusChange?.('scheduled');
@@ -146,8 +160,9 @@ export function useMatchTimer({
   const syncWithDatabase = useCallback((duration: string, breaks: number, newStatus: string) => {
     setTime(parseDurationToSeconds(duration));
     setBreakCount(breaks);
-    setStatus(newStatus);
+    setMatchStatus(newStatus);
     setIsRunning(newStatus === 'live');
+    setTimerStatus(newStatus === 'live' ? 'running' : 'idle');
     lastSyncTimeRef.current = Date.now();
   }, []);
 
@@ -165,9 +180,11 @@ export function useMatchTimer({
     formattedTime: formatTime(time),
     breakCount,
     isRunning,
-    status,
+    timerStatus,
+    matchStatus, // ← Exporter les deux statuts
     startMatch,
     pauseMatch,
+    resumeMatch,
     addMedicalBreak,
     completeMatch,
     resetMatch,

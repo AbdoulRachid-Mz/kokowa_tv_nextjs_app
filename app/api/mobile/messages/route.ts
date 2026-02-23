@@ -1,5 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createMobileMessage } from '@/actions/mobile/messages';
+import { createMobileMessage, getMobileMessages } from '@/actions/mobile/messages';
+import { MobileMessageFilters } from '@/types';
+
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+
+    // Build filters from query parameters
+    const filters: MobileMessageFilters = {
+      authId: searchParams.get('authId') || undefined,
+      entityId: searchParams.get('entityId')
+        ? Number(searchParams.get('entityId'))
+        : undefined,
+      entityType:
+        (searchParams.get('entityType') as MobileMessageFilters['entityType']) ||
+        undefined,
+      page: searchParams.get('page')
+        ? Number(searchParams.get('page'))
+        : undefined,
+      limit: searchParams.get('limit')
+        ? Number(searchParams.get('limit'))
+        : undefined,
+    };
+
+    const result = await getMobileMessages(filters);
+
+    if (!result.success) {
+      return NextResponse.json(result, {
+        status: result.error?.code || 400,
+      });
+    }
+
+    return NextResponse.json(result, { status: 200 });
+  } catch (error) {
+    console.error('❌ API GET /api/mobile/messages:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 500,
+          message: 'Erreur serveur',
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
+  }
+}
+
 
 export async function POST(req: NextRequest) {
   try {

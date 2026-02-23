@@ -1,6 +1,7 @@
 'use server';
 
 import { query } from '@/lib/db/neon-client';
+import { getParticipatedEditions } from './editions';
 
 export async function getMobileFighters(filters?: {
   page?: number;
@@ -99,7 +100,7 @@ export async function getMobileFighters(filters?: {
       FROM fighters f
       ${countWhereClause}
     `;
-    
+
     const countResult = await query(countSql, params.slice(0, paramIndex - 1));
     const total = parseInt(countResult[0]?.total || '0');
 
@@ -193,7 +194,7 @@ export async function getMobileFighterById(fighterId: number, userId?: number) {
     // Vérifier que le lutteur existe
     const existsSql = "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
     const existsResult = await query(existsSql, [fighterId]);
-    
+
     if (existsResult.length === 0) {
       return {
         success: false,
@@ -207,13 +208,15 @@ export async function getMobileFighterById(fighterId: number, userId?: number) {
 
     // Récupérer les informations de base du lutteur avec likes et favoris
     const fighterInfo = await getFighterInfo(fighterId, userId);
-    
+
     // Récupérer les données associées
     const achievements = await getFighterAchievements(fighterId);
     const transfers = await getFighterTransfers(fighterId);
     const cards = await getFighterCards(fighterId);
     const region = await getFighterRegion(fighterInfo.regionId);
     const stats = await calculateFighterStats(fighterId);
+    // NOUVEAU: Récupérer les éditions auxquelles le lutteur a participé
+    const editions = await getParticipatedEditions(fighterId, "fighter");
 
     return {
       success: true,
@@ -223,7 +226,8 @@ export async function getMobileFighterById(fighterId: number, userId?: number) {
         stats: stats,
         achievements: achievements,
         transfers: transfers,
-        cards: cards
+        cards: cards,
+        editions: editions
       },
       message: 'Détails du lutteur récupérés avec succès'
     };
@@ -290,7 +294,7 @@ async function getFighterInfo(fighterId: number, userId?: number) {
           AND i.interaction_type = 'like'
           AND i.user_id = $2
       ) as "isMyFavorite"
-      ` : 'FALSE as "isMyFavorite"' }
+      ` : 'FALSE as "isMyFavorite"'}
       
     FROM fighters f
     LEFT JOIN regions r ON f.region_id = r.id
@@ -300,7 +304,7 @@ async function getFighterInfo(fighterId: number, userId?: number) {
   const params = userId ? [fighterId, userId] : [fighterId];
   const result = await query(sql, params);
   const fighter = result[0];
-  
+
   if (!fighter.socialLinks) {
     fighter.socialLinks = [];
   }
@@ -308,10 +312,11 @@ async function getFighterInfo(fighterId: number, userId?: number) {
   return fighter;
 }
 
+
 // Les autres fonctions restent inchangées...
 async function getFighterRegion(regionId: number) {
   if (!regionId) return {};
-  
+
   const sql = `
     SELECT 
       id, name, code, color, flag_image as "flagImage",
@@ -432,7 +437,7 @@ async function getFighterCards(fighterId: number) {
 async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
   let whereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";
   const params: any[] = [fighterId];
-  
+
   // Ajouter le filtre par édition si fourni
   if (editionId) {
     whereClause += " AND p.edition_id = $2";
@@ -543,7 +548,7 @@ async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
   `;
 
   const matches = await query(sql, params);
-  
+
   // Enrichir les données des matchs
   return Promise.all(matches.map(match => enrichMatchData(match)));
 }
@@ -757,7 +762,7 @@ export async function getMobileFighterMatches(fighterId: number, editionId?: num
     // Vérifier que le lutteur existe
     const existsSql = "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
     const existsResult = await query(existsSql, [fighterId]);
-    
+
     if (existsResult.length === 0) {
       return {
         success: false,

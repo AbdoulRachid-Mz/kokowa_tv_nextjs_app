@@ -41,7 +41,6 @@ export async function updateMatchAndRecompute(
   try {
     await client.query("BEGIN");
 
-    // 1️⃣ Récupérer l'état actuel du match AVANT modification
     const oldMatchRes = await client.query(
       `SELECT m.*, sg.region1_id, sg.region2_id, sg.is_completed as sub_group_completed,
               p.edition_id
@@ -64,16 +63,19 @@ export async function updateMatchAndRecompute(
       throw new Error("Impossible de modifier un match : le sous-groupe est déjà terminé");
     }
 
-    // 2️⃣ 🔄 ROLLBACK: Supprimer l'impact de l'ancien résultat (si existant)
-    if (oldMatch.status === 'completed' && oldMatch.winner_fighter_id && oldMatch.loser_fighter_id) {
+    // Si c'est une réclamation, on permet la modification sans rollback
+    const isReclamation = updates.status === 'reclamation' || oldMatch.status === 'reclamation';
+    
+    // 🔄 ROLLBACK: Supprimer l'impact de l'ancien résultat (si existant et pas en réclamation)
+    if (!isReclamation && oldMatch.status === 'completed' && oldMatch.winner_fighter_id && oldMatch.loser_fighter_id) {
       await rollbackMatchImpact(client, oldMatch);
     }
 
-    // 3️⃣ Mettre à jour le match
+    // Mettre à jour le match
     const updatedMatch = await updateMatchInTransaction(client, matchId, updates);
 
-    // 4️⃣ ✅ APPLY: Ajouter l'impact du nouveau résultat
-    const shouldApply =
+    // ✅ APPLY: Ajouter l'impact du nouveau résultat (si pas en réclamation)
+    const shouldApply = !isReclamation &&
       updatedMatch.status === 'completed' &&
       updatedMatch.winner_fighter_id &&
       updatedMatch.loser_fighter_id;
@@ -82,16 +84,15 @@ export async function updateMatchAndRecompute(
       await applyMatchImpact(client, updatedMatch);
     }
 
-    // 5️⃣ Vérifier si le sous-groupe est maintenant COMPLET
+    // Vérifier si le sous-groupe est maintenant COMPLET
     await checkAndCompleteSubGroup(client, oldMatch.sub_group_id);
 
     await client.query("COMMIT");
-// lib/services/match-update.service.ts
-    if (updates.status === 'completed') {
+
+    if (updates.status === 'completed' && !isReclamation) {
       await sendMatchPush(matchId);
     }
 
-    // Émettre événement temps réel
     await emitMatchEvent(matchId, 'match_updated', { match: updatedMatch });
 
     return updatedMatch;

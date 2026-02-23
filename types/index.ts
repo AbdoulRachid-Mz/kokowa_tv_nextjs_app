@@ -227,6 +227,7 @@ export interface SubGroup extends BaseEntity {
   score_region2?: number; // NOUVEAU
   nulls?: number; // NOUVEAU
   status?: 'upcoming' |'ongoing' |'completed' |'cancelled' |'postponed';
+  video_url?: string;
   
   // Relations
   group?: PhaseGroup;
@@ -367,6 +368,7 @@ export interface NotificationFilters extends BaseFilters {
 export interface Article extends BaseEntity {
   title: string;
   slug: string;
+  type: 'news' | 'event' | 'announcement' | 'highlight' | 'interview' | 'analyse';
   excerpt?: string;
   content: string;
   featured_image?: string;
@@ -753,9 +755,12 @@ export interface MobileMessageFilters {
   limit?: number;
 }
 
+export type ArticleType = 'news' | 'event' | 'announcement' | 'highlight' | 'interview' | 'analyse';
+
 export interface ArticleFilters extends BaseFilters {
   author_id?: number;
   status?: 'draft' | 'published' | 'archived';
+  type?: ArticleType;
   language?: 'fr' | 'ha' | 'en';
   with_author?: boolean;
   with_media?: boolean;
@@ -926,6 +931,7 @@ export interface Advertisement extends BaseEntity {
   media_type: AdvertisementMediaType;
   price: number;
   link_url?: string;
+  cta_text?: string;
   position: AdvertisementPosition;
   priority: number;
   start_date?: string;

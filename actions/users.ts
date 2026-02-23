@@ -469,6 +469,21 @@ export async function getUserByAuthId(
   }
 }
 
+export async function getUserIdFromAuthId(authId?: string | null): Promise<number | undefined> {
+  if (!authId) return undefined;
+  
+  try {
+    const result = await queryOne<{ id: number }>(
+      'SELECT id FROM users WHERE auth_id = $1',
+      [authId]
+    );
+    return result?.id;
+  } catch (error) {
+    console.error('Error getting user ID from auth ID:', error);
+    return undefined;
+  }
+}
+
 export async function createUser(userData: CreateUserData) {
   try {
     // Validate user data with Zod schema

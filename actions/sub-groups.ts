@@ -1195,6 +1195,7 @@ export async function createSubGroup(formData: FormData) {
     const rawData = {
       group_id: formData.get('group_id'),
       name: formData.get('name'),
+      video_url: formData.get('video_url'),
       sub_group_order: formData.get('sub_group_order'),
       description: formData.get('description'),
       period: formData.get('period'),
@@ -1214,6 +1215,7 @@ export async function createSubGroup(formData: FormData) {
     const cleanedData = {
       group_id: Number(rawData.group_id),
       name: rawData.name as string,
+      video_url: rawData.video_url as string || undefined,
       sub_group_order: rawData.sub_group_order ? Number(rawData.sub_group_order) : undefined,
       description: rawData.description as string || undefined,
       period: (rawData.period as 'matin' | 'soir') || 'matin',
@@ -1297,7 +1299,7 @@ export async function createSubGroup(formData: FormData) {
 
     const sql = `
       INSERT INTO sub_groups (
-        group_id, name, sub_group_order, description, period,
+        group_id, name, video_url, sub_group_order, description, period,
         score_region1, score_region2, nulls, status,
         region1_id, region2_id, belt_region1, belt_region2, 
         main_referee_id, is_completed, is_active
@@ -1308,6 +1310,7 @@ export async function createSubGroup(formData: FormData) {
     const result = await query<{ id: number }>(sql, [
       validatedData.group_id,
       finalName,
+      validatedData.video_url || null,
       finalOrder,
       validatedData.description || null,
       validatedData.period,
@@ -1348,6 +1351,7 @@ export async function updateSubGroup(id: number, formData: FormData) {
     const rawData = {
       group_id: formData.get('group_id'),
       name: formData.get('name'),
+      video_url: formData.get('video_url'),
       sub_group_order: formData.get('sub_group_order'),
       description: formData.get('description'),
       period: formData.get('period'),
@@ -1388,16 +1392,17 @@ export async function updateSubGroup(id: number, formData: FormData) {
     const sql = `
       UPDATE sub_groups 
       SET 
-        group_id = $1, name = $2, sub_group_order = $3, description = $4, period = $5,
-        score_region1 = $6, score_region2 = $7, nulls = $8, status = $9,
-        region1_id = $10, region2_id = $11, belt_region1 = $12, belt_region2 = $13, 
-        main_referee_id = $14, is_completed = $15, is_active = $16
-      WHERE id = $17
+        group_id = $1, name = $2, video_url = $3, sub_group_order = $4, description = $5, period = $6,
+        score_region1 = $7, score_region2 = $8, nulls = $9, status = $10,
+        region1_id = $11, region2_id = $12, belt_region1 = $13, belt_region2 = $14, 
+        main_referee_id = $15, is_completed = $16, is_active = $17
+      WHERE id = $18
     `;
     
     await query(sql, [
       validatedData.group_id,
       validatedData.name,
+      validatedData.video_url || null,
       validatedData.sub_group_order,
       validatedData.description || null,
       validatedData.period,

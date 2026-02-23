@@ -324,6 +324,15 @@ export default function ClientAdvertisementDetail() {
                   </Typography>
                 </div>
 
+                {advertisement.cta_text && (
+                  <div className='overflow-hidden'>
+                    <Typography variant="body-sm" theme="muted">Texte d'appel à l'action</Typography>
+                    <Typography>
+                      {advertisement.cta_text}
+                    </Typography>
+                  </div>
+                )}
+
                 {advertisement.link_url && (
                   <div className='overflow-hidden'>
                     <Typography variant="body-sm" theme="muted">Lien</Typography>
