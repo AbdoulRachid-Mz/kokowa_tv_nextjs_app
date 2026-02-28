@@ -100,17 +100,16 @@ export async function getMobileInteractions(
         r.flag_image as region_image,
 
         -- USER (if requested)
-        ${
-          filters.withUser
-            ? `JSON_BUILD_OBJECT(
+        ${filters.withUser
+        ? `JSON_BUILD_OBJECT(
                  'id', u.id,
                  'username', u.username,
                  'firstName', u.first_name,
                  'lastName', u.last_name,
                  'profilePicture', u.profile_picture
                ) as user`
-            : `NULL as user`
-        }
+        : `NULL as user`
+      }
 
       FROM interactions i
       LEFT JOIN articles a 
@@ -119,10 +118,9 @@ export async function getMobileInteractions(
         ON i.entity_type = 'fighter' AND i.entity_id = f.id
       LEFT JOIN regions r 
         ON i.entity_type = 'region' AND i.entity_id = r.id
-      ${
-        filters.withUser
-          ? `LEFT JOIN users u ON i.user_id = u.id`
-          : ``
+      ${filters.withUser
+        ? `LEFT JOIN users u ON i.user_id = u.id`
+        : ``
       }
 
       ${whereClause}
@@ -275,7 +273,7 @@ export async function getMobileInteractionById(id: number, withUser: boolean = t
   }
 }
 
-export async function createMobileInteraction(formData: any) {
+export async function toggleMobileInteraction(formData: any) {
   try {
     const rawData = {
       authId: formData.authId || formData.authId,
@@ -338,17 +336,30 @@ export async function createMobileInteraction(formData: any) {
     ]);
 
     if (existing.length > 0) {
+      // 🗑️ Supprimer l'interaction existante
+      const deleteSql = `DELETE FROM interactions WHERE id = $1 RETURNING id`;
+      const deleted = await query(deleteSql, [existing[0].id]);
+
+      // 🔄 Décrémenter les compteurs
+      await updateEntityInteractionCount(
+        rawData.entityType as EntityType,
+        rawData.entityId,
+        rawData.interactionType as InteractionType,
+        "decrement"
+      );
+
       return {
         success: true,
         data: {
-          interaction: existing[0],
-          message: "Interaction déjà existante",
+          interaction: null,
+          deletedId: deleted[0].id,
+          timestamp: new Date().toISOString(),
         },
-        message: "Interaction déjà existante",
+        message: "Interaction supprimée (toggle off)",
       };
     }
 
-    // ➕ 3️⃣ Créer l'interaction
+    // ➕ Créer l'interaction
     const insertSql = `
       INSERT INTO interactions (user_id, entity_type, entity_id, interaction_type)
       VALUES ($1, $2, $3, $4)
@@ -370,7 +381,7 @@ export async function createMobileInteraction(formData: any) {
 
     const interaction = result[0];
 
-    // 🔄 4️⃣ Mettre à jour les compteurs
+    // 🔄 Incrémenter les compteurs
     await updateEntityInteractionCount(
       rawData.entityType as EntityType,
       rawData.entityId,
@@ -384,20 +395,25 @@ export async function createMobileInteraction(formData: any) {
         interaction,
         timestamp: new Date().toISOString(),
       },
-      message: "Interaction créée avec succès",
+      message: "Interaction créée (toggle on)",
     };
   } catch (error) {
-    console.error("❌ Error in createMobileInteraction:", error);
+    console.error("❌ Error in toggleMobileInteraction:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: "Erreur lors de la création de l'interaction",
+        message: "Erreur lors du toggle de l'interaction",
         timestamp: new Date().toISOString(),
         error
       },
     };
   }
+}
+
+// Garde la fonction createMobileInteraction pour la rétrocompatibilité
+export async function createMobileInteraction(formData: any) {
+  return toggleMobileInteraction(formData);
 }
 
 

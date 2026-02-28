@@ -175,7 +175,7 @@ export const matchSchema = z.object({
 
   fighter1_initial_state: z.enum(['eliminated', 'not_eliminated']).optional(),
   fighter2_initial_state: z.enum(['eliminated', 'not_eliminated']).optional(),
-
+  initial_state: z.record(z.string(), z.string()).default({}),
   // Résultats
   winner_fighter_id: z.number().int().positive('Lutteur gagnant invalide').optional().or(z.literal('')),
   loser_fighter_id: z.number().int().positive('Lutteur perdant invalide').optional().or(z.literal('')),

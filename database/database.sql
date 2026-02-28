@@ -374,6 +374,8 @@ CREATE TABLE IF NOT EXISTS matches (
 
     fighter1_initial_state VARCHAR(50) CHECK (fighter1_initial_state IN ('eliminated', 'not_eliminated')),
     fighter2_initial_state VARCHAR(50) CHECK (fighter2_initial_state IN ('eliminated', 'not_eliminated')),
+    initial_state JSONB DEFAULT '{}',
+    
     -- Résultat
     winner_fighter_id INTEGER,
     loser_fighter_id INTEGER,

@@ -539,39 +539,66 @@ async function getMatchEditionId(matchId: number): Promise<number | null> {
 
 
 // Fonction utilitaire pour émettre des événements match
-export async function emitMatchEvent(matchId: number, eventType: string, data: any) {
+// export async function emitMatchEvent(matchId: number, eventType: string, data: any) {
+//   try {
+//     // Récupérer les infos de l'édition pour broadcast
+//     const editionInfo = await query(`
+//       SELECT ce.id as edition_id
+//       FROM matches m
+//       JOIN sub_groups sg ON m.sub_group_id = sg.id
+//       JOIN phase_groups pg ON sg.group_id = pg.id
+//       JOIN phases p ON pg.phase_id = p.id
+//       JOIN competition_editions ce ON p.edition_id = ce.id
+//       WHERE m.id = $1
+//     `, [matchId]);
+
+//     const editionId = editionInfo[0]?.edition_id;
+
+//     // Émettre aux abonnés du match
+//     connectionManager.broadcastToMatch(matchId, eventType, {
+//       matchId,
+//       ...data
+//     });
+
+//     // Émettre aux abonnés de l'édition
+//     if (editionId) {
+//       connectionManager.broadcastToEdition(editionId, eventType, {
+//         matchId,
+//         editionId,
+//         ...data
+//       });
+//     }
+
+//     console.log(`Event ${eventType} emitted for match ${matchId}`);
+//   } catch (error) {
+//     console.error('Error emitting match event:', error);
+//   }
+// }
+
+export async function emitMatchEvent(matchId: number, type: string, data: any) {
   try {
-    // Récupérer les infos de l'édition pour broadcast
-    const editionInfo = await query(`
-      SELECT ce.id as edition_id
+    const editionInfo = await queryOne<{ edition_id: number }>(`
+      SELECT p.edition_id
       FROM matches m
       JOIN sub_groups sg ON m.sub_group_id = sg.id
       JOIN phase_groups pg ON sg.group_id = pg.id
       JOIN phases p ON pg.phase_id = p.id
-      JOIN competition_editions ce ON p.edition_id = ce.id
       WHERE m.id = $1
     `, [matchId]);
 
-    const editionId = editionInfo[0]?.edition_id;
+    // 🔥 IMPORTANT : rendre l'objet 100% plain
+    const safeData = JSON.parse(JSON.stringify(data));
 
-    // Émettre aux abonnés du match
-    connectionManager.broadcastToMatch(matchId, eventType, {
-      matchId,
-      ...data
-    });
+    connectionManager.broadcastToMatch(matchId, type, safeData);
 
-    // Émettre aux abonnés de l'édition
-    if (editionId) {
-      connectionManager.broadcastToEdition(editionId, eventType, {
+    if (editionInfo?.edition_id) {
+      connectionManager.broadcastToEdition(editionInfo.edition_id, type, {
         matchId,
-        editionId,
-        ...data
+        ...safeData
       });
     }
-
-    console.log(`Event ${eventType} emitted for match ${matchId}`);
   } catch (error) {
-    console.error('Error emitting match event:', error);
+    console.error('❌ emitMatchEvent error:', error);
   }
 }
 
@@ -644,8 +671,6 @@ export async function updateMatch(id: number, data: Record<string, any>) {
     if (subGroupCheck?.is_completed) {
       throw new Error("Ce sous-groupe est terminé. Aucune modification n'est autorisée.");
     }
-
-    console.log('📥 Mise à jour du match:', id, data);
 
     // Validation des données
     const validatedData = matchSchema.partial().parse(data);
@@ -935,11 +960,11 @@ export async function createMatch(formData: FormData) {
   }
 }
 
-export async function sendMatchPush(matchId: number) {
+export async function sendMatchPush(matchId: number, description?: string, title?: string) {
   await sendPushToTopic(
     `global`,
-    '🔥 Match en direct',
-    'Le match commence'
+    title || '🔥 Match en direct',
+    description || 'Un match est en direct !'
   );
 }
 

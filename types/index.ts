@@ -255,6 +255,7 @@ export interface Match extends BaseEntity {
 
   fighter1_initial_state?: 'eliminated' | 'not_eliminated';
   fighter2_initial_state?: 'eliminated' | 'not_eliminated';
+  initial_state?: JSON;
 
   // Résultat
   winner_fighter_id?: number;
@@ -645,6 +646,7 @@ export interface MatchFilters extends BaseFilters {
   with_fighters?: boolean;
   with_winner?: boolean;
   with_cards?: boolean;
+  period?: 'today' | 'week' | 'month'; // NOUVEAU
 }
 
 export interface EditionFighterFilters extends BaseFilters {

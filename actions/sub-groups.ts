@@ -841,66 +841,66 @@ export async function getSubGroupById(id: number, options: {
 /**
  * 🏁 Terminer manuellement un sous-groupe (admin)
  */
-export async function completeSubGroup(subGroupId: number) {
-  try {
-    const client = await pool.connect();
+// export async function completeSubGroup(subGroupId: number) {
+//   try {
+//     const client = await pool.connect();
     
-    try {
-      await client.query('BEGIN');
+//     try {
+//       await client.query('BEGIN');
       
-      // 1️⃣ Vérifier que TOUS les matchs sont completed
-      const checkRes = await client.query(
-        `SELECT 
-           COUNT(*) as total,
-           COUNT(*) FILTER (WHERE status = 'completed') as completed
-         FROM matches
-         WHERE sub_group_id = $1 AND is_active = true`,
-        [subGroupId]
-      );
+//       // 1️⃣ Vérifier que TOUS les matchs sont completed
+//       const checkRes = await client.query(
+//         `SELECT 
+//            COUNT(*) as total,
+//            COUNT(*) FILTER (WHERE status = 'completed') as completed
+//          FROM matches
+//          WHERE sub_group_id = $1 AND is_active = true`,
+//         [subGroupId]
+//       );
       
-      const { total, completed } = checkRes.rows[0];
+//       const { total, completed } = checkRes.rows[0];
       
-      if (total === 0) {
-        throw new Error("Ce sous-groupe n'a aucun match");
-      }
+//       if (total === 0) {
+//         throw new Error("Ce sous-groupe n'a aucun match");
+//       }
       
-      if (completed !== total) {
-        throw new Error(
-          `Impossible de terminer : ${completed}/${total} matchs terminés`
-        );
-      }
+//       if (completed !== total) {
+//         throw new Error(
+//           `Impossible de terminer : ${completed}/${total} matchs terminés`
+//         );
+//       }
       
-      // 2️⃣ Marquer comme terminé
-      await client.query(
-        `UPDATE sub_groups
-         SET status = 'completed',
-             is_completed = true
-         WHERE id = $1`,
-        [subGroupId]
-      );
+//       // 2️⃣ Marquer comme terminé
+//       await client.query(
+//         `UPDATE sub_groups
+//          SET status = 'completed',
+//              is_completed = true
+//          WHERE id = $1`,
+//         [subGroupId]
+//       );
       
-      await client.query('COMMIT');
+//       await client.query('COMMIT');
       
-      // Revalidation
-      revalidatePath(`/ad/sub-groups/${subGroupId}`);
-      revalidatePath(`/ad/sub-groups/${subGroupId}/organisation`);
+//       // Revalidation
+//       revalidatePath(`/ad/sub-groups/${subGroupId}`);
+//       revalidatePath(`/ad/sub-groups/${subGroupId}/organisation`);
       
-      return {
-        success: true,
-        message: "Sous-groupe marqué comme terminé avec succès"
-      };
+//       return {
+//         success: true,
+//         message: "Sous-groupe marqué comme terminé avec succès"
+//       };
       
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('❌ Error in completeSubGroup:', error);
-    throw new Error('Erreur lors de la finalisation du sous-groupe');
-  }
-}
+//     } catch (error) {
+//       await client.query('ROLLBACK');
+//       throw error;
+//     } finally {
+//       client.release();
+//     }
+//   } catch (error) {
+//     console.error('❌ Error in completeSubGroup:', error);
+//     throw new Error('Erreur lors de la finalisation du sous-groupe');
+//   }
+// }
 
 /**
  * Récupère les lutteurs d'une édition avec leurs détails
@@ -1500,5 +1500,45 @@ export async function assignBeltsToSubGroup(
   } catch (error) {
     console.error('Error in assignBeltsToSubGroup:', error);
     throw new Error('Erreur lors de l\'assignation des ceintures');
+  }
+}
+
+// actions/sub-groups.ts (ajout)
+export async function completeSubGroup(subGroupId: number) {
+  try {
+    // Vérifier que tous les matchs sont terminés
+    const checkRes = await query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'completed') as completed
+      FROM matches
+      WHERE sub_group_id = $1 AND is_active = true
+    `, [subGroupId]);
+
+    const { total, completed } = checkRes[0];
+    
+    if (total === 0) {
+      throw new Error('Ce sous-groupe n\'a aucun match');
+    }
+    
+    if (completed !== total) {
+      throw new Error(`${completed}/${total} matchs terminés seulement`);
+    }
+
+    // Marquer comme terminé
+    await query(`
+      UPDATE sub_groups
+      SET status = 'completed',
+          is_completed = true
+      WHERE id = $1
+    `, [subGroupId]);
+
+    revalidatePath(`/ad/sub-groups/${subGroupId}`);
+    revalidatePath(`/ad/sub-groups/${subGroupId}/matches`);
+
+    return { success: true };
+  } catch (error) {
+    console.error('❌ completeSubGroup error:', error);
+    throw error;
   }
 }

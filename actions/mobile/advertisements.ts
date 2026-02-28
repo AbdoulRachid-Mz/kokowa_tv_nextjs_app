@@ -237,6 +237,12 @@ export async function getMobileAdvertisementById(adId: number, userId?: number) 
       };
     }
 
+    // Incrémenter le compteur d'impressions
+    await query(
+      `UPDATE advertisements SET impression_count = impression_count + 1 WHERE id = $1`,
+      [adId]
+    );
+
     // Récupérer les détails de la publicité
     const sql = `
       SELECT 

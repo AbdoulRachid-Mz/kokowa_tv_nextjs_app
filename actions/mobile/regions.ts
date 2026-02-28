@@ -184,20 +184,22 @@ export async function getMobileRegionById2(regionId: number, userId?: number, ed
     return {
       success: true,
       data: {
-        region: regionInfo,
-        fighters: fighters,
-        editions: editions,
-        transfers: transfers,
-        achievements: organizeAchievements(achievements),
-        stats: stats,
-        summary: {
-          totalFighters: fighters.length,
-          totalEditions: editions.length,
-          totalTransfers: transfers.length,
-          totalAchievements: achievements.length,
-          liveMatches: 0,
-          wins: 0,
-          losses: 0
+        region: {
+          ...regionInfo,
+          editions: editions,
+          fighters: fighters,
+          transfers: transfers,
+          achievements: organizeAchievements(achievements),
+          stats: stats,
+          summary: {
+            totalFighters: fighters.length,
+            totalEditions: editions.length,
+            totalTransfers: transfers.length,
+            totalAchievements: achievements.length,
+            liveMatches: 0,
+            wins: 0,
+            losses: 0
+          },
         },
         timestamp: new Date().toISOString()
       },
@@ -331,41 +333,6 @@ async function getRegionInfo(regionId: number, userId?: number) {
   return result[0] || null;
 }
 
-// // Get editions a region or fighter participated in
-// async function getParticipatedEditions(id: number, type: 'region' | 'fighter') {
-//   let sql: string;
-//   const params: any[] = [id];
-
-//   if (type === 'region') {
-//     sql = `
-//       SELECT DISTINCT
-//         ce.id,
-//         ce.year,
-//         ce.edition_number as "editionNumber",
-//         r.name as "regionName"
-//       FROM competition_editions ce
-//       JOIN edition_regions er ON er.edition_id = ce.id AND er.region_id = $1
-//       LEFT JOIN regions r ON er.region_id = r.id
-//       ORDER BY ce.year DESC, ce.edition_number DESC
-//     `;
-//   } else { // fighter
-//     sql = `
-//       SELECT DISTINCT
-//         ce.id,
-//         ce.year,
-//         ce.edition_number as "editionNumber",
-//         r.name as "regionName"
-//       FROM competition_editions ce
-//       JOIN matches m ON m.edition_id = ce.id
-//       JOIN fighters f ON (m.fighter1_id = f.id OR m.fighter2_id = f.id)
-//       JOIN regions r ON f.region_id = r.id
-//       WHERE f.id = $1
-//       ORDER BY ce.year DESC, ce.edition_number DESC
-//     `;
-//   }
-
-//   return await query(sql, params);
-// }
 
 async function getRegionFighters(regionId: number) {
   const sql = `

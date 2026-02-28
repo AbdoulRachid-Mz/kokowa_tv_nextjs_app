@@ -82,7 +82,6 @@ export async function getArticles(filters?: {
       a.status,
       a.language,
       a.view_count as "viewCount",
-      a.like_count as "likes",  -- Renommer pour cohérence
       a.share_count as "shareCount",
       a.meta_title as "metaTitle",
       a.meta_description as "metaDescription",
@@ -98,16 +97,16 @@ export async function getArticles(filters?: {
       ) as author
     `;
 
-    // Add likes from interactions table if needed
-    const likesField = userId ? `
+    // Add likes from interactions table
+    const likesField = `
       , COALESCE((
         SELECT COUNT(*)
         FROM interactions i
         WHERE i.entity_type = 'article'
           AND i.entity_id = a.id
           AND i.interaction_type = 'like'
-      ), 0) as "interactionLikes"
-    ` : '';
+      ), 0) as "likes"
+    `;
 
     // Add favorite check for user
     const favoriteField = userId ? `
@@ -144,19 +143,13 @@ export async function getArticles(filters?: {
 
     const articles = await query(articlesSql, params);
 
-    // Combine like counts from both tables
-    const processedArticles = articles.map(article => ({
-      ...article,
-      likes: article.interactionLikes || article.likes || 0
-    }));
-
     // Calculate pagination
     const totalPages = Math.ceil(total / limit);
 
     return {
       success: true,
       data: {
-        articles: processedArticles,
+        articles,
         pagination: {
           page,
           limit,
@@ -184,7 +177,6 @@ export async function getArticles(filters?: {
 
 export async function getArticleById(articleId: number, userId?: number) {
   try {
-    // Check if article exists
     const existsSql = "SELECT id FROM articles WHERE id = $1";
     const existsResult = await query(existsSql, [articleId]);
 
@@ -199,7 +191,6 @@ export async function getArticleById(articleId: number, userId?: number) {
       };
     }
 
-    // Build selection fields with likes and favorites
     const selectFields = `
       a.id,
       a.title,
@@ -212,13 +203,11 @@ export async function getArticleById(articleId: number, userId?: number) {
       a.status,
       a.language,
       a.view_count as "viewCount",
-      a.like_count as "likes",  -- Renommer pour cohérence
+      a.like_count as "likes",
       a.share_count as "shareCount",
       a.meta_title as "metaTitle",
       a.meta_description as "metaDescription",
       a.published_at as "publishedAt",
-      
-      -- Author information
       JSON_BUILD_OBJECT(
         'id', u.id,
         'username', u.username,
@@ -229,7 +218,6 @@ export async function getArticleById(articleId: number, userId?: number) {
       ) as author
     `;
 
-    // Add likes from interactions table
     const likesField = `
       , COALESCE((
         SELECT COUNT(*)
@@ -240,7 +228,6 @@ export async function getArticleById(articleId: number, userId?: number) {
       ), 0) as "interactionLikes"
     `;
 
-    // Add favorite check for user
     const favoriteField = userId ? `
       , EXISTS(
         SELECT 1
@@ -252,13 +239,11 @@ export async function getArticleById(articleId: number, userId?: number) {
       ) as "isMyFavorite"
     ` : ', FALSE as "isMyFavorite"';
 
-    // Get article with full details including media
     const articleSql = `
       SELECT 
         ${selectFields}
         ${likesField}
         ${favoriteField}
-        
       FROM articles a
       LEFT JOIN users u ON a.author_id = u.id
       WHERE a.id = $1
@@ -279,10 +264,8 @@ export async function getArticleById(articleId: number, userId?: number) {
       };
     }
 
-    // Combine like counts from both tables
     article.likes = article.interactionLikes || article.likes || 0;
 
-    // Fetch media grouped by type
     const mediaSql = `
       SELECT 
         id,
@@ -295,7 +278,6 @@ export async function getArticleById(articleId: number, userId?: number) {
     `;
     const mediaRows = await query(mediaSql, [articleId]);
 
-    // Build arrays of paths
     const images: string[] = [];
     const videos: string[] = [];
     const documents: string[] = [];
@@ -313,59 +295,21 @@ export async function getArticleById(articleId: number, userId?: number) {
           case "image":
             images.push(m.filePath);
             break;
-
           case "video":
             videos.push(m.filePath);
             break;
-
           case "document":
             documents.push(m.filePath);
             break;
-
           case "audio":
             audios.push(m.filePath);
             break;
-
           default:
             others.push(m.filePath);
         }
       }
     );
 
-    // Fetch comments (messages) for the article
-    const commentsSql = `
-      SELECT 
-        c.id,
-        c.content,
-        c.created_at as "createdAt",
-        JSON_BUILD_OBJECT(
-          'id', u.id,
-          'username', u.username,
-          'firstName', u.first_name,
-          'lastName', u.last_name,
-          'profilePicture', u.profile_picture
-        ) as user
-      FROM messages c
-      JOIN users u ON c.author_id = u.id
-      WHERE c.entity_type = 'article' 
-        AND c.entity_id = $1
-        AND c.message_type = 'comment'
-        AND c.is_active = TRUE
-        AND c.is_deleted = FALSE
-      ORDER BY c.created_at ASC
-    `;
-    const comments = await query(commentsSql, [articleId]);
-
-    // Attach media and comments to article
-    // article.media = {
-    //   images,
-    //   videos,
-    //   documents,
-    //   others,
-    // };
-    article.comments = comments;
-
-    // Increment view count
     const updateViewSql = `
       UPDATE articles 
       SET view_count = view_count + 1 
@@ -376,11 +320,13 @@ export async function getArticleById(articleId: number, userId?: number) {
     return {
       success: true,
       data: {
-        article,
-        images,
-        videos,
-        documents,
-        audios,
+        article: {
+          ...article,
+          images,
+          videos,
+          documents,
+          audios,
+        },
         timestamp: new Date().toISOString(),
       },
       message: "Article récupéré avec succès",

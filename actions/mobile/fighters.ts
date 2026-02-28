@@ -221,13 +221,15 @@ export async function getMobileFighterById(fighterId: number, userId?: number) {
     return {
       success: true,
       data: {
-        fighter: fighterInfo,
-        region: region,
-        stats: stats,
-        achievements: achievements,
-        transfers: transfers,
-        cards: cards,
-        editions: editions
+        fighter: {
+          ...fighterInfo,
+          region: region,
+          stats: stats,
+          achievements: achievements,
+          transfers: transfers,
+          cards: cards,
+          editions: editions
+        },
       },
       message: 'Détails du lutteur récupérés avec succès'
     };
