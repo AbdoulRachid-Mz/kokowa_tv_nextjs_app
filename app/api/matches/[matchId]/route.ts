@@ -6,9 +6,9 @@ export async function GET(
   { params }: { params: Promise<{ matchId: string }> }
 ) {
   try {
-    const {matchId} = await params
+    const { matchId } = await params
     const id = Number(matchId);
-    
+
     if (isNaN(id)) {
       return NextResponse.json(
         { success: false, error: 'ID de match invalide' },
@@ -36,22 +36,22 @@ export async function GET(
     };
 
     const match = await getMatchById(id, options);
-    
+
     return NextResponse.json({
       success: true,
       data: match
     });
-    
+
   } catch (error: any) {
     console.error(`API GET /matchs/${"matchId"} error:`, error);
-    
+
     if (error.message === 'Match non trouvé') {
       return NextResponse.json(
         { success: false, error: 'Match non trouvé' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(
       { success: false, error: error.message || 'Erreur serveur' },
       { status: 500 }
@@ -64,9 +64,9 @@ export async function PUT(
   { params }: { params: Promise<{ matchId: string }> }
 ) {
   try {
-       const {matchId} = await params
+    const { matchId } = await params
     const id = Number(matchId);
-    
+
     if (isNaN(id)) {
       return NextResponse.json(
         { success: false, error: 'ID de match invalide' },
@@ -74,21 +74,21 @@ export async function PUT(
       );
     }
 
-   const body = await request.json();
-const result = await updateMatch(id, body);
-    
+    const body = await request.json();
+    const result = await updateMatch(id, body);
+
     return NextResponse.json(result);
-    
+
   } catch (error: any) {
     console.error(`API PUT /matchs/${"matchId"} error:`, error);
-    
+
     if (error.message === 'Match non trouvé') {
       return NextResponse.json(
         { success: false, error: 'Match non trouvé' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(
       { success: false, error: error.message || 'Erreur lors de la modification' },
       { status: 500 }
@@ -101,9 +101,9 @@ export async function DELETE(
   { params }: { params: Promise<{ matchId: string }> }
 ) {
   try {
-    const {matchId} = await params
+    const { matchId } = await params
     const id = Number(matchId);
-    
+
     if (isNaN(id)) {
       return NextResponse.json(
         { success: false, error: 'ID de match invalide' },
@@ -112,19 +112,19 @@ export async function DELETE(
     }
 
     const result = await deleteMatch(id);
-    
+
     return NextResponse.json(result);
-    
+
   } catch (error: any) {
     console.error(`API DELETE /matchs/${"params.id"} error:`, error);
-    
+
     if (error.message === 'Match non trouvé') {
       return NextResponse.json(
         { success: false, error: 'Match non trouvé' },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json(
       { success: false, error: error.message || 'Erreur lors de la suppression' },
       { status: 500 }

@@ -52,16 +52,16 @@ export default function FighterProfilePage({ fighterId }: FighterProfilePageProp
 
   if (fighterError) {
     return (
-    <ErrorState
-      title="Lutteur non trouvé"
-      message="Le lutteur que vous recherchez n'existe pas ou a été supprimé."
-      actionLabel="Retour aux lutteurs"
-      actionHref="/fighters"
-    />
+      <ErrorState
+        title="Lutteur non trouvé"
+        message="Le lutteur que vous recherchez n'existe pas ou a été supprimé."
+        actionLabel="Retour aux lutteurs"
+        actionHref="/ad/fighters"
+      />
     )
   }
 
-  const { fighter, region, stats, achievements, transfers, cards } = fighterData || {}
+  const { fighter, region, stats, achievements, transfers, cards, editions } = fighterData?.fighter || {}
 
   return (
     <motion.div
@@ -78,7 +78,7 @@ export default function FighterProfilePage({ fighterId }: FighterProfilePageProp
 
       <div className="relative">
         <FighterHeader fighter={fighter} region={region} />
-        
+
         <div className="container mx-auto px-4 py-8">
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Sidebar */}
@@ -92,8 +92,8 @@ export default function FighterProfilePage({ fighterId }: FighterProfilePageProp
             <div className="lg:col-span-2 space-y-8">
               <FighterBio fighter={fighter} />
               <FighterAchievements achievements={achievements || []} />
-              <FighterMatches 
-                matches={matchesData?.matches} 
+              <FighterMatches
+                matches={matchesData?.matches}
                 loading={matchesLoading}
               />
               <FighterTimeline matches={matchesData?.matches?.all || []} />
