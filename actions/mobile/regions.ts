@@ -20,7 +20,7 @@ export async function getMobileRegions(filters?: {
       SELECT COUNT(*) as total
       FROM regions
     `;
-    
+
     const countResult = await query<{ total: string }>(countSql);
     const total = parseInt(countResult[0]?.total || '0');
 
@@ -57,7 +57,7 @@ export async function getMobileRegions(filters?: {
             AND i.interaction_type = 'like'
             AND i.user_id = $1
         ) as "isMyFavorite"
-        ` : 'FALSE as "isMyFavorite"' }
+        ` : 'FALSE as "isMyFavorite"'}
         
       FROM regions 
       ORDER BY name
@@ -122,25 +122,25 @@ export async function getMobileRegionById(regionId: number, userId?: number, edi
     const matches = await getRegionMatches(regionId, editionId);
     const transfers = await getRegionTransfers(regionId);
     const achievements = await getRegionAchievements(regionId);
-    const stats = calculateRegionStats(fighters, matches, achievements);
+    const stats = calculateRegionStats(fighters, matches?.data?.matches?.all || [], achievements);
 
     return {
       success: true,
       data: {
         region: regionInfo,
         fighters: fighters,
-        matches: organizeMatches(matches),
+        matches: organizeMatches(matches?.data?.matches?.all || []),
         transfers: transfers,
         achievements: organizeAchievements(achievements),
         stats: stats,
         summary: {
           totalFighters: fighters.length,
-          totalMatches: matches.length,
+          totalMatches: matches.data?.matches?.all?.length || 0,
           totalTransfers: transfers.length,
           totalAchievements: achievements.length,
-          liveMatches: matches.filter((m: any) => ['live', 'round_break'].includes(m.status)).length,
-          wins: matches.filter((m: any) => m.regionContext.isWinner).length,
-          losses: matches.filter((m: any) => m.regionContext.isInvolved && !m.regionContext.isWinner && m.result).length
+          liveMatches: matches?.data?.matches?.grouped?.live?.length || 0,
+          wins: matches?.data?.matches?.grouped?.byEdition?.[0]?.wins || 0,
+          losses: matches?.data?.matches?.grouped?.byEdition?.[0]?.losses || 0
         },
         timestamp: new Date().toISOString()
       },
@@ -251,7 +251,7 @@ async function getCardsForMatch(matchId: number) {
 //       r.stadium_image as "stadiumImage",
 //       r.total_fighters as "totalFighters",
 //       r.created_at as "createdAt",
-      
+
 //       -- Compter le nombre de likes
 //       COALESCE((
 //         SELECT COUNT(*)
@@ -260,7 +260,7 @@ async function getCardsForMatch(matchId: number) {
 //           AND i.entity_id = r.id
 //           AND i.interaction_type = 'like'
 //       ), 0) as "likes",
-      
+
 //       -- Vérifier si l'utilisateur a liké cette région
 //       ${userId ? `
 //       EXISTS(
@@ -272,11 +272,11 @@ async function getCardsForMatch(matchId: number) {
 //           AND i.user_id = $2
 //       ) as "isMyFavorite"
 //       ` : 'FALSE as "isMyFavorite"' }
-      
+
 //     FROM regions r
 //     WHERE r.id = $1
 //   `;
-  
+
 //   const params = userId ? [regionId, userId] : [regionId];
 //   const result = await query(sql, params);
 //   return result[0] || null;
@@ -315,7 +315,7 @@ async function getRegionInfo(regionId: number, userId?: number) {
           AND i.interaction_type = 'like'
           AND i.user_id = $2
       ) as "isMyFavorite"
-      ` : 'FALSE as "isMyFavorite"' },
+      ` : 'FALSE as "isMyFavorite"'},
       
       -- Infos du coach directement dans les champs de la région
       c.id as "coachId",
@@ -327,7 +327,7 @@ async function getRegionInfo(regionId: number, userId?: number) {
     LEFT JOIN coaches c ON r.id = c.region_id AND c.is_active = TRUE
     WHERE r.id = $1
   `;
-  
+
   const params = userId ? [regionId, userId] : [regionId];
   const result = await query(sql, params);
   return result[0] || null;
@@ -357,14 +357,76 @@ async function getRegionFighters(regionId: number) {
     WHERE f.region_id = $1
     ORDER BY f.ranking ASC, f.nickname ASC
   `;
-  
+
   return await query(sql, [regionId]);
 }
 
 export async function getRegionMatches(regionId: number, editionId?: number) {
+  try {
+    // Récupérer tous les matchs de la région
+    const matches = await getAllMatchesForRegion(regionId, editionId);
+
+    // Grouper par statut
+    const liveMatches = matches.filter(m => ['live', 'round_break'].includes(m.status));
+    const scheduledMatches = matches.filter(m => m.status === 'scheduled');
+    const completedMatches = matches.filter(m => m.status === 'completed');
+    const otherMatches = matches.filter(m => !['live', 'round_break'].includes(m.status));
+
+    // Grouper par année d'édition
+    const matchesByEdition: Record<string, any> = {};
+    matches.forEach(match => {
+      const editionKey = `${match.context.edition.year} - ${match.context.edition.theme}`;
+      if (!matchesByEdition[editionKey]) {
+        matchesByEdition[editionKey] = {
+          edition: match.context.edition,
+          matches: []
+        };
+      }
+      matchesByEdition[editionKey].matches.push(match);
+    });
+
+    return {
+      success: true,
+      data: {
+        matches: {
+          all: matches,
+          grouped: {
+            live: liveMatches,
+            // scheduled: scheduledMatches,
+            // completed: completedMatches,
+            otherMatches,
+            byEdition: Object.values(matchesByEdition)
+          }
+        },
+        summary: {
+          total: matches.length,
+          live: liveMatches.length,
+          scheduled: scheduledMatches.length,
+          completed: completedMatches.length,
+          other: otherMatches.length,
+          wins: matches.filter(m => m.regionContext.isWinner).length,
+          losses: matches.filter(m => m.regionContext.isInvolved && !m.regionContext.isWinner && m.result).length
+        }
+      },
+      message: 'Matchs de la région récupérés avec succès'
+    };
+  } catch (error) {
+    console.error('Error in getRegionMatches:', error);
+    return {
+      success: false,
+      error: {
+        code: 500,
+        message: 'Erreur lors de la récupération des matchs de la région',
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+}
+
+async function getAllMatchesForRegion(regionId: number, editionId?: number) {
   let whereClause = "(f1.region_id = $1 OR f2.region_id = $1)";
   const params: any[] = [regionId];
-  
+
   // Ajouter le filtre par édition si fourni
   if (editionId) {
     whereClause += " AND p.edition_id = $2";
@@ -455,7 +517,7 @@ export async function getRegionMatches(regionId: number, editionId?: number) {
     JOIN sub_groups sg ON m.sub_group_id = sg.id
     JOIN phase_groups pg ON sg.group_id = pg.id
     JOIN phases p ON pg.phase_id = p.id
-    JOIN competition_editions ce ON p.edition_id = ce.id  -- CORRECTION ICI: ce.id au lieu de e.id
+    JOIN competition_editions ce ON p.edition_id = ce.id
     JOIN competitions c ON ce.competition_id = c.id
     WHERE ${whereClause}
     ORDER BY 
@@ -468,9 +530,9 @@ export async function getRegionMatches(regionId: number, editionId?: number) {
       m.match_date DESC,
       m.start_time DESC
   `;
-  
+
   const matches = await query(sql, params);
-  
+
   // Enrichir les données des matchs
   return Promise.all(matches.map(match => enrichRegionMatchData(match, regionId)));
 }
@@ -571,8 +633,8 @@ async function enrichRegionMatchData(match: any, regionId: number) {
     regionContext: {
       isInvolved: isRegionInvolved,
       isWinner: isRegionWinner,
-      regionRole: match.fighter1RegionId === regionId ? 'fighter1' : 
-                 match.fighter2RegionId === regionId ? 'fighter2' : 'none'
+      regionRole: match.fighter1RegionId === regionId ? 'fighter1' :
+        match.fighter2RegionId === regionId ? 'fighter2' : 'none'
     },
 
     context: {
@@ -633,7 +695,7 @@ async function getRegionTransfers(regionId: number) {
     WHERE ft.from_region_id = $1 OR ft.to_region_id = $1
     ORDER BY ft.transfer_date DESC
   `;
-  
+
   return await query(sql, [regionId]);
 }
 
@@ -666,7 +728,7 @@ async function getRegionAchievements(regionId: number) {
       END,
       e.year DESC
   `;
-  
+
   return await query(sql, [regionId]);
 }
 
@@ -674,7 +736,7 @@ function organizeMatches(matches: any[]) {
   const liveMatches = matches.filter(m => ['live', 'round_break'].includes(m.status));
   const scheduledMatches = matches.filter(m => m.status === 'scheduled');
   const completedMatches = matches.filter(m => m.status === 'completed');
-  
+
   // Grouper par édition
   const matchesByEdition: Record<string, any> = {};
   matches.forEach(match => {

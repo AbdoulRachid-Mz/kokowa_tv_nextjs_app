@@ -783,7 +783,7 @@ export async function getMobileFighterMatches(fighterId: number, editionId?: num
     const liveMatches = matches.filter(m => ['live', 'round_break'].includes(m.status));
     const scheduledMatches = matches.filter(m => m.status === 'scheduled');
     const completedMatches = matches.filter(m => m.status === 'completed');
-    const otherMatches = matches.filter(m => !['live', 'round_break', 'scheduled', 'completed'].includes(m.status));
+    const otherMatches = matches.filter(m => !['live'].includes(m.status));
 
     // Grouper par année d'édition
     const matchesByEdition: Record<string, any> = {};
@@ -805,9 +805,9 @@ export async function getMobileFighterMatches(fighterId: number, editionId?: num
           all: matches,
           grouped: {
             live: liveMatches,
-            scheduled: scheduledMatches,
-            completed: completedMatches,
-            other: otherMatches,
+            // scheduled: scheduledMatches,
+            // completed: completedMatches,
+            ...otherMatches,
             byEdition: Object.values(matchesByEdition)
           }
         },

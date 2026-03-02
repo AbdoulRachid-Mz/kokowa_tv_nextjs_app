@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Match, Fighter } from "@/types";
-import { Trophy, User, Users, Equal, Plus } from "lucide-react";
+import { Trophy, User, Users, Equal } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -69,9 +69,22 @@ export function FighterControl({
     type: "winner",
   });
 
+  // ✅ Vérification fiable basée sur l'ID dans le match
+  const isFighterAssigned =
+    fighterType === "fighter1"
+      ? !!match?.fighter1_id
+      : !!match?.fighter2_id;
+
   const isWinner = !!match && match.winner_fighter_id === fighter?.id;
   const canModify = !isSubGroupCompleted && matchStatus !== "completed";
   const bothFightersAssigned = !!match && !!match.fighter1_id && !!match.fighter2_id;
+
+  // Filtrer les lutteurs déjà assignés à l'autre position
+  const filteredAvailableFighters = availableFighters.filter(
+    (f) =>
+      f.id !== match?.fighter1_id &&
+      f.id !== match?.fighter2_id
+  );
 
   const handleAssignFighter = () => {
     if (!selectedFighterId) {
@@ -109,10 +122,11 @@ export function FighterControl({
     setConfirmDialog({
       isOpen: false,
       type: "addCard"
-    })
+    });
   };
 
-  if (!fighter) {
+  // 🎯 Si aucun lutteur n'est assigné à cette position
+  if (!isFighterAssigned) {
     return (
       <Card className="border-dashed border-2 hover:border-primary/50 transition-colors h-full">
         <CardHeader className="pb-2">
@@ -151,14 +165,14 @@ export function FighterControl({
                     <SelectValue placeholder="Sélectionner un lutteur" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableFighters.length > 0 ? (
-                      availableFighters.map((f) => (
+                    {filteredAvailableFighters.length > 0 ? (
+                      filteredAvailableFighters.map((f) => (
                         <SelectItem key={f.id} value={f.id.toString()}>
                           <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6">
                               <AvatarFallback>
-                                {f.first_name[0]}
-                                {f.last_name[0]}
+                                {f.first_name?.charAt(0) ?? "?"}
+                                {f.last_name?.charAt(0) ?? ""}
                               </AvatarFallback>
                             </Avatar>
                             <span>
@@ -180,7 +194,11 @@ export function FighterControl({
                   </SelectContent>
                 </Select>
                 <div className="flex gap-2">
-                  <Button onClick={handleAssignFighter} className="flex-1">
+                  <Button
+                    onClick={handleAssignFighter}
+                    className="flex-1"
+                    disabled={!selectedFighterId}
+                  >
                     Assigner
                   </Button>
                   <Button onClick={() => setIsAssignDialogOpen(false)} variant="outline">
@@ -195,6 +213,7 @@ export function FighterControl({
     );
   }
 
+  // 🏆 Si un lutteur est assigné, on affiche sa carte
   return (
     <Card
       className={`relative h-full ${isWinner ? "border-2 border-green-500 bg-green-50/50" : ""
@@ -203,17 +222,17 @@ export function FighterControl({
       <CardHeader className="pb-2">
         <div className="flex flex-col items-center text-center">
           <Avatar className="h-20 w-20 mb-2 border-2 border-primary/20">
-            <AvatarImage src={fighter.profile_image} />
+            <AvatarImage src={fighter?.profile_image} />
             <AvatarFallback className="text-lg">
-              {fighter.first_name[0]}
-              {fighter.last_name[0]}
+              {fighter?.first_name?.charAt(0) ?? "?"}
+              {fighter?.last_name?.charAt(0) ?? ""}
             </AvatarFallback>
           </Avatar>
           <div>
             <Typography variant="h6" className="font-bold">
-              {fighter.first_name} {fighter.last_name}
+              {fighter?.first_name} {fighter?.last_name}
             </Typography>
-            {fighter.nickname && (
+            {fighter?.nickname && (
               <Typography variant="body-sm" theme="muted" className="italic">
                 "{fighter.nickname}"
               </Typography>
@@ -230,41 +249,34 @@ export function FighterControl({
       <CardContent className="space-y-3">
         <div className="grid grid-cols-3 gap-2">
           {/* Carton jaune */}
-          <Button
-            // onClick={handleAddCard}
-            onClick={() => setConfirmDialog({ isOpen: true, type: "addCard" })}
-            disabled={!canModify || matchStatus !== "live"}
-            variant="outline"
-            size="sm"
-            className="flex relative flex-col items-center justify-center h-auto py-2 border-yellow-500 hover:bg-yellow-50"
-          >
-            <div className="w-4 h-4 bg-yellow-500 rounded-full mb-1" />
-            <span className="text-xs">Jaune</span>
-            {yellowCardCount > 0 && (
-              <Badge variant="secondary" className="absolute -top-2 -right-2 px-1.5 py-0 text-[10px]">
-                {yellowCardCount}
-              </Badge>
-            )}
-          </Button>
-
           <Dialog open={confirmDialog.isOpen && confirmDialog.type === "addCard"} onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "addCard" })}>
-            {/* <DialogTrigger asChild>
+            <DialogTrigger asChild>
               <Button
-                onClick={() => setConfirmDialog({ isOpen: true, type: "addCard" })}
-                disabled={!canSetDraw || !canModify || matchStatus === "completed"}
+                disabled={!canModify || matchStatus !== "live"}
                 variant="outline"
                 size="sm"
-                className="flex flex-col items-center justify-center h-auto py-2 border-blue-500 hover:bg-blue-50"
+                className="flex relative flex-col items-center justify-center h-auto py-2 border-yellow-500 hover:bg-yellow-50"
               >
-                <Equal className="h-4 w-4 text-blue-600 mb-1" />
-                <span className="text-xs">Carton</span>
+                <div className="w-4 h-4 bg-yellow-500 rounded-full mb-1" />
+                <span className="text-xs">Jaune</span>
+                {yellowCardCount > 0 && (
+                  <Badge variant="secondary" className="absolute -top-2 -right-2 px-1.5 py-0 text-[10px]">
+                    {yellowCardCount}
+                  </Badge>
+                )}
               </Button>
-            </DialogTrigger> */}
+            </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Confirmer le carton</DialogTitle>
+                <DialogTitle>Confirmer le carton jaune</DialogTitle>
               </DialogHeader>
-              <p>Êtes-vous sûr de vouloir ajouter un carton ?</p>
+              <p>
+                Êtes-vous sûr de vouloir donner un carton jaune à{" "}
+                <strong>
+                  {fighter?.first_name} {fighter?.last_name}
+                </strong>{" "}
+                ?
+              </p>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setConfirmDialog({ isOpen: false, type: "addCard" })}>
                   Annuler
@@ -278,8 +290,7 @@ export function FighterControl({
           <Dialog open={confirmDialog.isOpen && confirmDialog.type === "draw"} onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "draw" })}>
             <DialogTrigger asChild>
               <Button
-                onClick={() => setConfirmDialog({ isOpen: true, type: "draw" })}
-                disabled={matchStatus === "completed"}
+                disabled={matchStatus === "completed" || !canSetDraw}
                 variant="outline"
                 size="sm"
                 className="flex flex-col items-center justify-center h-auto py-2 border-blue-500 hover:bg-blue-50"
@@ -303,11 +314,20 @@ export function FighterControl({
           </Dialog>
 
           {/* Vainqueur */}
-          <Dialog open={confirmDialog.isOpen && confirmDialog.type === "winner"} onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "winner" })}>
+          <Button
+            onClick={onCompleteWithWinner}
+            disabled={matchStatus === "completed"}
+            variant="outline"
+            size="sm"
+            className="flex flex-col items-center justify-center h-auto py-2 border-green-500 hover:bg-green-50"
+          >
+            <Trophy className="h-4 w-4 text-green-600 mb-1" />
+            <span className="text-xs">Gagnant</span>
+          </Button>
+          {/* <Dialog open={confirmDialog.isOpen && confirmDialog.type === "winner"} onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "winner" })}>
             <DialogTrigger asChild>
               <Button
-                onClick={() => setConfirmDialog({ isOpen: true, type: "winner" })}
-                disabled={matchStatus === "completed"}
+                disabled={matchStatus === "completed" || !canSetWinner}
                 variant="outline"
                 size="sm"
                 className="flex flex-col items-center justify-center h-auto py-2 border-green-500 hover:bg-green-50"
@@ -323,7 +343,7 @@ export function FighterControl({
               <p>
                 Êtes-vous sûr de vouloir désigner{" "}
                 <strong>
-                  {fighter.first_name} {fighter.last_name}
+                  {fighter?.first_name} {fighter?.last_name}
                 </strong>{" "}
                 comme vainqueur ?
               </p>
@@ -334,7 +354,7 @@ export function FighterControl({
                 <Button onClick={onCompleteWithWinner}>Confirmer</Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+          </Dialog> */}
         </div>
 
         {/* Badge de statut */}

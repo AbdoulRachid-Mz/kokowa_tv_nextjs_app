@@ -77,6 +77,16 @@ export async function updateMatchAndRecompute(
       await sendMatchPush(matchId, 'Le match a été complété', '🔥 Match en direct');
     }
 
+    // 🔥 Si on démarre un match
+    if (updates.status === 'live') {
+      await client.query(`
+    UPDATE sub_groups
+    SET status = 'ongoing'
+    WHERE id = $1
+    AND status != 'completed'
+  `, [oldMatch.sub_group_id]);
+    }
+
     await client.query("COMMIT");
 
     await emitMatchEvent(matchId, "match_updated", { match: updatedMatch });
@@ -96,28 +106,78 @@ export async function updateMatchAndRecompute(
  * 🔄 APPLY: Ajouter les points du nouveau vainqueur
  */
 async function applyMatchImpact(client: PoolClient, match: any) {
-  const { winner_fighter_id, sub_group_id, edition_id } = match;
+  const {
+    winner_fighter_id,
+    loser_fighter_id,
+    sub_group_id,
+    edition_id,
+    match_result
+  } = match;
 
-  const winnerRes = await client.query(`SELECT region_id FROM fighters WHERE id = $1`, [winner_fighter_id]);
-  const winnerRegionId = winnerRes.rows[0]?.region_id;
-  if (!winnerRegionId) return;
+  // 🎯 MATCH NUL
+  if (match_result === 'draw') {
 
-  // 🔺 Ajouter 3 points à la région dans l'édition
-  await client.query(
-    `UPDATE edition_regions
-     SET points = points + 3
-     WHERE edition_id = $1 AND region_id = $2`,
-    [edition_id, winnerRegionId]
-  );
+    const subGroupRes = await client.query(
+      `SELECT region1_id, region2_id FROM sub_groups WHERE id = $1`,
+      [sub_group_id]
+    );
 
-  // 🔺 Ajouter 3 points au sous-groupe
-  await client.query(
-    `UPDATE sub_groups
-     SET score_region1 = CASE WHEN region1_id = $1 THEN COALESCE(score_region1,0)+3 ELSE score_region1 END,
-         score_region2 = CASE WHEN region2_id = $1 THEN COALESCE(score_region2,0)+3 ELSE score_region2 END
-     WHERE id = $2`,
-    [winnerRegionId, sub_group_id]
-  );
+    const { region1_id, region2_id } = subGroupRes.rows[0];
+
+    // +1 / +1 dans le sous-groupe
+    await client.query(`
+      UPDATE sub_groups
+      SET score_region1 = COALESCE(score_region1,0) + 1,
+          score_region2 = COALESCE(score_region2,0) + 1,
+          nulls = COALESCE(nulls,0) + 1
+      WHERE id = $1
+    `, [sub_group_id]);
+
+    // (optionnel) +1 / +1 dans edition_regions
+    await client.query(`
+      UPDATE edition_regions
+      SET points = points + 1
+      WHERE edition_id = $1
+      AND region_id IN ($2, $3)
+    `, [edition_id, region1_id, region2_id]);
+
+    return;
+  }
+
+  // 🎯 VICTOIRE
+  if (winner_fighter_id) {
+
+    const winnerRes = await client.query(
+      `SELECT region_id FROM fighters WHERE id = $1`,
+      [winner_fighter_id]
+    );
+
+    const winnerRegionId = winnerRes.rows[0]?.region_id;
+
+    if (!winnerRegionId) return;
+
+    // +3 edition
+    await client.query(`
+      UPDATE edition_regions
+      SET points = points + 3
+      WHERE edition_id = $1
+      AND region_id = $2
+    `, [edition_id, winnerRegionId]);
+
+    // +1 sous-groupe
+    await client.query(`
+      UPDATE sub_groups
+      SET score_region1 = CASE
+            WHEN region1_id = $1 THEN COALESCE(score_region1,0) + 1
+            ELSE score_region1
+          END,
+          score_region2 = CASE
+            WHEN region2_id = $1 THEN COALESCE(score_region2,0) + 1
+            ELSE score_region2
+          END
+      WHERE id = $2
+    `, [winnerRegionId, sub_group_id]);
+  }
 }
 
 /**
