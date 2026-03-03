@@ -170,6 +170,7 @@ export default function MatchDetailPage() {
   const updateMatchMutation = useMutation({
     mutationFn: async (updates: MatchUpdate) => {
       const response = await updateMatch(parsedMatchId, updates);
+      console.log(response)
       return response;
     },
     onSuccess: () => {
@@ -269,19 +270,20 @@ export default function MatchDetailPage() {
     addCardMutation.mutate({ fighterId });
   };
 
+  // Utilisez directement les props du controller
   const handleCompleteMatch = (winnerId: number, loserId: number) => {
     completeMatch(winnerId, loserId);
-    setConfirmDialog((prev) => ({ ...prev, isOpen: false, type: "complete" }));
+    setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
   };
 
   const handleSetDraw = () => {
     setDraw();
-    setConfirmDialog((prev) => ({ ...prev, isOpen: false, type: "draw" }));
+    setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
   };
 
   const handleReclamation = () => {
     reclamation();
-    setConfirmDialog((prev) => ({ ...prev, isOpen: false, type: "reclamation" }));
+    setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
   };
 
   const handleResetMatch = () => {

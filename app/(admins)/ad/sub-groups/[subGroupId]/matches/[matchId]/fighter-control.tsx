@@ -287,7 +287,7 @@ export function FighterControl({
           </Dialog>
 
           {/* Match nul */}
-          <Dialog open={confirmDialog.isOpen && confirmDialog.type === "draw"} onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "draw" })}>
+          {/* <Dialog open={confirmDialog.isOpen && confirmDialog.type === "draw"} onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "draw" })}>
             <DialogTrigger asChild>
               <Button
                 disabled={matchStatus === "completed" || !canSetDraw}
@@ -311,7 +311,18 @@ export function FighterControl({
                 <Button onClick={onSetDraw}>Confirmer</Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+          </Dialog> */}
+
+          <Button
+            disabled={matchStatus === "completed" || !canSetDraw}
+            variant="outline"
+            onClick={onSetDraw}
+            size="sm"
+            className="flex flex-col items-center justify-center h-auto py-2 border-blue-500 hover:bg-blue-50"
+          >
+            <Equal className="h-4 w-4 text-blue-600 mb-1" />
+            <span className="text-xs">Nul</span>
+          </Button>
 
           {/* Vainqueur */}
           <Button

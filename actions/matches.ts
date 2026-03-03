@@ -1,7 +1,7 @@
 // @/actions/matches.ts - VERSION FINALE CORRIGÉE
 'use server';
 
-import { query, queryOne } from '@/lib/db/neon-client';
+import { pool, query, queryOne } from '@/lib/db/neon-client';
 import { matchSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
 import { Match, MatchFilters, PaginatedResponse } from '@/types';
@@ -9,6 +9,7 @@ import { connectionManager } from '@/lib/realtime/connection-manager';
 import { z } from 'zod';
 import { updateMatchAndRecompute } from '@/lib/services/match-update.service';
 import { sendPushNotification, sendPushToTopic } from '@/lib/push';
+import { PoolClient } from 'pg';
 
 export async function getMatches(
   filters: MatchFilters = {}
@@ -104,7 +105,7 @@ export async function getMatches(
         LEFT JOIN fighters wf ON m.winner_fighter_id = wf.id
         LEFT JOIN fighters lf ON m.loser_fighter_id = lf.id
       `);
-      
+
       selectFields.push(`
         CASE WHEN f1.id IS NOT NULL THEN
           JSON_BUILD_OBJECT(
@@ -271,7 +272,7 @@ export async function getMatches(
   }
 }
 
-export async function getMatchById(id: number, options: { 
+export async function getMatchById(id: number, options: {
   with_relations?: boolean;
   relations?: {
     with_sub_group?: boolean;
@@ -288,7 +289,7 @@ export async function getMatchById(id: number, options: {
   is_active?: boolean;
 } = {}) {
   try {
-    const { 
+    const {
       with_relations = true,
       relations = {
         with_sub_group: true,
@@ -302,9 +303,9 @@ export async function getMatchById(id: number, options: {
         with_winner_loser: true,
         with_cards: true
       },
-      is_active 
+      is_active
     } = options;
-    
+
     // Extraire les relations avec des valeurs par défaut
     const {
       with_sub_group = true,
@@ -318,10 +319,10 @@ export async function getMatchById(id: number, options: {
       with_winner_loser = true,
       with_cards = true
     } = relations;
-    
+
     const params: any[] = [id];
     let whereClause = 'WHERE m.id = $1';
-    
+
     // Ajouter le filtre is_active si spécifié
     if (typeof is_active === 'boolean') {
       params.push(is_active);
@@ -332,7 +333,7 @@ export async function getMatchById(id: number, options: {
 
     if (with_relations) {
       const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
-      
+
       sql = `
         SELECT 
           m.*,
@@ -498,11 +499,11 @@ export async function getMatchById(id: number, options: {
     }
 
     const result = await queryOne<Match>(sql, params);
-    
+
     if (!result) {
       throw new Error('Match non trouvé');
     }
-    
+
     return result;
   } catch (error) {
     console.error('Error in getMatchById:', error);
@@ -513,13 +514,13 @@ export async function getMatchById(id: number, options: {
 // Helper pour déterminer l'état initial d'un lutteur
 async function getFighterInitialState(editionId: number, fighterId: number | null): Promise<'eliminated' | 'not_eliminated'> {
   if (!fighterId) return 'not_eliminated';
-  
+
   const result = await query<{ is_eliminated: boolean }>(`
     SELECT is_eliminated 
     FROM edition_fighters 
     WHERE edition_id = $1 AND fighter_id = $2
   `, [editionId, fighterId]);
-  
+
   return result[0]?.is_eliminated ? 'eliminated' : 'not_eliminated';
 }
 
@@ -533,7 +534,7 @@ async function getMatchEditionId(matchId: number): Promise<number | null> {
     JOIN phases p ON pg.phase_id = p.id
     WHERE m.id = $1
   `, [matchId]);
-  
+
   return result[0]?.edition_id || null;
 }
 
@@ -667,29 +668,29 @@ export async function updateMatch(id: number, data: Record<string, any>) {
       JOIN sub_groups sg ON m.sub_group_id = sg.id
       WHERE m.id = $1
     `, [id]);
-    
+
     if (subGroupCheck?.is_completed) {
       throw new Error("Ce sous-groupe est terminé. Aucune modification n'est autorisée.");
     }
 
     // Validation des données
     const validatedData = matchSchema.partial().parse(data);
-    
+
     // Préparer les mises à jour
     const updates: any = { ...validatedData };
-    
+
     // Si on change le statut à 'completed', s'assurer qu'il y a un résultat
     if (updates.status === 'completed') {
       if (!updates.match_result && !updates.winner_fighter_id) {
         throw new Error('Un match terminé doit avoir un résultat défini');
       }
     }
-    
+
     // Si on définit un résultat, s'assurer que le statut est 'completed'
     if (updates.match_result && updates.status !== 'completed') {
       updates.status = 'completed';
     }
-    
+
     // Si on définit un vainqueur/perdant, définir le résultat automatiquement
     if (updates.winner_fighter_id && updates.loser_fighter_id) {
       // Déterminer quel fighter est le vainqueur
@@ -700,7 +701,7 @@ export async function updateMatch(id: number, data: Record<string, any>) {
         updates.match_result = 'fighter2_win';
       }
     }
-    
+
     // Obtenir l'édition pour déterminer les états initiaux
     const editionId = await getMatchEditionId(id);
     if (editionId) {
@@ -737,12 +738,12 @@ export async function updateMatch(id: number, data: Record<string, any>) {
     };
   } catch (error) {
     console.error('❌ Error in updateMatch:', error);
-    
+
     if (error instanceof z.ZodError) {
       const errorMessages = error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ');
       throw new Error(`Erreur de validation: ${errorMessages}`);
     }
-    
+
     throw error;
   }
 }
@@ -764,7 +765,7 @@ export async function setMatchDraw(id: number) {
     };
 
     const result = await updateMatch(id, updates);
-    
+
     await emitMatchEvent(id, 'match_draw', {
       matchId: id,
       message: 'Match déclaré nul'
@@ -791,7 +792,7 @@ export async function addFighterCard(cardData: {
       VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `;
-    
+
     const result = await query(sql, [
       cardData.match_id,
       cardData.fighter_id,
@@ -847,7 +848,57 @@ export async function deleteFighterCard(cardId: number) {
   }
 }
 
+export async function generateInitialState(client: PoolClient, matchId: number) {
+  const data = await client.query(`
+    SELECT 
+      m.id,
+      m.sub_group_id,
+      sg.score_region1,
+      sg.score_region2,
+      sg.nulls,
+      sg.status as sub_group_status,
+      p.edition_id,
+      sg.region1_id,
+      sg.region2_id,
+      m.fighter1_id,
+      m.fighter2_id
+    FROM matches m
+    JOIN sub_groups sg ON m.sub_group_id = sg.id
+    JOIN phase_groups pg ON sg.group_id = pg.id
+    JOIN phases p ON pg.phase_id = p.id
+    WHERE m.id = $1
+  `, [matchId]);
+  const row = data.rows[0];
+  // Filter out null region IDs to prevent SQL issues with IN clause
+  const regions = [row.region1_id, row.region2_id].filter(Boolean);
+  const editionRegions = await client.query(`
+    SELECT region_id, points, is_eliminated, status
+    FROM edition_regions
+    WHERE edition_id = $1
+      AND region_id = ANY($2::int[])
+  `, [row.edition_id, regions]);
+  // Filter out null fighter IDs to prevent SQL issues with IN clause
+  const fighters = [row.fighter1_id, row.fighter2_id].filter(Boolean);
+  const editionFighters = await client.query(`
+    SELECT fighter_id, is_eliminated, status
+    FROM edition_fighters
+    WHERE edition_id = $1
+      AND fighter_id = ANY($2::int[])
+  `, [row.edition_id, fighters]);
+  return {
+    sub_group: {
+      score_region1: row.score_region1,
+      score_region2: row.score_region2,
+      nulls: row.nulls,
+      status: row.sub_group_status
+    },
+    edition_regions: editionRegions.rows,
+    edition_fighters: editionFighters.rows
+  };
+}
+
 export async function createMatch(formData: FormData) {
+  let client: PoolClient | null = null;
   try {
     const rawData = {
       sub_group_id: formData.get('sub_group_id'),
@@ -873,32 +924,35 @@ export async function createMatch(formData: FormData) {
     // Validate with schema
     const validatedData = matchSchema.parse(schemaData);
 
+    // Reserve a client from the pool for the whole transaction
+    client = await pool.connect();
+
     // Determine match number
     let finalMatchNumber = validatedData.match_number;
 
     if (finalMatchNumber === undefined || finalMatchNumber === null) {
-      const maxNumberResult = await query<{ max_number: number }>(
+      const maxNumberResult = await client.query<{ max_number: number }>(
         `SELECT COALESCE(MAX(match_number), 0) as max_number 
          FROM matches WHERE sub_group_id = $1`,
         [validatedData.sub_group_id]
       );
 
-      finalMatchNumber = maxNumberResult[0]?.max_number + 1 || 1;
+      finalMatchNumber = maxNumberResult.rows[0]?.max_number + 1 || 1;
     } else {
-      const existingNumberCheck = await query<{ id: number }>(
+      const existingNumberCheck = await client.query<{ id: number }>(
         `SELECT id FROM matches WHERE match_number = $1 AND sub_group_id = $2`,
         [finalMatchNumber, validatedData.sub_group_id]
       );
 
-      if (existingNumberCheck.length > 0) {
-        const numbersResult = await query<{ match_number: number }>(
+      if (existingNumberCheck.rows.length > 0) {
+        const numbersResult = await client.query<{ match_number: number }>(
           `SELECT match_number FROM matches 
            WHERE sub_group_id = $1 
            ORDER BY match_number`,
           [validatedData.sub_group_id]
         );
 
-        const existingNumbers = numbersResult.map(r => r.match_number);
+        const existingNumbers = numbersResult.rows.map(r => r.match_number);
         let nextNumber = finalMatchNumber;
 
         while (existingNumbers.includes(nextNumber as number)) {
@@ -909,32 +963,40 @@ export async function createMatch(formData: FormData) {
       }
     }
 
-    const sql = `
-      INSERT INTO matches (
-        sub_group_id, match_number, match_date, start_time,
-        fighter1_id, fighter2_id, notes, status, is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', $8)
-      RETURNING id
-    `;
+    const insertResult = await client.query<{ id: number }>(
+      `INSERT INTO matches (
+         sub_group_id, match_number, match_date, start_time,
+         fighter1_id, fighter2_id, notes, status, is_active
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', $8)
+       RETURNING id`,
+      [
+        validatedData.sub_group_id,
+        finalMatchNumber,
+        validatedData.match_date,
+        validatedData.start_time || null,
+        validatedData.fighter1_id || null,
+        validatedData.fighter2_id || null,
+        validatedData.notes ?? null,
+        true,
+      ]
+    );
 
-    const result = await query<{ id: number }>(sql, [
-      validatedData.sub_group_id,
-      finalMatchNumber,
-      validatedData.match_date,
-      validatedData.start_time || null,
-      validatedData.fighter1_id || null,
-      validatedData.fighter2_id || null,
-      validatedData.notes ?? null,
-      true,
-    ]);
-
-    const matchId = result[0].id;
+    const matchId = insertResult.rows[0].id;
 
     // Initialize fighter states in edition
     const ctx = await getMatchEditionContext(matchId);
     if (ctx) {
       await ensureEditionFightersQualified(ctx.edition_id, [validatedData.fighter1_id, validatedData.fighter2_id].filter(Boolean) as number[]);
     }
+
+    // Generate initial state using the helper
+    const initialState = await generateInitialState(client, matchId);
+
+    // Update the match with the initial state
+    await client.query(
+      `UPDATE matches SET initial_state = $1 WHERE id = $2`,
+      [JSON.stringify(initialState), matchId]
+    );
 
     await emitMatchEvent(matchId, 'match_created', {
       matchId,
@@ -957,6 +1019,9 @@ export async function createMatch(formData: FormData) {
     }
 
     throw new Error('Erreur lors de la création du match');
+  } finally {
+    // Always release the client back to the pool
+    if (client) client.release();
   }
 }
 
@@ -992,14 +1057,14 @@ export async function deleteMatch(id: number) {
 
     const sql = 'DELETE FROM matches WHERE id = $1';
     await query(sql, [id]);
-    
+
     revalidatePath('/matches');
     revalidatePath(`/editions/${editionId}`);
     revalidatePath(`/sub-groups/${existing.sub_group_id}`);
-    
-    return { 
-      success: true, 
-      message: 'Match supprimé avec succès' 
+
+    return {
+      success: true,
+      message: 'Match supprimé avec succès'
     };
   } catch (error) {
     console.error('Error in deleteMatch:', error);
@@ -1019,7 +1084,7 @@ export async function updateMatchStatus(id: number, status: string) {
       SET status = $1, updated_at = CURRENT_TIMESTAMP
       WHERE id = $2
     `;
-    
+
     await query(sql, [status, id]);
 
     // Émettre l'événement de changement de statut
@@ -1049,10 +1114,10 @@ export async function updateMatchStatus(id: number, status: string) {
 
     revalidatePath('/matches');
     revalidatePath(`/matches/${id}`);
-    
-    return { 
-      success: true, 
-      message: `Statut du match mis à jour: ${status}` 
+
+    return {
+      success: true,
+      message: `Statut du match mis à jour: ${status}`
     };
   } catch (error) {
     console.error('Error in updateMatchStatus:', error);
@@ -1087,7 +1152,7 @@ export async function updateLiveMatchData(id: number, updates: {
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $7
     `;
-    
+
     await query(sql, [
       updates.status ?? null,
       updates.start_time || null,
@@ -1099,7 +1164,7 @@ export async function updateLiveMatchData(id: number, updates: {
     ]);
 
     // Récupérer le match mis à jour
-    const updatedMatch = await getMatchById(id, { 
+    const updatedMatch = await getMatchById(id, {
       with_relations: true,
       relations: {
         with_fighters: true,
@@ -1113,8 +1178,8 @@ export async function updateLiveMatchData(id: number, updates: {
       updates
     });
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       message: 'Données du match mises à jour',
       match: updatedMatch
     };

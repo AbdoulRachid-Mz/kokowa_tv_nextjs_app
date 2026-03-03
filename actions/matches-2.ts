@@ -169,10 +169,10 @@ export async function updateMatch(
 ) {
   await updateMatchAndRecompute(matchId, updates);
 
-// 🔥 Toujours relire avec getMatchById
-const freshMatch = await getMatchById(matchId);
+  // 🔥 Toujours relire avec getMatchById
+  const freshMatch = await getMatchById(matchId);
 
-return freshMatch;
+  return freshMatch;
 }
 
 // export async function updateMatch(
@@ -247,7 +247,7 @@ return freshMatch;
 //   return result;
 // }
 
-async function generateInitialState(client: PoolClient, matchId: number) {
+export async function generateInitialState(client: PoolClient, matchId: number) {
   const data = await client.query(`
     SELECT 
       m.id,
@@ -295,6 +295,7 @@ async function generateInitialState(client: PoolClient, matchId: number) {
     edition_fighters: editionFighters.rows
   };
 }
+
 export async function restoreMatchInitialState(
   client: PoolClient,
   matchId: number
@@ -546,6 +547,7 @@ export async function emitMatchEvent(matchId: number, type: string, data: any) {
       JOIN phases p ON pg.phase_id = p.id
       WHERE m.id = $1
     `, [matchId]);
+
 
     // 🔥 IMPORTANT : rendre l'objet 100% plain
     const safeData = JSON.parse(JSON.stringify(data));

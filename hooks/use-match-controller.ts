@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useMatchTimer } from './use-match-timer-2';
@@ -13,6 +13,7 @@ interface UseMatchControllerProps {
 
 export function useMatchController({ matchId }: UseMatchControllerProps) {
   const queryClient = useQueryClient();
+  const isUpdatingRef = useRef(false); // 🔥 Pour éviter les doubles appels
 
   // ==========================
   // QUERY
@@ -64,7 +65,20 @@ export function useMatchController({ matchId }: UseMatchControllerProps) {
   // ==========================
 
   const updateMutation = useMutation({
-    mutationFn: (updates: MatchUpdate) => updateMatch(matchId, updates),
+    mutationFn: async (updates: MatchUpdate) => {
+      // 🔥 Éviter les appels concurrents
+      if (isUpdatingRef.current) {
+        console.log('🔄 Mise à jour déjà en cours, ignorée');
+        return;
+      }
+      
+      isUpdatingRef.current = true;
+      try {
+        return await updateMatch(matchId, updates);
+      } finally {
+        isUpdatingRef.current = false;
+      }
+    },
 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['match', matchId] });
@@ -80,7 +94,7 @@ export function useMatchController({ matchId }: UseMatchControllerProps) {
   // ==========================
 
   const startMatch = useCallback(() => {
-    if (!match) return;
+    if (!match || isUpdatingRef.current) return; // 🔥 Vérification
 
     timer.start();
 
@@ -91,7 +105,7 @@ export function useMatchController({ matchId }: UseMatchControllerProps) {
   }, [match, timer, updateMutation]);
 
   const pauseMatch = useCallback(() => {
-    if (!match) return;
+    if (!match || isUpdatingRef.current) return; // 🔥 Vérification
 
     // 1️⃣ Stopper le timer et récupérer la durée actuelle
     const currentDuration = timer.pause();
@@ -127,7 +141,7 @@ export function useMatchController({ matchId }: UseMatchControllerProps) {
   }, [timer, updateMutation]);
 
   const completeMatch = useCallback((winnerId: number, loserId: number) => {
-    if (!match) return;
+    if (!match || isUpdatingRef.current) return; // 🔥 Vérification
 
     const finalDuration = timer.stop();
 
@@ -148,7 +162,7 @@ export function useMatchController({ matchId }: UseMatchControllerProps) {
   }, [match, timer, updateMutation]);
 
   const setDraw = useCallback(() => {
-    if (!match) return;
+    if (!match || isUpdatingRef.current) return; // 🔥 Vérification
 
     const finalDuration = timer.stop();
 
@@ -170,7 +184,6 @@ export function useMatchController({ matchId }: UseMatchControllerProps) {
       force_reset: true
     });
   }, [timer, updateMutation]);
-
 
 
   // ==========================

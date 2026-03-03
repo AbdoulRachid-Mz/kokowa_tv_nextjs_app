@@ -106,7 +106,7 @@ export function MatchControls({
         {/* Actions secondaires */}
         <div className="grid grid-cols-3 gap-3">
           {/* Actions de réclamation */}
-          <Dialog
+          {/* <Dialog
             open={confirmDialog.isOpen && confirmDialog.type === "reclamation"}
             onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "reclamation" })}
           >
@@ -136,10 +136,19 @@ export function MatchControls({
                 <Button onClick={onReclamation}>Confirmer</Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+          </Dialog> */}
+          <Button
+            onClick={onReclamation}
+            variant="outline"
+            className=" gap-2 border-orange-500 hover:bg-orange-50"
+            disabled={!canModify || match.status === "completed"}
+          >
+            <Flag className="h-4 w-4 text-orange-600" />
+            Réclamation
+          </Button>
 
           {/* Annuler */}
-          <Dialog
+          {/* <Dialog
             open={confirmDialog.isOpen && confirmDialog.type === "cancel"}
             onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "cancel" })}
           >
@@ -168,10 +177,20 @@ export function MatchControls({
                 </Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+          </Dialog> */}
+
+          <Button
+            onClick={onCancelMatch}
+            variant="outline"
+            className="gap-2 border-red-200 hover:bg-red-50"
+            disabled={match.status !== "completed" && match.status !== "reclamation"}
+          >
+            <XCircle className="h-4 w-4 text-red-600" />
+            Annuler
+          </Button>
 
           {/* Réinitialiser */}
-          <Dialog
+          {/* <Dialog
             open={confirmDialog.isOpen && confirmDialog.type === "reset"}
             onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "reset" })}
           >
@@ -208,7 +227,17 @@ export function MatchControls({
                 </Button>
               </DialogFooter>
             </DialogContent>
-          </Dialog>
+          </Dialog> */}
+
+          <Button
+            onClick={onResetMatch}
+            variant="outline"
+            className="gap-2"
+            disabled={match.status !== "completed" && match.status !== "reclamation"}
+          >
+            <RotateCcw className="h-4 w-4" />
+            Réinitialiser
+          </Button>
         </div>
 
         {/* Notes */}

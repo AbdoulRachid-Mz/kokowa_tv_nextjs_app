@@ -1,7 +1,4 @@
 // hooks/use-match-timer.ts
-// Timer totalement isole - ne depend PAS de la DB
-// Ne se reinitialise pas a chaque render
-// N'ecoute pas les changements du match sauf au montage
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
