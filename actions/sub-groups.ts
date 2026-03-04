@@ -1371,6 +1371,7 @@ export async function updateSubGroup(id: number, formData: FormData) {
     const cleanedData = {
       group_id: Number(rawData.group_id),
       name: rawData.name as string,
+      video_url: rawData.video_url as string || undefined,
       sub_group_order: Number(rawData.sub_group_order),
       description: rawData.description as string || undefined,
       period: (rawData.period as 'matin' | 'soir') || 'matin',

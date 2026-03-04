@@ -48,7 +48,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-
 export async function POST(req: NextRequest) {
   try {
     const contentType = req.headers.get('content-type') || '';
@@ -78,8 +77,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // console.log(body)
-
     const result = await createMobileMessage({
       authId: body.authId,
       content: body.content,
@@ -96,7 +93,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json(result, { status: 201 });
+    return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.error('❌ API POST /api/mobile/messages:', error);
     return NextResponse.json(

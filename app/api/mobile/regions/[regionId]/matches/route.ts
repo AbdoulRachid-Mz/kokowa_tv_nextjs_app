@@ -28,5 +28,5 @@ export const GET = publicHandler(async (request: NextRequest, context: ApiContex
         });
     }
 
-    return Response.json({result});
+    return Response.json({...result});
 }, ['GET']);

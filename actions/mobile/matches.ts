@@ -120,6 +120,8 @@ async function getSubGroupInfo(subGroupId: number) {
       r2.name as "region2Name",
       r1.color as "region1Color",
       r2.color as "region2Color",
+      r1.flag_image as "region1FlagImage",
+      r2.flag_image as "region2FlagImage",
       sg.belt_region1 as "beltRegion1Id",
       sg.belt_region2 as "beltRegion2Id",
       b1.color as "beltRegion1Color",
@@ -171,7 +173,7 @@ async function getSubGroupInfo(subGroupId: number) {
       region1: subGroup.scoreRegion1,
       region2: subGroup.scoreRegion2,
       nulls: subGroup.nulls,
-      videoUrl: subGroup.videoUrl,
+      // videoUrl: subGroup.videoUrl,
     };
 
     subGroup.belts = {

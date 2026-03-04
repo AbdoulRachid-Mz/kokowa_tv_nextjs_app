@@ -20,6 +20,7 @@ import {
   Award,
   Swords,
   Shield,
+  RefreshCcw,
 } from "lucide-react";
 import { CompetitionEdition, Phase, Fighter, Region } from "@/types";
 import { EntityList } from "@/components/shared/entity-list";
@@ -28,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { PhaseFormDialog } from "@/components/editions/phase-form";
 import { FighterCard, RegionCard } from "@/components/entities/entity-cards";
 import { CardStats } from "@/components/entities/card-stats";
-import {toast} from "sonner"
+import { toast } from "sonner"
 
 export default function EditionDetailPage() {
   const params = useParams();
@@ -40,7 +41,7 @@ export default function EditionDetailPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [phaseDialogOpen, setPhaseDialogOpen] = useState<boolean>(false);
 
-  const handleOnSuccess = ( ) => {
+  const handleOnSuccess = () => {
     toast.success("Phase créée avec succès");
     setPhaseDialogOpen(false);
     setActiveTab("phases");
@@ -78,15 +79,15 @@ export default function EditionDetailPage() {
     loading: false,
     page: 1,
     limit: 20,
-    setPage: () => {},
-    setLimit: () => {},
+    setPage: () => { },
+    setLimit: () => { },
     searchTerm: "",
-    setSearchTerm: () => {},
+    setSearchTerm: () => { },
     filters: {},
-    setFilters: () => {},
-    onRefresh: () => {},
+    setFilters: () => { },
+    onRefresh: () => { },
     viewMode: "grid" as const,
-    setViewMode: () => {},
+    setViewMode: () => { },
   };
 
   const fightersList = {
@@ -95,15 +96,15 @@ export default function EditionDetailPage() {
     loading: false,
     page: 1,
     limit: 20,
-    setPage: () => {},
-    setLimit: () => {},
+    setPage: () => { },
+    setLimit: () => { },
     searchTerm: "",
-    setSearchTerm: () => {},
+    setSearchTerm: () => { },
     filters: {},
-    setFilters: () => {},
-    onRefresh: () => {},
+    setFilters: () => { },
+    onRefresh: () => { },
     viewMode: "grid" as const,
-    setViewMode: () => {},
+    setViewMode: () => { },
   };
 
   const regionsList = {
@@ -112,15 +113,15 @@ export default function EditionDetailPage() {
     loading: false,
     page: 1,
     limit: 20,
-    setPage: () => {},
-    setLimit: () => {},
+    setPage: () => { },
+    setLimit: () => { },
     searchTerm: "",
-    setSearchTerm: () => {},
+    setSearchTerm: () => { },
     filters: {},
-    setFilters: () => {},
-    onRefresh: () => {},
+    setFilters: () => { },
+    onRefresh: () => { },
     viewMode: "grid" as const,
-    setViewMode: () => {},
+    setViewMode: () => { },
   };
 
   // Statistiques pour l'édition
@@ -213,6 +214,10 @@ export default function EditionDetailPage() {
 
   const handleEditPhase = (phase: Phase) => {
     router.push(`/ad/phases/${phase.id}/edit`);
+  };
+
+  const handleReplace = (edition: CompetitionEdition) => {
+    router.push(`/ad/editions/${edition.id}/replace`);
   };
 
   const handleViewPhase = (phase: Phase) => {
@@ -590,7 +595,7 @@ export default function EditionDetailPage() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() =>
-                    router.push(`/admin/editions/${editionId}/matches`)
+                    router.push(`/ad/editions/${editionId}/matches`)
                   }
                 >
                   <Swords className="h-4 w-4 mr-2" />
@@ -599,12 +604,10 @@ export default function EditionDetailPage() {
                 <Button
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() =>
-                    router.push(`/admin/editions/${editionId}/calendar`)
-                  }
+                  onClick={() => handleReplace(edition)}
                 >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Calendrier
+                  <RefreshCcw className="h-4 w-4 mr-2" />
+                  Remplacement
                 </Button>
               </CardContent>
             </Card>
@@ -691,7 +694,7 @@ export default function EditionDetailPage() {
 
         {/* Lutteurs */}
         <TabsContent value="fighters">
-            <EntityList
+          <EntityList
             title="Lutteurs de l'Édition"
             description={`Gérez les lutteurs de l'édition ${edition.edition_number}`}
             entityType="fighter"
@@ -716,7 +719,7 @@ export default function EditionDetailPage() {
 
         {/* Régions */}
         <TabsContent value="regions">
-       <EntityList
+          <EntityList
             title="Regions de l'Édition"
             description={`Gérez les regions de l'édition ${edition.edition_number}`}
             entityType="region"
@@ -763,12 +766,12 @@ export default function EditionDetailPage() {
           </Card>
         </TabsContent> */}
       </Tabs>
-      <PhaseFormDialog 
-      open={phaseDialogOpen} 
-      editionId={Number(editionId)} 
-      edition={edition} 
-      onOpenChange={setPhaseDialogOpen} 
-      onSuccess={handleOnSuccess} />
+      <PhaseFormDialog
+        open={phaseDialogOpen}
+        editionId={Number(editionId)}
+        edition={edition}
+        onOpenChange={setPhaseDialogOpen}
+        onSuccess={handleOnSuccess} />
     </div>
   );
 }

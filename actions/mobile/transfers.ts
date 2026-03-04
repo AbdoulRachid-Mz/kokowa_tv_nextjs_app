@@ -75,10 +75,12 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
       -- Région d'origine
       ft.from_region_id as "fromRegionId",
       fr.name as "fromRegionName",
+      fr.flag_image as "fromRegionFlagImage",
       
       -- Région de destination
       ft.to_region_id as "toRegionId",
       tr.name as "toRegionName",
+      tr.flag_image as "toRegionFlagImage",
       
       -- Approbateur
       ft.approved_by_user_id as "approvedByUserId",
@@ -174,14 +176,14 @@ async function getTransfersByFighter(fighterId: number, status: string | null = 
       ft.from_region_id as "fromRegionId",
       fr.name as "fromRegionName",
       fr.code as "fromRegionCode",
-      fr.color as "fromRegionColor",
+      fr.flag_image as "fromRegionFlagImage",
       
       -- Région de destination
       ft.to_region_id as "toRegionId",
       tr.name as "toRegionName",
       tr.code as "toRegionCode",
-      tr.color as "toRegionColor",
-      
+      tr.flag_image as "toRegionFlagImage",
+
       -- Approbateur
       ft.approved_by_user_id as "approvedByUserId",
       u.username as "approvedByUsername",
@@ -281,13 +283,13 @@ async function getTransfersByRegion(regionId: number, status: string | null = nu
       ft.from_region_id as "fromRegionId",
       fr.name as "fromRegionName",
       fr.code as "fromRegionCode",
-      fr.color as "fromRegionColor",
+      fr.flag_image as "fromRegionFlagImage",
       
       -- Région de destination
       ft.to_region_id as "toRegionId",
       tr.name as "toRegionName",
       tr.code as "toRegionCode",
-      tr.color as "toRegionColor",
+      tr.flag_image as "toRegionFlagImage",
       
       -- Approbateur
       ft.approved_by_user_id as "approvedByUserId",
@@ -368,14 +370,14 @@ function formatTransfers(transfers: any[]) {
       id: transfer.fromRegionId,
       name: transfer.fromRegionName,
       code: transfer.fromRegionCode,
-      color: transfer.fromRegionColor
+      flagImage: transfer.fromRegionFlagImage
     },
     
     toRegion: {
       id: transfer.toRegionId,
       name: transfer.toRegionName,
       code: transfer.toRegionCode,
-      color: transfer.toRegionColor
+      flagImage: transfer.toRegionFlagImage
     },
     
     approvedBy: transfer.approvedByUserId ? {

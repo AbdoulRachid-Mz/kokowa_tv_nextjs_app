@@ -385,12 +385,12 @@ async function getFighterTransfers(fighterId: number) {
       fr.id as "fromRegionId",
       fr.name as "fromRegionName",
       fr.code as "fromRegionCode",
-      fr.color as "fromRegionColor",
+      fr.flag_image as "fromRegionFlagImage",
       
       tr.id as "toRegionId",
       tr.name as "toRegionName",
       tr.code as "toRegionCode",
-      tr.color as "toRegionColor"
+      tr.flag_image as "toRegionFlagImage"
       
     FROM fighter_transfers ft
     JOIN regions fr ON ft.from_region_id = fr.id

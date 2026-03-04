@@ -263,6 +263,7 @@ export default function MatchDetailPage() {
   const allMatchesCompleted = totalMatches > 0 && totalMatches === completedMatches;
   const currentIndex = matches.findIndex((m) => m.id === parsedMatchId);
   const isLastMatch = currentIndex === totalMatches - 1;
+
   const canFinalize = isLastMatch && allMatchesCompleted && !subGroup?.is_completed;
   const canStartSubGroup = subGroup?.status === "upcoming" && currentIndex === 0;
 
@@ -352,7 +353,7 @@ export default function MatchDetailPage() {
         </div>
 
         {/* Démarrage sous-groupe */}
-        {canStartSubGroup && (
+        {/* {canStartSubGroup && (
           <Card className="mb-6 border-blue-500 bg-blue-50/50">
             <CardContent className="py-4">
               <div className="flex justify-between items-center">
@@ -398,7 +399,7 @@ export default function MatchDetailPage() {
               </div>
             </CardContent>
           </Card>
-        )}
+        )} */}
 
         {/* Navigation entre matchs */}
         <div className="flex justify-between items-center bg-card p-4 rounded-lg border">
@@ -439,7 +440,7 @@ export default function MatchDetailPage() {
       </div>
 
       {/* Bannière de finalisation */}
-      {canFinalize && (
+      {/* {canFinalize && (
         <div className="max-w-7xl mx-auto mb-6">
           <Card className="border-green-500 bg-green-50/50">
             <CardContent className="py-6">
@@ -495,7 +496,7 @@ export default function MatchDetailPage() {
             </CardContent>
           </Card>
         </div>
-      )}
+      )} */}
 
       {/* Contenu principal */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">

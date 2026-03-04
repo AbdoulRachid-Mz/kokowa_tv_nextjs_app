@@ -220,6 +220,7 @@ class MatchStateCalculator {
   }
 }
 
+// lib/services/match-update.service.ts
 /**
  * 🏁 Vérifie si tous les matchs sont terminés et met à jour le statut du sous-groupe
  */
@@ -259,11 +260,26 @@ async function checkAndUpdateSubGroupStatus(
   if (allCompleted) {
     console.log(`✅ Sous-groupe ${subGroupId} marqué comme terminé (${completed}/${total} matchs)`);
   }
+
+  // 🔥 Si ce sous-groupe devient ongoing, annuler tous les autres ongoing
+  const ongoingRes = await client.query(
+    `SELECT id FROM sub_groups WHERE status = 'ongoing' AND id != $1`,
+    [subGroupId]
+  );
+
+  for (const row of ongoingRes.rows) {
+    await client.query(
+      `UPDATE sub_groups SET status = 'upcoming' WHERE id = $1`,
+      [row.id]
+    );
+    console.log(`🛑 Sous-groupe ${row.id} annulé (un autre est maintenant ongoing)`);
+  }
 }
 
 /**
  * ✅ Fonction principale de mise à jour
  */
+// lib/services/match-update.service.ts
 export async function updateMatchAndRecompute(
   matchId: number,
   updates: MatchUpdate
@@ -353,6 +369,16 @@ export async function updateMatchAndRecompute(
 
     // 🔥 Si on démarre un match
     if (updates.status === 'live') {
+      // Cancel all other matches in the same sub-group
+      await client.query(
+        `UPDATE matches
+         SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+         WHERE sub_group_id = $1
+           AND id != $2
+           AND status IN ('scheduled', 'live', 'round_break')`,
+        [oldMatch.sub_group_id, matchId]
+      );
+
       await client.query(`
         UPDATE sub_groups
         SET status = 'ongoing'
