@@ -179,46 +179,46 @@ async function getSubGroupInfo(subGroupId: number) {
     subGroup.belts = {
       region1: subGroup.beltRegion1Id
         ? {
-            id: subGroup.beltRegion1Id,
-            color: subGroup.beltRegion1Color,
-          }
+          id: subGroup.beltRegion1Id,
+          color: subGroup.beltRegion1Color,
+        }
         : null,
       region2: subGroup.beltRegion2Id
         ? {
-            id: subGroup.beltRegion2Id,
-            color: subGroup.beltRegion2Color,
-          }
+          id: subGroup.beltRegion2Id,
+          color: subGroup.beltRegion2Color,
+        }
         : null,
     };
 
     subGroup.referee = subGroup.mainRefereeId
       ? {
-          id: subGroup.mainRefereeId,
-          firstName: subGroup.refereeFirstName,
-          lastName: subGroup.refereeLastName,
-          nickname: subGroup.refereeNickname,
-        }
+        id: subGroup.mainRefereeId,
+        firstName: subGroup.refereeFirstName,
+        lastName: subGroup.refereeLastName,
+        nickname: subGroup.refereeNickname,
+      }
       : null;
 
     // Ajouter les coachs
     subGroup.coaches = {
       region1: subGroup.coach1Id
         ? {
-            id: subGroup.coach1Id,
-            firstName: subGroup.coach1FirstName,
-            lastName: subGroup.coach1LastName,
-            nickname: subGroup.coach1Nickname,
-            profileImage: subGroup.coach1ProfileImage,
-          }
+          id: subGroup.coach1Id,
+          firstName: subGroup.coach1FirstName,
+          lastName: subGroup.coach1LastName,
+          nickname: subGroup.coach1Nickname,
+          profileImage: subGroup.coach1ProfileImage,
+        }
         : null,
       region2: subGroup.coach2Id
         ? {
-            id: subGroup.coach2Id,
-            firstName: subGroup.coach2FirstName,
-            lastName: subGroup.coach2LastName,
-            nickname: subGroup.coach2Nickname,
-            profileImage: subGroup.coach2ProfileImage,
-          }
+          id: subGroup.coach2Id,
+          firstName: subGroup.coach2FirstName,
+          lastName: subGroup.coach2LastName,
+          nickname: subGroup.coach2Nickname,
+          profileImage: subGroup.coach2ProfileImage,
+        }
         : null,
     };
 
@@ -342,6 +342,8 @@ async function getAllMatchesForSubGroup(subGroupId: number) {
   return await query(sql, [subGroupId]);
 }
 
+// Dans matches.ts, fonction enrichMatchData()
+
 async function enrichMatchData(match: any) {
   // Récupérer les cartons pour ce match
   const cards = await getCardsForMatch(match.id);
@@ -349,7 +351,97 @@ async function enrichMatchData(match: any) {
   // Récupérer les statistiques avancées
   const stats = await getMatchStats(match.id);
 
-  // Formater les données des lutteurs
+  // Formater totalDuration (INTERVAL -> HH:MM:SS)
+  let formattedDuration = '00:00:00';
+  if (match.totalDuration) {
+    // Si c'est un objet PostgreSQL
+    if (typeof match.totalDuration === 'object') {
+      const hours = String(match.totalDuration.hours || 0).padStart(2, '0');
+      const minutes = String(match.totalDuration.minutes || 0).padStart(2, '0');
+      const seconds = String(match.totalDuration.seconds || 0).padStart(2, '0');
+      formattedDuration = `${hours}:${minutes}:${seconds}`;
+    }
+    // Si c'est une chaîne
+    else if (typeof match.totalDuration === 'string') {
+      const match_interval = match.totalDuration.match(/(\d+):(\d+):(\d+)/);
+      if (match_interval) {
+        formattedDuration = match_interval[0];
+      } else {
+        formattedDuration = match.totalDuration;
+      }
+    }
+    // Si c'est un nombre (secondes)
+    else if (typeof match.totalDuration === 'number') {
+      const hours = Math.floor(match.totalDuration / 3600);
+      const minutes = Math.floor((match.totalDuration % 3600) / 60);
+      const seconds = match.totalDuration % 60;
+      formattedDuration = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+  }
+
+  // Formater startTime en timestamp ISO complet
+  let formattedStartTime = match.startTime;
+  let formattedEndTime = match.endTime;
+
+  // Fonction utilitaire pour extraire la date sous forme de chaîne YYYY-MM-DD
+  const getDateString = (date: any): string => {
+    if (!date) return '';
+
+    // Si c'est un objet Date
+    if (date instanceof Date) {
+      return date.toISOString().split('T')[0];
+    }
+    // Si c'est une chaîne
+    else if (typeof date === 'string') {
+      return date.split('T')[0];
+    }
+    // Si c'est un timestamp
+    else if (typeof date === 'number') {
+      return new Date(date).toISOString().split('T')[0];
+    }
+    return '';
+  };
+
+  const dateStr = getDateString(match.matchDate);
+
+  if (dateStr && match.startTime) {
+    // Si startTime est une chaîne HH:MM:SS
+    if (typeof match.startTime === 'string') {
+      const timeStr = match.startTime.includes('T')
+        ? match.startTime.split('T')[1]
+        : match.startTime;
+
+      const dateTimeStr = `${dateStr}T${timeStr}`;
+      const timestamp = new Date(dateTimeStr);
+      if (!isNaN(timestamp.getTime())) {
+        formattedStartTime = timestamp.toISOString();
+      }
+    }
+    // Si startTime est un objet Date
+    else if (match.startTime instanceof Date) {
+      formattedStartTime = match.startTime.toISOString();
+    }
+  }
+
+  // Même chose pour endTime
+  if (dateStr && match.endTime) {
+    if (typeof match.endTime === 'string') {
+      const timeStr = match.endTime.includes('T')
+        ? match.endTime.split('T')[1]
+        : match.endTime;
+
+      const dateTimeStr = `${dateStr}T${timeStr}`;
+      const timestamp = new Date(dateTimeStr);
+      if (!isNaN(timestamp.getTime())) {
+        formattedEndTime = timestamp.toISOString();
+      }
+    }
+    else if (match.endTime instanceof Date) {
+      formattedEndTime = match.endTime.toISOString();
+    }
+  }
+
+  // Formater les données des lutteurs (inchangé)
   const fighter1 = {
     id: match.fighter1Id,
     firstName: match.fighter1FirstName,
@@ -401,16 +493,16 @@ async function enrichMatchData(match: any) {
     loser = match.winnerFighterId === match.fighter1Id ? fighter2 : fighter1;
   }
 
-  // Formater la réponse
+  // Formater la réponse avec les champs formatés
   const enrichedMatch = {
     id: match.id,
     matchNumber: match.matchNumber,
     matchDate: match.matchDate,
-    startTime: match.startTime,
+    startTime: formattedStartTime,
     endTime: match.endTime,
     status: match.status,
     matchResult: match.matchResult,
-    totalDuration: match.totalDuration,
+    totalDuration: formattedDuration,
     breakCount: match.breakCount,
     audienceCount: match.audienceCount,
     videoUrl: match.videoUrl,
@@ -426,10 +518,10 @@ async function enrichMatchData(match: any) {
 
     result: winner
       ? {
-          winner,
-          loser,
-          resultType: match.matchResult,
-        }
+        winner,
+        loser,
+        resultType: match.matchResult,
+      }
       : null,
 
     context: {

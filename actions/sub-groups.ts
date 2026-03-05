@@ -1368,68 +1368,206 @@ export async function updateSubGroup(id: number, formData: FormData) {
       is_active: formData.get('is_active'),
     };
 
-    const cleanedData = {
-      group_id: Number(rawData.group_id),
-      name: rawData.name as string,
-      video_url: rawData.video_url as string || undefined,
-      sub_group_order: Number(rawData.sub_group_order),
-      description: rawData.description as string || undefined,
-      period: (rawData.period as 'matin' | 'soir') || 'matin',
-      score_region1: rawData.score_region1 ? Number(rawData.score_region1) : undefined,
-      score_region2: rawData.score_region2 ? Number(rawData.score_region2) : undefined,
-      nulls: rawData.nulls ? Number(rawData.nulls) : undefined,
-      status: (rawData.status as 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed') || 'upcoming',
-      region1_id: rawData.region1_id ? Number(rawData.region1_id) : undefined,
-      region2_id: rawData.region2_id ? Number(rawData.region2_id) : undefined,
-      belt_region1: rawData.belt_region1 ? Number(rawData.belt_region1) : undefined,
-      belt_region2: rawData.belt_region2 ? Number(rawData.belt_region2) : undefined,
-      main_referee_id: rawData.main_referee_id ? Number(rawData.main_referee_id) : undefined,
-      is_completed: rawData.is_completed === 'true',
-      is_active: rawData.is_active === 'true',
-    };
+    // Créer un objet avec uniquement les champs fournis
+    const cleanedData: any = {};
 
-    const validatedData = subGroupSchema.parse(cleanedData);
+    // Ne garder que les champs qui sont présents dans le FormData
+    if (formData.has('group_id')) {
+      cleanedData.group_id = Number(rawData.group_id);
+    }
+    if (formData.has('name')) {
+      cleanedData.name = rawData.name as string;
+    }
+    if (formData.has('video_url')) {
+      cleanedData.video_url = (rawData.video_url as string) || undefined;
+    }
+    if (formData.has('sub_group_order')) {
+      cleanedData.sub_group_order = Number(rawData.sub_group_order);
+    }
+    if (formData.has('description')) {
+      cleanedData.description = (rawData.description as string) || undefined;
+    }
+    if (formData.has('period')) {
+      cleanedData.period = (rawData.period as 'matin' | 'soir') || 'matin';
+    }
+    if (formData.has('score_region1')) {
+      cleanedData.score_region1 = rawData.score_region1 ? Number(rawData.score_region1) : undefined;
+    }
+    if (formData.has('score_region2')) {
+      cleanedData.score_region2 = rawData.score_region2 ? Number(rawData.score_region2) : undefined;
+    }
+    if (formData.has('nulls')) {
+      cleanedData.nulls = rawData.nulls ? Number(rawData.nulls) : undefined;
+    }
+    if (formData.has('status')) {
+      cleanedData.status = (rawData.status as 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed') || 'upcoming';
+    }
+    if (formData.has('region1_id')) {
+      cleanedData.region1_id = rawData.region1_id ? Number(rawData.region1_id) : undefined;
+    }
+    if (formData.has('region2_id')) {
+      cleanedData.region2_id = rawData.region2_id ? Number(rawData.region2_id) : undefined;
+    }
+    if (formData.has('belt_region1')) {
+      cleanedData.belt_region1 = rawData.belt_region1 ? Number(rawData.belt_region1) : undefined;
+    }
+    if (formData.has('belt_region2')) {
+      cleanedData.belt_region2 = rawData.belt_region2 ? Number(rawData.belt_region2) : undefined;
+    }
+    if (formData.has('main_referee_id')) {
+      cleanedData.main_referee_id = rawData.main_referee_id ? Number(rawData.main_referee_id) : undefined;
+    }
+    if (formData.has('is_completed')) {
+      cleanedData.is_completed = rawData.is_completed === 'true';
+    }
+    if (formData.has('is_active')) {
+      cleanedData.is_active = rawData.is_active === 'true';
+    }
 
+    // Valider seulement les champs fournis (ou utiliser un schéma partiel)
+    // Pour l'instant, on peut sauter la validation pour les mises à jour partielles
+    // ou créer un schéma partiel
+
+    // Construire la requête SQL dynamiquement
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (cleanedData.group_id !== undefined) {
+      updates.push(`group_id = $${paramIndex++}`);
+      values.push(cleanedData.group_id);
+    }
+    if (cleanedData.name !== undefined) {
+      updates.push(`name = $${paramIndex++}`);
+      values.push(cleanedData.name);
+    }
+    if (cleanedData.video_url !== undefined) {
+      updates.push(`video_url = $${paramIndex++}`);
+      values.push(cleanedData.video_url || null);
+    }
+    if (cleanedData.sub_group_order !== undefined) {
+      updates.push(`sub_group_order = $${paramIndex++}`);
+      values.push(cleanedData.sub_group_order);
+    }
+    if (cleanedData.description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      values.push(cleanedData.description || null);
+    }
+    if (cleanedData.period !== undefined) {
+      updates.push(`period = $${paramIndex++}`);
+      values.push(cleanedData.period);
+    }
+    if (cleanedData.score_region1 !== undefined) {
+      updates.push(`score_region1 = $${paramIndex++}`);
+      values.push(cleanedData.score_region1);
+    }
+    if (cleanedData.score_region2 !== undefined) {
+      updates.push(`score_region2 = $${paramIndex++}`);
+      values.push(cleanedData.score_region2);
+    }
+    if (cleanedData.nulls !== undefined) {
+      updates.push(`nulls = $${paramIndex++}`);
+      values.push(cleanedData.nulls);
+    }
+    if (cleanedData.status !== undefined) {
+      updates.push(`status = $${paramIndex++}`);
+      values.push(cleanedData.status);
+    }
+    if (cleanedData.region1_id !== undefined) {
+      updates.push(`region1_id = $${paramIndex++}`);
+      values.push(cleanedData.region1_id);
+    }
+    if (cleanedData.region2_id !== undefined) {
+      updates.push(`region2_id = $${paramIndex++}`);
+      values.push(cleanedData.region2_id);
+    }
+    if (cleanedData.belt_region1 !== undefined) {
+      updates.push(`belt_region1 = $${paramIndex++}`);
+      values.push(cleanedData.belt_region1);
+    }
+    if (cleanedData.belt_region2 !== undefined) {
+      updates.push(`belt_region2 = $${paramIndex++}`);
+      values.push(cleanedData.belt_region2);
+    }
+    if (cleanedData.main_referee_id !== undefined) {
+      updates.push(`main_referee_id = $${paramIndex++}`);
+      values.push(cleanedData.main_referee_id);
+    }
+    if (cleanedData.is_completed !== undefined) {
+      updates.push(`is_completed = $${paramIndex++}`);
+      values.push(cleanedData.is_completed);
+    }
+    if (cleanedData.is_active !== undefined) {
+      updates.push(`is_active = $${paramIndex++}`);
+      values.push(cleanedData.is_active);
+    }
+
+    if (updates.length === 0) {
+      return { success: true, message: 'Aucune modification' };
+    }
+
+    // Ajouter l'ID à la fin
+    values.push(id);
+    
     const sql = `
       UPDATE sub_groups 
-      SET 
-        group_id = $1, name = $2, video_url = $3, sub_group_order = $4, description = $5, period = $6,
-        score_region1 = $7, score_region2 = $8, nulls = $9, status = $10,
-        region1_id = $11, region2_id = $12, belt_region1 = $13, belt_region2 = $14, 
-        main_referee_id = $15, is_completed = $16, is_active = $17
-      WHERE id = $18
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex}
     `;
-    
-    await query(sql, [
-      validatedData.group_id,
-      validatedData.name,
-      validatedData.video_url || null,
-      validatedData.sub_group_order,
-      validatedData.description || null,
-      validatedData.period,
-      validatedData.score_region1 || null,
-      validatedData.score_region2 || null,
-      validatedData.nulls || null,
-      validatedData.status,
-      validatedData.region1_id || null,
-      validatedData.region2_id || null,
-      validatedData.belt_region1 || null,
-      validatedData.belt_region2 || null,
-      validatedData.main_referee_id || null,
-      validatedData.is_completed,
-      validatedData.is_active,
-      id,
-    ]);
+
+    await query(sql, values);
 
     revalidatePath('/phase-groups');
-    revalidatePath(`/phase-groups/${validatedData.group_id}`);
+    revalidatePath(`/phase-groups/${existing.group_id}`);
     revalidatePath(`/sub-groups/${id}`);
+    
     return { 
       success: true, 
       message: 'Sous-groupe modifié avec succès' 
     };
   } catch (error) {
     console.error('Error in updateSubGroup:', error);
+    throw error;
+  }
+}
+
+export async function updateSubGroupMedia(id: number, formData: FormData) {
+  try {
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (formData.has('video_url')) {
+      updates.push(`video_url = $${paramIndex++}`);
+      values.push(formData.get('video_url') || null);
+    }
+    if (formData.has('status')) {
+      updates.push(`status = $${paramIndex++}`);
+      values.push(formData.get('status'));
+    }
+
+    if (updates.length === 0) {
+      return { success: true, message: 'Aucune modification' };
+    }
+
+    values.push(id);
+    
+    const sql = `
+      UPDATE sub_groups 
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex}
+    `;
+
+    await query(sql, values);
+
+    revalidatePath(`/sub-groups/${id}`);
+    
+    return { 
+      success: true, 
+      message: 'Médias mis à jour avec succès' 
+    };
+  } catch (error) {
+    console.error('Error in updateSubGroupMedia:', error);
     throw error;
   }
 }

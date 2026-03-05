@@ -3,6 +3,7 @@
 import { query } from '@/lib/db/neon-client';
 import { Region } from '@/types';
 import { getParticipatedEditions } from './editions';
+import { formatDateTime, formatDuration } from '@/utils/duration';
 
 export async function getMobileRegions(filters?: {
   page?: number;
@@ -540,6 +541,11 @@ async function enrichRegionMatchData(match: any, regionId: number) {
   // Récupérer les cartons pour ce match
   const cards = await getCardsForMatch(match.id);
 
+  // Formater les durées et heures
+  const formattedDuration = formatDuration(match.totalDuration);
+  const formattedStartTime = formatDateTime(match.matchDate, match.startTime);
+  const formattedEndTime = formatDateTime(match.matchDate, match.endTime);
+
   // Formater les données des lutteurs
   const fighter1 = {
     id: match.fighter1Id,
@@ -605,11 +611,11 @@ async function enrichRegionMatchData(match: any, regionId: number) {
     id: match.id,
     matchNumber: match.matchNumber,
     matchDate: match.matchDate,
-    startTime: match.startTime,
+    startTime: formattedStartTime,
     endTime: match.endTime,
     status: match.status,
     matchResult: resultType,
-    totalDuration: match.totalDuration,
+    totalDuration: formattedDuration,
     breakCount: match.breakCount,
     audienceCount: match.audienceCount,
     videoUrl: match.videoUrl,

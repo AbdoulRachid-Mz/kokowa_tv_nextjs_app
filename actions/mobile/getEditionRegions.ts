@@ -1,6 +1,7 @@
 "use server";
 
 import { query } from "@/lib/db/neon-client";
+import { formatDateTime, formatDuration } from "@/utils/duration";
 
 export async function getMobileEditionRegions(editionId: number) {
   try {
@@ -322,7 +323,7 @@ async function getFightersForEdition(editionId: number) {
   `;
 
   const fighters = await query(sql, [editionId]);
-  
+
   // Forcer la conversion en nombres pour éviter les concaténations de strings
   return fighters.map(f => ({
     ...f,
@@ -361,7 +362,7 @@ function rankRegions(regions: any[]) {
       return (a.isEliminated ? 1 : 0) - (b.isEliminated ? 1 : 0);
 
     // Points totaux
-    if (a.points !== b.points) 
+    if (a.points !== b.points)
       return b.points - a.points;
 
     // Nombre de lutteurs invaincus
@@ -392,6 +393,7 @@ function rankRegions(regions: any[]) {
   return regionsWithNumbers;
 }
 
+// Fonction pour obtenir les détails d'un match
 // Fonction pour obtenir les détails d'un match
 export async function getMobileEditionMatchDetails(matchId: number) {
   try {
@@ -486,7 +488,7 @@ export async function getMobileEditionMatchDetails(matchId: number) {
     `;
 
     const result = await query(sql, [matchId]);
-    
+
     if (result.length === 0) {
       return {
         success: false,
@@ -498,9 +500,91 @@ export async function getMobileEditionMatchDetails(matchId: number) {
       };
     }
 
+    const match = result[0];
+
+    // Formater les durées et heures
+    const formattedDuration = formatDuration(match.totalDuration);
+    const formattedStartTime = formatDateTime(match.matchDate, match.startTime);
+    const formattedEndTime = formatDateTime(match.matchDate, match.endTime);
+
+    // Structurer les données des fighters
+    const fighter1 = {
+      id: match.fighter1Id,
+      firstName: match.fighter1FirstName,
+      lastName: match.fighter1LastName,
+      nickname: match.fighter1Nickname,
+      profileImage: match.fighter1ProfileImage,
+      region: {
+        id: match.fighter1RegionId,
+        name: match.fighter1RegionName,
+        color: match.fighter1RegionColor,
+      }
+    };
+
+    const fighter2 = {
+      id: match.fighter2Id,
+      firstName: match.fighter2FirstName,
+      lastName: match.fighter2LastName,
+      nickname: match.fighter2Nickname,
+      profileImage: match.fighter2ProfileImage,
+      region: {
+        id: match.fighter2RegionId,
+        name: match.fighter2RegionName,
+        color: match.fighter2RegionColor,
+      }
+    };
+
+    // Déterminer le vainqueur
+    let winner = null;
+    if (match.winnerFighterId) {
+      winner = match.winnerFighterId === match.fighter1Id ? fighter1 : fighter2;
+    }
+
+    // Créer l'objet de réponse formaté
+    const formattedMatch = {
+      id: match.id,
+      matchNumber: match.matchNumber,
+      matchDate: match.matchDate,
+      startTime: formattedStartTime,
+      endTime: match.endTime,
+      status: match.status,
+      matchResult: match.matchResult,
+      totalDuration: formattedDuration,
+      breakCount: match.breakCount,
+      audienceCount: match.audienceCount,
+      videoUrl: match.videoUrl,
+      liveStreamUrl: match.liveStreamUrl,
+      notes: match.notes,
+
+      fighters: {
+        fighter1,
+        fighter2,
+      },
+
+      result: winner ? {
+        winner,
+        resultType: match.matchResult,
+      } : null,
+
+      context: {
+        subGroupName: match.subGroupName,
+        groupName: match.groupName,
+        phaseName: match.phaseName,
+        edition: {
+          theme: match.editionTheme,
+          year: match.editionYear,
+        },
+        competition: {
+          name: match.competitionName,
+        }
+      },
+
+      cards: match.cards,
+    };
+
     return {
       success: true,
-      data: result[0],
+      data: formattedMatch,
       message: "Détails du match récupérés avec succès",
     };
   } catch (error) {

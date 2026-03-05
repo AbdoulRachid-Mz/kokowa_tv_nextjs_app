@@ -87,7 +87,8 @@ export default function MatchDetailPage() {
     canSetWinner,
     canSetDraw,
     isUpdating,
-  } = useMatchController({ matchId: parsedMatchId });
+    updateSubGroupMutation,
+  } = useMatchController({ matchId: parsedMatchId, subGroupId: parsedSubGroupId });
 
   // ==========================
   // QUERIES
@@ -178,19 +179,20 @@ export default function MatchDetailPage() {
     },
   });
 
-  const updateSubGroupMutation = useMutation({
-    mutationFn: async (updates: { video_url?: string }) => {
-      const formData = new FormData();
-      if (updates.video_url !== undefined) {
-        formData.append("video_url", updates.video_url || "");
-      }
-      const response = await updateSubGroup(parsedSubGroupId, formData);
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sub-group", subGroupId] });
-    },
-  });
+  // const updateSubGroupMutation = useMutation({
+  //   mutationFn: async (updates: { video_url?: string }) => {
+  //     const formData = new FormData();
+  //     if (updates.video_url !== undefined) {
+  //       formData.append("video_url", updates.video_url || "");
+  //     }
+  //     const response = await updateSubGroup(parsedSubGroupId, formData);
+  //     return response;
+  //   },
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ["sub-group", subGroupId] });
+  //   },
+  // });
+
 
   // ==========================
   // LOAD AVAILABLE FIGHTERS

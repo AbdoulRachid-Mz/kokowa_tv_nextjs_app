@@ -6,12 +6,15 @@ import { toast } from 'sonner';
 import { useMatchTimer } from './use-match-timer-2';
 import { getMatchById, updateMatch } from '@/actions/matches-2';
 import { MatchUpdate } from '@/lib/services/match-update.service';
+import { updateSubGroup } from '@/actions/sub-groups';
+import { sendMatchPush } from '@/actions/matches';
 
 interface UseMatchControllerProps {
   matchId: number;
+  subGroupId?: number;
 }
 
-export function useMatchController({ matchId }: UseMatchControllerProps) {
+export function useMatchController({ matchId, subGroupId }: UseMatchControllerProps) {
   const queryClient = useQueryClient();
   const isUpdatingRef = useRef(false); // 🔥 Pour éviter les doubles appels
 
@@ -71,7 +74,7 @@ export function useMatchController({ matchId }: UseMatchControllerProps) {
         console.log('🔄 Mise à jour déjà en cours, ignorée');
         return;
       }
-      
+
       isUpdatingRef.current = true;
       try {
         return await updateMatch(matchId, updates);
@@ -89,6 +92,24 @@ export function useMatchController({ matchId }: UseMatchControllerProps) {
     }
   });
 
+  // sub_group mutation
+  const updateSubGroupMutation = useMutation({
+    mutationFn: async (updates: { video_url?: string, status?: string }) => {
+      const formData = new FormData();
+      if (updates.video_url !== undefined) {
+        formData.append("video_url", updates.video_url || "");
+      }
+      if (updates.status !== undefined) {
+        formData.append("status", updates.status || "");
+      }
+      const response = await updateSubGroup(subGroupId!, formData);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sub-group", subGroupId] });
+    },
+  });
+
   // ==========================
   // ACTIONS
   // ==========================
@@ -102,6 +123,9 @@ export function useMatchController({ matchId }: UseMatchControllerProps) {
       status: 'live',
       start_time: new Date().toTimeString().slice(0, 8)
     });
+
+    //push topic
+    sendMatchPush(matchId, `Match entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} debute !`);
   }, [match, timer, updateMutation]);
 
   const pauseMatch = useCallback(() => {
@@ -230,6 +254,7 @@ export function useMatchController({ matchId }: UseMatchControllerProps) {
     setDraw,
     resetMatch,
     reclamation,
+    updateSubGroupMutation,
 
     // permissions
     canStart,

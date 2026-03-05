@@ -1,6 +1,7 @@
 "use server";
 
 import { query } from "@/lib/db/neon-client";
+import { formatDateTime, formatDuration } from "@/utils/duration";
 
 export async function getMobileEditionById(editionId: number) {
   try {
@@ -404,6 +405,16 @@ async function getLiveMatchForEdition(editionId: number) {
   const liveMatch = result[0];
 
   if (liveMatch) {
+    // Formater les durées et heures
+    const formattedDuration = formatDuration(liveMatch.totalDuration);
+    const formattedStartTime = formatDateTime(liveMatch.matchDate, liveMatch.startTime);
+    const formattedEndTime = formatDateTime(liveMatch.matchDate, liveMatch.endTime);
+    
+    // Mettre à jour avec les valeurs formatées
+    liveMatch.totalDuration = formattedDuration;
+    liveMatch.startTime = formattedStartTime;
+    liveMatch.endTime = liveMatch.endTime;
+    
     // Formater les données du match en live
     liveMatch.fighters = {
       fighter1: {
