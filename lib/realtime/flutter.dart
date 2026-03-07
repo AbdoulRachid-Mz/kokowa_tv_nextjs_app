@@ -8,7 +8,7 @@ class RealtimeService {
   void connect() {
     try {
       _channel = WebSocketChannel.connect(
-        Uri.parse('ws://votre-domaine/api/realtime'),
+        Uri.parse('ws://kokowa-tv-nextjs-app.vercel.app/api/realtime'),
       );
 
       _channel!.stream.listen(
@@ -48,9 +48,16 @@ class RealtimeService {
 
   void subscribeToMatch(int matchId) {
     if (_clientId == null) return;
-    
+
     // Envoyer la subscription au serveur
     // Implémentez l'appel API vers /api/realtime/subscribe
+    _channel?.sink.add(
+      json.encode({
+        'type': 'subscribe',
+        'clientId': _clientId,
+        'matchId': matchId,
+      }),
+    );
   }
 
   void disconnect() {

@@ -1,7 +1,8 @@
-// lib/server/auth-middleware
+// @/lib/server/auth-middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth } from '../firebase-admin';
 import { cookies } from 'next/headers';
+import * as crypto from 'crypto';
 
 export interface AuthUser {
   uid: string;
@@ -11,36 +12,89 @@ export interface AuthUser {
   picture?: string;
 }
 
-export async function verifyFirebaseToken(request: NextRequest) {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("firebase_token")?.value;
 
-    if (!token) {
-      return { user: null, error: "Token manquant" };
+const revokedTokensCache = new Map<string, number>();
+
+// @/lib/server/auth-middleware.ts
+export async function verifyFirebaseToken(request: NextRequest) {
+  let authHeader: string | null = null;
+
+  try {
+    authHeader = request.headers.get('authorization');
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      return { user: null, error: 'Token manquant' };
     }
 
-    if (!adminAuth) {
-  return { user: null, error: "Firebase non initialisé" };
-}
+    const token = authHeader.split('Bearer ')[1];
 
-    const decodedToken = await adminAuth.verifyIdToken(token);
+    if (!adminAuth) {
+      console.error('Firebase Admin non initialisé');
+      return { user: null, error: 'Erreur configuration serveur' };
+    }
+
+    // Vérifier si le token est dans le cache des révoqués
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    if (revokedTokensCache.has(tokenHash)) {
+      return { user: null, error: 'Token révoqué' };
+    }
+
+    // Vérifier le token avec checkRevoked=true
+    const decodedToken = await adminAuth.verifyIdToken(token, true);
+
+    // Vérifier que l'utilisateur n'est pas désactivé
+    const userRecord = await adminAuth.getUser(decodedToken.uid);
+
+    if (userRecord.disabled) {
+      return { user: null, error: 'Compte utilisateur désactivé' };
+    }
+
+    // Vérifier les claims personnalisés si nécessaire
+    const customClaims = userRecord.customClaims || {};
 
     return {
       user: {
         uid: decodedToken.uid,
         email: decodedToken.email,
+        email_verified: decodedToken.email_verified,
         name: decodedToken.name,
         picture: decodedToken.picture,
+        role: customClaims.role || 'user',
+        permissions: customClaims.permissions || [],
       },
     };
   } catch (error) {
-    return { user: null, error: "Token invalide" };
+    console.error('Erreur vérification token Firebase:', error);
+
+    if (error instanceof Error) {
+      if (error.message.includes('Firebase ID token has expired')) {
+        return { user: null, error: 'Token expiré' };
+      }
+      if (error.message.includes('Firebase ID token has invalid signature')) {
+        return { user: null, error: 'Token invalide' };
+      }
+      if (error.message.includes('Token revoked')) {
+        // Ajouter au cache des révoqués
+        const token = authHeader?.split('Bearer ')[1];
+        if (token) {
+          const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+          revokedTokensCache.set(tokenHash, Date.now());
+
+          // Nettoyer le cache toutes les heures
+          setTimeout(() => {
+            revokedTokensCache.delete(tokenHash);
+          }, 60 * 60 * 1000);
+        }
+        return { user: null, error: 'Token révoqué' };
+      }
+    }
+
+    return { user: null, error: 'Token invalide' };
   }
 }
 
 export async function requireAuth(
-  request: NextRequest, 
+  request: NextRequest,
   requiredPermissions: string[] = []
 ): Promise<{
   authorized: boolean;
@@ -50,12 +104,12 @@ export async function requireAuth(
   status?: number;
 }> {
   const authResult = await verifyFirebaseToken(request);
-  
+
   if (!authResult.user) {
-    return { 
-      authorized: false, 
+    return {
+      authorized: false,
       error: authResult.error || 'Non autorisé',
-      status: 401 
+      status: 401
     };
   }
 
@@ -63,28 +117,28 @@ export async function requireAuth(
   if (requiredPermissions.length > 0) {
     const { checkUserPermissions } = await import('./auth-utils');
     const permissionResult = await checkUserPermissions(
-      authResult.user.uid, 
+      authResult.user.uid,
       requiredPermissions
     );
 
     if (!permissionResult.hasPermission) {
-      return { 
-        authorized: false, 
+      return {
+        authorized: false,
         error: 'Permissions insuffisantes',
-        status: 403 
+        status: 403
       };
     }
 
-    return { 
-      authorized: true, 
+    return {
+      authorized: true,
       user: permissionResult.user,
-      firebaseUser: authResult.user 
+      firebaseUser: authResult.user
     };
   }
 
-  return { 
-    authorized: true, 
-    user: authResult.user 
+  return {
+    authorized: true,
+    user: authResult.user
   };
 }
 
@@ -95,7 +149,7 @@ export function withAuth(
 ) {
   return async (request: NextRequest, context: { params: Promise<{ [key: string]: string }> }): Promise<Response> => {
     const authResult = await requireAuth(request, requiredPermissions);
-    
+
     if (!authResult.authorized) {
       return NextResponse.json(
         { error: authResult.error },
@@ -114,7 +168,7 @@ export function withAuthSimple(
 ) {
   return async (request: NextRequest): Promise<Response> => {
     const authResult = await requireAuth(request, requiredPermissions);
-    
+
     if (!authResult.authorized) {
       return NextResponse.json(
         { error: authResult.error },

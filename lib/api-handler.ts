@@ -4,7 +4,7 @@ import { requireAuth as requireAuthFn, AuthUser } from '@/lib/server/auth-middle
 export interface ApiHandlerOptions {
   requireAuth?: boolean;
   requiredPermissions?: string[];
-  methods?: string[];
+  methods?: string[]; 
 }
 
 export interface ApiContext {

@@ -1,3 +1,4 @@
+// @/lib/server/auth-utils.ts
 'use server';
 import { getUserByAuthId } from '@/actions/users';
 import { query, queryOne } from '@/lib/db/neon-client';
