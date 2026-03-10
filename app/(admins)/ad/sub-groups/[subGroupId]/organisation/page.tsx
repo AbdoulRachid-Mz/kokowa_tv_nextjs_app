@@ -307,9 +307,8 @@ export default function SubGroupOrganizationPage() {
                 </Typography>
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-3 h-3 rounded-full ${
-                      isConnected ? "bg-green-500" : "bg-red-500"
-                    }`}
+                    className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"
+                      }`}
                   />
                   <Badge variant={isConnected ? "default" : "outline"}>
                     {isConnected ? "Temps réel actif" : "Hors ligne"}
@@ -403,9 +402,9 @@ export default function SubGroupOrganizationPage() {
           </div>
 
           <BulkMatchCreator
-            region1Fighters={availableRegion1Fighters}
-            region2Fighters={availableRegion2Fighters}
-            fighterSelectionCounts={fighterSelectionCounts}
+            region1Fighters={region1Fighters}
+            region2Fighters={region2Fighters}
+            existingMatchFighterIds={usedFighterIds} // Nouveau prop
             onCreateMatches={async (matches) => {
               try {
                 setIsBulkCreating(true);
@@ -476,10 +475,10 @@ export default function SubGroupOrganizationPage() {
                         {match.status === "scheduled"
                           ? "Programmé"
                           : match.status === "live"
-                          ? "En direct"
-                          : match.status === "completed"
-                          ? "Terminé"
-                          : match.status}
+                            ? "En direct"
+                            : match.status === "completed"
+                              ? "Terminé"
+                              : match.status}
                       </Badge>
                     </div>
                   ))}
@@ -586,9 +585,8 @@ function RegionColumn({
           <div className="flex items-center justify-center group relative space-x-2 mb-2">
             {belt && (
               <span
-                className={`block w-3 h-3 absolute rounded-full -top-1 ${
-                  side === "left" ? "-right-1" : "-left-1"
-                }`}
+                className={`block w-3 h-3 absolute rounded-full -top-1 ${side === "left" ? "-right-1" : "-left-1"
+                  }`}
                 style={{
                   backgroundColor: side === "left" ? "red" : "blue",
                 }}
@@ -650,9 +648,8 @@ function FighterCard({
     <Card className="hover:shadow-md transition-shadow p-2 cursor-pointer">
       <CardContent className="p-1">
         <div
-          className={`flex ${
-            position === "right" && "flex-row-reverse"
-          } items-center space-x-3`}
+          className={`flex ${position === "right" && "flex-row-reverse"
+            } items-center space-x-3`}
         >
           <Avatar className="h-12 w-12">
             <AvatarImage

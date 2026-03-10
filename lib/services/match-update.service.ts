@@ -1,4 +1,4 @@
-// lib/services/match-update.service.ts - VERSION AMÉLIORÉE
+// lib/services/match-update.service.ts - Version améliorée
 
 import { sendMatchPush } from "@/actions/matches";
 import { pool } from "../db/neon-client";
@@ -104,6 +104,7 @@ class MatchStateCalculator {
     const fighterIds = new Set<number>();
     for (const match of matchesRes.rows) {
       if (match.winner_fighter_id) fighterIds.add(match.winner_fighter_id);
+      if (match.loser_fighter_id) fighterIds.add(match.loser_fighter_id);
       if (match.fighter1_id) fighterIds.add(match.fighter1_id);
       if (match.fighter2_id) fighterIds.add(match.fighter2_id);
     }
@@ -142,7 +143,7 @@ class MatchStateCalculator {
         regionState.points += 1;
       }
 
-      // Marquer les deux fighters comme éliminés
+      // Marquer les DEUX fighters comme éliminés
       if (match.fighter1_id) {
         state.edition_fighters.set(match.fighter1_id, { is_eliminated: true });
       }
@@ -235,13 +236,13 @@ class MatchStateCalculator {
 }
 
 /**
- * 🏁 Vérifie si tous les matchs sont terminés et met à jour le statut du sous-groupe
+ * 🏁 Vérifie si tous les matchs sont terminés et met à jour le statut du sous-groupe ET du groupe parent
  */
-async function checkAndUpdateSubGroupStatus(
+async function checkAndUpdateGroupStatus(
   client: PoolClient,
   subGroupId: number
 ) {
-  // Vérifier si TOUS les matchs actifs sont terminés
+  // 1. Vérifier si TOUS les matchs actifs sont terminés
   const checkRes = await client.query(
     `SELECT 
        COUNT(*) as total,
@@ -259,8 +260,6 @@ async function checkAndUpdateSubGroupStatus(
   const allCompleted = (total === completed);
 
   // 🔥 Mettre à jour le statut du sous-groupe
-  //    - Si tous les matchs sont terminés → completed
-  //    - Sinon → ongoing (car un match est en cours ou en pause)
   await client.query(
     `UPDATE sub_groups
      SET status = CASE 
@@ -271,6 +270,42 @@ async function checkAndUpdateSubGroupStatus(
      WHERE id = $2`,
     [allCompleted, subGroupId]
   );
+
+  // 2. Mettre à jour le groupe parent (phase_groups)
+  // Récupérer l'ID du groupe parent
+  const groupRes = await client.query(
+    `SELECT group_id FROM sub_groups WHERE id = $1`,
+    [subGroupId]
+  );
+
+  const groupId = groupRes.rows[0]?.group_id;
+
+  if (groupId) {
+    // Vérifier si TOUS les sous-groupes de ce groupe sont terminés
+    const subGroupsRes = await client.query(
+      `SELECT 
+         COUNT(*) as total,
+         COUNT(*) FILTER (WHERE is_completed = true) as completed
+       FROM sub_groups
+       WHERE group_id = $1 AND is_active = true`,
+      [groupId]
+    );
+
+    const { total: subTotal, completed: subCompleted } = subGroupsRes.rows[0];
+    const allSubGroupsCompleted = (subTotal === subCompleted);
+
+    // Mettre à jour le groupe parent
+    await client.query(
+      `UPDATE phase_groups
+       SET is_completed = $1
+       WHERE id = $2`,
+      [allSubGroupsCompleted, groupId]
+    );
+
+    if (allSubGroupsCompleted) {
+      console.log(`✅ Groupe parent ${groupId} marqué comme terminé (tous les sous-groupes terminés)`);
+    }
+  }
 
   if (allCompleted) {
     console.log(`✅ Sous-groupe ${subGroupId} marqué comme terminé (${completed}/${total} matchs)`);
@@ -303,7 +338,6 @@ async function ensureUniqueLiveStates(
       [matchId]
     );
 
-    // lib/services/match-update.service.ts
     if (liveMatchesRes.rowCount && liveMatchesRes.rowCount > 0) {
       console.log(`   → ${liveMatchesRes.rowCount} autre(s) match(s) live arrêté(s)`);
     }
@@ -343,13 +377,10 @@ async function ensureUniqueLiveStates(
   // Si on passe en completed, le match est terminé
   else if (targetStatus === 'completed') {
     console.log(`✅ Match ${matchId} terminé`);
-    // Le sous-groupe sera mis à jour par checkAndUpdateSubGroupStatus
+    // Le sous-groupe sera mis à jour par checkAndUpdateGroupStatus
   }
 }
 
-/**
- * ✅ Fonction principale de mise à jour
- */
 /**
  * ✅ Fonction principale de mise à jour
  */
@@ -383,8 +414,6 @@ export async function updateMatchAndRecompute(
     // 🟡 RESET MANUEL ou passage en réclamation
     if (updates.force_reset ||
       (oldMatch.status === 'completed' && updates.status === 'reclamation')) {
-
-      console.log(`🔄 Reset du match ${matchId} - recalcul sans ce match`);
 
       // Recalculer l'état SANS ce match
       const stateWithoutMatch = await MatchStateCalculator.calculateState(
@@ -434,7 +463,6 @@ export async function updateMatchAndRecompute(
       oldMatch.status !== 'completed' &&
       updatedMatch.status === 'completed'
     ) {
-
       // Recalculer l'état complet (avec tous les matchs)
       const fullState = await MatchStateCalculator.calculateState(
         client,
@@ -452,8 +480,8 @@ export async function updateMatchAndRecompute(
       await sendMatchPush(matchId, 'Le match a été complété', '🔥 Match terminé');
     }
 
-    // 🏁 Vérifier et mettre à jour le statut du sous-groupe APRÈS toutes les modifications
-    await checkAndUpdateSubGroupStatus(client, oldMatch.sub_group_id);
+    // 🏁 Vérifier et mettre à jour le statut du sous-groupe ET du groupe parent
+    await checkAndUpdateGroupStatus(client, oldMatch.sub_group_id);
 
     await client.query("COMMIT");
 

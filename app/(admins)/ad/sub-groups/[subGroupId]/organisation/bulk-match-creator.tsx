@@ -23,55 +23,104 @@ import {
   Swords,
   Check,
   AlertCircle,
+  ArrowUpDown,
+  SortAsc,
+  SortDesc,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Toggle } from "@/components/ui/toggle";
+import { toast } from "sonner";
+
+type SortOrder = 'asc' | 'desc';
 
 interface BulkMatchCreatorProps {
   region1Fighters: Fighter[];
   region2Fighters: Fighter[];
-  fighterSelectionCounts: Record<number, number>;
+  existingMatchFighterIds: Set<number>; // IDs des lutteurs déjà dans des matchs existants
   onCreateMatches: (
     matches: { fighter1Id: number; fighter2Id?: number }[]
   ) => void;
   onCancel: () => void;
 }
 
+interface MatchRow {
+  fighter1Id?: number;
+  fighter2Id?: number;
+}
+
 export function BulkMatchCreator({
   region1Fighters,
   region2Fighters,
-  fighterSelectionCounts,
+  existingMatchFighterIds,
   onCreateMatches,
   onCancel,
 }: BulkMatchCreatorProps) {
-  const [matches, setMatches] = useState<
-    { fighter1Id?: number; fighter2Id?: number }[]
-  >([]);
+  const [matches, setMatches] = useState<MatchRow[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [showSortControls, setShowSortControls] = useState(false);
 
   // Initialiser avec des cartes vides pré-remplies avec le premier lutteur disponible
   useEffect(() => {
-    if (region1Fighters.length > 0) {
+    const availableFighters = region1Fighters.filter(f => !existingMatchFighterIds.has(f.id));
+
+    if (availableFighters.length > 0) {
       // Créer jusqu'à 10 cartes, chaque carte avec un lutteur différent de la région 1
       const initialMatches = [];
-      const maxCards = Math.min(10, region1Fighters.length);
+      const maxCards = Math.min(10, availableFighters.length);
 
       for (let i = 0; i < maxCards; i++) {
         initialMatches.push({
-          fighter1Id: region1Fighters[i]?.id,
+          fighter1Id: availableFighters[i]?.id,
         });
       }
 
       setMatches(initialMatches);
     } else {
-      // Si pas de lutteurs région 1, créer une carte vide
+      // Si pas de lutteurs région 1 disponibles, créer une carte vide
       setMatches([{ fighter1Id: undefined }]);
     }
-  }, [region1Fighters]);
+  }, [region1Fighters, existingMatchFighterIds]);
 
-  // Calculer les lutteurs région 2 déjà sélectionnés
-  const selectedRegion2FighterIds = useMemo(() => {
+  // Calculer les lutteurs région 1 disponibles (non utilisés dans les matchs existants ET non sélectionnés dans le bulk)
+  const availableRegion1Fighters = useMemo(() => {
+    const selectedInBulk = new Set<number>();
+    matches.forEach(match => {
+      if (match.fighter1Id) selectedInBulk.add(match.fighter1Id);
+    });
+
+    return region1Fighters
+      .filter(fighter => !existingMatchFighterIds.has(fighter.id)) // Exclure ceux déjà dans des matchs existants
+      .filter(fighter => !selectedInBulk.has(fighter.id)) // Exclure ceux déjà sélectionnés dans le bulk
+      .sort((a, b) => {
+        const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+        const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+        return sortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      });
+  }, [region1Fighters, existingMatchFighterIds, matches, sortOrder]);
+
+  // Calculer les lutteurs région 2 disponibles
+  const availableRegion2Fighters = useMemo(() => {
+    const selectedInBulk = new Set<number>();
+    matches.forEach(match => {
+      if (match.fighter2Id) selectedInBulk.add(match.fighter2Id);
+    });
+
+    return region2Fighters
+      .filter(fighter => !existingMatchFighterIds.has(fighter.id)) // Exclure ceux déjà dans des matchs existants
+      .filter(fighter => !selectedInBulk.has(fighter.id)) // Exclure ceux déjà sélectionnés dans le bulk
+      .sort((a, b) => {
+        const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+        const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+        return sortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      });
+  }, [region2Fighters, existingMatchFighterIds, matches, sortOrder]);
+
+  // Obtenir tous les IDs sélectionnés dans le bulk (pour les vérifications)
+  const selectedInBulkIds = useMemo(() => {
     const ids = new Set<number>();
-    matches.forEach((match) => {
+    matches.forEach(match => {
+      if (match.fighter1Id) ids.add(match.fighter1Id);
       if (match.fighter2Id) ids.add(match.fighter2Id);
     });
     return ids;
@@ -79,24 +128,16 @@ export function BulkMatchCreator({
 
   // Ajouter une carte vide avec le prochain lutteur disponible de la région 1
   const addMatch = () => {
-    // Trouver tous les lutteurs région 1 déjà utilisés
-    const usedFighter1Ids = new Set(
-      matches.map((m) => m.fighter1Id).filter(Boolean)
-    );
-
-    // Trouver le premier lutteur région 1 non utilisé
-    const availableFighter1 = region1Fighters.find(
-      (f) => !usedFighter1Ids.has(f.id)
-    );
-
-    if (availableFighter1) {
-      setMatches([...matches, { fighter1Id: availableFighter1.id }]);
-    } else if (region1Fighters.length > 0) {
-      // Si tous les lutteurs sont déjà utilisés, réutiliser le premier
-      setMatches([...matches, { fighter1Id: region1Fighters[0].id }]);
+    if (availableRegion1Fighters.length > 0) {
+      setMatches([...matches, { fighter1Id: availableRegion1Fighters[0].id }]);
+    } else if (region1Fighters.some(f => !existingMatchFighterIds.has(f.id))) {
+      // Si tous les lutteurs disponibles sont déjà sélectionnés dans le bulk
+      const firstAvailable = region1Fighters.find(f => !existingMatchFighterIds.has(f.id));
+      if (firstAvailable) {
+        setMatches([...matches, { fighter1Id: firstAvailable.id }]);
+      }
     } else {
-      // Si pas de lutteurs région 1, ajouter une carte vide
-      setMatches([...matches, { fighter1Id: undefined }]);
+      toast.error("Aucun lutteur disponible pour la région 1");
     }
   };
 
@@ -110,6 +151,14 @@ export function BulkMatchCreator({
   // Mettre à jour le lutteur 1
   const updateMatchFighter1 = (index: number, fighter1Id?: number) => {
     const newMatches = [...matches];
+
+    // Vérifier si le lutteur est déjà sélectionné ailleurs
+    if (fighter1Id && selectedInBulkIds.has(fighter1Id) &&
+      fighter1Id !== matches[index].fighter1Id) {
+      toast.error("Ce lutteur est déjà sélectionné dans une autre carte");
+      return;
+    }
+
     newMatches[index] = { ...newMatches[index], fighter1Id };
     setMatches(newMatches);
   };
@@ -117,6 +166,14 @@ export function BulkMatchCreator({
   // Mettre à jour le lutteur 2
   const updateMatchFighter2 = (index: number, fighter2Id?: number) => {
     const newMatches = [...matches];
+
+    // Vérifier si le lutteur est déjà sélectionné ailleurs
+    if (fighter2Id && selectedInBulkIds.has(fighter2Id) &&
+      fighter2Id !== matches[index].fighter2Id) {
+      toast.error("Ce lutteur est déjà sélectionné dans une autre carte");
+      return;
+    }
+
     newMatches[index] = { ...newMatches[index], fighter2Id };
     setMatches(newMatches);
   };
@@ -171,13 +228,9 @@ export function BulkMatchCreator({
       : undefined;
   };
 
-  // Filtrer les lutteurs région 2 disponibles
-  const getAvailableRegion2Fighters = (currentFighter2Id?: number) => {
-    return region2Fighters.filter(
-      (fighter) =>
-        !selectedRegion2FighterIds.has(fighter.id) ||
-        fighter.id === currentFighter2Id
-    );
+  // Formatter le nom du lutteur pour l'affichage
+  const getFighterDisplayName = (fighter: Fighter) => {
+    return `${fighter.first_name} ${fighter.last_name}${fighter.nickname ? ` (${fighter.nickname})` : ''}`;
   };
 
   return (
@@ -195,6 +248,15 @@ export function BulkMatchCreator({
             <Button
               variant="ghost"
               size="sm"
+              onClick={() => setShowSortControls(!showSortControls)}
+              className="h-8 gap-1"
+            >
+              <ArrowUpDown className="h-4 w-4" />
+              {showSortControls ? "Masquer tri" : "Trier"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onCancel}
               className="h-8 w-8 p-0"
             >
@@ -202,22 +264,35 @@ export function BulkMatchCreator({
             </Button>
           </div>
         </div>
+        {showSortControls && (
+          <div className="flex items-center gap-2 mt-2 p-2 bg-muted/20 rounded-lg">
+            <Typography variant="body-sm" weight="medium">
+              Ordre d'affichage des lutteurs :
+            </Typography>
+            <Toggle
+              pressed={sortOrder === 'asc'}
+              onPressedChange={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              aria-label="Changer l'ordre de tri"
+            >
+              {sortOrder === 'asc' ? (
+                <SortAsc className="h-4 w-4" />
+              ) : (
+                <SortDesc className="h-4 w-4" />
+              )}
+              <span className="ml-2">
+                {sortOrder === 'asc' ? 'A → Z' : 'Z → A'}
+              </span>
+            </Toggle>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {matches.map((match, index) => {
             const fighter1 = getFighter1(match.fighter1Id);
             const fighter2 = getFighter2(match.fighter2Id);
-            const availableRegion2Fighters = getAvailableRegion2Fighters(
-              match.fighter2Id
-            );
             const canCreateSingle = !!match.fighter1Id;
-            const selectionCount1 = fighter1
-              ? fighterSelectionCounts[fighter1.id] || 0
-              : 0;
-            const selectionCount2 = fighter2
-              ? fighterSelectionCounts[fighter2.id] || 0
-              : 0;
+            const isFighter1Disabled = !match.fighter1Id && availableRegion1Fighters.length === 0;
 
             return (
               <div
@@ -233,6 +308,11 @@ export function BulkMatchCreator({
                     {!match.fighter1Id && (
                       <Badge variant="destructive" className="text-xs">
                         Lutteur 1 requis
+                      </Badge>
+                    )}
+                    {isFighter1Disabled && (
+                      <Badge variant="destructive" className="text-xs">
+                        Plus de lutteurs disponibles
                       </Badge>
                     )}
                   </div>
@@ -263,7 +343,7 @@ export function BulkMatchCreator({
 
                 {/* Contenu de la carte */}
                 <div className="grid grid-cols-12 gap-4 items-center">
-                  {/* Lutteur 1 (présélectionné mais modifiable) */}
+                  {/* Lutteur 1 */}
                   <div className="col-span-5">
                     <div className="space-y-2">
                       <Typography
@@ -272,18 +352,16 @@ export function BulkMatchCreator({
                         className="flex items-center gap-1"
                       >
                         Lutteur Région 1
-                        {selectionCount1 > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            {selectionCount1}x déjà
-                          </Badge>
-                        )}
+                        <span className="text-xs text-muted-foreground">
+                          ({availableRegion1Fighters.length} disponibles)
+                        </span>
                       </Typography>
                       <Select
-                        value={match.fighter1Id?.toString() || "empty"}
+                        value={match.fighter1Id?.toString() || ""}
                         onValueChange={(value) =>
                           updateMatchFighter1(
                             index,
-                            value === "empty" ? undefined : parseInt(value)
+                            value ? parseInt(value) : undefined
                           )
                         }
                         disabled={isSaving}
@@ -302,21 +380,24 @@ export function BulkMatchCreator({
                                 </AvatarFallback>
                               </Avatar>
                               <span className="truncate">
-                                {fighter1.first_name} {fighter1.last_name}
+                                {getFighterDisplayName(fighter1)}
                               </span>
                             </div>
                           ) : (
-                            <SelectValue placeholder="Sélectionner..." />
+                            <SelectValue placeholder="Sélectionner un lutteur..." />
                           )}
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="empty">-- Aucun --</SelectItem>
-                          {region1Fighters.map((fighter) => (
-                            <SelectItem
-                              key={fighter.id}
-                              value={fighter.id.toString()}
-                            >
-                              <div className="flex items-center justify-between gap-2">
+                          {availableRegion1Fighters.length === 0 ? (
+                            <SelectItem value="no-fighters" disabled>
+                              Aucun lutteur disponible
+                            </SelectItem>
+                          ) : (
+                            availableRegion1Fighters.map((fighter) => (
+                              <SelectItem
+                                key={fighter.id}
+                                value={fighter.id.toString()}
+                              >
                                 <div className="flex items-center gap-2">
                                   <Avatar className="h-6 w-6">
                                     <AvatarImage
@@ -328,28 +409,18 @@ export function BulkMatchCreator({
                                       {fighter.last_name?.[0]}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <div>
-                                    <div className="font-medium line-clamp-1">
-                                      {fighter.first_name} {fighter.last_name}
+                                  <div className="flex-1">
+                                    <div className="font-medium">
+                                      {getFighterDisplayName(fighter)}
                                     </div>
-                                    {fighter.nickname && (
-                                      <div className="text-xs text-muted-foreground line-clamp-1">
-                                        "{fighter.nickname}"
-                                      </div>
-                                    )}
+                                    <div className="text-xs text-muted-foreground">
+                                      Classement: {fighter.ranking || "N/A"}
+                                    </div>
                                   </div>
                                 </div>
-                                {fighterSelectionCounts[fighter.id] > 0 && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs"
-                                  >
-                                    {fighterSelectionCounts[fighter.id]}x
-                                  </Badge>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -371,7 +442,7 @@ export function BulkMatchCreator({
                     </div>
                   </div>
 
-                  {/* Lutteur 2 (optionnel) */}
+                  {/* Lutteur 2 */}
                   <div className="col-span-5">
                     <div className="space-y-2">
                       <Typography
@@ -380,21 +451,16 @@ export function BulkMatchCreator({
                         className="flex items-center gap-1"
                       >
                         Lutteur Région 2
-                        {fighter2 && selectionCount2 > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            {selectionCount2}x déjà
-                          </Badge>
-                        )}
                         <span className="text-xs text-muted-foreground">
-                          (optionnel)
+                          ({availableRegion2Fighters.length} disponibles)
                         </span>
                       </Typography>
                       <Select
-                        value={match.fighter2Id?.toString() || "empty"}
+                        value={match.fighter2Id?.toString() || ""}
                         onValueChange={(value) =>
                           updateMatchFighter2(
                             index,
-                            value === "empty" ? undefined : parseInt(value)
+                            value ? parseInt(value) : undefined
                           )
                         }
                         disabled={isSaving}
@@ -413,21 +479,21 @@ export function BulkMatchCreator({
                                 </AvatarFallback>
                               </Avatar>
                               <span className="truncate">
-                                {fighter2.first_name} {fighter2.last_name}
+                                {getFighterDisplayName(fighter2)}
                               </span>
                             </div>
                           ) : (
-                            <SelectValue placeholder="Sélectionner..." />
+                            <SelectValue placeholder="Optionnel - Sélectionner..." />
                           )}
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="empty">-- Aucun --</SelectItem>
-                          {availableRegion2Fighters.map((fighter) => (
-                            <SelectItem
-                              key={fighter.id}
-                              value={fighter.id.toString()}
-                            >
-                              <div className="flex items-center justify-between gap-2">
+                          <SelectItem value="none">-- Optionnel --</SelectItem>
+                          {availableRegion2Fighters.length > 0 ? (
+                            availableRegion2Fighters.map((fighter) => (
+                              <SelectItem
+                                key={fighter.id}
+                                value={fighter.id.toString()}
+                              >
                                 <div className="flex items-center gap-2">
                                   <Avatar className="h-6 w-6">
                                     <AvatarImage
@@ -439,131 +505,27 @@ export function BulkMatchCreator({
                                       {fighter.last_name?.[0]}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <div>
-                                    <div className="font-medium line-clamp-1">
-                                      {fighter.first_name} {fighter.last_name}
+                                  <div className="flex-1">
+                                    <div className="font-medium">
+                                      {getFighterDisplayName(fighter)}
                                     </div>
-                                    {fighter.nickname && (
-                                      <div className="text-xs text-muted-foreground line-clamp-1">
-                                        "{fighter.nickname}"
-                                      </div>
-                                    )}
+                                    <div className="text-xs text-muted-foreground">
+                                      Classement: {fighter.ranking || "N/A"}
+                                    </div>
                                   </div>
                                 </div>
-                                {fighterSelectionCounts[fighter.id] > 0 && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs"
-                                  >
-                                    {fighterSelectionCounts[fighter.id]}x
-                                  </Badge>
-                                )}
-                              </div>
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-fighters" disabled>
+                              Aucun lutteur disponible
                             </SelectItem>
-                          ))}
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                 </div>
-
-                {/* Aperçu du match */}
-                {(fighter1 || fighter2) && (
-                  <div className="mt-4 p-3 bg-muted/20 rounded-lg">
-                    <Typography
-                      variant="body-sm"
-                      weight="medium"
-                      className="mb-2"
-                    >
-                      Aperçu :
-                    </Typography>
-                    <div className="flex items-center justify-center gap-6">
-                      {fighter1 && (
-                        <div className="text-center flex-1">
-                          <div className="flex items-center justify-center gap-2 mb-1">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage
-                                src={fighter1.profile_image}
-                                alt={fighter1.first_name}
-                              />
-                              <AvatarFallback>
-                                {fighter1.first_name[0]}
-                                {fighter1.last_name[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <Typography variant="body-sm" weight="medium">
-                                {fighter1.first_name} {fighter1.last_name}
-                              </Typography>
-                              {fighter1.nickname && (
-                                <Typography variant="caption1" theme="muted">
-                                  "{fighter1.nickname}"
-                                </Typography>
-                              )}
-                            </div>
-                          </div>
-                          {selectionCount1 > 0 && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              Utilisé {selectionCount1} fois
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-
-                      {fighter1 && fighter2 && (
-                        <div className="flex flex-col items-center">
-                          <Swords className="h-4 w-4 text-muted-foreground" />
-                          <Typography variant="caption1" weight="bold">
-                            VS
-                          </Typography>
-                        </div>
-                      )}
-
-                      {fighter2 ? (
-                        <div className="text-center flex-1">
-                          <div className="flex items-center justify-center gap-2 mb-1">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage
-                                src={fighter2.profile_image}
-                                alt={fighter2.first_name}
-                              />
-                              <AvatarFallback>
-                                {fighter2.first_name[0]}
-                                {fighter2.last_name[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <Typography variant="body-sm" weight="medium">
-                                {fighter2.first_name} {fighter2.last_name}
-                              </Typography>
-                              {fighter2.nickname && (
-                                <Typography variant="caption1" theme="muted">
-                                  "{fighter2.nickname}"
-                                </Typography>
-                              )}
-                            </div>
-                          </div>
-                          {selectionCount2 > 0 && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              Utilisé {selectionCount2} fois
-                            </Badge>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-center flex-1">
-                          <div className="h-8 w-8 mx-auto mb-1 rounded-full bg-muted flex items-center justify-center">
-                            <Typography variant="body-sm" theme="muted">
-                              ?
-                            </Typography>
-                          </div>
-                          <Typography variant="body-sm" theme="muted">
-                            À déterminer
-                          </Typography>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
@@ -574,7 +536,7 @@ export function BulkMatchCreator({
               onClick={addMatch}
               variant="outline"
               className="gap-2"
-              disabled={isSaving}
+              disabled={isSaving || availableRegion1Fighters.length === 0}
             >
               <Plus className="h-4 w-4" />
               Ajouter un match
@@ -593,34 +555,30 @@ export function BulkMatchCreator({
             </Button>
           </div>
 
-          {/* Instructions et informations */}
-          <div className="text-sm text-muted-foreground mt-4 space-y-2">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 mt-0.5 text-blue-500" />
-              <div>
-                <Typography
-                  variant="body-sm"
-                  weight="medium"
-                  className="text-blue-600"
-                >
-                  Fonctionnement :
-                </Typography>
-                <Typography variant="body-sm">
-                  • Chaque carte est pré-remplie avec un lutteur différent de la
-                  Région 1 • Vous pouvez modifier le lutteur 1 ou le laisser tel
-                  quel • Le lutteur 2 est optionnel - vous pourrez le définir
-                  plus tard • Cliquez sur "Créer" sur une carte pour créer ce
-                  match seul • Cliquez sur "Créer X match(s)" pour créer tous
-                  les matchs validés
-                </Typography>
-              </div>
+          {/* Statistiques */}
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            <div className="p-2 bg-muted/20 rounded-lg text-center">
+              <Typography variant="caption1" theme="muted">
+                Lutteurs Région 1 dispo.
+              </Typography>
+              <Typography variant="body-base" weight="bold">
+                {availableRegion1Fighters.length}
+              </Typography>
             </div>
-
-            <div className="flex items-start gap-2">
-              <div className="h-2 w-2 rounded-full bg-amber-500 mt-1.5"></div>
-              <Typography variant="body-sm">
-                Le badge "Xx" indique combien de fois un lutteur est déjà
-                utilisé dans d'autres matchs de cette rencontre.
+            <div className="p-2 bg-muted/20 rounded-lg text-center">
+              <Typography variant="caption1" theme="muted">
+                Lutteurs Région 2 dispo.
+              </Typography>
+              <Typography variant="body-base" weight="bold">
+                {availableRegion2Fighters.length}
+              </Typography>
+            </div>
+            <div className="p-2 bg-muted/20 rounded-lg text-center">
+              <Typography variant="caption1" theme="muted">
+                Déjà utilisés (total)
+              </Typography>
+              <Typography variant="body-base" weight="bold">
+                {existingMatchFighterIds.size + selectedInBulkIds.size}
               </Typography>
             </div>
           </div>

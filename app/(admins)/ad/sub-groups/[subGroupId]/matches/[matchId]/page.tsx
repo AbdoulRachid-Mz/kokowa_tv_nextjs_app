@@ -40,6 +40,7 @@ import { MatchControls } from "./match-controls";
 import { MatchTimer } from "./match-timer";
 import { addFighterCard, updateMatch } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
+import { FloatingMatchScore } from "./floating-match-score";
 
 export default function MatchDetailPage() {
   const { subGroupId, matchId } = useParams();
@@ -54,7 +55,7 @@ export default function MatchDetailPage() {
   }>({ region1: [], region2: [] });
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
-    type: "winner" | "draw" | "cancel" | "reclamation" | "reset" | "complete" | "startSubGroup";
+    type: "winner" | "draw" | "cancel" | "reclamation" | "reset" | "complete" | "startSubGroup" | "replaceFighter" | "removeFighter";
     fighterId?: number;
     opponentId?: number;
   }>({
@@ -178,6 +179,18 @@ export default function MatchDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["match", parsedMatchId] });
     },
   });
+
+  //handle removeFighterId on match
+  const handleRemoveFighterId = (fighterId: number) => {
+    updateMatchMutation.mutate({
+      fighter1_id: undefined,
+    });
+  }
+
+  //handleReplaceFigherRoute
+  const handleReplaceFigherRoute = (fighterId: number) => {
+    router.push(`/ad/editions/${subGroup?.group?.phase?.edition?.id}/fighters/replace?fighterId=${fighterId}`)
+  }
 
   // const updateSubGroupMutation = useMutation({
   //   mutationFn: async (updates: { video_url?: string }) => {
@@ -533,9 +546,11 @@ export default function MatchDetailPage() {
                 });
               }}
               onSetDraw={() => setConfirmDialog({ isOpen: true, type: "draw" })}
+              onReplaceFighter={handleReplaceFigherRoute}
+              onRemoveFighter={handleRemoveFighterId}
             />
 
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:block">
+            <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 hidden md:block">
               <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-4 border-background">
                 <Typography variant="body-lg" weight="bold">
                   VS
@@ -570,6 +585,8 @@ export default function MatchDetailPage() {
                 });
               }}
               onSetDraw={() => setConfirmDialog({ isOpen: true, type: "draw" })}
+              onReplaceFighter={handleReplaceFigherRoute}
+              onRemoveFighter={handleRemoveFighterId}
             />
           </div>
 
@@ -660,6 +677,23 @@ export default function MatchDetailPage() {
 
 
         </div>
+
+        <div className="max-w-7xl mx-auto mb-6 hidden md:block">
+          <FloatingMatchScore
+            subGroup={subGroup!}
+            match={match as Match}
+            region1={subGroup?.region1}
+            region2={subGroup?.region2}
+          />
+          <div className="md:hidden">
+            <FloatingMatchScore
+              subGroup={subGroup!}
+              match={match as Match}
+              region1={subGroup?.region1}
+              region2={subGroup?.region2}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Dialog de confirmation générique */}
@@ -675,6 +709,8 @@ export default function MatchDetailPage() {
               {confirmDialog.type === "cancel" && "Confirmer l'annulation"}
               {confirmDialog.type === "reclamation" && "Confirmer la réclamation"}
               {confirmDialog.type === "reset" && "Confirmer la réinitialisation"}
+              {confirmDialog.type === "replaceFighter" && "Confirmer le remplacement"}
+              {confirmDialog.type === "removeFighter" && "Confirmer la suppression"}
             </DialogTitle>
           </DialogHeader>
 
@@ -689,6 +725,10 @@ export default function MatchDetailPage() {
               "Êtes-vous sûr de vouloir activer le mode réclamation ?"}
             {confirmDialog.type === "reset" &&
               "Êtes-vous sûr de vouloir réinitialiser le match ? Cette action est irréversible."}
+            {confirmDialog.type === "replaceFighter" &&
+              "Êtes-vous sûr de vouloir remplacer ce lutteur ?"}
+            {confirmDialog.type === "removeFighter" &&
+              "Êtes-vous sûr de vouloir retirer ce lutteur ?"}
           </p>
 
           <DialogFooter>
@@ -726,6 +766,16 @@ export default function MatchDetailPage() {
                     pauseMatch()
                     setConfirmDialog((prev) => ({ ...prev, isOpen: false, type: "cancel" }));
                     toast.success("Match annulé");
+                    break;
+                  case "replaceFighter":
+                    if (confirmDialog.fighterId) {
+                      handleReplaceFigherRoute?.(confirmDialog.fighterId);
+                    }
+                    break;
+                  case "removeFighter":
+                    if (confirmDialog.fighterId) {
+                      handleRemoveFighterId?.(confirmDialog.fighterId);
+                    }
                     break;
                 }
               }}

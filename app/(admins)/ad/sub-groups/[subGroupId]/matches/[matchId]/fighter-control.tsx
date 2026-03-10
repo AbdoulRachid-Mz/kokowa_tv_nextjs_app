@@ -41,6 +41,8 @@ interface FighterControlProps {
   onSetDraw: () => void;
   canSetWinner: boolean;
   canSetDraw: boolean;
+  onReplaceFighter?: (fighterId: number) => void;
+  onRemoveFighter?: (fighterId: number) => void;
 }
 
 export function FighterControl({
@@ -58,12 +60,15 @@ export function FighterControl({
   onSetDraw,
   canSetWinner,
   canSetDraw,
+  onReplaceFighter,
+  onRemoveFighter,
 }: FighterControlProps) {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedFighterId, setSelectedFighterId] = useState<string>("");
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
-    type: "winner" | "draw" | "addCard";
+    type: "winner" | "draw" | "addCard" | "replaceFighter" | "removeFighter";
+    fighterId?: number;
   }>({
     isOpen: false,
     type: "winner",
@@ -243,6 +248,35 @@ export function FighterControl({
               <Trophy className="h-3 w-3" /> Vainqueur
             </Badge>
           )}
+        </div>
+        {/* buttons remove and replace */}
+        <div className="absolute top-2 right-2 flex gap-1">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              if (fighter?.id) {
+                onRemoveFighter?.(fighter.id);
+              }
+            }}
+            disabled={!canModify}
+          >
+            <Users className="h-4 w-4" />
+            Retirer
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (fighter?.id) {
+                onReplaceFighter?.(fighter.id);
+              }
+            }}
+            disabled={!canModify}
+          >
+            <Users className="h-4 w-4" />
+            Remplacer
+          </Button>
         </div>
       </CardHeader>
 
