@@ -366,6 +366,7 @@ CREATE TABLE IF NOT EXISTS matches (
     match_number INTEGER,
     match_date TIMESTAMP NOT NULL,
     start_time TIME,
+    start_time2 TIMESTAMP,
     end_time TIME,
     is_active BOOLEAN DEFAULT TRUE,
     -- Participants

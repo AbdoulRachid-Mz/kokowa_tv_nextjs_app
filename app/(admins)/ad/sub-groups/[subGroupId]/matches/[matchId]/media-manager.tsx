@@ -15,7 +15,7 @@ interface MediaManagerProps {
   subGroupId: number;
   videoUrl?: string; // URL de la vidéo du sous-groupe
   liveStreamUrl?: string;
-  onUpdateMatch: (updates: { live_stream_url?: string }) => void;
+  onUpdateMatch: (updates: { video_url?: string }) => void;
   onUpdateSubGroup: (updates: { video_url?: string }) => void;
   isSaving: boolean;
 }
@@ -47,7 +47,7 @@ export function MediaManager({
   };
   
   const saveLiveStreamUrl = () => {
-    onUpdateMatch({ live_stream_url: localLiveStreamUrl || undefined });
+    onUpdateMatch({ video_url: localLiveStreamUrl || undefined });
     toast.success("URL live du match sauvegardée");
   };
   
@@ -59,7 +59,7 @@ export function MediaManager({
   
   const clearLiveStreamUrl = () => {
     setLocalLiveStreamUrl("");
-    onUpdateMatch({ live_stream_url: undefined });
+    onUpdateMatch({ video_url: undefined });
     toast.success("URL live supprimée");
   };
   

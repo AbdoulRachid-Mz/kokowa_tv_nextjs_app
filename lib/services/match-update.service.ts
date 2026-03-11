@@ -11,6 +11,7 @@ export interface MatchUpdate {
   match_date?: string;
   start_time?: string;
   end_time?: string;
+  start_time2?: string; // NOUVEAU - timestamp ISO complet
   fighter1_id?: number | null;
   fighter2_id?: number | null;
   fighter1_initial_state?: 'eliminated' | 'not_eliminated';
@@ -477,7 +478,7 @@ export async function updateMatchAndRecompute(
       );
 
       // Notification push
-      await sendMatchPush(matchId, 'Le match a été complété', '🔥 Match terminé');
+      // await sendMatchPush(matchId, 'Le match a été complété', '🔥 Match terminé');
     }
 
     // 🏁 Vérifier et mettre à jour le statut du sous-groupe ET du groupe parent
@@ -509,7 +510,7 @@ async function updateMatchInTransaction(client: PoolClient, matchId: number, upd
 
   // 🔥 Filtrer les champs qui n'existent pas dans la table
   const allowedFields = [
-    'sub_group_id', 'match_number', 'match_date', 'start_time', 'end_time',
+    'sub_group_id', 'match_number', 'match_date', 'start_time', 'start_time2', 'end_time',
     'fighter1_id', 'fighter2_id', 'fighter1_initial_state', 'fighter2_initial_state',
     'initial_state', 'winner_fighter_id', 'loser_fighter_id', 'match_result',
     'total_duration', 'break_count', 'status', 'audience_count', 'video_url',

@@ -461,6 +461,7 @@ async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
       m.match_number as "matchNumber",
       m.match_date as "matchDate",
       m.start_time as "startTime",
+      m.start_time2 as "startTime2",
       m.end_time as "endTime",
       m.status,
       m.match_result as "matchResult",
@@ -547,7 +548,8 @@ async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
         ELSE 3
       END,
       m.match_date DESC,
-      m.start_time DESC
+      m.start_time DESC,
+      m.start_time2 DESC
   `;
 
   const matches = await query(sql, params);
@@ -624,6 +626,7 @@ async function enrichMatchData(match: any) {
     matchNumber: match.matchNumber,
     matchDate: match.matchDate,
     startTime: formattedStartTime,
+    startTime2: match.startTime2, // NOUVEAU - timestamp ISO complet
     endTime: match.endTime,
     status: match.status,
     matchResult: resultType,

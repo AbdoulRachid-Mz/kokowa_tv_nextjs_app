@@ -403,6 +403,7 @@ export async function getMobileEditionMatchDetails(matchId: number) {
         m.match_number as "matchNumber",
         m.match_date as "matchDate",
         m.start_time as "startTime",
+        m.start_time2 as "startTime2", // NOUVEAU - timestamp ISO complet
         m.end_time as "endTime",
         m.status,
         m.match_result as "matchResult",

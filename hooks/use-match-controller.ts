@@ -114,19 +114,24 @@ export function useMatchController({ matchId, subGroupId }: UseMatchControllerPr
   // ACTIONS
   // ==========================
 
-  const startMatch = useCallback(() => {
-    if (!match || isUpdatingRef.current) return; // 🔥 Vérification
+const startMatch = useCallback(() => {
+  if (!match || isUpdatingRef.current) return;
 
-    timer.start();
+  timer.start();
 
-    updateMutation.mutate({
-      status: 'live',
-      start_time: new Date().toTimeString().slice(0, 8)
-    });
+  const now = new Date();
+  const timeString = now.toTimeString().slice(0, 8);
+  const timestamp2 = now.toISOString(); // Format ISO complet pour start_time2
 
-    //push topic
-    sendMatchPush(matchId, `Match entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} debute !`);
-  }, [match, timer, updateMutation]);
+  updateMutation.mutate({
+    status: 'live',
+    start_time: timeString,
+    start_time2: timestamp2, // NOUVEAU - timestamp ISO complet
+  });
+
+  //push topic
+  sendMatchPush(matchId, `Match entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} debute !`);
+}, [match, timer, updateMutation]);
 
   const pauseMatch = useCallback(() => {
     if (!match || isUpdatingRef.current) return; // 🔥 Vérification

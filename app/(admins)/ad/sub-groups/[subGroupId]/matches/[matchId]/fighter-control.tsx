@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Match, Fighter } from "@/types";
-import { Trophy, User, Users, Equal } from "lucide-react";
+import { Trophy, User, Users, Equal, CircleMinus, UserMinus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -41,7 +41,7 @@ interface FighterControlProps {
   onSetDraw: () => void;
   canSetWinner: boolean;
   canSetDraw: boolean;
-  onReplaceFighter?: (fighterId: number) => void;
+  onReplaceFighter?: (fighterId: number, regionId: number) => void;
   onRemoveFighter?: (fighterId: number) => void;
 }
 
@@ -69,6 +69,7 @@ export function FighterControl({
     isOpen: boolean;
     type: "winner" | "draw" | "addCard" | "replaceFighter" | "removeFighter";
     fighterId?: number;
+    regionId?: number;
   }>({
     isOpen: false,
     type: "winner",
@@ -251,7 +252,126 @@ export function FighterControl({
         </div>
         {/* buttons remove and replace */}
         <div className="absolute top-2 right-2 flex gap-1">
-          <Button
+          <div className="absolute top-2 right-2 flex gap-1">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                if (fighter?.id) {
+                  // Ouvrir le dialog de confirmation
+                  setConfirmDialog({
+                    isOpen: true,
+                    type: "removeFighter",
+                    fighterId: fighter.id,
+                  });
+                }
+              }}
+              disabled={!canModify}
+            >
+              <Typography hasTooltip={true} tooltipContent="retirer ce lutteur">
+                <UserMinus className="h-4 w-4" />
+              </Typography>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (fighter?.id) {
+                  // Ouvrir le dialog de confirmation
+                  setConfirmDialog({
+                    isOpen: true,
+                    type: "replaceFighter",
+                    fighterId: fighter.id,
+                    regionId: fighter.region_id,
+                  });
+                }
+              }}
+              disabled={!canModify}
+            >
+              <Typography hasTooltip={true} tooltipContent="remplacer ce lutteur">
+                <Users className="h-4 w-4" />
+              </Typography>
+            </Button>
+          </div>
+
+          {/* Dialog de confirmation pour retirer */}
+          <Dialog
+            open={confirmDialog.isOpen && confirmDialog.type === "removeFighter"}
+            onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "removeFighter" })}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Confirmer le retrait</DialogTitle>
+              </DialogHeader>
+              <p>
+                Êtes-vous sûr de vouloir retirer{" "}
+                <strong>
+                  {fighter?.first_name} {fighter?.last_name}
+                </strong>{" "}
+                de ce match ?
+              </p>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmDialog({ isOpen: false, type: "removeFighter" })}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    if (fighter?.id && onRemoveFighter) {
+                      onRemoveFighter(fighter.id);
+                      setConfirmDialog({ isOpen: false, type: "removeFighter" });
+                    }
+                  }}
+                >
+                  Confirmer
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Dialog de confirmation pour remplacer */}
+          <Dialog
+            open={confirmDialog.isOpen && confirmDialog.type === "replaceFighter"}
+            onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "replaceFighter" })}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Confirmer le remplacement</DialogTitle>
+              </DialogHeader>
+              <p>
+                Êtes-vous sûr de vouloir remplacer{" "}
+                <strong>
+                  {fighter?.first_name} {fighter?.last_name}
+                </strong>{" "}
+                ?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Vous serez redirigé vers la page de sélection des lutteurs.
+              </p>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmDialog({ isOpen: false, type: "replaceFighter" })}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (fighter?.id && onReplaceFighter) {
+                      onReplaceFighter(fighter.id, confirmDialog.regionId!);
+                      setConfirmDialog({ isOpen: false, type: "replaceFighter" });
+                    }
+                  }}
+                >
+                  Confirmer
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          {/* <Button
             variant="destructive"
             size="sm"
             onClick={() => {
@@ -276,7 +396,7 @@ export function FighterControl({
           >
             <Users className="h-4 w-4" />
             Remplacer
-          </Button>
+          </Button> */}
         </div>
       </CardHeader>
 

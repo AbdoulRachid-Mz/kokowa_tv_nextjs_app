@@ -57,6 +57,7 @@ export default function MatchDetailPage() {
     isOpen: boolean;
     type: "winner" | "draw" | "cancel" | "reclamation" | "reset" | "complete" | "startSubGroup" | "replaceFighter" | "removeFighter";
     fighterId?: number;
+    regionId?: number;
     opponentId?: number;
   }>({
     isOpen: false,
@@ -181,15 +182,31 @@ export default function MatchDetailPage() {
   });
 
   //handle removeFighterId on match
+  // Dans page.tsx - corrections
   const handleRemoveFighterId = (fighterId: number) => {
-    updateMatchMutation.mutate({
-      fighter1_id: undefined,
+    // Déterminer quel fighter retirer
+    const updates: MatchUpdate = {};
+
+    if (match?.fighter1_id === fighterId) {
+      updates.fighter1_id = null;
+    } else if (match?.fighter2_id === fighterId) {
+      updates.fighter2_id = null;
+    } else {
+      toast.error("Lutteur non trouvé dans ce match");
+      return;
+    }
+
+    updateMatchMutation.mutate(updates, {
+      onSuccess: () => {
+        toast.success("Lutteur retiré avec succès");
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      }
     });
-  }
+  };
 
   //handleReplaceFigherRoute
-  const handleReplaceFigherRoute = (fighterId: number) => {
-    router.push(`/ad/editions/${subGroup?.group?.phase?.edition?.id}/fighters/replace?fighterId=${fighterId}`)
+  const handleReplaceFigherRoute = (fighterId: number, regionId: number) => {
+    router.push(`/ad/editions/${subGroup?.group?.phase?.edition?.id}/fighters/replace?fighterId=${fighterId}&regionId=${regionId}`)
   }
 
   // const updateSubGroupMutation = useMutation({
@@ -210,6 +227,7 @@ export default function MatchDetailPage() {
   // ==========================
   // LOAD AVAILABLE FIGHTERS
   // ==========================
+  // Dans page.tsx - fonction loadAvailableFighters
   const loadAvailableFighters = useCallback(async (sg: SubGroup) => {
     try {
       const editionId = sg.group?.phase?.edition?.id;
@@ -220,11 +238,20 @@ export default function MatchDetailPage() {
         try {
           const response = await getEditionFighters(editionId, {
             region_id: regionId,
-            status: "registered",
+            sort_order: "asc",
             limit: 100,
             with_fighter: true,
           });
-          return response.data?.map((e: any) => e.fighter) || [];
+
+          // Extraire les fighters et les trier par nom
+          const fighters = response.data?.map((e: any) => e.fighter) || [];
+
+          // ✅ Tri alphabétique (A à Z) par prénom + nom
+          return fighters.sort((a: Fighter, b: Fighter) => {
+            const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+            const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+            return nameA.localeCompare(nameB);
+          });
         } catch (error) {
           console.error(`Erreur chargement région ${regionId}:`, error);
           return [];
@@ -665,8 +692,8 @@ export default function MatchDetailPage() {
             matchId={match.id}
             subGroupId={parsedSubGroupId}
             videoUrl={subGroup?.video_url}
-            liveStreamUrl={match.live_stream_url ?? undefined}
-            onUpdateMatch={(updates: { live_stream_url?: string }) => {
+            liveStreamUrl={match.video_url ?? undefined}
+            onUpdateMatch={(updates: { video_url?: string }) => {
               updateMatchMutation.mutate(updates);
             }}
             onUpdateSubGroup={(updates: { video_url?: string }) => {
@@ -674,7 +701,6 @@ export default function MatchDetailPage() {
             }}
             isSaving={isUpdating || updateSubGroupMutation.isPending}
           />
-
 
         </div>
 
@@ -768,8 +794,8 @@ export default function MatchDetailPage() {
                     toast.success("Match annulé");
                     break;
                   case "replaceFighter":
-                    if (confirmDialog.fighterId) {
-                      handleReplaceFigherRoute?.(confirmDialog.fighterId);
+                    if (confirmDialog.fighterId && confirmDialog.regionId!) {
+                      handleReplaceFigherRoute?.(confirmDialog.fighterId, confirmDialog.regionId!);
                     }
                     break;
                   case "removeFighter":

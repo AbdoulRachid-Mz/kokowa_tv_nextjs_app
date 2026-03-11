@@ -334,6 +334,7 @@ async function getSubgroupsForGroup(groupId: number) {
   }));
 }
 
+//Add startTime2 field to the SQL query to fetch live match data
 async function getLiveMatchForEdition(editionId: number) {
   const sql = `
     SELECT 
@@ -341,6 +342,7 @@ async function getLiveMatchForEdition(editionId: number) {
       m.match_number as "matchNumber",
       m.match_date as "matchDate",
       m.start_time as "startTime",
+      m.start_time2 as "startTime2",
       m.end_time as "endTime",
       m.status,
       m.match_result as "matchResult",
@@ -397,7 +399,7 @@ async function getLiveMatchForEdition(editionId: number) {
     JOIN regions r2 ON f2.region_id = r2.id
     WHERE p.edition_id = $1 
     AND m.status IN ('live', 'round_break', 'reclamation')
-    ORDER BY m.match_date DESC, m.start_time DESC
+    ORDER BY m.match_date DESC, m.start_time DESC, m.start_time2 DESC
     LIMIT 1
   `;
 
@@ -414,6 +416,8 @@ async function getLiveMatchForEdition(editionId: number) {
     liveMatch.totalDuration = formattedDuration;
     liveMatch.startTime = formattedStartTime;
     liveMatch.endTime = liveMatch.endTime;
+        liveMatch.startTime2 = liveMatch.startTime2; // NOUVEAU - timestamp ISO complet
+
     
     // Formater les données du match en live
     liveMatch.fighters = {

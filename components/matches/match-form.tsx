@@ -51,6 +51,7 @@ interface MatchFormData {
   match_number?: number;
   match_date: string;
   start_time?: string;
+  startTime2?: string; // NOUVEAU - timestamp ISO complet
   fighter1_id?: number;
   fighter2_id?: number;
   region1_id?: number;
@@ -82,6 +83,7 @@ export default function MatchForm({ match, subGroupId, subGroup, onSuccess }: Ma
     match_number: undefined,
     match_date: new Date().toISOString().split('T')[0],
     start_time: "15:00",
+    startTime2: undefined, // NOUVEAU - timestamp ISO complet
     fighter1_id: undefined,
     fighter2_id: undefined,
     region1_id: subGroup?.region1?.id,
