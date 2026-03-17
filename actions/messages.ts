@@ -5,18 +5,31 @@ import { query, queryOne } from '@/lib/db/neon-client';
 import { messageSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
 import { Message, MessageFilters, PaginatedResponse } from '@/types';
-import { connectionManager } from '@/lib/realtime/connection-manager';
+import { wsManager } from '@/server/ws-connection-manager';
+// import { connectionManager } from '@/lib/realtime/connection-manager';
 
-// Fonction utilitaire pour émettre des événements message
+// Utility function to emit message events
 async function emitMessageEvent(entityType: string, entityId: number, eventType: string, data: any) {
   try {
-    // Pour les commentaires de match
+    // For match comments
     if (entityType === 'match') {
-      connectionManager.broadcastToMatch(entityId, eventType, data);
+      wsManager.broadcastToEntity({
+        entityType: 'match',
+        entityId,
+        event: eventType,
+        data,
+        timestamp: Date.now()
+      });
     }
-    // Pour les commentaires d'édition
+    // For competition comments
     else if (entityType === 'competition') {
-      connectionManager.broadcastToEdition(entityId, eventType, data);
+      wsManager.broadcastToEntity({
+        entityType: 'edition',
+        entityId,
+        event: eventType,
+        data,
+        timestamp: Date.now()
+      });
     }
 
     console.log(`Event ${eventType} emitted for ${entityType} ${entityId}`);
@@ -163,7 +176,7 @@ export async function getMessages(
     `;
 
     const data = await query<Message>(
-      dataSql, 
+      dataSql,
       [...params, validatedLimit, offset]
     );
 
@@ -182,12 +195,12 @@ export async function getMessages(
   }
 }
 
-export async function getMessageById(id: number, options: { 
-  with_relations?: boolean 
+export async function getMessageById(id: number, options: {
+  with_relations?: boolean
 } = {}) {
   try {
     const { with_relations = true } = options;
-    
+
     let sql = 'SELECT * FROM messages WHERE id = $1';
     const params: any[] = [id];
 
@@ -223,11 +236,11 @@ export async function getMessageById(id: number, options: {
     }
 
     const result = await queryOne<Message>(sql, params);
-    
+
     if (!result) {
       throw new Error('Message non trouvé');
     }
-    
+
     return result;
   } catch (error) {
     console.error('Error in getMessageById:', error);
@@ -262,7 +275,7 @@ export async function createMessage(formData: FormData) {
       video_url: rawData.video_url as string || undefined,
       audio_url: rawData.audio_url as string || undefined,
     };
-        console.log(cleanedData)
+    console.log(cleanedData)
 
 
     const validatedData = messageSchema.parse(cleanedData);
@@ -274,7 +287,7 @@ export async function createMessage(formData: FormData) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING id
     `;
-    
+
     const result = await query<{ id: number }>(sql, [
       validatedData.content,
       validatedData.message_type,
@@ -288,19 +301,19 @@ export async function createMessage(formData: FormData) {
       validatedData.audio_url || null,
     ]);
 
-     // Émettre l'événement si c'est un commentaire sur une entité
-    if (validatedData.entity_type && validatedData.entity_id) {
-      await emitMessageEvent(
-        validatedData.entity_type, 
-        validatedData.entity_id, 
-        'new_message', 
-        { message: result[0].id }
-      );
-    }
+    // Émettre l'événement si c'est un commentaire sur une entité
+    // if (validatedData.entity_type && validatedData.entity_id) {
+    //   await emitMessageEvent(
+    //     validatedData.entity_type,
+    //     validatedData.entity_id,
+    //     'new_message',
+    //     { message: result[0].id }
+    //   );
+    // }
 
     revalidatePath('/messages');
-    return { 
-      success: true, 
+    return {
+      success: true,
       id: result[0].id,
       message: 'Message créé avec succès'
     };
@@ -370,7 +383,7 @@ export async function updateMessage(id: number, formData: FormData) {
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $14
     `;
-    
+
     await query(sql, [
       validatedData.content || null,
       validatedData.message_type || null,
@@ -390,9 +403,9 @@ export async function updateMessage(id: number, formData: FormData) {
 
     revalidatePath('/messages');
     revalidatePath(`/messages/${id}`);
-    return { 
-      success: true, 
-      message: 'Message modifié avec succès' 
+    return {
+      success: true,
+      message: 'Message modifié avec succès'
     };
   } catch (error) {
     console.error('Error in updateMessage:', error);
@@ -409,7 +422,7 @@ export async function deleteMessage(id: number) {
 
     // Pour les messages avec des réponses, on marque comme supprimé au lieu de supprimer
     const hasReplies = await checkMessageReplies(id);
-    
+
     if (hasReplies) {
       const sql = `
         UPDATE messages 
@@ -423,9 +436,9 @@ export async function deleteMessage(id: number) {
     }
 
     revalidatePath('/messages');
-    return { 
-      success: true, 
-      message: 'Message supprimé avec succès' 
+    return {
+      success: true,
+      message: 'Message supprimé avec succès'
     };
   } catch (error) {
     console.error('Error in deleteMessage:', error);
@@ -440,7 +453,7 @@ export async function markMessageAsRead(id: number) {
       SET is_read = true, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
     `;
-    
+
     await query(sql, [id]);
 
     revalidatePath('/messages');
@@ -458,7 +471,7 @@ export async function likeMessage(id: number) {
       SET like_count = like_count + 1, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
     `;
-    
+
     await query(sql, [id]);
 
     revalidatePath('/messages');

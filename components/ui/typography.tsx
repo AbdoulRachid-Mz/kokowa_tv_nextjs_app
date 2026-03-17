@@ -13,7 +13,6 @@ import {
   Copy,
   Check,
   ZoomIn,
-  QrCode,
   Sparkles,
   Swords,
   Target,
@@ -27,67 +26,66 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import QRCode from "qrcode";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface TypographyProps {
   variant?:
-    | "display"
-    | "h1"
-    | "h2"
-    | "h3"
-    | "h4"
-    | "h5"
-    | "h6"
-    | "lead"
-    | "body-lg"
-    | "body-base"
-    | "body-sm"
-    | "caption1"
-    | "caption2"
-    | "caption3"
-    | "caption4"
-    | "label"
-    | "small"
-    | "muted";
+  | "display"
+  | "h1"
+  | "h2"
+  | "h3"
+  | "h4"
+  | "h5"
+  | "h6"
+  | "lead"
+  | "body-lg"
+  | "body-base"
+  | "body-sm"
+  | "caption1"
+  | "caption2"
+  | "caption3"
+  | "caption4"
+  | "label"
+  | "small"
+  | "muted";
   children: React.ReactNode;
   component?:
-    | "h1"
-    | "h2"
-    | "h3"
-    | "h4"
-    | "h5"
-    | "h6"
-    | "div"
-    | "p"
-    | "span"
-    | "label"
-    | "small";
+  | "h1"
+  | "h2"
+  | "h3"
+  | "h4"
+  | "h5"
+  | "h6"
+  | "div"
+  | "p"
+  | "span"
+  | "label"
+  | "small";
   theme?:
-    | "black"
-    | "gray"
-    | "white"
-    | "primary"
-    | "secondary"
-    | "danger"
-    | "success"
-    | "warning"
-    | "gray-600"
-    | "muted"
-    | string; // Permet les couleurs personnalisées
+  | "black"
+  | "gray"
+  | "white"
+  | "primary"
+  | "secondary"
+  | "danger"
+  | "success"
+  | "warning"
+  | "gray-600"
+  | "muted"
+  | string; // Permet les couleurs personnalisées
   weight?: "light" | "regular" | "medium" | "semibold" | "bold" | "extrabold";
   className?: string;
   gradient?: boolean;
   animated?: boolean;
   animationType?:
-    | "fade"
-    | "slide"
-    | "bounce"
-    | "pulse"
-    | "glow"
-    | "gradient-shift"
-    | "3d-float"
-    | "typewriter";
+  | "fade"
+  | "slide"
+  | "bounce"
+  | "pulse"
+  | "glow"
+  | "gradient-shift"
+  | "3d-float"
+  | "typewriter";
   animationIntensity?: "low" | "medium" | "high" | "extreme";
   copyable?: boolean;
   hasTooltip?: boolean;
@@ -101,9 +99,6 @@ interface TypographyProps {
   markVariation?: "highlight" | "underline" | "circle" | "strike" | "dotted";
   withLoupe?: boolean;
   loupeIntensity?: number;
-  withQRCode?: boolean;
-  qrSize?: number;
-  qrMargin?: number;
   withConfetti?: boolean;
   confettiIntensity?: "low" | "medium" | "high" | "extreme";
   threeD?: boolean;
@@ -118,26 +113,26 @@ const useConfetti = (intensity: string = "medium") => {
         intensity === "low"
           ? 30
           : intensity === "medium"
-          ? 50
-          : intensity === "high"
-          ? 100
-          : 200,
+            ? 50
+            : intensity === "high"
+              ? 100
+              : 200,
       spread:
         intensity === "low"
           ? 45
           : intensity === "medium"
-          ? 60
-          : intensity === "high"
-          ? 75
-          : 90,
+            ? 60
+            : intensity === "high"
+              ? 75
+              : 90,
       startVelocity:
         intensity === "low"
           ? 20
           : intensity === "medium"
-          ? 30
-          : intensity === "high"
-          ? 40
-          : 50,
+            ? 30
+            : intensity === "high"
+              ? 40
+              : 50,
     };
 
     confetti(config);
@@ -181,9 +176,8 @@ const ThreeDText = ({
           className="absolute inset-0 z-0 opacity-50"
           style={{
             filter: `blur(${blur}px)`,
-            transform: `translate3d(${offset * (i + 1)}px, ${
-              offset * (i + 1)
-            }px, 0)`,
+            transform: `translate3d(${offset * (i + 1)}px, ${offset * (i + 1)
+              }px, 0)`,
             color: color,
             textShadow: `0 0 ${blur * 2}px ${color}40`,
           }}
@@ -283,44 +277,6 @@ const TextLoupe = ({
   );
 };
 
-const QRCodeGenerator = ({
-  text,
-  size = 128,
-  margin = 1,
-}: {
-  text: string;
-  size?: number;
-  margin?: number;
-}) => {
-  const [qrDataUrl, setQrDataUrl] = useState<string>("");
-
-  useEffect(() => {
-    const generateQR = async () => {
-      try {
-        const url = await QRCode.toDataURL(text, {
-          width: size,
-          margin,
-          color: {
-            dark: "#000000",
-            light: "#ffffff",
-          },
-        });
-        setQrDataUrl(url);
-      } catch (err) {
-        console.error("Error generating QR code:", err);
-      }
-    };
-
-    generateQR();
-  }, [text, size, margin]);
-
-  return qrDataUrl ? (
-    <div className="p-2 bg-white rounded-lg shadow-lg">
-      <img src={qrDataUrl} alt="QR Code" className="w-full h-auto" />
-    </div>
-  ) : null;
-};
-
 export function Typography({
   variant = "body-base",
   children,
@@ -344,9 +300,6 @@ export function Typography({
   markVariation = "highlight",
   withLoupe = false,
   loupeIntensity = 1.5,
-  withQRCode = false,
-  qrSize = 128,
-  qrMargin = 1,
   withConfetti = false,
   confettiIntensity = "medium",
   threeD = false,
@@ -355,7 +308,6 @@ export function Typography({
   ...props
 }: TypographyProps) {
   const [copied, setCopied] = useState(false);
-  const [showQR, setShowQR] = useState(false);
   const triggerConfetti = useConfetti(confettiIntensity);
 
   const getDefaultComponent = () => {
@@ -588,16 +540,12 @@ export function Typography({
     }
   };
 
-  const handleQRCode = () => {
-    setShowQR(!showQR);
-  };
-
   const combinedClassName = cn(
     variantStyles,
     gradient ? gradientStyles : colorStyles,
     weightStyles,
     animated ? animatedStyles : "",
-    (copyable || withQRCode) && "cursor-pointer select-all",
+    (copyable) && "cursor-pointer select-all",
     "group relative",
     className
   );
@@ -630,7 +578,7 @@ export function Typography({
 
   const componentProps = {
     className: combinedClassName,
-    onClick: copyable ? handleCopy : withQRCode ? handleQRCode : onClick,
+    onClick: copyable ? handleCopy : onClick,
     ...(Component === "label" && htmlFor ? { htmlFor } : {}),
     ...props,
   };
@@ -642,7 +590,7 @@ export function Typography({
         <span className="text-destructive ml-1">*</span>
       )}
 
-      {(copyable || withQRCode) && (
+      {(copyable) && (
         <div className="absolute -right-8 -top-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
           {copyable && (
             <Button
@@ -661,20 +609,6 @@ export function Typography({
               )}
             </Button>
           )}
-
-          {withQRCode && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleQRCode();
-              }}
-            >
-              <QrCode className="h-3 w-3" />
-            </Button>
-          )}
         </div>
       )}
     </Component>
@@ -683,21 +617,6 @@ export function Typography({
   const wrappedContent = (
     <>
       {content}
-
-      {withQRCode && showQR && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.8 }}
-          className="absolute top-full left-0 mt-2 z-50"
-        >
-          <QRCodeGenerator
-            text={String(children)}
-            size={qrSize}
-            margin={qrMargin}
-          />
-        </motion.div>
-      )}
     </>
   );
 
@@ -709,7 +628,7 @@ export function Typography({
             <div
               className={cn(
                 "group relative ",
-                (copyable || withQRCode) && "pr-8"
+                (copyable) && "pr-8"
               )}
             >
               {wrappedContent}
@@ -724,7 +643,7 @@ export function Typography({
   }
 
   return (
-    <div className={cn("relative ", (copyable || withQRCode) && "pr-8")}>
+    <div className={cn("relative ", (copyable) && "pr-8")}>
       {wrappedContent}
     </div>
   );
