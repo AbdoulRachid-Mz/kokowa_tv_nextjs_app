@@ -19,6 +19,7 @@ import {
   Layers,
   Activity,
   Bell,
+  Radio,
 } from "lucide-react";
 
 // export const menuItems = [
@@ -217,7 +218,7 @@ export const communicationItems = [
 ]
 
 export const test = [
-  { title: "Temp reel", url: "/ad/realtime", icon: Database, description: "Surveillance des matchs en temps réel" },
+  { title: "Temp reel", url: "/ad/realtime", icon: Radio, description: "Surveillance des matchs en temps réel" },
 ]
 
 export const systemItems = [

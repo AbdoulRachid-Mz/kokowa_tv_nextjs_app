@@ -12,11 +12,9 @@ interface LiveMatchTrackerProps {
 }
 
 export function LiveMatchTracker({ matchId, editionId }: LiveMatchTrackerProps) {
-  const { isConnected, events, subscribeToMatch, subscribeToEdition } = useRealtime();
+  const { isConnected, subscribeToMatch, subscribeToEdition, lastMessage } = useRealtime();
   const [matchData, setMatchData] = useState<Match | null>(null);
-  const {user, loading, isAdmin, signOut} = useAuthContext();
-  console.log(user)
-
+  const { user, loading, isAdmin, signOut } = useAuthContext();
 
   useEffect(() => {
     if (isConnected) {
@@ -26,22 +24,25 @@ export function LiveMatchTracker({ matchId, editionId }: LiveMatchTrackerProps) 
   }, [isConnected, matchId, editionId, subscribeToMatch, subscribeToEdition]);
 
   useEffect(() => {
-    // Traiter les événements en temps réel
-    const lastEvent = events[events.length - 1];
-    if (!lastEvent) return;
+    if (!lastMessage) return;
 
-    switch (lastEvent.type) {
-      case 'match_updated':
-      case 'match_status_changed':
-      case 'match_live_update':
-        setMatchData(lastEvent.data.match);
-        break;
-      case 'new_message':
-        // Mettre à jour les commentaires
-        console.log('Nouveau message:', lastEvent.data.message);
-        break;
+    if (lastMessage.type === 'update') {
+      const payload = lastMessage.data as import('@/server/ws-types').RealtimeUpdatePayload;
+      if (payload.entityType === 'match' && payload.entityId === matchId) {
+        switch (payload.event) {
+          case 'match_updated':
+          case 'match_status_changed':
+          case 'match_live_update':
+            setMatchData(payload.data.match);
+            break;
+          case 'new_message':
+            // Update comments
+            console.log('Nouveau message:', payload.data.message);
+            break;
+        }
+      }
     }
-  }, [events]);
+  }, [lastMessage, matchId]);
 
   if (!isConnected) {
     return <div className="text-yellow-600">Connexion en cours...</div>;
@@ -49,11 +50,20 @@ export function LiveMatchTracker({ matchId, editionId }: LiveMatchTrackerProps) 
 
   return (
     <div className="p-4 border rounded-lg">
-      {user ? (<div className="">{user?.displayName + "" + user?.email} <button onClick={async () => await  signOut()}>Deconnexion</button></div>) : ""}
+      {user ? (
+        <div className="">
+          {user?.displayName + '' + user?.email}{' '}
+          <button onClick={async () => await signOut()}>Deconnexion</button>
+        </div>
+      ) : (
+        ''
+      )}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Match en direct</h3>
         <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+          <div
+            className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
+          />
           <span className="text-sm">{isConnected ? 'En direct' : 'Hors ligne'}</span>
         </div>
       </div>
