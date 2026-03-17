@@ -43,7 +43,7 @@ export function MediaManager({
   
   const saveVideoUrl = () => {
     onUpdateSubGroup({ video_url: localVideoUrl || undefined });
-    toast.success("URL vidéo du sous-groupe sauvegardée");
+    toast.success("URL vidéo du rencontre sauvegardée");
   };
   
   const saveLiveStreamUrl = () => {
@@ -75,7 +75,7 @@ export function MediaManager({
         <div className="space-y-3">
           <Label className="flex items-center gap-2">
             <FileVideo className="h-4 w-4" />
-            URL de la vidéo (Sous-groupe)
+            URL de la vidéo (Rencontre)
           </Label>
           
           <div className="flex gap-2">
@@ -107,7 +107,7 @@ export function MediaManager({
             )}
           </div>
           <Typography variant="body-sm" theme="muted">
-            Cette vidéo sera disponible pour tout le sous-groupe
+            Cette vidéo sera disponible pour toute la Rencontre
           </Typography>
         </div>
         

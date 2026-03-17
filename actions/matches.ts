@@ -5,11 +5,13 @@ import { pool, query, queryOne } from '@/lib/db/neon-client';
 import { matchSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
 import { Match, MatchFilters, PaginatedResponse } from '@/types';
-import { connectionManager } from '@/lib/realtime/connection-manager';
+// import { connectionManager } from '@/lib/realtime/connection-manager';
 import { z } from 'zod';
 import { updateMatchAndRecompute } from '@/lib/services/match-update.service';
 import { sendPushNotification, sendPushToTopic } from '@/lib/push';
 import { PoolClient } from 'pg';
+
+import { emitMatchEvent, emitRealtimeEvent } from './realtime';
 
 export async function getMatches(
   filters: MatchFilters = {}
@@ -576,32 +578,6 @@ async function getMatchEditionId(matchId: number): Promise<number | null> {
 //   }
 // }
 
-export async function emitMatchEvent(matchId: number, type: string, data: any) {
-  try {
-    const editionInfo = await queryOne<{ edition_id: number }>(`
-      SELECT p.edition_id
-      FROM matches m
-      JOIN sub_groups sg ON m.sub_group_id = sg.id
-      JOIN phase_groups pg ON sg.group_id = pg.id
-      JOIN phases p ON pg.phase_id = p.id
-      WHERE m.id = $1
-    `, [matchId]);
-
-    // 🔥 IMPORTANT : rendre l'objet 100% plain
-    const safeData = JSON.parse(JSON.stringify(data));
-
-    connectionManager.broadcastToMatch(matchId, type, safeData);
-
-    if (editionInfo?.edition_id) {
-      connectionManager.broadcastToEdition(editionInfo.edition_id, type, {
-        matchId,
-        ...safeData
-      });
-    }
-  } catch (error) {
-    console.error('❌ emitMatchEvent error:', error);
-  }
-}
 
 
 // Helper to fetch edition context for a match
@@ -998,6 +974,10 @@ export async function createMatch(formData: FormData) {
       [JSON.stringify(initialState), matchId]
     );
 
+    // Commit transaction
+    await client.query('COMMIT');
+
+    // Émettre l'événement temps réel avec le nouveau système
     await emitMatchEvent(matchId, 'match_created', {
       matchId,
       subGroupId: validatedData.sub_group_id

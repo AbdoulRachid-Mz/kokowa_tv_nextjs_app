@@ -216,6 +216,10 @@ export const communicationItems = [
   { title: "Publicités", url: "/ad/advertisements", icon: Bell, description: "Gestion des publicités" },
 ]
 
+export const test = [
+  { title: "Temp reel", url: "/ad/realtime", icon: Database, description: "Surveillance des matchs en temps réel" },
+]
+
 export const systemItems = [
   { title: "Base de données", url: "/ad/database", icon: Database, description: "Surveillance de la DB" },
   { title: "Paramètres", url: "/ad/settings", icon: Settings, description: "Configuration système" },

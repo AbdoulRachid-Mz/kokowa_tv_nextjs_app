@@ -1,0 +1,398 @@
+const WebSocket = require('ws');
+const http = require('http');
+const express = require('express');
+const url = require('url');
+
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// ==================== CONFIGURATION ====================
+const PORT = process.env.WS_PORT || 8080;
+const PING_INTERVAL = 30000; // 30 secondes
+
+// ==================== STOCKAGE DES DONNÉES ====================
+// Structure : Map<entityType, Map<entityId, Set<WebSocket>>>
+const subscriptions = {
+  edition: new Map(),      // Édition (contient les groupes)
+  subGroup: new Map(),     // Sous-groupe (contient les matchs)
+  match: new Map(),        // Match individuel
+  fighter: new Map(),      // Lutteur
+  region: new Map()        // Région
+};
+
+// Stockage des infos client
+const clientData = new Map(); // WebSocket -> { userId, subscriptions: Set }
+
+// ==================== MIDDLEWARE EXPRESS ====================
+app.use(express.json());
+
+// Middleware CORS simple
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
+
+// ==================== ROUTES WEBHOOK ====================
+// Ces routes sont appelées par ton API PHP quand quelque chose change
+
+// Webhook pour les mises à jour d'édition
+app.post('/webhook/edition', (req, res) => {
+  const { editionId, updateType, data } = req.body;
+  
+  console.log(`📢 Webhook édition ${editionId}: ${updateType}`);
+  
+  broadcastToEntity('edition', editionId, {
+    type: updateType,
+    data: data,
+    timestamp: Date.now()
+  });
+  
+  res.json({ success: true, message: 'Broadcast envoyé' });
+});
+
+// Webhook pour les mises à jour de sous-groupe
+app.post('/webhook/subgroup', (req, res) => {
+  const { subGroupId, updateType, data } = req.body;
+  
+  console.log(`📢 Webhook sous-groupe ${subGroupId}: ${updateType}`);
+  
+  broadcastToEntity('subGroup', subGroupId, {
+    type: updateType,
+    data: data,
+    timestamp: Date.now()
+  });
+  
+  res.json({ success: true, message: 'Broadcast envoyé' });
+});
+
+// Webhook pour les mises à jour de match
+app.post('/webhook/match', (req, res) => {
+  const { matchId, updateType, data } = req.body;
+  
+  console.log(`📢 Webhook match ${matchId}: ${updateType}`);
+  
+  broadcastToEntity('match', matchId, {
+    type: updateType,
+    data: data,
+    timestamp: Date.now()
+  });
+  
+  res.json({ success: true, message: 'Broadcast envoyé' });
+});
+
+// Webhook pour les mises à jour de lutteur
+app.post('/webhook/fighter', (req, res) => {
+  const { fighterId, updateType, data } = req.body;
+  
+  console.log(`📢 Webhook lutteur ${fighterId}: ${updateType}`);
+  
+  broadcastToEntity('fighter', fighterId, {
+    type: updateType,
+    data: data,
+    timestamp: Date.now()
+  });
+  
+  res.json({ success: true, message: 'Broadcast envoyé' });
+});
+
+// Webhook pour les mises à jour de région
+app.post('/webhook/region', (req, res) => {
+  const { regionId, updateType, data } = req.body;
+  
+  console.log(`📢 Webhook région ${regionId}: ${updateType}`);
+  
+  broadcastToEntity('region', regionId, {
+    type: updateType,
+    data: data,
+    timestamp: Date.now()
+  });
+  
+  res.json({ success: true, message: 'Broadcast envoyé' });
+});
+
+// Route de test
+app.get('/health', (req, res) => {
+  const stats = {
+    clients: wss.clients.size,
+    subscriptions: {}
+  };
+  
+  for (const [type, map] of Object.entries(subscriptions)) {
+    stats.subscriptions[type] = map.size;
+  }
+  
+  res.json({ 
+    status: 'OK', 
+    timestamp: Date.now(),
+    stats: stats
+  });
+});
+
+// ==================== GESTION WEBSOCKET ====================
+wss.on('connection', (ws, req) => {
+  const clientIp = req.socket.remoteAddress;
+  console.log(`🔌 Nouvelle connexion WebSocket de ${clientIp}`);
+  
+  // Initialiser les données du client
+  clientData.set(ws, {
+    userId: null,
+    subscriptions: new Set(),
+    connectedAt: Date.now()
+  });
+
+  // Configurer le ping/pong pour garder la connexion alive
+  let isAlive = true;
+  ws.on('pong', () => {
+    isAlive = true;
+  });
+
+  // Gestion des messages
+  ws.on('message', async (data) => {
+    try {
+      const message = JSON.parse(data.toString());
+      await handleMessage(ws, message);
+    } catch (error) {
+      console.error('❌ Erreur parsing message:', error);
+      sendError(ws, 'Format de message invalide');
+    }
+  });
+
+  // Gestion de la fermeture
+  ws.on('close', () => {
+    console.log(`🔌 Client déconnecté: ${getClientInfo(ws)}`);
+    cleanupSubscriptions(ws);
+    clientData.delete(ws);
+  });
+
+  // Gestion des erreurs
+  ws.on('error', (error) => {
+    console.error('❌ Erreur WebSocket:', error);
+  });
+
+  // Envoyer un message de bienvenue
+  ws.send(JSON.stringify({
+    type: 'connected',
+    data: {
+      message: 'Connecté au serveur temps réel',
+      timestamp: Date.now()
+    }
+  }));
+});
+
+// ==================== GESTIONNAIRES DE MESSAGES ====================
+async function handleMessage(ws, message) {
+  const { type, data } = message;
+  
+  console.log(`📨 Message reçu: ${type} de ${getClientInfo(ws)}`);
+
+  switch (type) {
+    case 'auth':
+      await handleAuth(ws, data);
+      break;
+      
+    case 'subscribe':
+      handleSubscribe(ws, data);
+      break;
+      
+    case 'unsubscribe':
+      handleUnsubscribe(ws, data);
+      break;
+      
+    case 'ping':
+      ws.send(JSON.stringify({ 
+        type: 'pong', 
+        data: { timestamp: Date.now() } 
+      }));
+      break;
+      
+    default:
+      sendError(ws, `Type de message inconnu: ${type}`);
+  }
+}
+
+async function handleAuth(ws, data) {
+  const { userId, token } = data;
+  
+  // TODO: Valider le token Firebase ici
+  // Pour l'instant, on accepte simplement
+  
+  clientData.set(ws, {
+    ...clientData.get(ws),
+    userId: userId,
+    authenticated: true
+  });
+  
+  ws.send(JSON.stringify({
+    type: 'auth_success',
+    data: { 
+      userId: userId,
+      message: 'Authentification réussie'
+    }
+  }));
+  
+  console.log(`✅ Client authentifié: ${userId}`);
+}
+
+function handleSubscribe(ws, data) {
+  const { entityType, entityId } = data;
+  
+  // Vérifier que le type d'entité est valide
+  if (!subscriptions[entityType]) {
+    sendError(ws, `Type d'entité invalide: ${entityType}`);
+    return;
+  }
+  
+  // Créer le Map pour ce type si nécessaire
+  if (!subscriptions[entityType].has(entityId)) {
+    subscriptions[entityType].set(entityId, new Set());
+  }
+  
+  // Ajouter le client
+  subscriptions[entityType].get(entityId).add(ws);
+  
+  // Ajouter aux souscriptions du client
+  const subKey = `${entityType}:${entityId}`;
+  clientData.get(ws).subscriptions.add(subKey);
+  
+  // Confirmer l'abonnement
+  ws.send(JSON.stringify({
+    type: 'subscribed',
+    data: { 
+      entityType, 
+      entityId,
+      message: `Abonné à ${entityType}:${entityId}`
+    }
+  }));
+  
+  console.log(`📌 ${getClientInfo(ws)} s'est abonné à ${entityType}:${entityId}`);
+  
+  // Optionnel: Envoyer l'état actuel
+  // sendCurrentState(ws, entityType, entityId);
+}
+
+function handleUnsubscribe(ws, data) {
+  const { entityType, entityId } = data;
+  
+  if (subscriptions[entityType]?.has(entityId)) {
+    subscriptions[entityType].get(entityId).delete(ws);
+    
+    const subKey = `${entityType}:${entityId}`;
+    clientData.get(ws).subscriptions.delete(subKey);
+    
+    ws.send(JSON.stringify({
+      type: 'unsubscribed',
+      data: { entityType, entityId }
+    }));
+    
+    console.log(`📌 ${getClientInfo(ws)} s'est désabonné de ${entityType}:${entityId}`);
+  }
+}
+
+// ==================== FONCTIONS UTILITAIRES ====================
+
+// Nettoyer les souscriptions d'un client
+function cleanupSubscriptions(ws) {
+  const client = clientData.get(ws);
+  if (!client) return;
+  
+  for (const sub of client.subscriptions) {
+    const [entityType, entityId] = sub.split(':');
+    if (subscriptions[entityType]?.has(entityId)) {
+      subscriptions[entityType].get(entityId).delete(ws);
+      
+      // Nettoyer les Maps vides
+      if (subscriptions[entityType].get(entityId).size === 0) {
+        subscriptions[entityType].delete(entityId);
+      }
+    }
+  }
+}
+
+// Broadcast à tous les abonnés d'une entité
+function broadcastToEntity(entityType, entityId, event) {
+  if (!subscriptions[entityType]?.has(entityId)) {
+    // console.log(`ℹ️ Pas d'abonnés pour ${entityType}:${entityId}`);
+    return;
+  }
+  
+  const clients = subscriptions[entityType].get(entityId);
+  const message = JSON.stringify({
+    type: 'update',
+    data: {
+      entityType,
+      entityId,
+      event: event.type,
+      data: event.data,
+      timestamp: event.timestamp || Date.now()
+    }
+  });
+  
+  let sentCount = 0;
+  clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+      sentCount++;
+    }
+  });
+  
+  console.log(`📢 Broadcast ${entityType}:${entityId} - ${event.type} à ${sentCount} clients`);
+}
+
+// Envoyer une erreur à un client
+function sendError(ws, message) {
+  ws.send(JSON.stringify({
+    type: 'error',
+    data: { message }
+  }));
+}
+
+// Obtenir des infos sur un client
+function getClientInfo(ws) {
+  const client = clientData.get(ws);
+  if (!client) return 'Client inconnu';
+  return client.userId ? `User:${client.userId}` : 'Anonyme';
+}
+
+// ==================== MAINTIEN DE CONNEXION ====================
+// Ping périodique pour garder les connexions actives
+setInterval(() => {
+  wss.clients.forEach(ws => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ 
+        type: 'ping', 
+        data: { timestamp: Date.now() } 
+      }));
+    }
+  });
+}, PING_INTERVAL);
+
+// Nettoyage des connexions mortes
+setInterval(() => {
+  for (const [type, entityMap] of Object.entries(subscriptions)) {
+    for (const [entityId, clients] of entityMap.entries()) {
+      for (const client of clients) {
+        if (client.readyState !== WebSocket.OPEN) {
+          clients.delete(client);
+        }
+      }
+      if (clients.size === 0) {
+        entityMap.delete(entityId);
+      }
+    }
+  }
+}, 60000); // Toutes les minutes
+
+// ==================== DÉMARRAGE DU SERVEUR ====================
+server.listen(PORT, () => {
+  console.log(`
+╔════════════════════════════════════════════════════════╗
+║     🚀 SERVEUR WEBSOCKET KOKOWA TV DÉMARRÉ            ║
+╠════════════════════════════════════════════════════════╣
+║  📡 WebSocket: ws://localhost:${PORT}                    ║
+║  🌐 Webhooks:  http://localhost:${PORT}/webhook/...      ║
+║  💓 Health:    http://localhost:${PORT}/health           ║
+╚════════════════════════════════════════════════════════╝
+  `);
+});

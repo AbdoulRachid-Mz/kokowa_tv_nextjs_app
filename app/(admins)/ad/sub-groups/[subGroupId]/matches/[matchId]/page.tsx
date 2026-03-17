@@ -41,6 +41,7 @@ import { MatchTimer } from "./match-timer";
 import { addFighterCard, updateMatch } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
 import { FloatingMatchScore } from "./floating-match-score";
+import { useAuthContext } from "@/contexts/auth-context";
 
 export default function MatchDetailPage() {
   const { subGroupId, matchId } = useParams();
@@ -48,6 +49,7 @@ export default function MatchDetailPage() {
   const queryClient = useQueryClient();
   const parsedMatchId = parseInt(matchId as string);
   const parsedSubGroupId = parseInt(subGroupId as string);
+  const { user } = useAuthContext();
 
   const [availableFighters, setAvailableFighters] = useState<{
     region1: Fighter[];
@@ -64,7 +66,37 @@ export default function MatchDetailPage() {
     type: "winner",
   });
 
-  const { isConnected, subscribeToMatch } = useRealtime();
+  // Realtime integration
+  const { isConnected, subscribe, subscribeToMatch, auth } = useRealtime({
+    autoConnect: true,
+    onConnect: () => {
+      if (!isNaN(parsedMatchId)) {
+        subscribeToMatch(parsedMatchId);
+      }
+      if (!isNaN(parsedSubGroupId)) {
+        subscribe('subGroup', parsedSubGroupId);
+      }
+      
+      // Auto-auth if user is logged in
+      if (user?.userDocument?.id) {
+        auth(user.userDocument.id.toString(), user.userDocument.fcm_token || 'dummy_token');
+      }
+    },
+    onMessage: (msg) => {
+      if (msg.type === 'update') {
+        const { entityType, entityId, event } = msg.data;
+        console.log(`📨 Realtime event: ${event} for ${entityType}:${entityId}`);
+        
+        if (entityType === 'match' && entityId == parsedMatchId) {
+          queryClient.invalidateQueries({ queryKey: ['match', parsedMatchId] });
+        }
+        
+        if (entityType === 'subGroup' && entityId == parsedSubGroupId) {
+          queryClient.invalidateQueries({ queryKey: ['sub-group', subGroupId] });
+        }
+      }
+    }
+  });
 
   // ==========================
   // CONTROLLER PRINCIPAL
@@ -151,7 +183,7 @@ export default function MatchDetailPage() {
       toast.success("Sous-groupe finalisé avec succès");
       setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || "Erreur lors de la finalisation");
     },
   });
@@ -244,7 +276,7 @@ export default function MatchDetailPage() {
           });
 
           // Extraire les fighters et les trier par nom
-          const fighters = response.data?.map((e: any) => e.fighter) || [];
+          const fighters = response.data?.map((e: { fighter: Fighter }) => e.fighter) || [];
 
           // ✅ Tri alphabétique (A à Z) par prénom + nom
           return fighters.sort((a: Fighter, b: Fighter) => {
@@ -277,9 +309,14 @@ export default function MatchDetailPage() {
   // EFFECTS
   // ==========================
   useEffect(() => {
-    if (!matchId) return;
+    if (!matchId || !isConnected) return;
+    
     subscribeToMatch(parsedMatchId);
-  }, [matchId, parsedMatchId, subscribeToMatch]);
+    
+    return () => {
+      // Le serveur nettoie automatiquement
+    };
+  }, [matchId, parsedMatchId, isConnected, subscribeToMatch]);
 
   useEffect(() => {
     if (subGroup) {

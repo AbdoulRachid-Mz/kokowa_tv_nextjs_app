@@ -60,22 +60,15 @@ export function BulkMatchCreator({
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [showSortControls, setShowSortControls] = useState(false);
 
-  // Initialiser avec des cartes vides pré-remplies avec le premier lutteur disponible
+  // Initialiser avec une seule carte pré-remplie avec le premier lutteur disponible
   useEffect(() => {
     const availableFighters = region1Fighters.filter(f => !existingMatchFighterIds.has(f.id));
 
     if (availableFighters.length > 0) {
-      // Créer jusqu'à 10 cartes, chaque carte avec un lutteur différent de la région 1
-      const initialMatches = [];
-      const maxCards = Math.min(10, availableFighters.length);
-
-      for (let i = 0; i < maxCards; i++) {
-        initialMatches.push({
-          fighter1Id: availableFighters[i]?.id,
-        });
-      }
-
-      setMatches(initialMatches);
+      // Créer une seule carte au début avec le premier lutteur disponible de la région 1
+      setMatches([{
+        fighter1Id: availableFighters[0]?.id,
+      }]);
     } else {
       // Si pas de lutteurs région 1 disponibles, créer une carte vide
       setMatches([{ fighter1Id: undefined }]);

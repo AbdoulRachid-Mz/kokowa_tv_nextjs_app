@@ -534,7 +534,7 @@ export function FighterControl({
         {isSubGroupCompleted && (
           <div className="text-center">
             <Badge variant="outline" className="text-muted-foreground">
-              🔒 Sous-groupe terminé
+              🔒 Rencontre terminée
             </Badge>
           </div>
         )}

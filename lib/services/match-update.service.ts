@@ -3,7 +3,8 @@
 import { sendMatchPush } from "@/actions/matches";
 import { pool } from "../db/neon-client";
 import type { PoolClient } from "pg";
-import { emitMatchEvent } from "@/actions/matches-2";
+import { emitMatchEvent } from "@/actions/realtime";
+
 
 export interface MatchUpdate {
   sub_group_id?: number;

@@ -1,150 +1,86 @@
-// hooks/useRealtime.ts - CORRECTION
-import { useEffect, useRef, useState, useCallback } from 'react';
+// hooks/use-realtime.ts
+"use client";
 
-interface RealtimeEvent {
-  type: string;
-  data: any;
-  timestamp: string;
-}
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { RealtimeClient, RealtimeOptions } from '../lib/realtime-client';
+import { WSMessage, EntityType } from '../server/ws-types';
 
-export function useRealtime() {
-  const [isConnected, setIsConnected] = useState(false);
-  const [events, setEvents] = useState<RealtimeEvent[]>([]);
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const clientIdRef = useRef<string>('');
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+export function useRealtime(options: RealtimeOptions = {}) {
+    const [isConnected, setIsConnected] = useState(false);
+    const [lastMessage, setLastMessage] = useState<WSMessage | null>(null);
+    const clientRef = useRef<RealtimeClient | null>(null);
+    const optionsRef = useRef(options);
 
-  const connect = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
+    // Mettre à jour optionsRef sans déclencher d'effet
+    useEffect(() => {
+        optionsRef.current = options;
+    }, [options]);
 
-    try {
-      const eventSource = new EventSource('/api/realtime');
-      eventSourceRef.current = eventSource;
+    // Initialize client once
+    useEffect(() => {
+        const url = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
 
-      eventSource.onopen = () => {
-        setIsConnected(true);
-        console.log('🔗 Connexion SSE établie');
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-        }
-      };
+        const client = new RealtimeClient(url, {
+            ...optionsRef.current,
+            onConnect: () => {
+                setIsConnected(true);
+                optionsRef.current.onConnect?.();
+            },
+            onDisconnect: () => {
+                setIsConnected(false);
+                optionsRef.current.onDisconnect?.();
+            },
+            onMessage: (msg) => {
+                setLastMessage(msg);
+                optionsRef.current.onMessage?.(msg);
+            },
+            onError: (err) => {
+                optionsRef.current.onError?.(err);
+            }
+        });
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'connected') {
-            clientIdRef.current = data.clientId;
-            console.log('🆔 Client ID:', data.clientId);
-          }
+        clientRef.current = client;
 
-          setEvents(prev => [...prev.slice(-49), data]); // Garder les 50 derniers événements
-        } catch (error) {
-          console.error('❌ Erreur parsing message SSE:', error);
-        }
-      };
+        return () => {
+            client.disconnect();
+            clientRef.current = null;
+        };
+    }, []); // Dépendance vide pour ne créer le client qu'une fois
 
-      eventSource.onerror = (error) => {
-        console.error('❌ Erreur SSE:', error);
-        setIsConnected(false);
-        
-        // Reconnexion automatique après 3 secondes
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-        }
-        reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('🔄 Tentative de reconnexion...');
-          connect();
-        }, 3000);
-      };
+    const subscribe = useCallback((entityType: EntityType, entityId: string | number) => {
+        clientRef.current?.subscribe(entityType, entityId);
+    }, []);
 
-    } catch (error) {
-      console.error('❌ Erreur connexion SSE:', error);
-      setIsConnected(false);
-    }
-  }, []);
+    const unsubscribe = useCallback((entityType: EntityType, entityId: string | number) => {
+        clientRef.current?.unsubscribe(entityType, entityId);
+    }, []);
 
-  const disconnect = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-    setIsConnected(false);
-  }, []);
+    const auth = useCallback((userId: string, token: string) => {
+        clientRef.current?.auth(userId, token);
+    }, []);
 
-  const subscribeToMatch = useCallback(async (matchId: number) => {
-    if (!clientIdRef.current) {
-      console.warn('⚠️ Client ID non disponible pour la subscription');
-      return;
-    }
+    const send = useCallback((type: any, data: any) => {
+        clientRef.current?.send(type, data);
+    }, []);
 
-    try {
-      const response = await fetch('/api/realtime/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId: clientIdRef.current,
-          subscriptions: { matches: [matchId] }
-        })
-      });
+    // Helper methods for entities
+    const subscribeToMatch = useCallback((id: number | string) => subscribe('match', id), [subscribe]);
+    const subscribeToEdition = useCallback((id: number | string) => subscribe('edition', id), [subscribe]);
+    const subscribeToSubGroup = useCallback((id: number | string) => subscribe('subGroup', id), [subscribe]);
+    const subscribeToFighter = useCallback((id: number | string) => subscribe('fighter', id), [subscribe]);
+    const subscribeToRegion = useCallback((id: number | string) => subscribe('region', id), [subscribe]);
 
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log(`✅ Abonné au match ${matchId}`, result);
-    } catch (error) {
-      console.error('❌ Erreur subscription match:', error);
-    }
-  }, []);
-
-  const subscribeToEdition = useCallback(async (editionId: number) => {
-    if (!clientIdRef.current) {
-      console.warn('⚠️ Client ID non disponible pour la subscription');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/realtime/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId: clientIdRef.current,
-          subscriptions: { editions: [editionId] }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log(`✅ Abonné à l'édition ${editionId}`, result);
-    } catch (error) {
-      console.error('❌ Erreur subscription édition:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    connect();
-
-    return () => {
-      disconnect();
+    return {
+        isConnected,
+        lastMessage,
+        subscribe,
+        unsubscribe,
+        subscribeToMatch,
+        subscribeToEdition,
+        subscribeToSubGroup,
+        subscribeToFighter,
+        subscribeToRegion,
+        auth,
+        send
     };
-  }, [connect, disconnect]);
-
-  return {
-    isConnected,
-    events,
-    subscribeToMatch,
-    subscribeToEdition,
-    connect,
-    disconnect
-  };
 }

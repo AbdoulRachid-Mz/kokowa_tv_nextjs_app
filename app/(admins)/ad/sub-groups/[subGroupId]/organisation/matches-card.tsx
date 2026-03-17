@@ -14,6 +14,8 @@ import {
   Trophy,
   Minus,
   Square,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MatchDrawer } from "./match-drawer";
@@ -135,17 +137,41 @@ export function MatchCard({ match, onDelete, onEdit }: MatchCardProps) {
             </div>
 
             {isHovered && (
-              <Button
-                variant="default"
-                size="sm"
-                className="h-8 w-8 p-0 rounded-full"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMatchDrawerOpen(true);
-                }}
-              >
-                <MoreVertical className="h-3 w-3" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 rounded-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(match);
+                  }}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(match.id);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-8 w-8 p-0 rounded-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMatchDrawerOpen(true);
+                  }}
+                >
+                  <MoreVertical className="h-3 w-3" />
+                </Button>
+              </div>
             )}
           </div>
 

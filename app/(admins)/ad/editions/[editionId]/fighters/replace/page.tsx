@@ -278,7 +278,7 @@ export default function ReplaceFighterPage() {
             toast.success("Remplacement effectué avec succès");
 
             // Redirection vers la page des lutteurs de l'édition
-            router.push(`/ad/editions/${editionId}/fighters`);
+            router.back();
 
         } catch (error) {
             console.error("Erreur lors du remplacement:", error);

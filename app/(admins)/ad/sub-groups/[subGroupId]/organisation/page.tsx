@@ -28,32 +28,58 @@ import { toast } from "sonner";
 import { SimpleMatchCard } from "@/components/matches/match-card";
 import { getEditionFighters } from "@/actions/editions";
 import { getSubGroupById } from "@/actions/sub-groups";
+import { useAuthContext } from "@/contexts/auth-context";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function SubGroupOrganizationPage() {
   const { subGroupId } = useParams();
   const router = useRouter();
   const id = parseInt(subGroupId as string);
+  const queryClient = useQueryClient();
 
-  const [subGroup, setSubGroup] = useState<SubGroup | null>(null);
-  const [matches, setMatches] = useState<Match[]>([]);
   const [region1Fighters, setRegion1Fighters] = useState<Fighter[]>([]);
   const [region2Fighters, setRegion2Fighters] = useState<Fighter[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingFighters, setLoadingFighters] = useState(true);
   const [isBulkCreating, setIsBulkCreating] = useState(false);
   const [showBulkCreator, setShowBulkCreator] = useState(false);
+  const { user } = useAuthContext();
 
-  const { isConnected } = useRealtime();
+  // États pour les Dialogs
+  const [matchToDelete, setMatchToDelete] = useState<number | null>(null);
+  const [matchToEdit, setMatchToEdit] = useState<Match | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    status: "",
+    notes: "",
+    match_number: 0,
+  });
 
-  useEffect(() => {
-    if (!isNaN(id)) {
-      loadSubGroup();
-    }
-  }, [id]);
-
-  const loadSubGroup = async () => {
-    try {
-      setLoading(true);
-
+  // Utilisation de TanStack Query pour le sous-groupe et les matchs
+  const { data: subGroup, isLoading: loadingSubGroup, refetch: loadSubGroup } = useQuery({
+    queryKey: ["sub-group-org", id],
+    queryFn: async () => {
       const subGroupData = await getSubGroupById(id, {
         with_relations: true,
         relations: {
@@ -65,34 +91,61 @@ export default function SubGroupOrganizationPage() {
           with_belts: true,
           with_referee: true,
           with_matches: true,
-          with_edition_fighters: false, // We'll load fighters separately
+          with_edition_fighters: false,
           with_edition_regions: false,
         },
       });
+      return subGroupData;
+    },
+    enabled: !isNaN(id),
+  });
 
-      setSubGroup(subGroupData);
-      setMatches(subGroupData.matches || []);
+  const matches = useMemo(() => {
+    if (!subGroup?.matches) return [];
+    return [...subGroup.matches].sort((a, b) => (a.match_number ?? 1) - (b.match_number ?? 1));
+  }, [subGroup?.matches]);
 
-      const [r1, r2] = await Promise.all([
-        loadRegionFighters(
-          subGroupData?.group?.phase?.edition?.id ?? 0,
-          subGroupData.region1_id ?? 0
-        ),
-        loadRegionFighters(
-          subGroupData?.group?.phase?.edition?.id ?? 0,
-          subGroupData.region2_id ?? 0
-        ),
-      ]);
-      setRegion1Fighters(r1);
-      setRegion2Fighters(r2);
-    } catch (error) {
-      console.error("Erreur chargement sous-groupe:", error);
-      setSubGroup(null);
-      toast.error("Erreur lors du chargement des données");
-    } finally {
-      setLoading(false);
+  // Realtime integration
+  const { isConnected, subscribe } = useRealtime({
+    autoConnect: true,
+    onConnect: () => {
+      if (!isNaN(id)) {
+        subscribe('subGroup', id);
+      }
+    },
+    onMessage: (msg) => {
+      if (msg.type === 'update' && msg.data.entityType === 'subGroup' && msg.data.entityId == id) {
+        console.log('🔄 SubGroup updated via Realtime');
+        queryClient.invalidateQueries({ queryKey: ["sub-group-org", id] });
+      }
     }
-  };
+  });
+
+  // Charger les lutteurs une seule fois ou quand le sous-groupe change
+  useEffect(() => {
+    if (subGroup) {
+      const fetchFighters = async () => {
+        try {
+          setLoadingFighters(true);
+          const [r1, r2] = await Promise.all([
+            loadRegionFighters(
+              subGroup?.group?.phase?.edition?.id ?? 0,
+              subGroup.region1_id ?? 0
+            ),
+            loadRegionFighters(
+              subGroup?.group?.phase?.edition?.id ?? 0,
+              subGroup.region2_id ?? 0
+            ),
+          ]);
+          setRegion1Fighters(r1);
+          setRegion2Fighters(r2);
+        } finally {
+          setLoadingFighters(false);
+        }
+      };
+      fetchFighters();
+    }
+  }, [subGroup?.region1_id, subGroup?.region2_id]);
 
   const loadRegionFighters = async (
     editionId: number,
@@ -111,6 +164,8 @@ export default function SubGroupOrganizationPage() {
       return [];
     }
   };
+
+  const loading = loadingSubGroup || loadingFighters;
 
   // Calculer les lutteurs utilisés dans les matchs existants
   const usedFighterIds = useMemo(() => {
@@ -172,23 +227,7 @@ export default function SubGroupOrganizationPage() {
         "success" in response &&
         response.success
       ) {
-        // Mettre à jour les compteurs localement
-        setMatches((prev) => [
-          ...prev,
-          {
-            // id: response.id,
-            sub_group_id: id,
-            fighter1_id: fighter1Id,
-            fighter2_id: fighter2Id,
-            status: "scheduled",
-            match_number: nextMatchNumber,
-            fighter1: region1Fighters.find((f) => f.id === fighter1Id),
-            fighter2: fighter2Id
-              ? region2Fighters.find((f) => f.id === fighter2Id)
-              : undefined,
-          } as any,
-        ]);
-
+        queryClient.invalidateQueries({ queryKey: ["sub-group-org", id] });
         return response;
       }
     } catch (error: any) {
@@ -226,22 +265,23 @@ export default function SubGroupOrganizationPage() {
   };
 
   const handleEditMatch = async (match: Match) => {
+    setMatchToEdit(match);
+    setEditFormData({
+      status: match.status,
+      notes: match.notes || "",
+      match_number: match.match_number || 1,
+    });
+  };
+
+  const submitEditMatch = async () => {
+    if (!matchToEdit) return;
+
     try {
-      const formData = new FormData();
-
-      if (match.status) formData.append("status", match.status);
-      if (match.winner_fighter_id)
-        formData.append(
-          "winner_fighter_id",
-          match.winner_fighter_id.toString()
-        );
-      if (match.match_result)
-        formData.append("match_result", match.match_result);
-      if (match.total_duration)
-        formData.append("total_duration", match.total_duration);
-      if (match.notes) formData.append("notes", match.notes);
-
-      const response = await api.put(`/api/matches/${match.id}`, formData);
+      const response = await api.put(`/api/matches/${matchToEdit.id}`, {
+        status: editFormData.status,
+        notes: editFormData.notes,
+        match_number: editFormData.match_number,
+      });
 
       if (
         response &&
@@ -250,6 +290,8 @@ export default function SubGroupOrganizationPage() {
         response.success
       ) {
         toast.success("Match mis à jour");
+        queryClient.invalidateQueries({ queryKey: ["sub-group-org", id] });
+        setMatchToEdit(null);
       } else {
         toast.error("Erreur lors de la mise à jour du match");
       }
@@ -260,12 +302,17 @@ export default function SubGroupOrganizationPage() {
   };
 
   const handleDeleteMatch = async (matchId: number) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce match ?")) return;
+    setMatchToDelete(matchId);
+  };
+
+  const confirmDeleteMatch = async () => {
+    if (!matchToDelete) return;
 
     try {
-      await api.delete(`/api/matches/${matchId}`);
+      await api.delete(`/api/matches/${matchToDelete}`);
       toast.success("Match supprimé");
-      loadSubGroup(); // Recharger les données
+      queryClient.invalidateQueries({ queryKey: ["sub-group-org", id] });
+      setMatchToDelete(null);
     } catch (error) {
       console.error("Erreur suppression match:", error);
       toast.error("Erreur lors de la suppression du match");
@@ -357,7 +404,7 @@ export default function SubGroupOrganizationPage() {
                   </Button>
                 )}
               <Button
-                onClick={loadSubGroup}
+                onClick={() => loadSubGroup()}
                 variant="outline"
                 className="gap-2"
               >
@@ -526,7 +573,12 @@ export default function SubGroupOrganizationPage() {
           </div>
           {/* <div className="grid grid-cols-1 gap-2"> */}
 
-          <MatchesColumn matches={matches} subGroupId={id} />
+          <MatchesColumn
+            matches={matches}
+            subGroupId={id}
+            onEditMatch={handleEditMatch}
+            onDeleteMatch={handleDeleteMatch}
+          />
           {/* </div> */}
         </div>
 
@@ -541,6 +593,106 @@ export default function SubGroupOrganizationPage() {
           />
         </div>
       </div>
+
+      {/* Dialogs pour Modification et Suppression */}
+      <AlertDialog
+        open={matchToDelete !== null}
+        onOpenChange={(open) => !open && setMatchToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action supprimera définitivement le match. Cette action est
+              irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteMatch}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog
+        open={matchToEdit !== null}
+        onOpenChange={(open) => !open && setMatchToEdit(null)}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Modifier le match</DialogTitle>
+            <DialogDescription>
+              Ajustez les détails du match ici. Cliquez sur enregistrer pour
+              valider.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="match_number" className="text-right">
+                Numéro
+              </Label>
+              <Input
+                id="match_number"
+                type="number"
+                value={editFormData.match_number}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    match_number: parseInt(e.target.value),
+                  })
+                }
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Statut
+              </Label>
+              <Select
+                value={editFormData.status}
+                onValueChange={(val) =>
+                  setEditFormData({ ...editFormData, status: val })
+                }
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Choisir un statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduled">Programmé</SelectItem>
+                  <SelectItem value="live">En direct</SelectItem>
+                  <SelectItem value="completed">Terminé</SelectItem>
+                  <SelectItem value="cancelled">Annulé</SelectItem>
+                  <SelectItem value="postponed">Reporté</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="notes" className="text-right">
+                Notes
+              </Label>
+              <Textarea
+                id="notes"
+                value={editFormData.notes}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, notes: e.target.value })
+                }
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMatchToEdit(null)}>
+              Annuler
+            </Button>
+            <Button onClick={submitEditMatch}>Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -700,9 +852,13 @@ function FighterCard({
 function MatchesColumn({
   matches,
   subGroupId,
+  onEditMatch,
+  onDeleteMatch,
 }: {
   matches: Match[];
   subGroupId: number;
+  onEditMatch: (match: Match) => void;
+  onDeleteMatch: (matchId: number) => void;
 }) {
   return (
     <Card className="p-3">
@@ -721,11 +877,11 @@ function MatchesColumn({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               {matches.map((match) => (
-                <SimpleMatchCard
+                <MatchCard
                   key={match.id}
                   match={match}
-                  subGroupId={subGroupId}
-                  compact={matches.length > 4}
+                  onDelete={onDeleteMatch}
+                  onEdit={onEditMatch}
                 />
               ))}
             </div>

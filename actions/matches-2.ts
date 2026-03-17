@@ -3,11 +3,11 @@
 
 import { pool, query, queryOne } from '@/lib/db/neon-client';
 import { revalidatePath } from 'next/cache';
-import { connectionManager } from '@/lib/realtime/connection-manager';
 import { sendPushToTopic } from '@/lib/push';
 import { Match } from '@/types/match';
 import { PoolClient } from 'pg';
 import { MatchUpdate, updateMatchAndRecompute } from '@/lib/services/match-update.service';
+import { emitRealtimeEvent, emitMatchEvent } from './realtime';
 
 // ========== READ ==========
 
@@ -436,6 +436,12 @@ export async function createMatch(
 
     await client.query('COMMIT');
 
+    // 🔥 Émettre l'événement de création
+    await emitMatchEvent(matchId, 'match_created', {
+      matchId,
+      subGroupId: subGroupId
+    });
+
     revalidatePath(`/ad/sub-groups/${subGroupId}/matches`);
 
     return {
@@ -537,33 +543,35 @@ export async function removeFighterCard(cardId: number) {
 //   }
 // }
 
-export async function emitMatchEvent(matchId: number, type: string, data: any) {
-  try {
-    const editionInfo = await queryOne<{ edition_id: number }>(`
-      SELECT p.edition_id
-      FROM matches m
-      JOIN sub_groups sg ON m.sub_group_id = sg.id
-      JOIN phase_groups pg ON sg.group_id = pg.id
-      JOIN phases p ON pg.phase_id = p.id
-      WHERE m.id = $1
-    `, [matchId]);
+// export async function emitMatchEvent(matchId: number, type: string, data: any) {
+//   try {
+//     // Récupérer l'édition pour le broadcast
+//     const editionInfo = await queryOne<{ edition_id: number }>(`
+//       SELECT p.edition_id
+//       FROM matches m
+//       JOIN sub_groups sg ON m.sub_group_id = sg.id
+//       JOIN phase_groups pg ON sg.group_id = pg.id
+//       JOIN phases p ON pg.phase_id = p.id
+//       WHERE m.id = $1
+//     `, [matchId]);
 
+//     // Rendre l'objet 100% plain
+//     const safeData = JSON.parse(JSON.stringify(data));
 
-    // 🔥 IMPORTANT : rendre l'objet 100% plain
-    const safeData = JSON.parse(JSON.stringify(data));
+//     // Émettre l'événement match
+//     await emitRealtimeEvent('match', matchId, type, safeData);
 
-    connectionManager.broadcastToMatch(matchId, type, safeData);
-
-    if (editionInfo?.edition_id) {
-      connectionManager.broadcastToEdition(editionInfo.edition_id, type, {
-        matchId,
-        ...safeData
-      });
-    }
-  } catch (error) {
-    console.error('❌ emitMatchEvent error:', error);
-  }
-}
+//     // Émettre aussi pour l'édition si disponible
+//     if (editionInfo?.edition_id) {
+//       await emitRealtimeEvent('edition', editionInfo.edition_id, type, {
+//         matchId,
+//         ...safeData
+//       });
+//     }
+//   } catch (error) {
+//     console.error('❌ emitMatchEvent error:', error);
+//   }
+// }
 
 
 // actions/sub-groups.ts (ajout)

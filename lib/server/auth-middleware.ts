@@ -15,7 +15,6 @@ export interface AuthUser {
 
 const revokedTokensCache = new Map<string, number>();
 
-// @/lib/server/auth-middleware.ts
 export async function verifyFirebaseToken(request: NextRequest) {
   let authHeader: string | null = null;
 

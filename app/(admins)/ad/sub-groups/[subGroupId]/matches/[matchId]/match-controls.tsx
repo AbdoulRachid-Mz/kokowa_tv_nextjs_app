@@ -262,11 +262,11 @@ export function MatchControls({
           />
         </div>
 
-        {/* Message si sous-groupe terminé */}
+        {/* Message si rencontre terminée */}
         {isSubGroupCompleted && (
           <div className="bg-muted p-3 rounded-lg border">
             <Typography variant="body-sm" className="text-muted-foreground text-center">
-              🔒 Ce sous-groupe est terminé. Aucune modification n'est possible.
+              🔒 Cette rencontre est terminée. Aucune modification n'est possible.
             </Typography>
           </div>
         )}

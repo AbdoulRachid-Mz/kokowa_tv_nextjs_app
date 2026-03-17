@@ -5,6 +5,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Match, MatchFilters } from '@/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { getMatches } from '@/actions/matches';
+import { useRealtime } from './use-realtime';
 
 interface UseMatchesProps {
   initialFilters?: MatchFilters;
@@ -71,16 +73,16 @@ export function useMatches({
         if (!old?.data) return old;
         return {
           ...old,
-          data: old.data.map((match: Match) => 
+          data: old.data.map((match: Match) =>
             match.id === variables.matchId ? { ...match, ...variables.updates } : match
           )
         };
       });
-      
+
       // Invalider les requêtes liées
       queryClient.invalidateQueries({ queryKey: ['matches'] });
       queryClient.invalidateQueries({ queryKey: ['match', variables.matchId] });
-      
+
       toast.success(data.message || 'Match mis à jour');
     },
     onError: (error: Error) => {
@@ -108,18 +110,18 @@ export function useMatches({
         if (!old?.data) return old;
         return {
           ...old,
-          data: old.data.map((match: Match) => 
-            match.id === matchId ? { 
-              ...match, 
+          data: old.data.map((match: Match) =>
+            match.id === matchId ? {
+              ...match,
               match_result: 'draw',
               status: 'completed',
               winner_fighter_id: null,
-              loser_fighter_id: null 
+              loser_fighter_id: null
             } : match
           )
         };
       });
-      
+
       toast.success('Match déclaré nul');
     }
   });
@@ -150,9 +152,9 @@ export function useMatches({
   // Organiser les matches par priorité
   const organizedMatches = useMemo(() => {
     if (!data?.data) return [];
-    
+
     const matches = [...data.data];
-    
+
     if (!priorityOrder) return matches;
 
     const statusPriority: Record<string, number> = {
@@ -204,58 +206,107 @@ export function useMatches({
       live: organizedMatches.filter(m => m.status === 'live' || m.status === 'round_break'),
       upcoming: organizedMatches.filter(m => m.status === 'scheduled'),
       completed: organizedMatches.filter(m => m.status === 'completed'),
-      others: organizedMatches.filter(m => 
+      others: organizedMatches.filter(m =>
         !['live', 'round_break', 'scheduled', 'completed'].includes(m.status)
       )
     },
-    
+
     // États
     isLoading,
     error,
     filters,
     stats,
-    
+
     // Actions
     updateFilter: useCallback((key: keyof MatchFilters, value: any) => {
       setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
     }, []),
-    
+
     updateFilters: useCallback((newFilters: Partial<MatchFilters>) => {
       setFilters(prev => ({ ...prev, ...newFilters, page: 1 }));
     }, []),
-    
+
     resetFilters: useCallback(() => {
       setFilters({ ...initialFilters, page: 1, limit: 20 });
     }, [initialFilters]),
-    
+
     // Pagination
     goToPage: useCallback((page: number) => {
       setFilters(prev => ({ ...prev, page }));
     }, []),
-    
+
     nextPage: useCallback(() => {
       if (stats.hasNext) {
         setFilters(prev => ({ ...prev, page: (prev.page || 1) + 1 }));
       }
     }, [stats.hasNext]),
-    
+
     prevPage: useCallback(() => {
       if (stats.hasPrev) {
         setFilters(prev => ({ ...prev, page: (prev.page || 1) - 1 }));
       }
     }, [stats.hasPrev]),
-    
+
     // Mutations
     updateMatch: updateMatchMutation.mutate,
     setMatchDraw: setMatchDrawMutation.mutate,
     addCard: addCardMutation.mutate,
-    
+
     // États des mutations
     isUpdating: updateMatchMutation.isPending,
     isSettingDraw: setMatchDrawMutation.isPending,
     isAddingCard: addCardMutation.isPending,
-    
+
     // Refresh
     refetch
+  };
+}
+
+interface UseLiveMatchesOptions {
+  limit?: number;
+  refetchInterval?: number;
+}
+
+export function useLiveMatches({ limit = 10, refetchInterval = 60000 }: UseLiveMatchesOptions = {}) {
+  const queryClient = useQueryClient();
+
+  const {
+    data,
+    isLoading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['liveMatches', { limit }],
+    queryFn: () => getMatches({ status: 'live', limit }),
+    refetchInterval,
+    staleTime: 30000, // 30s
+  });
+
+  // Realtime updates
+  const { isConnected, subscribe } = useRealtime({
+    autoConnect: true,
+    onMessage: (msg) => {
+      if (msg.type === 'update' && msg.data.entityType === 'match') {
+        // Invalidate cache to re-fetch
+        queryClient.invalidateQueries({ queryKey: ['liveMatches'] });
+      }
+    }
+  });
+
+  // Subscribe to current matches when data changes
+  useEffect(() => {
+    if (isConnected && data?.data) {
+      data.data.forEach(match => {
+        if (match.id) subscribe('match', match.id);
+      });
+    }
+  }, [data?.data, isConnected, subscribe]);
+
+  return {
+    matches: data?.data || [],
+    isLoading,
+    error,
+    isConnected,
+    refetch,
   };
 }

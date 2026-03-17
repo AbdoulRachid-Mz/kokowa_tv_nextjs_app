@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifySessionCookie } from "@/lib/session";
+import { WebSocketServer } from 'ws';
 
 const PUBLIC_ROUTES = [
   "/",
@@ -48,6 +49,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
+  // Gérer les requêtes WebSocket
+  if (request.nextUrl.pathname === '/api/ws') {
+    // Vérifier l'en-tête de mise à niveau
+    const upgrade = request.headers.get('upgrade')?.toLowerCase();
+    if (upgrade === 'websocket') {
+      // Laisser la route API gérer la mise à niveau
+      return NextResponse.next();
+    }
+  }
+
   /**
    * 🔁 Déjà connecté → pages auth interdites
    */
@@ -67,5 +78,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)", "/api/ws"],
 };

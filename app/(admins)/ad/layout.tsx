@@ -20,6 +20,7 @@ import {
   contentItems,
   communicationItems,
   systemItems,
+  test,
 } from "@/constants/admin-items";
 import { useActiveRoute } from "@/hooks/use-active-route";
 
@@ -44,6 +45,7 @@ export default function AdminLayout({
     ...competitionItems,
     ...contentItems,
     ...communicationItems,
+    ...test,
     ...systemItems,
   ];
 
