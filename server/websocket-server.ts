@@ -36,7 +36,7 @@ if (!getApps().length) {
         });
         logger.info('✅ Firebase Admin initialized for WebSocket Server');
     } catch (error) {
-        logger.error('❌ Firebase Admin initialization failed:', error);
+        logger.error({ msg: '❌ Firebase Admin initialization failed', error });
         process.exit(1);
     }
 }
@@ -46,15 +46,15 @@ const HOST = process.env.WS_HOST || '0.0.0.0';
 
 const server = createServer((req, res) => {
     const { pathname } = parse(req.url || '/', true);
-    
+
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    
+
     if (pathname === '/health') {
         res.writeHead(200);
-        res.end(JSON.stringify({ 
-            status: 'ok', 
+        res.end(JSON.stringify({
+            status: 'ok',
             timestamp: Date.now(),
             instance: process.env.INSTANCE_ID || 'unknown'
         }));
@@ -72,7 +72,7 @@ const server = createServer((req, res) => {
     }
 });
 
-const wss = new WebSocketServer({ 
+const wss = new WebSocketServer({
     server,
     // Options pour production
     clientTracking: true,
@@ -84,14 +84,14 @@ wss.on('connection', (ws, req) => {
 });
 
 wss.on('error', (error) => {
-    logger.error('WebSocket Server error:', error);
+    logger.error({ msg: 'WebSocket Server error', error });
 });
 
 const shutdown = () => {
     logger.info('Shutting down WebSocket Server...');
-    
+
     wsManager.shutdown();
-    
+
     wss.close(() => {
         server.close(() => {
             logger.info('WebSocket Server stopped');
@@ -109,18 +109,18 @@ const shutdown = () => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 process.on('uncaughtException', (error) => {
-    logger.error('Uncaught Exception:', error);
+    logger.error({ msg: 'Uncaught Exception', error });
     shutdown();
 });
 process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    logger.error({ msg: 'Unhandled Rejection at:', promise, 'reason:': reason });
 });
 
-server.listen(PORT, HOST, () => {
-    const url = process.env.NODE_ENV === 'production' 
+server.listen(Number(PORT), HOST, () => {
+    const url = process.env.NODE_ENV === 'production'
         ? `wss://kokowa-tv.up.railway.app`
         : `ws://${HOST}:${PORT}`;
-    
+
     logger.info(`
 🚀 WebSocket Gateway Server running
    - Environment: ${process.env.NODE_ENV || 'development'}
