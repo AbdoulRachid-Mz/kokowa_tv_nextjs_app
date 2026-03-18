@@ -380,6 +380,8 @@ function MatchesList({
             match={match}
             subGroupId={subGroupId}
             compact
+            onDelete={onDeleteMatch}
+            onEdit={onEditMatch}
           />
         ))}
       </div>
