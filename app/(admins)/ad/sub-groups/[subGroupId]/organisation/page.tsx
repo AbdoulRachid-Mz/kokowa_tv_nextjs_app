@@ -53,6 +53,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { createMatch } from "@/actions/matches";
+import { updateMatch } from "@/actions/matches-2";
 
 export default function SubGroupOrganizationPage() {
   const { subGroupId } = useParams();
@@ -209,33 +211,18 @@ export default function SubGroupOrganizationPage() {
   // Dans la page principale, modifier handleCreateMatch :
   const handleCreateMatch = async (fighter1Id: number, fighter2Id?: number) => {
     try {
-      const formData = new FormData();
-      formData.append("sub_group_id", id.toString());
-      formData.append("fighter1_id", fighter1Id.toString());
-      if (fighter2Id) {
-        formData.append("fighter2_id", fighter2Id.toString());
-      }
-      formData.append("status", "scheduled");
+      // Use the createMatch server action directly
+      const response = await createMatch(id, {
+        fighter1_id: fighter1Id,
+        fighter2_id: fighter2Id ?? null,
+      });
 
-      // Ajouter un numéro de match auto-généré
-      const nextMatchNumber = (matches.length || 0) + 1;
-      formData.append("match_number", nextMatchNumber.toString());
-
-      const response = await api.post("/api/matches", formData);
-
-      if (
-        response &&
-        typeof response === "object" &&
-        "success" in response &&
-        response.success
-      ) {
-        queryClient.invalidateQueries({ queryKey: ["sub-group-org", id] });
-        return response;
-      }
+      // Invalidate queries to refresh the UI
+      queryClient.invalidateQueries({ queryKey: ["sub-group-org", id] });
+      return response;
     } catch (error: any) {
       console.error("Erreur création match:", error);
-      const errorMessage =
-        error?.message || "Erreur lors de la création du match";
+      const errorMessage = error?.message || "Erreur lors de la création du match";
       toast.error(errorMessage);
       throw error;
     }
@@ -297,18 +284,14 @@ export default function SubGroupOrganizationPage() {
         return;
       }
 
-      const response = await api.put(`/api/matches/${matchToEdit.id}`, {
-        status: editFormData.status,
-        notes: editFormData.notes || null,
+      // Use the updateMatch server action directly
+      const updatedMatch = await updateMatch(matchToEdit.id, {
+        status: editFormData.status as Match['status'],
+        notes: editFormData.notes || undefined,
         match_number: editFormData.match_number,
       });
 
-      if (
-        response &&
-        typeof response === "object" &&
-        "success" in response &&
-        response.success
-      ) {
+      if (updatedMatch) {
         toast.success("Match mis à jour avec succès");
         queryClient.invalidateQueries({ queryKey: ["sub-group-org", id] });
         setMatchToEdit(null);

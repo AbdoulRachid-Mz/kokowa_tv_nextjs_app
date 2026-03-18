@@ -6,7 +6,7 @@ import { MatchFilters } from '@/types';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    
+
     const filters: MatchFilters = {
       sub_group_id: searchParams.get('sub_group_id') ? Number(searchParams.get('sub_group_id')) : undefined,
       edition_id: searchParams.get('edition_id') ? Number(searchParams.get('edition_id')) : undefined,
@@ -24,16 +24,16 @@ export async function GET(request: NextRequest) {
       with_winner: searchParams.get('with_winner') === 'true',
       with_cards: searchParams.get('with_cards') === 'true',
     };
-    
+
     const result = await getMatches(filters);
-    
+
     return NextResponse.json(result);
-    
+
   } catch (error: any) {
     console.error('API GET /matches error:', error);
     return NextResponse.json(
-      { 
-        error: error.message || 'Erreur lors de la récupération des matches' 
+      {
+        error: error.message || 'Erreur lors de la récupération des matches'
       },
       { status: 500 }
     );
@@ -43,15 +43,32 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const result = await createMatch(formData);
-    
+
+    // Extract subGroupId and match data from formData
+    const subGroupId = Number(formData.get('sub_group_id'));
+    if (isNaN(subGroupId)) {
+      return NextResponse.json(
+        { error: 'sub_group_id is required and must be a number' },
+        { status: 400 }
+      );
+    }
+
+    const data = {
+      match_number: formData.get('match_number') ? Number(formData.get('match_number')) : undefined,
+      fighter1_id: formData.get('fighter1_id') ? Number(formData.get('fighter1_id')) : null,
+      fighter2_id: formData.get('fighter2_id') ? Number(formData.get('fighter2_id')) : null,
+      notes: formData.get('notes') ? String(formData.get('notes')) : null,
+    };
+
+    const result = await createMatch(subGroupId, data);
+
     return NextResponse.json(result, { status: 201 });
-    
+
   } catch (error: any) {
     console.error('API POST /matches error:', error);
     return NextResponse.json(
-      { 
-        error: error.message || 'Erreur lors de la création du match' 
+      {
+        error: error.message || 'Erreur lors de la création du match'
       },
       { status: 500 }
     );
