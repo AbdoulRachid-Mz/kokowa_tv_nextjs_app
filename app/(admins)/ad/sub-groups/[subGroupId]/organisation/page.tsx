@@ -74,6 +74,8 @@ export default function SubGroupOrganizationPage() {
     status: "",
     notes: "",
     match_number: 0,
+    fighter1_id: 0,
+    fighter2_id: 0,
   });
 
   // Utilisation de TanStack Query pour le sous-groupe et les matchs
@@ -270,6 +272,8 @@ export default function SubGroupOrganizationPage() {
       status: match.status,
       notes: match.notes || "",
       match_number: match.match_number || 1,
+      fighter1_id: match.fighter1_id || 0,
+      fighter2_id: match.fighter2_id || 0,
     });
   };
 
@@ -277,9 +281,25 @@ export default function SubGroupOrganizationPage() {
     if (!matchToEdit) return;
 
     try {
+      // Validation des données
+      if (editFormData.match_number < 1) {
+        toast.error("Le numéro de match doit être supérieur à 0");
+        return;
+      }
+
+      // Vérifier si le numéro de match est déjà utilisé par un autre match
+      const existingMatchWithNumber = matches.find(
+        (m) => m.match_number === editFormData.match_number && m.id !== matchToEdit.id
+      );
+
+      if (existingMatchWithNumber) {
+        toast.error(`Le match #${editFormData.match_number} existe déjà`);
+        return;
+      }
+
       const response = await api.put(`/api/matches/${matchToEdit.id}`, {
         status: editFormData.status,
-        notes: editFormData.notes,
+        notes: editFormData.notes || null,
         match_number: editFormData.match_number,
       });
 
@@ -289,9 +309,10 @@ export default function SubGroupOrganizationPage() {
         "success" in response &&
         response.success
       ) {
-        toast.success("Match mis à jour");
+        toast.success("Match mis à jour avec succès");
         queryClient.invalidateQueries({ queryKey: ["sub-group-org", id] });
         setMatchToEdit(null);
+        setEditFormData({ status: "", notes: "", match_number: 0, fighter1_id: 0, fighter2_id: 0 });
       } else {
         toast.error("Erreur lors de la mise à jour du match");
       }
@@ -621,75 +642,177 @@ export default function SubGroupOrganizationPage() {
 
       <Dialog
         open={matchToEdit !== null}
-        onOpenChange={(open) => !open && setMatchToEdit(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMatchToEdit(null);
+            setEditFormData({ status: "", notes: "", match_number: 0, fighter1_id: 0, fighter2_id: 0 });
+          }
+        }}
       >
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Modifier le match</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">
+              Modifier le match #{matchToEdit?.match_number}
+            </DialogTitle>
             <DialogDescription>
-              Ajustez les détails du match ici. Cliquez sur enregistrer pour
-              valider.
+              Ajustez les détails du match. Les modifications seront prises en compte immédiatement.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="match_number" className="text-right">
-                Numéro
-              </Label>
-              <Input
-                id="match_number"
-                type="number"
-                value={editFormData.match_number}
-                onChange={(e) =>
-                  setEditFormData({
-                    ...editFormData,
-                    match_number: parseInt(e.target.value),
-                  })
-                }
-                className="col-span-3"
-              />
+
+          {matchToEdit && (
+            <div className="grid gap-6 py-4">
+              {/* Aperçu rapide des lutteurs */}
+              <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-4">
+                  <div className="text-center">
+                    <Avatar className="h-12 w-12 mx-auto mb-1">
+                      <AvatarImage src={matchToEdit.fighter1?.profile_image} />
+                      <AvatarFallback>
+                        {matchToEdit.fighter1?.first_name?.[0]}
+                        {matchToEdit.fighter1?.last_name?.[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <Typography variant="body-sm" weight="medium">
+                      {matchToEdit.fighter1?.first_name?.split(' ')[0]}
+                    </Typography>
+                  </div>
+
+                  <Swords className="h-5 w-5 text-muted-foreground" />
+
+                  <div className="text-center">
+                    <Avatar className="h-12 w-12 mx-auto mb-1">
+                      <AvatarImage src={matchToEdit.fighter2?.profile_image} />
+                      <AvatarFallback>
+                        {matchToEdit.fighter2?.first_name?.[0]}
+                        {matchToEdit.fighter2?.last_name?.[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <Typography variant="body-sm" weight="medium">
+                      {matchToEdit.fighter2?.first_name?.split(' ')[0]}
+                    </Typography>
+                  </div>
+                </div>
+
+                {/* Résultat actuel si existant */}
+                {matchToEdit.match_result && (
+                  <Badge
+                    variant={
+                      matchToEdit.match_result.includes('win') ? "default" :
+                        matchToEdit.match_result === 'draw' ? "secondary" : "outline"
+                    }
+                    className="text-sm"
+                  >
+                    {matchToEdit.match_result === 'fighter1_win' && '🏆 Victoire ' + matchToEdit.fighter1?.first_name?.split(' ')[0]}
+                    {matchToEdit.match_result === 'fighter2_win' && '🏆 Victoire ' + matchToEdit.fighter2?.first_name?.split(' ')[0]}
+                    {matchToEdit.match_result === 'draw' && '🤝 Match nul'}
+                    {matchToEdit.match_result === 'cancelled' && '❌ Annulé'}
+                    {matchToEdit.match_result === 'postponed' && '⏱️ Reporté'}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Champs de formulaire */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="match_number" className="text-sm font-medium">
+                    Numéro du match
+                  </Label>
+                  <Input
+                    id="match_number"
+                    type="number"
+                    min="1"
+                    value={editFormData.match_number}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        match_number: parseInt(e.target.value) || 1,
+                      })
+                    }
+                    className="col-span-3"
+                  />
+                  <Typography variant="caption1" theme="muted">
+                    Ordre d'affichage des matchs
+                  </Typography>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="status" className="text-sm font-medium">
+                    Statut
+                  </Label>
+                  <Select
+                    value={editFormData.status}
+                    onValueChange={(val) =>
+                      setEditFormData({ ...editFormData, status: val })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir un statut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="scheduled" className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        <span>Programmé</span>
+                      </SelectItem>
+                      <SelectItem value="live" className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        <span>En direct</span>
+                      </SelectItem>
+                      <SelectItem value="completed" className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        <span>Terminé</span>
+                      </SelectItem>
+                      <SelectItem value="cancelled" className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-gray-500" />
+                        <span>Annulé</span>
+                      </SelectItem>
+                      <SelectItem value="postponed" className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-orange-500" />
+                        <span>Reporté</span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes" className="text-sm font-medium">
+                  Notes
+                </Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Ajoutez des notes sur le match (optionnel)"
+                  value={editFormData.notes}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, notes: e.target.value })
+                  }
+                  rows={4}
+                />
+              </div>
+
+              {/* Informations supplémentaires */}
+              {matchToEdit.total_duration && matchToEdit.total_duration !== '00:00:00' && (
+                <div className="p-3 bg-muted/20 rounded-lg">
+                  <Typography variant="body-sm" weight="medium" className="mb-2">
+                    ⏱️ Durée du match
+                  </Typography>
+                  <Typography variant="body-base">
+                    {matchToEdit.total_duration}
+                  </Typography>
+                </div>
+              )}
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">
-                Statut
-              </Label>
-              <Select
-                value={editFormData.status}
-                onValueChange={(val) =>
-                  setEditFormData({ ...editFormData, status: val })
-                }
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Choisir un statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scheduled">Programmé</SelectItem>
-                  <SelectItem value="live">En direct</SelectItem>
-                  <SelectItem value="completed">Terminé</SelectItem>
-                  <SelectItem value="cancelled">Annulé</SelectItem>
-                  <SelectItem value="postponed">Reporté</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="notes" className="text-right">
-                Notes
-              </Label>
-              <Textarea
-                id="notes"
-                value={editFormData.notes}
-                onChange={(e) =>
-                  setEditFormData({ ...editFormData, notes: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div>
-          </div>
-          <DialogFooter>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setMatchToEdit(null)}>
               Annuler
             </Button>
-            <Button onClick={submitEditMatch}>Enregistrer</Button>
+            <Button
+              onClick={submitEditMatch}
+              disabled={!editFormData.status || editFormData.match_number < 1}
+            >
+              Enregistrer les modifications
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -877,9 +1000,10 @@ function MatchesColumn({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               {matches.map((match) => (
-                <MatchCard
+                <SimpleMatchCard
                   key={match.id}
                   match={match}
+                  subGroupId={subGroupId}
                   onDelete={onDeleteMatch}
                   onEdit={onEditMatch}
                 />

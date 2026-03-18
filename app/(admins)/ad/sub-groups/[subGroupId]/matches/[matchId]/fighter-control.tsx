@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Match, Fighter } from "@/types";
-import { Trophy, User, Users, Equal, CircleMinus, UserMinus } from "lucide-react";
+import { Trophy, User, Users, Equal, UserMinus, AlertCircle, Skull } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -75,17 +75,42 @@ export function FighterControl({
     type: "winner",
   });
 
-  // ✅ Vérification fiable basée sur l'ID dans le match
   const isFighterAssigned =
     fighterType === "fighter1"
       ? !!match?.fighter1_id
       : !!match?.fighter2_id;
 
   const isWinner = !!match && match.winner_fighter_id === fighter?.id;
+  const isLoser = !!match && match.loser_fighter_id === fighter?.id;
   const canModify = !isSubGroupCompleted && matchStatus !== "completed";
   const bothFightersAssigned = !!match && !!match.fighter1_id && !!match.fighter2_id;
+  
+  // Vérifier si l'autre lutteur est assigné
+  const otherFighterAssigned = fighterType === "fighter1" 
+    ? !!match?.fighter2_id 
+    : !!match?.fighter1_id;
 
-  // Filtrer les lutteurs déjà assignés à l'autre position
+  // ✅ Obtenir le statut d'élimination du lutteur
+  const getFighterEliminationStatus = () => {
+    if (!fighter || !match) return null;
+    
+    const isFighter1 = fighterType === "fighter1";
+    const initialEliminated = isFighter1 
+      ? match.fighter1_initial_state === 'eliminated'
+      : match.fighter2_initial_state === 'eliminated';
+    
+    // Vérifier si le lutteur a été éliminé pendant le match
+    const eliminatedInMatch = match.loser_fighter_id === fighter.id;
+    
+    return { 
+      initialEliminated, 
+      eliminatedInMatch,
+      isEliminated: initialEliminated || eliminatedInMatch
+    };
+  };
+
+  const eliminationStatus = getFighterEliminationStatus();
+
   const filteredAvailableFighters = availableFighters.filter(
     (f) =>
       f.id !== match?.fighter1_id &&
@@ -131,7 +156,7 @@ export function FighterControl({
     });
   };
 
-  // 🎯 Si aucun lutteur n'est assigné à cette position
+  // Si aucun lutteur n'est assigné à cette position
   if (!isFighterAssigned) {
     return (
       <Card className="border-dashed border-2 hover:border-primary/50 transition-colors h-full">
@@ -219,11 +244,16 @@ export function FighterControl({
     );
   }
 
-  // 🏆 Si un lutteur est assigné, on affiche sa carte
+  // Si un lutteur est assigné, on affiche sa carte
   return (
     <Card
-      className={`relative h-full ${isWinner ? "border-2 border-green-500 bg-green-50/50" : ""
-        } ${isSubGroupCompleted ? "opacity-70" : ""}`}
+      className={`relative h-full ${
+        isWinner ? "border-2 border-green-500 bg-green-50/50" : ""
+      } ${
+        isLoser ? "border-2 border-red-500 bg-red-50/50" : ""
+      } ${
+        eliminationStatus?.isEliminated ? "opacity-80" : ""
+      } ${isSubGroupCompleted ? "opacity-70" : ""}`}
     >
       <CardHeader className="pb-2">
         <div className="flex flex-col items-center text-center">
@@ -244,159 +274,68 @@ export function FighterControl({
               </Typography>
             )}
           </div>
-          {isWinner && (
-            <Badge variant="default" className="mt-2 bg-green-600 gap-1">
-              <Trophy className="h-3 w-3" /> Vainqueur
-            </Badge>
-          )}
+          
+          {/* ✅ Badges de statut */}
+          <div className="flex flex-wrap gap-1 mt-2 justify-center">
+            {isWinner && (
+              <Badge variant="default" className="bg-green-600 gap-1">
+                <Trophy className="h-3 w-3" /> Vainqueur
+              </Badge>
+            )}
+            
+            {isLoser && (
+              <Badge variant="destructive" className="gap-1">
+                <Skull className="h-3 w-3" /> Terrassé
+              </Badge>
+            )}
+            
+            {eliminationStatus?.initialEliminated && !isLoser && (
+              <Badge variant="destructive" className="gap-1 bg-orange-600">
+                <AlertCircle className="h-3 w-3" /> Éliminé (terrassé)
+              </Badge>
+            )}
+          </div>
         </div>
+        
         {/* buttons remove and replace */}
         <div className="absolute top-2 right-2 flex gap-1">
-          <div className="absolute top-2 right-2 flex gap-1">
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                if (fighter?.id) {
-                  // Ouvrir le dialog de confirmation
-                  setConfirmDialog({
-                    isOpen: true,
-                    type: "removeFighter",
-                    fighterId: fighter.id,
-                  });
-                }
-              }}
-              disabled={!canModify}
-            >
-              <Typography hasTooltip={true} tooltipContent="retirer ce lutteur">
-                <UserMinus className="h-4 w-4" />
-              </Typography>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (fighter?.id) {
-                  // Ouvrir le dialog de confirmation
-                  setConfirmDialog({
-                    isOpen: true,
-                    type: "replaceFighter",
-                    fighterId: fighter.id,
-                    regionId: fighter.region_id,
-                  });
-                }
-              }}
-              disabled={!canModify}
-            >
-              <Typography hasTooltip={true} tooltipContent="remplacer ce lutteur">
-                <Users className="h-4 w-4" />
-              </Typography>
-            </Button>
-          </div>
-
-          {/* Dialog de confirmation pour retirer */}
-          <Dialog
-            open={confirmDialog.isOpen && confirmDialog.type === "removeFighter"}
-            onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "removeFighter" })}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Confirmer le retrait</DialogTitle>
-              </DialogHeader>
-              <p>
-                Êtes-vous sûr de vouloir retirer{" "}
-                <strong>
-                  {fighter?.first_name} {fighter?.last_name}
-                </strong>{" "}
-                de ce match ?
-              </p>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setConfirmDialog({ isOpen: false, type: "removeFighter" })}
-                >
-                  Annuler
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    if (fighter?.id && onRemoveFighter) {
-                      onRemoveFighter(fighter.id);
-                      setConfirmDialog({ isOpen: false, type: "removeFighter" });
-                    }
-                  }}
-                >
-                  Confirmer
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* Dialog de confirmation pour remplacer */}
-          <Dialog
-            open={confirmDialog.isOpen && confirmDialog.type === "replaceFighter"}
-            onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "replaceFighter" })}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Confirmer le remplacement</DialogTitle>
-              </DialogHeader>
-              <p>
-                Êtes-vous sûr de vouloir remplacer{" "}
-                <strong>
-                  {fighter?.first_name} {fighter?.last_name}
-                </strong>{" "}
-                ?
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Vous serez redirigé vers la page de sélection des lutteurs.
-              </p>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setConfirmDialog({ isOpen: false, type: "replaceFighter" })}
-                >
-                  Annuler
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (fighter?.id && onReplaceFighter) {
-                      onReplaceFighter(fighter.id, confirmDialog.regionId!);
-                      setConfirmDialog({ isOpen: false, type: "replaceFighter" });
-                    }
-                  }}
-                >
-                  Confirmer
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          {/* <Button
+          <Button
             variant="destructive"
             size="sm"
             onClick={() => {
               if (fighter?.id) {
-                onRemoveFighter?.(fighter.id);
+                setConfirmDialog({
+                  isOpen: true,
+                  type: "removeFighter",
+                  fighterId: fighter.id,
+                });
               }
             }}
             disabled={!canModify}
           >
-            <Users className="h-4 w-4" />
-            Retirer
+            <Typography hasTooltip={true} tooltipContent="retirer ce lutteur">
+              <UserMinus className="h-4 w-4" />
+            </Typography>
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
               if (fighter?.id) {
-                onReplaceFighter?.(fighter.id);
+                setConfirmDialog({
+                  isOpen: true,
+                  type: "replaceFighter",
+                  fighterId: fighter.id,
+                  regionId: fighter.region_id,
+                });
               }
             }}
             disabled={!canModify}
           >
-            <Users className="h-4 w-4" />
-            Remplacer
-          </Button> */}
+            <Typography hasTooltip={true} tooltipContent="remplacer ce lutteur">
+              <Users className="h-4 w-4" />
+            </Typography>
+          </Button>
         </div>
       </CardHeader>
 
@@ -406,7 +345,7 @@ export function FighterControl({
           <Dialog open={confirmDialog.isOpen && confirmDialog.type === "addCard"} onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "addCard" })}>
             <DialogTrigger asChild>
               <Button
-                disabled={!canModify || matchStatus !== "live"}
+                disabled={!canModify || matchStatus !== "live" || eliminationStatus?.isEliminated}
                 variant="outline"
                 size="sm"
                 className="flex relative flex-col items-center justify-center h-auto py-2 border-yellow-500 hover:bg-yellow-50"
@@ -440,39 +379,16 @@ export function FighterControl({
             </DialogContent>
           </Dialog>
 
-          {/* Match nul */}
-          {/* <Dialog open={confirmDialog.isOpen && confirmDialog.type === "draw"} onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "draw" })}>
-            <DialogTrigger asChild>
-              <Button
-                disabled={matchStatus === "completed" || !canSetDraw}
-                variant="outline"
-                size="sm"
-                className="flex flex-col items-center justify-center h-auto py-2 border-blue-500 hover:bg-blue-50"
-              >
-                <Equal className="h-4 w-4 text-blue-600 mb-1" />
-                <span className="text-xs">Nul</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Confirmer le match nul</DialogTitle>
-              </DialogHeader>
-              <p>Êtes-vous sûr de vouloir déclarer ce match nul ?</p>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setConfirmDialog({ isOpen: false, type: "draw" })}>
-                  Annuler
-                </Button>
-                <Button onClick={onSetDraw}>Confirmer</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog> */}
-
+          {/* Match nul - désactivé si l'autre lutteur n'est pas assigné */}
           <Button
-            disabled={matchStatus === "completed" || !canSetDraw}
+            disabled={matchStatus === "completed" || !canSetDraw || !otherFighterAssigned || eliminationStatus?.isEliminated}
             variant="outline"
             onClick={onSetDraw}
             size="sm"
-            className="flex flex-col items-center justify-center h-auto py-2 border-blue-500 hover:bg-blue-50"
+            className={`flex flex-col items-center justify-center h-auto py-2 border-blue-500 hover:bg-blue-50 ${
+              !otherFighterAssigned ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            title={!otherFighterAssigned ? "Match nul impossible sans adversaire" : ""}
           >
             <Equal className="h-4 w-4 text-blue-600 mb-1" />
             <span className="text-xs">Nul</span>
@@ -481,7 +397,7 @@ export function FighterControl({
           {/* Vainqueur */}
           <Button
             onClick={onCompleteWithWinner}
-            disabled={matchStatus === "completed"}
+            disabled={matchStatus === "completed" || !canSetWinner || eliminationStatus?.isEliminated}
             variant="outline"
             size="sm"
             className="flex flex-col items-center justify-center h-auto py-2 border-green-500 hover:bg-green-50"
@@ -489,38 +405,17 @@ export function FighterControl({
             <Trophy className="h-4 w-4 text-green-600 mb-1" />
             <span className="text-xs">Gagnant</span>
           </Button>
-          {/* <Dialog open={confirmDialog.isOpen && confirmDialog.type === "winner"} onOpenChange={(open) => setConfirmDialog({ isOpen: open, type: "winner" })}>
-            <DialogTrigger asChild>
-              <Button
-                disabled={matchStatus === "completed" || !canSetWinner}
-                variant="outline"
-                size="sm"
-                className="flex flex-col items-center justify-center h-auto py-2 border-green-500 hover:bg-green-50"
-              >
-                <Trophy className="h-4 w-4 text-green-600 mb-1" />
-                <span className="text-xs">Gagnant</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Confirmer la victoire</DialogTitle>
-              </DialogHeader>
-              <p>
-                Êtes-vous sûr de vouloir désigner{" "}
-                <strong>
-                  {fighter?.first_name} {fighter?.last_name}
-                </strong>{" "}
-                comme vainqueur ?
-              </p>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setConfirmDialog({ isOpen: false, type: "winner" })}>
-                  Annuler
-                </Button>
-                <Button onClick={onCompleteWithWinner}>Confirmer</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog> */}
         </div>
+
+        {/* ✅ Message d'information pour victoire par forfait */}
+        {!otherFighterAssigned && matchStatus !== "completed" && (
+          <div className="text-center pt-2 border-t border-dashed">
+            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Victoire = repos obtenu
+            </Badge>
+          </div>
+        )}
 
         {/* Badge de statut */}
         {matchStatus === "completed" && (

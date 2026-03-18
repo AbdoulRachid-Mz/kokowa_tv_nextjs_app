@@ -44,11 +44,16 @@ if (!getApps().length) {
 const PORT = process.env.WS_PORT || 3001;
 const HOST = process.env.WS_HOST || '0.0.0.0';
 
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',');
+
 const server = createServer((req, res) => {
     const { pathname } = parse(req.url || '/', true);
 
     // CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
 
     if (pathname === '/health') {

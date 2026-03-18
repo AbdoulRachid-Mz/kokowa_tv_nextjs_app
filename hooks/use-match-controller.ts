@@ -1,3 +1,4 @@
+// hooks/use-match-controller.ts - Version améliorée
 'use client';
 
 import { useEffect, useCallback, useRef } from 'react';
@@ -16,7 +17,7 @@ interface UseMatchControllerProps {
 
 export function useMatchController({ matchId, subGroupId }: UseMatchControllerProps) {
   const queryClient = useQueryClient();
-  const isUpdatingRef = useRef(false); // 🔥 Pour éviter les doubles appels
+  const isUpdatingRef = useRef(false);
 
   // ==========================
   // QUERY
@@ -27,9 +28,6 @@ export function useMatchController({ matchId, subGroupId }: UseMatchControllerPr
     queryFn: () => getMatchById(matchId),
     enabled: !!matchId
   });
-
-
-
 
   // ==========================
   // TIMER (ISOLÉ)
@@ -69,7 +67,6 @@ export function useMatchController({ matchId, subGroupId }: UseMatchControllerPr
 
   const updateMutation = useMutation({
     mutationFn: async (updates: MatchUpdate) => {
-      // 🔥 Éviter les appels concurrents
       if (isUpdatingRef.current) {
         console.log('🔄 Mise à jour déjà en cours, ignorée');
         return;
@@ -114,32 +111,30 @@ export function useMatchController({ matchId, subGroupId }: UseMatchControllerPr
   // ACTIONS
   // ==========================
 
-const startMatch = useCallback(() => {
-  if (!match || isUpdatingRef.current) return;
+  const startMatch = useCallback(() => {
+    if (!match || isUpdatingRef.current) return;
 
-  timer.start();
+    timer.start();
 
-  const now = new Date();
-  const timeString = now.toTimeString().slice(0, 8);
-  const timestamp2 = now.toISOString(); // Format ISO complet pour start_time2
+    const now = new Date();
+    const timeString = now.toTimeString().slice(0, 8);
+    const timestamp2 = now.toISOString();
 
-  updateMutation.mutate({
-    status: 'live',
-    start_time: timeString,
-    start_time2: timestamp2, // NOUVEAU - timestamp ISO complet
-  });
+    updateMutation.mutate({
+      status: 'live',
+      start_time: timeString,
+      start_time2: timestamp2,
+    });
 
-  //push topic
-  sendMatchPush(matchId, `Match entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} debute !`);
-}, [match, timer, updateMutation]);
+    //push topic
+    sendMatchPush(matchId, `Match entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} debute !`);
+  }, [match, timer, updateMutation]);
 
   const pauseMatch = useCallback(() => {
-    if (!match || isUpdatingRef.current) return; // 🔥 Vérification
+    if (!match || isUpdatingRef.current) return;
 
-    // 1️⃣ Stopper le timer et récupérer la durée actuelle
     const currentDuration = timer.pause();
 
-    // 2️⃣ Mettre à jour en base
     updateMutation.mutate({
       status: 'round_break',
       total_duration: formatSecondsToDuration(currentDuration),
@@ -152,9 +147,7 @@ const startMatch = useCallback(() => {
     if (!match) return;
     timer.pause()
 
-    // 1️⃣ Stopper le timer et récupérer la durée actuelle
     const currentDuration = timer.pause();
-    // 2️⃣ Mettre à jour en base
     updateMutation.mutate({
       status: "reclamation",
       total_duration: formatSecondsToDuration(currentDuration),
@@ -169,29 +162,56 @@ const startMatch = useCallback(() => {
     });
   }, [timer, updateMutation]);
 
-  const completeMatch = useCallback((winnerId: number, loserId: number) => {
-    if (!match || isUpdatingRef.current) return; // 🔥 Vérification
+  // ✅ VERSION AMÉLIORÉE - Gère les cas où un lutteur est absent
+  const completeMatch = useCallback((winnerId: number, loserId?: number) => {
+    if (!match || isUpdatingRef.current) return;
 
     const finalDuration = timer.stop();
 
-    const matchResult =
-      winnerId === match.fighter1_id
-        ? 'fighter1_win'
-        : 'fighter2_win';
+    // ✅ Vérifier si le vainqueur était déjà éliminé initialement
+    const isWinnerFighter1 = winnerId === match.fighter1_id;
+    const winnerInitialState = isWinnerFighter1
+      ? match.fighter1_initial_state
+      : match.fighter2_initial_state;
 
-    updateMutation.mutate({
+    const updates: MatchUpdate = {
       status: 'completed',
       winner_fighter_id: winnerId,
-      loser_fighter_id: loserId,
-      match_result: matchResult,
       total_duration: formatSecondsToDuration(finalDuration),
       break_count: match.break_count ?? 0,
       end_time: new Date().toTimeString().slice(0, 8)
-    });
+    };
+
+    // Déterminer le résultat du match
+    if (loserId) {
+      // Victoire normale avec les deux lutteurs
+      updates.loser_fighter_id = loserId;
+      updates.match_result = winnerId === match.fighter1_id ? 'fighter1_win' : 'fighter2_win';
+
+      // Vérifier si le vainqueur était déjà éliminé (cas rare)
+      if (winnerInitialState === 'eliminated') {
+        updates.notes = match.notes
+          ? `${match.notes}\n⚠️ Attention: Le vainqueur était déjà éliminé avant le match!`
+          : '⚠️ Attention: Le vainqueur était déjà éliminé avant le match!';
+      }
+    } else {
+      // Victoire par forfait (lutteur absent)
+      updates.match_result = 'fighter1_win'; // Sera ajusté par le service
+      updates.loser_fighter_id = null;
+
+      const winnerName = winnerId === match.fighter1_id
+        ? match.fighter1?.first_name
+        : match.fighter2?.first_name;
+
+      const forfaitNote = `Victoire par forfait - ${winnerName} a obtenu le repos`;
+      updates.notes = match.notes ? `${match.notes}\n${forfaitNote}` : forfaitNote;
+    }
+
+    updateMutation.mutate(updates);
   }, [match, timer, updateMutation]);
 
   const setDraw = useCallback(() => {
-    if (!match || isUpdatingRef.current) return; // 🔥 Vérification
+    if (!match || isUpdatingRef.current) return;
 
     const finalDuration = timer.stop();
 
@@ -214,7 +234,6 @@ const startMatch = useCallback(() => {
     });
   }, [timer, updateMutation]);
 
-
   // ==========================
   // PERMISSIONS
   // ==========================
@@ -225,18 +244,15 @@ const startMatch = useCallback(() => {
     !!match?.fighter2_id;
 
   const canPause = match?.status === 'live';
-
   const canResume = match?.status === 'round_break' || match?.status === "reclamation";
+  const canComplete = match?.status === 'live' || match?.status === 'round_break';
 
-  const canComplete =
-    match?.status === 'live' || match?.status === 'round_break';
+  // ✅ On peut définir un vainqueur même si un lutteur est absent
+  const canSetWinner = (match?.status === 'live' || match?.status === 'reclamation') &&
+    (!!match?.fighter1_id || !!match?.fighter2_id);
 
-  // Boutons winner/draw disponibles uniquement en mode live OU réclamation
-  const canSetWinner =
-    match?.status === 'live' || match?.status === 'reclamation';
-
-  const canSetDraw =
-    match?.status === 'live' || match?.status === 'reclamation';
+  const canSetDraw = (match?.status === 'live' || match?.status === 'reclamation') &&
+    !!match?.fighter1_id && !!match?.fighter2_id; // Match nul nécessite les deux lutteurs
 
   return {
     match,
@@ -246,9 +262,7 @@ const startMatch = useCallback(() => {
     // timer
     elapsed: timer.elapsed,
     formattedTime: formatSecondsToDuration(timer.elapsed),
-
     isRunning: timer.isRunning,
-
     breakCount: match?.break_count ?? 0,
 
     // actions

@@ -163,13 +163,75 @@ export async function getMatchById(matchId: number): Promise<Match | null> {
 
 // ========== UPDATE ==========
 
+/**
+ * Helper pour obtenir l'édition d'un match
+ */
+async function getMatchEditionId(matchId: number): Promise<number | null> {
+  const result = await query<{ edition_id: number }>(`
+    SELECT p.edition_id
+    FROM matches m
+    JOIN sub_groups sg ON m.sub_group_id = sg.id
+    JOIN phase_groups pg ON sg.group_id = pg.id
+    JOIN phases p ON pg.phase_id = p.id
+    WHERE m.id = $1
+  `, [matchId]);
+
+  return result[0]?.edition_id || null;
+}
+
+/**
+ * Helper pour déterminer l'état initial d'un lutteur
+ */
+async function getFighterInitialState(editionId: number, fighterId: number | null): Promise<'eliminated' | 'not_eliminated'> {
+  if (!fighterId) return 'not_eliminated';
+
+  const result = await query<{ is_eliminated: boolean }>(`
+    SELECT is_eliminated 
+    FROM edition_fighters 
+    WHERE edition_id = $1 AND fighter_id = $2
+  `, [editionId, fighterId]);
+
+  return result[0]?.is_eliminated ? 'eliminated' : 'not_eliminated';
+}
+
+/**
+ * ✅ Fonction principale de mise à jour
+ * C'est celle-ci qu'il faut utiliser DANS TOUTE L'APPLICATION
+ */
 export async function updateMatch(
   matchId: number,
   updates: MatchUpdate
-) {
-  await updateMatchAndRecompute(matchId, updates);
+): Promise<Match | null> {
+  // Récupérer le match existant pour connaître son édition
+  const existingMatch = await getMatchById(matchId);
 
-  // 🔥 Toujours relire avec getMatchById
+  if (!existingMatch) {
+    throw new Error('Match non trouvé');
+  }
+
+  // Si on assigne un nouveau lutteur, mettre à jour son état initial
+  if (updates.fighter1_id !== undefined && updates.fighter1_id !== existingMatch.fighter1_id) {
+    const editionId = await getMatchEditionId(matchId);
+    if (editionId) {
+      updates.fighter1_initial_state = await getFighterInitialState(editionId, updates.fighter1_id);
+    }
+  }
+
+  if (updates.fighter2_id !== undefined && updates.fighter2_id !== existingMatch.fighter2_id) {
+    const editionId = await getMatchEditionId(matchId);
+    if (editionId) {
+      updates.fighter2_initial_state = await getFighterInitialState(editionId, updates.fighter2_id);
+    }
+  }
+
+  // ✅ Appeler le service de mise à jour
+  const result = await updateMatchAndRecompute(matchId, updates);
+
+  // 🔥 Revalider les chemins
+  revalidatePath(`/ad/sub-groups/${existingMatch.sub_group_id}/matches`);
+  revalidatePath(`/ad/sub-groups/${existingMatch.sub_group_id}/matches/${matchId}`);
+
+  // 🔥 Relire le match frais
   const freshMatch = await getMatchById(matchId);
 
   return freshMatch;

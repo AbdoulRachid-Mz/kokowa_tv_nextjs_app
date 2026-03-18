@@ -1,18 +1,21 @@
-// components/match/simple-match-card.tsx
+// components/matches/simple-match-card.tsx
 "use client";
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Typography } from "@/components/ui/typography";
-import { Match, Fighter } from "@/types";
-import { 
-  Clock, 
-  Swords, 
-  Trophy, 
+import { Match } from "@/types";
+import {
+  Clock,
+  Swords,
+  Trophy,
   ChevronRight,
   Play,
-  Pause
+  Pause,
+  Edit,
+  Trash2
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -22,9 +25,17 @@ interface SimpleMatchCardProps {
   match: Match;
   subGroupId: number;
   compact?: boolean;
+  onDelete: (matchId: number) => void;
+  onEdit: (match: Match) => void;
 }
 
-export function SimpleMatchCard({ match, subGroupId, compact = false }: SimpleMatchCardProps) {
+export function SimpleMatchCard({
+  match,
+  subGroupId,
+  compact = false,
+  onDelete,
+  onEdit
+}: SimpleMatchCardProps) {
   const router = useRouter();
   const [isHovered, setIsHovered] = useState(false);
 
@@ -58,11 +69,22 @@ export function SimpleMatchCard({ match, subGroupId, compact = false }: SimpleMa
     router.push(`/ad/sub-groups/${subGroupId}/matches/${match.id}`);
   };
 
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit(match);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete(match.id);
+  };
+
+  // Version compacte (pour aperçu rapide)
   if (compact) {
     return (
       <Card
         className={cn(
-          "cursor-pointer transition-all hover:shadow-md",
+          "cursor-pointer transition-all hover:shadow-md relative",
           isHovered && "border-primary"
         )}
         onMouseEnter={() => setIsHovered(true)}
@@ -107,15 +129,38 @@ export function SimpleMatchCard({ match, subGroupId, compact = false }: SimpleMa
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </div>
           </div>
+
+          {/* Boutons d'action au survol (version compacte) */}
+          {isHovered && (
+            <div className="absolute top-2 right-2 flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 rounded-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                onClick={handleEditClick}
+              >
+                <Edit className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={handleDeleteClick}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
   }
 
+  // Version normale
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-all hover:shadow-lg",
+        "cursor-pointer transition-all hover:shadow-lg relative",
         isHovered && "border-primary border-2",
         match.status === "live" && "border-destructive border-2 animate-pulse"
       )}
@@ -142,6 +187,28 @@ export function SimpleMatchCard({ match, subGroupId, compact = false }: SimpleMa
           <Badge variant={getStatusVariant(match.status)}>
             {getStatusText(match.status)}
           </Badge>
+
+          {/* Boutons d'action au survol */}
+          {isHovered && (
+            <div className="absolute top-2 right-2 flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 rounded-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                onClick={handleEditClick}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={handleDeleteClick}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Participants */}

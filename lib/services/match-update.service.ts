@@ -1,9 +1,10 @@
 // lib/services/match-update.service.ts - Version améliorée
 
 import { sendMatchPush } from "@/actions/matches";
-import { pool } from "../db/neon-client";
+import { pool, query } from "../db/neon-client";
 import type { PoolClient } from "pg";
 import { emitMatchEvent } from "@/actions/realtime";
+import { getMatchById } from "@/actions/matches-2";
 
 
 export interface MatchUpdate {

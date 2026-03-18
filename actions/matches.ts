@@ -873,135 +873,131 @@ export async function generateInitialState(client: PoolClient, matchId: number) 
   };
 }
 
-export async function createMatch(formData: FormData) {
-  let client: PoolClient | null = null;
+export async function createMatch(
+  subGroupId: number,
+  data: {
+    match_number?: number;
+    fighter1_id?: number | null;
+    fighter2_id?: number | null;
+    notes?: string | null;
+  }
+) {
+  const client = await pool.connect();
+
   try {
-    const rawData = {
-      sub_group_id: formData.get('sub_group_id'),
-      match_number: formData.get('match_number'),
-      match_date: formData.get('match_date'),
-      start_time: formData.get('start_time'),
-      fighter1_id: formData.get('fighter1_id'),
-      fighter2_id: formData.get('fighter2_id'),
-      notes: formData.get('notes'),
-    };
+    await client.query('BEGIN');
 
-    // Build object for schema validation
-    const schemaData = {
-      sub_group_id: Number(rawData.sub_group_id),
-      match_number: rawData.match_number && rawData.match_number !== '' ? Number(rawData.match_number) : undefined,
-      match_date: (rawData.match_date as string) || new Date().toISOString().split('T')[0],
-      start_time: (rawData.start_time as string) || undefined,
-      fighter1_id: rawData.fighter1_id && rawData.fighter1_id !== '' ? Number(rawData.fighter1_id) : undefined,
-      fighter2_id: rawData.fighter2_id && rawData.fighter2_id !== '' ? Number(rawData.fighter2_id) : undefined,
-      notes: rawData.notes ? (rawData.notes as string).trim() || '' : '',
-    };
+    // 🔢 Déterminer numéro
+    let matchNumber = data.match_number;
 
-    // Validate with schema
-    const validatedData = matchSchema.parse(schemaData);
-
-    // Reserve a client from the pool for the whole transaction
-    client = await pool.connect();
-
-    // Determine match number
-    let finalMatchNumber = validatedData.match_number;
-
-    if (finalMatchNumber === undefined || finalMatchNumber === null) {
-      const maxNumberResult = await client.query<{ max_number: number }>(
-        `SELECT COALESCE(MAX(match_number), 0) as max_number 
-         FROM matches WHERE sub_group_id = $1`,
-        [validatedData.sub_group_id]
+    if (!matchNumber) {
+      const maxResult = await client.query(
+        `
+        SELECT COALESCE(MAX(match_number), 0) as max
+        FROM matches
+        WHERE sub_group_id = $1
+        `,
+        [subGroupId]
       );
 
-      finalMatchNumber = maxNumberResult.rows[0]?.max_number + 1 || 1;
-    } else {
-      const existingNumberCheck = await client.query<{ id: number }>(
-        `SELECT id FROM matches WHERE match_number = $1 AND sub_group_id = $2`,
-        [finalMatchNumber, validatedData.sub_group_id]
-      );
-
-      if (existingNumberCheck.rows.length > 0) {
-        const numbersResult = await client.query<{ match_number: number }>(
-          `SELECT match_number FROM matches 
-           WHERE sub_group_id = $1 
-           ORDER BY match_number`,
-          [validatedData.sub_group_id]
-        );
-
-        const existingNumbers = numbersResult.rows.map(r => r.match_number);
-        let nextNumber = finalMatchNumber;
-
-        while (existingNumbers.includes(nextNumber as number)) {
-          nextNumber = (nextNumber as number) + 1;
-        }
-
-        finalMatchNumber = nextNumber;
-      }
+      matchNumber = (maxResult.rows[0]?.max || 0) + 1;
     }
 
-    const insertResult = await client.query<{ id: number }>(
-      `INSERT INTO matches (
-         sub_group_id, match_number, match_date, start_time,
-         fighter1_id, fighter2_id, notes, status, is_active
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', $8)
-       RETURNING id`,
+    // Récupérer l'édition pour déterminer les états initiaux des lutteurs
+    const editionInfo = await client.query(`
+      SELECT p.edition_id
+      FROM sub_groups sg
+      JOIN phase_groups pg ON sg.group_id = pg.id
+      JOIN phases p ON pg.phase_id = p.id
+      WHERE sg.id = $1
+    `, [subGroupId]);
+
+    const editionId = editionInfo.rows[0]?.edition_id;
+
+    // Déterminer les états initiaux des lutteurs
+    let fighter1_initial_state: 'eliminated' | 'not_eliminated' = 'not_eliminated';
+    let fighter2_initial_state: 'eliminated' | 'not_eliminated' = 'not_eliminated';
+
+    if (editionId && data.fighter1_id) {
+      const fighter1State = await client.query(`
+        SELECT is_eliminated 
+        FROM edition_fighters 
+        WHERE edition_id = $1 AND fighter_id = $2
+      `, [editionId, data.fighter1_id]);
+
+      fighter1_initial_state = fighter1State.rows[0]?.is_eliminated ? 'eliminated' : 'not_eliminated';
+    }
+
+    if (editionId && data.fighter2_id) {
+      const fighter2State = await client.query(`
+        SELECT is_eliminated 
+        FROM edition_fighters 
+        WHERE edition_id = $1 AND fighter_id = $2
+      `, [editionId, data.fighter2_id]);
+
+      fighter2_initial_state = fighter2State.rows[0]?.is_eliminated ? 'eliminated' : 'not_eliminated';
+    }
+
+    // 🆕 Insert match
+    const insertRes = await client.query(
+      `
+      INSERT INTO matches (
+        sub_group_id,
+        match_number,
+        fighter1_id,
+        fighter2_id,
+        fighter1_initial_state,
+        fighter2_initial_state,
+        notes,
+        status,
+        break_count,
+        is_active
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', 0, true)
+      RETURNING id
+      `,
       [
-        validatedData.sub_group_id,
-        finalMatchNumber,
-        validatedData.match_date,
-        validatedData.start_time || null,
-        validatedData.fighter1_id || null,
-        validatedData.fighter2_id || null,
-        validatedData.notes ?? null,
-        true,
+        subGroupId,
+        matchNumber,
+        data.fighter1_id || null,
+        data.fighter2_id || null,
+        fighter1_initial_state,
+        fighter2_initial_state,
+        data.notes || null
       ]
     );
 
-    const matchId = insertResult.rows[0].id;
+    const matchId = insertRes.rows[0].id;
 
-    // Initialize fighter states in edition
-    const ctx = await getMatchEditionContext(matchId);
-    if (ctx) {
-      await ensureEditionFightersQualified(ctx.edition_id, [validatedData.fighter1_id, validatedData.fighter2_id].filter(Boolean) as number[]);
-    }
+    // 📸 Snapshot initial (inclut maintenant les états des lutteurs)
+    const snapshot = await generateInitialState(client, matchId);
 
-    // Generate initial state using the helper
-    const initialState = await generateInitialState(client, matchId);
-
-    // Update the match with the initial state
     await client.query(
       `UPDATE matches SET initial_state = $1 WHERE id = $2`,
-      [JSON.stringify(initialState), matchId]
+      [JSON.stringify(snapshot), matchId]
     );
 
-    // Commit transaction
     await client.query('COMMIT');
 
-    // Émettre l'événement temps réel avec le nouveau système
+    // 🔥 Émettre l'événement de création
     await emitMatchEvent(matchId, 'match_created', {
       matchId,
-      subGroupId: validatedData.sub_group_id
+      subGroupId: subGroupId
     });
 
-    revalidatePath(`/ad/sub-groups/${validatedData.sub_group_id}/organisation`);
+    revalidatePath(`/ad/sub-groups/${subGroupId}/matches`);
 
     return {
-      success: true,
       id: matchId,
-      message: `Match #${finalMatchNumber} créé avec succès`
+      match_number: matchNumber
     };
+
   } catch (error) {
-    console.error('Error in createMatch:', error);
-
-    if (error instanceof z.ZodError) {
-      const errorMessages = error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join(', ');
-      throw new Error(`Erreur de validation: ${errorMessages}`);
-    }
-
-    throw new Error('Erreur lors de la création du match');
+    await client.query('ROLLBACK');
+    console.error('❌ createMatch error:', error);
+    throw error;
   } finally {
-    // Always release the client back to the pool
-    if (client) client.release();
+    client.release();
   }
 }
 

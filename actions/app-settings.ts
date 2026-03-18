@@ -16,13 +16,12 @@ export async function getAppSettings(
       is_editable,
       search = '',
       page = 1,
-      limit = 100, // Plus de limite par défaut pour les settings
+      limit = 100,
     } = filters;
 
     let whereClause = 'WHERE 1=1';
     const params: any[] = [];
 
-    // Filtres de base
     if (category) {
       whereClause += ` AND category = $${params.length + 1}`;
       params.push(category);
@@ -46,7 +45,6 @@ export async function getAppSettings(
       params.push(`%${search}%`);
     }
 
-    // Requête pour le total
     const countSql = `
       SELECT COUNT(*) as total
       FROM app_settings
@@ -56,13 +54,11 @@ export async function getAppSettings(
     const countResult = await query<{ total: string }>(countSql, params);
     const total = parseInt(countResult[0]?.total ?? '0');
 
-    // Pagination
     const validatedPage = Math.max(1, page);
-    const validatedLimit = Math.max(1, Math.min(500, limit)); // Limite plus haute pour les settings
+    const validatedLimit = Math.max(1, Math.min(500, limit));
     const offset = (validatedPage - 1) * validatedLimit;
     const totalPages = Math.ceil(total / validatedLimit);
 
-    // Requête principale
     const dataSql = `
       SELECT *
       FROM app_settings
@@ -72,11 +68,11 @@ export async function getAppSettings(
     `;
 
     const data = await query<AppSetting>(
-      dataSql, 
+      dataSql,
       [...params, validatedLimit, offset]
     );
 
-    // Convertir les valeurs selon leur type
+    // Convertir les valeurs selon leur type avec gestion des erreurs
     const processedData = data.map(setting => ({
       ...setting,
       setting_value: parseSettingValue(setting.setting_value, setting.setting_type)
@@ -101,12 +97,12 @@ export async function getAppSettingByKey(key: string) {
   try {
     const sql = 'SELECT * FROM app_settings WHERE setting_key = $1';
     const result = await queryOne<AppSetting>(sql, [key]);
-    
+
     if (!result) {
       throw new Error('Paramètre non trouvé');
     }
-    
-    // Convertir la valeur selon son type
+
+    // Convertir la valeur selon son type avec gestion des erreurs
     return {
       ...result,
       setting_value: parseSettingValue(result.setting_value, result.setting_type)
@@ -121,8 +117,8 @@ export async function getAppSettingsByCategory(category: string) {
   try {
     const sql = 'SELECT * FROM app_settings WHERE category = $1 ORDER BY setting_key';
     const result = await query<AppSetting>(sql, [category]);
-    
-    // Convertir les valeurs selon leur type
+
+    // Convertir les valeurs selon leur type avec gestion des erreurs
     return result.map(setting => ({
       ...setting,
       setting_value: parseSettingValue(setting.setting_value, setting.setting_type)
@@ -137,8 +133,8 @@ export async function getPublicAppSettings() {
   try {
     const sql = 'SELECT * FROM app_settings WHERE is_public = true ORDER BY category, setting_key';
     const result = await query<AppSetting>(sql);
-    
-    // Convertir les valeurs selon leur type
+
+    // Convertir les valeurs selon leur type avec gestion des erreurs
     return result.map(setting => ({
       ...setting,
       setting_value: parseSettingValue(setting.setting_value, setting.setting_type)
@@ -153,16 +149,35 @@ export async function getAllAppSettings(): Promise<AppSettings> {
   try {
     const sql = 'SELECT * FROM app_settings ORDER BY category, setting_key';
     const result = await query<AppSetting>(sql);
-    
-    // Convertir en objet typé
-    const settings: Partial<AppSettings> = {};
-    
+
+    // Build a complete AppSettings object with safe fallbacks
+    const settings: AppSettings = {} as AppSettings;
+
     result.forEach(setting => {
       const key = setting.setting_key as keyof AppSettings;
-      settings[key] = parseSettingValue(setting.setting_value, setting.setting_type);
+      try {
+        (settings as any)[key] = parseSettingValue(setting.setting_value, setting.setting_type);
+      } catch (error) {
+        console.error(`Error parsing setting ${key}:`, error);
+        // Provide a safe default based on the declared type
+        switch (setting.setting_type) {
+          case 'json':
+          case 'array':
+            (settings as any)[key] = {};
+            break;
+          case 'number':
+            (settings as any)[key] = 0;
+            break;
+          case 'boolean':
+            (settings as any)[key] = false;
+            break;
+          default:
+            (settings as any)[key] = '';
+        }
+      }
     });
-    
-    return settings as AppSettings;
+
+    return settings;
   } catch (error) {
     console.error('Error in getAllAppSettings:', error);
     throw new Error('Erreur lors de la récupération de tous les paramètres');
@@ -200,7 +215,7 @@ export async function createAppSetting(formData: FormData) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
     `;
-    
+
     const result = await query<{ id: number }>(sql, [
       validatedData.setting_key,
       stringifySettingValue(validatedData.setting_value, validatedData.setting_type),
@@ -212,8 +227,8 @@ export async function createAppSetting(formData: FormData) {
     ]);
 
     revalidatePath('/admin/settings');
-    return { 
-      success: true, 
+    return {
+      success: true,
       id: result[0].id,
       message: 'Paramètre créé avec succès'
     };
@@ -249,7 +264,7 @@ export async function updateAppSetting(key: string, formData: FormData) {
       SET setting_value = $1, updated_at = CURRENT_TIMESTAMP
       WHERE setting_key = $2
     `;
-    
+
     await query(sql, [
       stringifySettingValue(validatedData.setting_value ?? '', existing.setting_type),
       key,
@@ -257,9 +272,9 @@ export async function updateAppSetting(key: string, formData: FormData) {
 
     revalidatePath('/admin/settings');
     revalidatePath('/');
-    return { 
-      success: true, 
-      message: 'Paramètre modifié avec succès' 
+    return {
+      success: true,
+      message: 'Paramètre modifié avec succès'
     };
   } catch (error) {
     console.error('Error in updateAppSetting:', error);
@@ -280,11 +295,11 @@ export async function deleteAppSetting(key: string) {
 
     const sql = 'DELETE FROM app_settings WHERE setting_key = $1';
     await query(sql, [key]);
-    
+
     revalidatePath('/admin/settings');
-    return { 
-      success: true, 
-      message: 'Paramètre supprimé avec succès' 
+    return {
+      success: true,
+      message: 'Paramètre supprimé avec succès'
     };
   } catch (error) {
     console.error('Error in deleteAppSetting:', error);
@@ -292,35 +307,88 @@ export async function deleteAppSetting(key: string) {
   }
 }
 
-// Fonctions utilitaires pour les valeurs
+// ✅ FONCTION UTILITAIRE CORRIGÉE - Gère les chaînes vides
 function parseSettingValue(value: string, type: string): any {
   try {
+    // Si la valeur est vide ou null
+    if (value === null || value === undefined || value === '') {
+      switch (type) {
+        case 'json':
+        case 'array':
+          return {}; // Retourner un objet vide au lieu de throw
+        case 'number':
+          return 0;
+        case 'boolean':
+          return false;
+        default:
+          return '';
+      }
+    }
+
     switch (type) {
       case 'number':
         return Number(value);
       case 'boolean':
         return value === 'true';
       case 'json':
-        return JSON.parse(value);
+        // Tenter de parser, si échec retourner objet vide
+        try {
+          return JSON.parse(value);
+        } catch (e) {
+          console.warn(`Invalid JSON for setting, returning empty object: ${value}`);
+          return {};
+        }
       case 'array':
-        return JSON.parse(value);
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          console.warn(`Invalid array for setting, returning empty array: ${value}`);
+          return [];
+        }
       default:
         return value;
     }
   } catch (error) {
     console.error('Error parsing setting value:', error);
-    return value;
+    // Retourner une valeur par défaut sûre selon le type
+    switch (type) {
+      case 'json':
+      case 'array':
+        return {};
+      case 'number':
+        return 0;
+      case 'boolean':
+        return false;
+      default:
+        return value;
+    }
   }
 }
 
 function stringifySettingValue(value: any, type: string): string {
   try {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
     switch (type) {
       case 'number':
       case 'boolean':
         return String(value);
       case 'json':
       case 'array':
+        // Si c'est déjà une chaîne, la retourner
+        if (typeof value === 'string') {
+          // Vérifier si c'est du JSON valide
+          try {
+            JSON.parse(value);
+            return value;
+          } catch {
+            // Ce n'est pas du JSON valide, on le transforme
+            return JSON.stringify(value);
+          }
+        }
         return JSON.stringify(value);
       default:
         return String(value);
@@ -359,7 +427,12 @@ export async function getAppVersion(): Promise<string> {
 export async function getSocialLinks() {
   try {
     const setting = await getAppSettingByKey('social_links');
-    return setting.setting_value as { [key: string]: string };
+    const value = setting.setting_value;
+    // Si c'est un objet vide ou une chaîne vide, retourner objet vide
+    if (!value || (typeof value === 'object' && Object.keys(value).length === 0)) {
+      return {};
+    }
+    return value as { [key: string]: string };
   } catch (error) {
     return {};
   }

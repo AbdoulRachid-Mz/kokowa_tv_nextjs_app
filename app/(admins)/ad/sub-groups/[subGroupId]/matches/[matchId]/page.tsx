@@ -76,7 +76,7 @@ export default function MatchDetailPage() {
       if (!isNaN(parsedSubGroupId)) {
         subscribe('subGroup', parsedSubGroupId);
       }
-      
+
       // Auto-auth if user is logged in
       if (user?.userDocument?.id) {
         auth(user.userDocument.id.toString(), user.userDocument.fcm_token || 'dummy_token');
@@ -86,11 +86,11 @@ export default function MatchDetailPage() {
       if (msg.type === 'update') {
         const { entityType, entityId, event } = msg.data;
         console.log(`📨 Realtime event: ${event} for ${entityType}:${entityId}`);
-        
+
         if (entityType === 'match' && entityId == parsedMatchId) {
           queryClient.invalidateQueries({ queryKey: ['match', parsedMatchId] });
         }
-        
+
         if (entityType === 'subGroup' && entityId == parsedSubGroupId) {
           queryClient.invalidateQueries({ queryKey: ['sub-group', subGroupId] });
         }
@@ -310,9 +310,9 @@ export default function MatchDetailPage() {
   // ==========================
   useEffect(() => {
     if (!matchId || !isConnected) return;
-    
+
     subscribeToMatch(parsedMatchId);
-    
+
     return () => {
       // Le serveur nettoie automatiquement
     };
@@ -805,8 +805,22 @@ export default function MatchDetailPage() {
               onClick={() => {
                 switch (confirmDialog.type) {
                   case "winner":
-                    if (confirmDialog.fighterId && confirmDialog.opponentId) {
-                      handleCompleteMatch(confirmDialog.fighterId, confirmDialog.opponentId);
+                    if (confirmDialog.fighterId) {
+                      // Vérifier si l'autre lutteur est assigné
+                      const otherFighterId = confirmDialog.fighterId === match?.fighter1_id
+                        ? match?.fighter2_id
+                        : match?.fighter1_id;
+
+                      if (!otherFighterId) {
+                        // Victoire par forfait
+                        toast.info("Victoire par forfait - Repos obtenu");
+                      }
+                      if (confirmDialog.fighterId && otherFighterId) {
+                        handleCompleteMatch(confirmDialog.fighterId, otherFighterId);
+                      } else if (confirmDialog.fighterId) {
+                        // Victory by forfeit (walkover)
+                        handleCompleteMatch(confirmDialog.fighterId, -1);
+                      }
                     }
                     break;
                   case "draw":

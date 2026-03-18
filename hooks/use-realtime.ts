@@ -11,6 +11,33 @@ export function useRealtime(options: RealtimeOptions = {}) {
     const clientRef = useRef<RealtimeClient | null>(null);
     const optionsRef = useRef(options);
 
+    const getWebSocketURL = () => {
+        const isBrowser = typeof window !== 'undefined';
+
+        // 1. Priorité à la variable d'env SI elle est correcte
+        if (process.env.NEXT_PUBLIC_WS_URL && process.env.NODE_ENV === 'production') {
+            return process.env.NEXT_PUBLIC_WS_URL;
+        }
+
+        // 2. Auto-détection côté navigateur (robuste en prod)
+        if (isBrowser) {
+            const { protocol, hostname } = window.location;
+
+            const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
+
+            // 👉 Cas DEV local
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return 'ws://localhost:3001';
+            }
+
+            // 👉 Cas PROD (Railway, Vercel, etc.)
+            return `${wsProtocol}//${window.location.host}`;
+        }
+
+        // 3. Fallback serveur (rare)
+        return 'ws://localhost:3001';
+    };
+
     // Mettre à jour optionsRef sans déclencher d'effet
     useEffect(() => {
         optionsRef.current = options;
@@ -18,7 +45,7 @@ export function useRealtime(options: RealtimeOptions = {}) {
 
     // Initialize client once
     useEffect(() => {
-        const url = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
+        const url = getWebSocketURL();
 
         const client = new RealtimeClient(url, {
             ...optionsRef.current,

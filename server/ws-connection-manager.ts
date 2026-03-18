@@ -16,7 +16,7 @@ const RATE_LIMIT = {
 class WSConnectionManager {
     private clients: Map<string, WSClient> = new Map();
     private rooms: Map<string, Set<string>> = new Map();
-    
+
     private pingInterval: NodeJS.Timeout | null = null;
     private rateLimitCleanupInterval: NodeJS.Timeout | null = null;
     private readonly PING_FREQ = 30000; // 30s
@@ -35,14 +35,14 @@ class WSConnectionManager {
     }
 
     private async connectRedis() {
-        if (!process.env.REDIS_URL) {
-            console.warn('⚠️ REDIS_URL not set, running in single-instance mode');
+        if (!process.env.REDIS_WS_URL) {
+            console.warn('⚠️ REDIS_WS_URL not set, running in single-instance mode');
             return;
         }
 
         try {
-            this.redisClient = createClient({ url: process.env.REDIS_URL });
-            
+            this.redisClient = createClient({ url: process.env.REDIS_WS_URL });
+
             await this.redisClient.connect();
             console.log(`✅ Redis connected for WebSocket (instance: ${this.instanceId})`);
 
@@ -50,10 +50,10 @@ class WSConnectionManager {
             await this.redisClient.subscribe(this.REDIS_CHANNEL, (message) => {
                 try {
                     const redisMsg: RedisMessage = JSON.parse(message);
-                    
+
                     // Ignore messages from this instance
                     if (redisMsg.instanceId === this.instanceId) return;
-                    
+
                     // Broadcast to local clients
                     this.broadcastToLocalClients(redisMsg.payload);
                 } catch (err) {
@@ -88,7 +88,7 @@ class WSConnectionManager {
 
     private checkRateLimit(client: WSClient, type: 'message' | 'subscribe'): boolean {
         const now = Date.now();
-        
+
         // Reset if window expired
         if (now - client.rateLimit.lastReset >= RATE_LIMIT.WINDOW_MS) {
             client.rateLimit.messageCount = 0;
@@ -162,7 +162,7 @@ class WSConnectionManager {
 
         // Rate limiting
         if (!this.checkRateLimit(client, 'message')) {
-            this.sendToClient(clientId, 'rate_limit_exceeded', { 
+            this.sendToClient(clientId, 'rate_limit_exceeded', {
                 message: 'Rate limit exceeded. Slow down!',
                 limit: RATE_LIMIT.MESSAGES_PER_MINUTE,
                 windowMs: RATE_LIMIT.WINDOW_MS
@@ -211,10 +211,10 @@ class WSConnectionManager {
 
             console.log(`[WS] Client authenticated: ${client.id} (${client.userId})`);
 
-            this.sendToClient(client.id, 'auth_success', { 
+            this.sendToClient(client.id, 'auth_success', {
                 userId: client.userId,
                 roles: client.roles,
-                message: 'Authenticated successfully' 
+                message: 'Authenticated successfully'
             });
         } catch (error) {
             console.error(`[WS] Auth failed for ${client.id}:`, error);
@@ -225,7 +225,7 @@ class WSConnectionManager {
     private handleSubscribe(client: WSClient, data: SubscriptionData) {
         // Rate limiting pour les souscriptions
         if (!this.checkRateLimit(client, 'subscribe')) {
-            this.sendToClient(client.id, 'rate_limit_exceeded', { 
+            this.sendToClient(client.id, 'rate_limit_exceeded', {
                 message: 'Subscribe rate limit exceeded',
                 limit: RATE_LIMIT.SUBSCRIBES_PER_MINUTE
             });
@@ -237,16 +237,16 @@ class WSConnectionManager {
 
         // Vérification d'authentification pour certaines rooms
         if (entityType === 'admin' && !client.roles?.includes('admin')) {
-            this.sendToClient(client.id, 'error', { 
-                message: 'Unauthorized: Admin access required' 
+            this.sendToClient(client.id, 'error', {
+                message: 'Unauthorized: Admin access required'
             });
             return;
         }
 
         // Vérification pour les matchs (optionnel : exiger auth)
         if (entityType === 'match' && !client.authenticated) {
-            this.sendToClient(client.id, 'error', { 
-                message: 'Authentication required for match updates' 
+            this.sendToClient(client.id, 'error', {
+                message: 'Authentication required for match updates'
             });
             return;
         }
@@ -282,7 +282,7 @@ class WSConnectionManager {
                 timestamp: Date.now(),
                 instanceId: this.instanceId
             };
-            
+
             this.redisClient.publish(this.REDIS_CHANNEL, JSON.stringify(redisMsg))
                 .catch(err => console.error('❌ Redis publish error:', err));
         }
@@ -291,13 +291,13 @@ class WSConnectionManager {
     private broadcastToLocalClients(payload: RealtimeUpdatePayload) {
         const roomName = `${payload.entityType}:${payload.entityId}`;
         const subscribers = this.rooms.get(roomName);
-        
+
         if (!subscribers || subscribers.size === 0) {
             return;
         }
 
-        const message = JSON.stringify({ 
-            type: 'update', 
+        const message = JSON.stringify({
+            type: 'update',
             data: {
                 ...payload,
                 _instance: this.instanceId // Pour debug
@@ -324,7 +324,7 @@ class WSConnectionManager {
 
         this.clients.forEach((client, clientId) => {
             if (now - client.lastPing > this.CLIENT_TIMEOUT) {
-                console.log(`[WS] Client timeout: ${clientId} (no ping for ${Math.round((now - client.lastPing)/1000)}s)`);
+                console.log(`[WS] Client timeout: ${clientId} (no ping for ${Math.round((now - client.lastPing) / 1000)}s)`);
                 this.removeClient(clientId);
                 timedOut++;
             } else if (client.ws.readyState === WebSocket.OPEN) {
@@ -347,7 +347,7 @@ class WSConnectionManager {
         });
 
         this.clients.delete(clientId);
-        
+
         if (client.ws.readyState !== WebSocket.CLOSED) {
             client.ws.terminate();
         }
@@ -390,10 +390,10 @@ class WSConnectionManager {
 
     public shutdown() {
         console.log('[WS] Shutting down...');
-        
+
         if (this.pingInterval) clearInterval(this.pingInterval);
         if (this.rateLimitCleanupInterval) clearInterval(this.rateLimitCleanupInterval);
-        
+
         // Notifier tous les clients
         this.clients.forEach(c => {
             c.ws.close(1000, 'Server shutdown');
