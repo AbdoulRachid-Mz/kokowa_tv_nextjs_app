@@ -14,27 +14,19 @@ export function useRealtime(options: RealtimeOptions = {}) {
     const getWebSocketURL = () => {
         const isBrowser = typeof window !== 'undefined';
 
-        // 1. Priorité à la variable d'env SI elle est correcte
-        if (process.env.NEXT_PUBLIC_WS_URL && process.env.NODE_ENV === 'production') {
-            return process.env.NEXT_PUBLIC_WS_URL;
-        }
-
-        // 2. Auto-détection côté navigateur (robuste en prod)
         if (isBrowser) {
-            const { protocol, hostname } = window.location;
-
+            const { protocol, host } = window.location;
             const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
 
-            // 👉 Cas DEV local
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                return 'ws://localhost:3001';
+            if (host.includes('localhost')) {
+                return 'ws://localhost:3001'; // dev local
             }
 
-            // 👉 Cas PROD (Railway, Vercel, etc.)
-            return `${wsProtocol}//${window.location.host}/ws`;
+            // Production sur Railway → utiliser la route API
+            return `${wsProtocol}//${host}/api/ws`;
         }
 
-        // 3. Fallback serveur (rare)
+        // fallback serveur
         return 'ws://localhost:3001';
     };
 
