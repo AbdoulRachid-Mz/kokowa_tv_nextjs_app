@@ -41,7 +41,7 @@ if (!getApps().length) {
     }
 }
 
-const PORT = process.env.WS_PORT || 3001;
+const PORT = process.env.PORT || 3001;
 const HOST = process.env.WS_HOST || '0.0.0.0';
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',');
@@ -79,6 +79,7 @@ const server = createServer((req, res) => {
 
 const wss = new WebSocketServer({
     server,
+    path: '/ws',
     // Options pour production
     clientTracking: true,
     maxPayload: 1024 * 1024, // 1MB max

@@ -31,7 +31,7 @@ export function useRealtime(options: RealtimeOptions = {}) {
             }
 
             // 👉 Cas PROD (Railway, Vercel, etc.)
-            return `${wsProtocol}//${window.location.host}`;
+            return `${wsProtocol}//${window.location.host}/ws`;
         }
 
         // 3. Fallback serveur (rare)

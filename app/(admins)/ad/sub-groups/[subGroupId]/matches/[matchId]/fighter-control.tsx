@@ -397,7 +397,7 @@ export function FighterControl({
           {/* Vainqueur */}
           <Button
             onClick={onCompleteWithWinner}
-            disabled={matchStatus === "completed" || !canSetWinner || eliminationStatus?.isEliminated}
+            disabled={matchStatus === "completed"}
             variant="outline"
             size="sm"
             className="flex flex-col items-center justify-center h-auto py-2 border-green-500 hover:bg-green-50"
