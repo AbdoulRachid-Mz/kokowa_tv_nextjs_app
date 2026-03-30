@@ -951,9 +951,10 @@ export async function createMatch(
         notes,
         status,
         break_count,
-        is_active
+        is_active,
+        match_date
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', 0, true)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', 0, true, CURRENT_DATE)
       RETURNING id
       `,
       [

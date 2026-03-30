@@ -50,6 +50,7 @@ export default function MatchDetailPage() {
   const parsedMatchId = parseInt(matchId as string);
   const parsedSubGroupId = parseInt(subGroupId as string);
   const { user } = useAuthContext();
+  const [isDialogLoading, setIsDialogLoading] = useState(false);
 
   const [availableFighters, setAvailableFighters] = useState<{
     region1: Fighter[];
@@ -214,9 +215,7 @@ export default function MatchDetailPage() {
   });
 
   //handle removeFighterId on match
-  // Dans page.tsx - corrections
   const handleRemoveFighterId = (fighterId: number) => {
-    // Déterminer quel fighter retirer
     const updates: MatchUpdate = {};
 
     if (match?.fighter1_id === fighterId) {
@@ -611,7 +610,13 @@ export default function MatchDetailPage() {
               }}
               onSetDraw={() => setConfirmDialog({ isOpen: true, type: "draw" })}
               onReplaceFighter={handleReplaceFigherRoute}
-              onRemoveFighter={handleRemoveFighterId}
+              onAskRemoveFighter={(fighterId) => {
+                setConfirmDialog({
+                  isOpen: true,
+                  type: "removeFighter",
+                  fighterId,
+                });
+              }}
             />
 
             <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 hidden md:block">
@@ -650,7 +655,13 @@ export default function MatchDetailPage() {
               }}
               onSetDraw={() => setConfirmDialog({ isOpen: true, type: "draw" })}
               onReplaceFighter={handleReplaceFigherRoute}
-              onRemoveFighter={handleRemoveFighterId}
+              onAskRemoveFighter={(fighterId) => {
+                setConfirmDialog({
+                  isOpen: true,
+                  type: "removeFighter",
+                  fighterId,
+                });
+              }}
             />
           </div>
 
@@ -791,7 +802,7 @@ export default function MatchDetailPage() {
             {confirmDialog.type === "replaceFighter" &&
               "Êtes-vous sûr de vouloir remplacer ce lutteur ?"}
             {confirmDialog.type === "removeFighter" &&
-              "Êtes-vous sûr de vouloir retirer ce lutteur ?"}
+              "Êtes-vous sûr de vouloir retirer ce lutteur du match ? Cette action peut être annulée en réassignant un lutteur."}
           </p>
 
           <DialogFooter>
@@ -851,7 +862,8 @@ export default function MatchDetailPage() {
                     break;
                   case "removeFighter":
                     if (confirmDialog.fighterId) {
-                      handleRemoveFighterId?.(confirmDialog.fighterId);
+                      handleRemoveFighterId(confirmDialog.fighterId);
+                      // setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
                     }
                     break;
                 }

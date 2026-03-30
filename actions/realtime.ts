@@ -1,4 +1,4 @@
-// actions/realtime.ts
+// @/actions/realtime.ts
 'use server';
 
 import { wsManager } from '@/server/ws-connection-manager';

@@ -1,4 +1,4 @@
-// server/websocket-server.ts
+// @/server/websocket-server.ts
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 // @ts-ignore
@@ -124,8 +124,8 @@ process.on('unhandledRejection', (reason, promise) => {
 
 server.listen(Number(PORT), HOST, () => {
     const url = process.env.NODE_ENV === 'production'
-        ? `wss://kokowa-tv.up.railway.app`
-        : `ws://${HOST}:${PORT}`;
+    ? `wss://kokowa-tv.up.railway.app/ws`
+    : `ws://${HOST}:${PORT}/ws`;
 
     logger.info(`
 🚀 WebSocket Gateway Server running

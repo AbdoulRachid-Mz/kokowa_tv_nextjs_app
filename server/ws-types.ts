@@ -1,4 +1,4 @@
-// server/ws-types.ts
+// @/server/ws-types.ts
 import { WebSocket } from 'ws';
 
 export type EntityType = 'edition' | 'subGroup' | 'match' | 'fighter' | 'region' | 'admin';

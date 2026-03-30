@@ -1,4 +1,4 @@
-// server/ws-connection-manager.ts
+// @/server/ws-connection-manager.ts
 import { WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
 import type { WSClient, WSMessage, WSMessageType, SubscriptionData, RealtimeUpdatePayload, ServerStats, Platform, RedisMessage } from './ws-types.ts';

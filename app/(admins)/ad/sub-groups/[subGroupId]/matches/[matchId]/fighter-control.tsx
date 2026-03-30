@@ -42,6 +42,7 @@ interface FighterControlProps {
   canSetWinner: boolean;
   canSetDraw: boolean;
   onReplaceFighter?: (fighterId: number, regionId: number) => void;
+  onAskRemoveFighter?: (fighterId: number) => void;
   onRemoveFighter?: (fighterId: number) => void;
 }
 
@@ -61,6 +62,8 @@ export function FighterControl({
   canSetWinner,
   canSetDraw,
   onReplaceFighter,
+  onAskRemoveFighter,
+
   onRemoveFighter,
 }: FighterControlProps) {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
@@ -83,27 +86,28 @@ export function FighterControl({
   const isWinner = !!match && match.winner_fighter_id === fighter?.id;
   const isLoser = !!match && match.loser_fighter_id === fighter?.id;
   const canModify = !isSubGroupCompleted && matchStatus !== "completed";
+  const canRemove = matchStatus !== "completed";
   const bothFightersAssigned = !!match && !!match.fighter1_id && !!match.fighter2_id;
-  
+
   // Vérifier si l'autre lutteur est assigné
-  const otherFighterAssigned = fighterType === "fighter1" 
-    ? !!match?.fighter2_id 
+  const otherFighterAssigned = fighterType === "fighter1"
+    ? !!match?.fighter2_id
     : !!match?.fighter1_id;
 
   // ✅ Obtenir le statut d'élimination du lutteur
   const getFighterEliminationStatus = () => {
     if (!fighter || !match) return null;
-    
+
     const isFighter1 = fighterType === "fighter1";
-    const initialEliminated = isFighter1 
+    const initialEliminated = isFighter1
       ? match.fighter1_initial_state === 'eliminated'
       : match.fighter2_initial_state === 'eliminated';
-    
+
     // Vérifier si le lutteur a été éliminé pendant le match
     const eliminatedInMatch = match.loser_fighter_id === fighter.id;
-    
-    return { 
-      initialEliminated, 
+
+    return {
+      initialEliminated,
       eliminatedInMatch,
       isEliminated: initialEliminated || eliminatedInMatch
     };
@@ -247,13 +251,10 @@ export function FighterControl({
   // Si un lutteur est assigné, on affiche sa carte
   return (
     <Card
-      className={`relative h-full ${
-        isWinner ? "border-2 border-green-500 bg-green-50/50" : ""
-      } ${
-        isLoser ? "border-2 border-red-500 bg-red-50/50" : ""
-      } ${
-        eliminationStatus?.isEliminated ? "opacity-80" : ""
-      } ${isSubGroupCompleted ? "opacity-70" : ""}`}
+      className={`relative h-full ${isWinner ? "border-2 border-green-500 bg-green-50/50" : ""
+        } ${isLoser ? "border-2 border-red-500 bg-red-50/50" : ""
+        } ${eliminationStatus?.isEliminated ? "opacity-80" : ""
+        } ${isSubGroupCompleted ? "opacity-70" : ""}`}
     >
       <CardHeader className="pb-2">
         <div className="flex flex-col items-center text-center">
@@ -274,7 +275,7 @@ export function FighterControl({
               </Typography>
             )}
           </div>
-          
+
           {/* ✅ Badges de statut */}
           <div className="flex flex-wrap gap-1 mt-2 justify-center">
             {isWinner && (
@@ -282,13 +283,13 @@ export function FighterControl({
                 <Trophy className="h-3 w-3" /> Vainqueur
               </Badge>
             )}
-            
+
             {isLoser && (
               <Badge variant="destructive" className="gap-1">
                 <Skull className="h-3 w-3" /> Terrassé
               </Badge>
             )}
-            
+
             {eliminationStatus?.initialEliminated && !isLoser && (
               <Badge variant="destructive" className="gap-1 bg-orange-600">
                 <AlertCircle className="h-3 w-3" /> Éliminé (terrassé)
@@ -296,7 +297,7 @@ export function FighterControl({
             )}
           </div>
         </div>
-        
+
         {/* buttons remove and replace */}
         <div className="absolute top-2 right-2 flex gap-1">
           <Button
@@ -304,20 +305,16 @@ export function FighterControl({
             size="sm"
             onClick={() => {
               if (fighter?.id) {
-                setConfirmDialog({
-                  isOpen: true,
-                  type: "removeFighter",
-                  fighterId: fighter.id,
-                });
+                onAskRemoveFighter?.(fighter.id);
               }
             }}
-            disabled={!canModify}
+            disabled={!canRemove}
           >
             <Typography hasTooltip={true} tooltipContent="retirer ce lutteur">
               <UserMinus className="h-4 w-4" />
             </Typography>
           </Button>
-          <Button
+          {/* <Button
             variant="outline"
             size="sm"
             onClick={() => {
@@ -335,7 +332,7 @@ export function FighterControl({
             <Typography hasTooltip={true} tooltipContent="remplacer ce lutteur">
               <Users className="h-4 w-4" />
             </Typography>
-          </Button>
+          </Button> */}
         </div>
       </CardHeader>
 
@@ -385,9 +382,8 @@ export function FighterControl({
             variant="outline"
             onClick={onSetDraw}
             size="sm"
-            className={`flex flex-col items-center justify-center h-auto py-2 border-blue-500 hover:bg-blue-50 ${
-              !otherFighterAssigned ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            className={`flex flex-col items-center justify-center h-auto py-2 border-blue-500 hover:bg-blue-50 ${!otherFighterAssigned ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             title={!otherFighterAssigned ? "Match nul impossible sans adversaire" : ""}
           >
             <Equal className="h-4 w-4 text-blue-600 mb-1" />

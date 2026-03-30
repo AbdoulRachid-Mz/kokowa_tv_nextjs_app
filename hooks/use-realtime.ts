@@ -12,23 +12,19 @@ export function useRealtime(options: RealtimeOptions = {}) {
     const optionsRef = useRef(options);
 
     const getWebSocketURL = () => {
-        const isBrowser = typeof window !== 'undefined';
-
-        if (isBrowser) {
-            const { protocol, host } = window.location;
-            const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
-
-            if (host.includes('localhost')) {
-                return 'ws://localhost:3001'; // dev local
-            }
-
-            // Production sur Railway → utiliser la route API
-            return `${wsProtocol}//${host}/api/ws`;
-        }
-
-        // fallback serveur
+    if (typeof window === 'undefined') {
         return 'ws://localhost:3001';
-    };
+    }
+
+    const isLocalhost = window.location.hostname.includes('localhost');
+
+    if (isLocalhost) {
+        return 'ws://localhost:3001/ws';
+    }
+
+    // ✅ PROD → ton vrai serveur WS Railway
+    return 'wss://kokowa-tv.up.railway.app/ws';
+};
 
     // Mettre à jour optionsRef sans déclencher d'effet
     useEffect(() => {
