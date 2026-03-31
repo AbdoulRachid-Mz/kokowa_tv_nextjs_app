@@ -41,7 +41,7 @@ if (!getApps().length) {
     }
 }
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3001;  // Railway définit automatiquement PORT
 const HOST = process.env.WS_HOST || '0.0.0.0';
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',');
@@ -123,17 +123,23 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 server.listen(Number(PORT), HOST, () => {
-    const url = process.env.NODE_ENV === 'production'
-    ? `wss://kokowa-tv.up.railway.app/ws`
-    : `ws://${HOST}:${PORT}/ws`;
+    // ✅ Construire l'URL dynamiquement
+    let wsUrl;
+    if (process.env.NODE_ENV === 'production') {
+        // Utiliser le même domaine que l'application
+        const host = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_STATIC_URL || 'kokowa-tv.up.railway.app';
+        wsUrl = `wss://${host}/ws`;
+    } else {
+        wsUrl = `ws://${HOST}:${PORT}/ws`;
+    }
 
     logger.info(`
 🚀 WebSocket Gateway Server running
    - Environment: ${process.env.NODE_ENV || 'development'}
    - Port: ${PORT}
    - Host: ${HOST}
-   - URL: ${url}
-   - Redis: ${process.env.REDIS_URL ? '✅ Enabled' : '❌ Disabled (single instance)'}
+   - URL: ${wsUrl}
+   - Redis: ${process.env.REDIS_WS_URL ? '✅ Enabled' : '❌ Disabled (single instance)'}
    - Instance ID: ${process.env.INSTANCE_ID || 'unknown'}
     `);
 });
