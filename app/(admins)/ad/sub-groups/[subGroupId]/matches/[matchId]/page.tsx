@@ -191,6 +191,7 @@ export default function MatchDetailPage() {
 
   const startSubGroupMutation = useMutation({
     mutationFn: async () => {
+      setIsDialogLoading(true)
       const formData = new FormData();
       formData.append("status", "ongoing");
       const response = await updateSubGroup(parsedSubGroupId, formData);
@@ -200,6 +201,10 @@ export default function MatchDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["sub-group", subGroupId] });
       toast.success("Sous-groupe démarré");
       setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      setIsDialogLoading(false)
+    },
+    onError: () => {
+      setIsDialogLoading(false)
     },
   });
 
@@ -216,6 +221,7 @@ export default function MatchDetailPage() {
 
   //handle removeFighterId on match
   const handleRemoveFighterId = (fighterId: number) => {
+    setIsDialogLoading(true)
     const updates: MatchUpdate = {};
 
     if (match?.fighter1_id === fighterId) {
@@ -224,6 +230,7 @@ export default function MatchDetailPage() {
       updates.fighter2_id = null;
     } else {
       toast.error("Lutteur non trouvé dans ce match");
+      setIsDialogLoading(false)
       return;
     }
 
@@ -231,13 +238,19 @@ export default function MatchDetailPage() {
       onSuccess: () => {
         toast.success("Lutteur retiré avec succès");
         setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        setIsDialogLoading(false)
+      },
+      onError: () => {
+        setIsDialogLoading(false)
       }
     });
   };
 
   //handleReplaceFigherRoute
   const handleReplaceFigherRoute = (fighterId: number, regionId: number) => {
+    setIsDialogLoading(true)
     router.push(`/ad/editions/${subGroup?.group?.phase?.edition?.id}/fighters/replace?fighterId=${fighterId}&regionId=${regionId}`)
+    setIsDialogLoading(false)    
   }
 
   // const updateSubGroupMutation = useMutation({
@@ -353,21 +366,25 @@ export default function MatchDetailPage() {
   const handleCompleteMatch = (winnerId: number, loserId: number) => {
     completeMatch(winnerId, loserId);
     setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+    setIsDialogLoading(false)
   };
 
   const handleSetDraw = () => {
     setDraw();
     setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+    setIsDialogLoading(false)
   };
 
   const handleReclamation = () => {
     reclamation();
     setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+    setIsDialogLoading(false)
   };
 
   const handleResetMatch = () => {
     resetMatch();
     setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+    setIsDialogLoading(false)
   };
 
   const handleCompleteSubGroup = () => {
@@ -617,6 +634,15 @@ export default function MatchDetailPage() {
                   fighterId,
                 });
               }}
+
+              onAskReplaceFighter={(fighterId) => {
+                setConfirmDialog({
+                  isOpen: true,
+                  type: "replaceFighter",
+                  fighterId,
+                  regionId: subGroup?.region1_id,
+                });
+              }}
             />
 
             <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 hidden md:block">
@@ -660,6 +686,14 @@ export default function MatchDetailPage() {
                   isOpen: true,
                   type: "removeFighter",
                   fighterId,
+                });
+              }}
+              onAskReplaceFighter={(fighterId) => {
+                setConfirmDialog({
+                  isOpen: true,
+                  type: "replaceFighter",
+                  fighterId,
+                  regionId: subGroup?.region2_id,
                 });
               }}
             />
@@ -868,9 +902,9 @@ export default function MatchDetailPage() {
                     break;
                 }
               }}
-              disabled={completeSubGroupMutation.isPending}
+              disabled={completeSubGroupMutation.isPending || isDialogLoading}
             >
-              Confirmer
+              {isDialogLoading ? "Chargement..." : "Confirmer"}
             </Button>
           </DialogFooter>
         </DialogContent>

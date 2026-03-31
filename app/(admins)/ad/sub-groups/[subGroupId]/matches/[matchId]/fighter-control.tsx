@@ -43,6 +43,7 @@ interface FighterControlProps {
   canSetDraw: boolean;
   onReplaceFighter?: (fighterId: number, regionId: number) => void;
   onAskRemoveFighter?: (fighterId: number) => void;
+  onAskReplaceFighter?: (fighterId: number) => void;
   onRemoveFighter?: (fighterId: number) => void;
 }
 
@@ -63,7 +64,7 @@ export function FighterControl({
   canSetDraw,
   onReplaceFighter,
   onAskRemoveFighter,
-
+  onAskReplaceFighter,
   onRemoveFighter,
 }: FighterControlProps) {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
@@ -314,25 +315,20 @@ export function FighterControl({
               <UserMinus className="h-4 w-4" />
             </Typography>
           </Button>
-          {/* <Button
+          <Button
             variant="outline"
             size="sm"
             onClick={() => {
               if (fighter?.id) {
-                setConfirmDialog({
-                  isOpen: true,
-                  type: "replaceFighter",
-                  fighterId: fighter.id,
-                  regionId: fighter.region_id,
-                });
+                onAskReplaceFighter?.(fighter.id);
               }
             }}
-            disabled={!canModify}
+            disabled={!canRemove}
           >
             <Typography hasTooltip={true} tooltipContent="remplacer ce lutteur">
               <Users className="h-4 w-4" />
             </Typography>
-          </Button> */}
+          </Button>
         </div>
       </CardHeader>
 

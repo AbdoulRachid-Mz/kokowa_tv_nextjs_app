@@ -63,18 +63,24 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
     await queryClient.invalidateQueries({ queryKey: ["app-settings"] });
   };
 
- const getSetting = <T = any,>(key: string, defaultValue?: T): T => {
-  if (!settings) return defaultValue as T;
-  try {
-    const value = (settings as Record<string, any>)[key];
-    // Si la valeur est undefined, retourner defaultValue
-    return value !== undefined ? value : defaultValue as T;
-  } catch (error) {
-    console.error(`Error getting setting ${key}:`, error);
-    return defaultValue as T;
-  }
-};
-
+  const getSetting = <T = any,>(key: string, defaultValue?: T): T => {
+    if (!settings) return defaultValue as T;
+    try {
+      const value = (settings as Record<string, any>)[key];
+      // ✅ Si la valeur est undefined, null, ou un objet vide, retourner defaultValue
+      if (value === undefined || value === null) {
+        return defaultValue as T;
+      }
+      // ✅ Pour les objets, vérifier s'ils sont vides
+      if (typeof value === 'object' && Object.keys(value).length === 0) {
+        return defaultValue as T;
+      }
+      return value !== undefined ? value : defaultValue as T;
+    } catch (error) {
+      console.error(`Error getting setting ${key}:`, error);
+      return defaultValue as T;
+    }
+  };
   const value: AppSettingsContextType = {
     settings: settings || null,
     loading: isLoading,

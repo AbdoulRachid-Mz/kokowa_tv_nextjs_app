@@ -145,21 +145,24 @@ export async function getPublicAppSettings() {
   }
 }
 
+
 export async function getAllAppSettings(): Promise<AppSettings> {
   try {
     const sql = 'SELECT * FROM app_settings ORDER BY category, setting_key';
     const result = await query<AppSetting>(sql);
 
     // Build a complete AppSettings object with safe fallbacks
-    const settings: AppSettings = {} as AppSettings;
+    const settings: Partial<AppSettings> = {};
 
     result.forEach(setting => {
       const key = setting.setting_key as keyof AppSettings;
       try {
-        (settings as any)[key] = parseSettingValue(setting.setting_value, setting.setting_type);
+        // ✅ Vérifier que setting.setting_value existe et n'est pas null
+        const rawValue = setting.setting_value ?? '';
+        (settings as any)[key] = parseSettingValue(rawValue, setting.setting_type);
       } catch (error) {
         console.error(`Error parsing setting ${key}:`, error);
-        // Provide a safe default based on the declared type
+        // ✅ Valeurs par défaut selon le type déclaré dans AppSettings
         switch (setting.setting_type) {
           case 'json':
           case 'array':
@@ -177,10 +180,51 @@ export async function getAllAppSettings(): Promise<AppSettings> {
       }
     });
 
-    return settings;
+    // ✅ S'assurer que toutes les clés de AppSettings existent avec des valeurs par défaut
+    const defaultSettings: AppSettings = {
+      app_name: 'Lutte Traditionnelle',
+      app_description: 'Plateforme de gestion des compétitions de lutte traditionnelle',
+      app_version: '1.0.0',
+      maintenance_mode: false,
+      registration_enabled: true,
+      max_file_size: 10485760,
+      allowed_file_types: ['image/jpeg', 'image/png', 'image/gif', 'video/mp4'],
+      default_language: 'fr',
+      supported_languages: ['fr', 'ha', 'en'],
+      match_duration: 300,
+      max_breaks_per_match: 3,
+      ranking_points_win: 3,
+      ranking_points_draw: 1,
+      social_links: {},
+      contact_email: '',
+      analytics_tracking_id: '',
+    };
+
+    // ✅ Fusionner avec les valeurs par défaut
+    const finalSettings = { ...defaultSettings, ...settings };
+
+    return finalSettings;
   } catch (error) {
     console.error('Error in getAllAppSettings:', error);
-    throw new Error('Erreur lors de la récupération de tous les paramètres');
+    // ✅ Retourner des valeurs par défaut en cas d'erreur grave
+    return {
+      app_name: 'Lutte Traditionnelle',
+      app_description: 'Plateforme de gestion des compétitions de lutte traditionnelle',
+      app_version: '1.0.0',
+      maintenance_mode: false,
+      registration_enabled: true,
+      max_file_size: 10485760,
+      allowed_file_types: ['image/jpeg', 'image/png', 'image/gif', 'video/mp4'],
+      default_language: 'fr',
+      supported_languages: ['fr', 'ha', 'en'],
+      match_duration: 300,
+      max_breaks_per_match: 3,
+      ranking_points_win: 3,
+      ranking_points_draw: 1,
+      social_links: {},
+      contact_email: '',
+      analytics_tracking_id: '',
+    };
   }
 }
 

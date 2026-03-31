@@ -12,19 +12,19 @@ export function useRealtime(options: RealtimeOptions = {}) {
     const optionsRef = useRef(options);
 
     const getWebSocketURL = () => {
-    if (typeof window === 'undefined') {
-        return 'ws://localhost:3001';
-    }
+        if (typeof window === 'undefined') {
+            return 'ws://localhost:3001';
+        }
 
-    const isLocalhost = window.location.hostname.includes('localhost');
+        const isLocalhost = window.location.hostname.includes('localhost');
 
-    if (isLocalhost) {
-        return 'ws://localhost:3001/ws';
-    }
+        if (isLocalhost) {
+            return 'ws://localhost:3001/ws';
+        }
 
-    // ✅ PROD → ton vrai serveur WS Railway
-    return 'wss://kokowa-tv.up.railway.app/ws';
-};
+        // ✅ PROD → ton vrai serveur WS Railway
+        return 'wss://kokowa-tv.up.railway.app/ws';
+    };
 
     // Mettre à jour optionsRef sans déclencher d'effet
     useEffect(() => {
