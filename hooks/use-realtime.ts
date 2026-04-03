@@ -13,22 +13,12 @@ export function useRealtime(options: RealtimeOptions = {}) {
 
     const getWebSocketURL = () => {
         if (typeof window === 'undefined') {
-            return 'ws://localhost:3001';
+            return 'ws://localhost:3000';
         }
 
-        const isLocalhost = window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1';
-
-        if (isLocalhost) {
-            return 'ws://localhost:3001/ws';
-        }
-
-        // ✅ PROD → utiliser le même domaine que la page
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
 
-        // Utiliser le même domaine, le serveur WebSocket écoute sur le même host mais port différent
-        // En production, le serveur est sur le même domaine (Railway expose tous les ports)
         return `${protocol}//${host}/ws`;
     };
 

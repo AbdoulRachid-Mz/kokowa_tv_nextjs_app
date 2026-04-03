@@ -6,9 +6,9 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const serverPath = join(__dirname, '../server/websocket-server.ts');
+const serverPath = join(__dirname, '../server.ts');
 
-console.log('🚀 Starting WebSocket Gateway Server with Native Node 24 TS support...');
+console.log('🚀 Starting Unified Next.js + WebSocket Server...');
 
 const wsProcess = spawn('node', ['--experimental-strip-types', serverPath], {
     stdio: 'inherit',
