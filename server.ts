@@ -63,8 +63,8 @@ app.prepare().then(() => {
             // Custom health endpoint
             if (pathname === '/health') {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ 
-                    status: 'ok', 
+                res.end(JSON.stringify({
+                    status: 'ok',
                     timestamp: Date.now(),
                     instance: process.env.INSTANCE_ID || 'unknown'
                 }));
@@ -110,7 +110,7 @@ app.prepare().then(() => {
     server.listen(Number(PORT), HOST, () => {
         const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
         const wsProtocol = process.env.NODE_ENV === 'production' ? 'wss' : 'ws';
-        
+
         logger.info(`
 🚀 Server ready on ${protocol}://${HOST}:${PORT}
    - Environment: ${process.env.NODE_ENV || 'development'}
@@ -122,16 +122,16 @@ app.prepare().then(() => {
 
     const shutdown = () => {
         logger.info('Shutting down server...');
-        
+
         wsManager.shutdown();
-        
+
         wss.close(() => {
             server.close(() => {
                 logger.info('Server stopped');
                 process.exit(0);
             });
         });
-        
+
         // Force exit after 10s
         setTimeout(() => {
             logger.error('Forced shutdown after timeout');
@@ -141,6 +141,13 @@ app.prepare().then(() => {
 
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);
+    process.on('uncaughtException', (error) => {
+        logger.error({ msg: 'Uncaught Exception', error });
+        shutdown();
+    });
+    process.on('unhandledRejection', (reason, promise) => {
+        logger.error({ msg: 'Unhandled Rejection', promise, reason });
+    });
 }).catch((err) => {
     logger.error('Error during app.prepare():', err);
     process.exit(1);

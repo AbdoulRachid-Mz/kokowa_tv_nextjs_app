@@ -3,9 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "dev": "node --experimental-strip-types server.ts",
-    "dev:next": "next dev",
+    "dev": "next dev",
+    "dev:full": "concurrently \"next dev\" \"node --experimental-strip-types server.ts\"",
     "build": "next build",
     "start": "node --experimental-strip-types server.ts",
     "lint": "eslint",
@@ -27,9 +30,7 @@
     "migrate:status": "node scripts/migrations-manager.js status",
     "migrate:create": "node scripts/migrations-manager.js create",
     "migrate:to": "node scripts/migrations-manager.js migrate",
-    "migrate:list": "node scripts/migrations-manager.js list",
-    "ws:dev": "node --experimental-strip-types server/websocket-server.ts",
-    "ws:start": "node --experimental-strip-types server.ts"
+    "migrate:list": "node scripts/migrations-manager.js list"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
