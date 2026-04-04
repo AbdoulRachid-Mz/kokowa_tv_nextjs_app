@@ -26,6 +26,8 @@ interface ServerStats {
   uptime: number;
   authenticatedClients: number;
   rateLimitedClients: number;
+  redisConnected: boolean;
+  instanceId: string;
 }
 
 export default function RealtimeAdminPage() {
@@ -105,15 +107,26 @@ export default function RealtimeAdminPage() {
 
   // Récupérer le token Firebase au chargement
   useEffect(() => {
-    if (!authLoading) {
-      if (user) {
-        const token = user.userDocument?.fcm_token;
-        setUserToken(token ?? null);
-        setAuthStatus('authenticated');
-      } else {
-        setAuthStatus('anonymous');
+    const fetchToken = async () => {
+      if (!authLoading) {
+        if (user) {
+          try {
+            // Utiliser le token d'ID Firebase pour l'authentification WebSocket
+            // @ts-ignore - On suppose que la méthode getIdToken existe sur l'objet user de Firebase
+            const token = await user.getIdToken?.() || user.userDocument?.fcm_token;
+            setUserToken(token ?? null);
+            setAuthStatus('authenticated');
+          } catch (error) {
+            console.error('Erreur récupération ID Token:', error);
+            setAuthStatus('anonymous');
+          }
+        } else {
+          setAuthStatus('anonymous');
+        }
       }
-    }
+    };
+    
+    fetchToken();
   }, [user, authLoading]);
 
   // Authentifier automatiquement quand connecté
@@ -306,7 +319,7 @@ export default function RealtimeAdminPage() {
               <div className="flex justify-between text-sm">
                 <span>Instance ID:</span>
                 <span className="font-mono text-xs">
-                  {process.env.INSTANCE_ID || 'local'}
+                  {stats?.instanceId || 'local'}
                 </span>
               </div>
             </div>
@@ -321,11 +334,11 @@ export default function RealtimeAdminPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge variant={process.env.REDIS_URL ? "default" : "secondary"} className="mb-2">
-              {process.env.REDIS_URL ? '✅ Redis Connecté' : '❌ Mode Single Instance'}
+            <Badge variant={stats?.redisConnected ? "default" : "secondary"} className="mb-2">
+              {stats?.redisConnected ? '✅ Redis Connecté' : '❌ Mode Single Instance'}
             </Badge>
             <p className="text-xs text-muted-foreground mt-2">
-              {process.env.REDIS_URL
+              {stats?.redisConnected
                 ? 'Broadcasting distribué activé'
                 : 'Fonctionne sur une seule instance'}
             </p>

@@ -488,8 +488,8 @@ export async function updateMatchAndRecompute(
 
     await client.query("COMMIT");
 
-    // Émettre l'événement temps réel
-    await emitMatchEvent(matchId, "match_updated", { match: updatedMatch });
+    // Émettre l'événement temps réel (au match et au sous-groupe)
+    await emitMatchEvent(matchId, "match_updated", { match: updatedMatch }, oldMatch.sub_group_id);
 
     return updatedMatch;
 

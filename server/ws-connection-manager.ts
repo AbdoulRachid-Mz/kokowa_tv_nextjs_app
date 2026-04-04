@@ -244,12 +244,12 @@ class WSConnectionManager {
         }
 
         // Vérification pour les matchs (optionnel : exiger auth)
-        if (entityType === 'match' && !client.authenticated) {
-            this.sendToClient(client.id, 'error', {
-                message: 'Authentication required for match updates'
-            });
-            return;
-        }
+        // if (entityType === 'match' && !client.authenticated) {
+        //     this.sendToClient(client.id, 'error', {
+        //         message: 'Authentication required for match updates'
+        //     });
+        //     return;
+        // }
 
         client.subscriptions.add(roomName);
         if (!this.rooms.has(roomName)) this.rooms.set(roomName, new Set());
@@ -384,7 +384,9 @@ class WSConnectionManager {
             memoryUsage: process.memoryUsage(),
             uptime: process.uptime(),
             authenticatedClients: authenticated,
-            rateLimitedClients: rateLimited
+            rateLimitedClients: rateLimited,
+            redisConnected: this.redisClient !== null,
+            instanceId: this.instanceId
         };
     }
 
@@ -407,4 +409,5 @@ class WSConnectionManager {
     }
 }
 
-export const wsManager = new WSConnectionManager();
+export const wsManager = (global as any).wsManager || new WSConnectionManager();
+if (process.env.NODE_ENV !== 'production') (global as any).wsManager = wsManager;

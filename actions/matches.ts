@@ -5,7 +5,6 @@ import { pool, query, queryOne } from '@/lib/db/neon-client';
 import { matchSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
 import { Match, MatchFilters, PaginatedResponse } from '@/types';
-// import { connectionManager } from '@/lib/realtime/connection-manager';
 import { z } from 'zod';
 import { updateMatchAndRecompute } from '@/lib/services/match-update.service';
 import { sendPushNotification, sendPushToTopic } from '@/lib/push';
@@ -693,11 +692,11 @@ export async function updateMatch(id: number, data: Record<string, any>) {
     // Utiliser le nouveau service de mise à jour avec recomputation
     const updatedMatch = await updateMatchAndRecompute(id, updates);
 
-    // Émettre l'événement de mise à jour
+    // Émettre l'événement de mise à jour (au match et au sous-groupe)
     await emitMatchEvent(id, 'match_updated', {
       match: updatedMatch,
       changes: Object.keys(updates)
-    });
+    }, updatedMatch.sub_group_id);
 
     // Revalidation des chemins
     revalidatePath('/matches');
@@ -745,7 +744,7 @@ export async function setMatchDraw(id: number) {
     await emitMatchEvent(id, 'match_draw', {
       matchId: id,
       message: 'Match déclaré nul'
-    });
+    }, existing.sub_group_id);
 
     return result;
   } catch (error) {
@@ -777,11 +776,17 @@ export async function addFighterCard(cardData: {
       cardData.minute_given || '00:00'
     ]);
 
-    // Émettre l'événement de carton
+    // Récupérer le sub_group_id pour l'émission
+    const match = await queryOne<{ sub_group_id: number }>(
+      'SELECT sub_group_id FROM matches WHERE id = $1',
+      [cardData.match_id]
+    );
+
+    // Émettre l'événement de carton (au match et au sous-groupe)
     await emitMatchEvent(cardData.match_id, 'card_added', {
       card: result[0],
       fighterId: cardData.fighter_id
-    });
+    }, match?.sub_group_id);
 
     return {
       success: true,

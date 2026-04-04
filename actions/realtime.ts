@@ -34,10 +34,21 @@ export async function emitRealtimeEvent(
 }
 
 /**
- * Émet un événement de match
+ * Émet un événement de match (et optionnellement au sous-groupe)
  */
-export async function emitMatchEvent(matchId: number, event: string, data: any) {
-    return emitRealtimeEvent('match', matchId, event, data);
+export async function emitMatchEvent(matchId: number, event: string, data: any, subGroupId?: number) {
+    // Diffuser au match
+    await emitRealtimeEvent('match', matchId, event, data);
+    
+    // Si un sous-groupe est fourni, diffuser aussi au sous-groupe
+    if (subGroupId) {
+        await emitRealtimeEvent('subGroup', subGroupId, event, {
+            ...data,
+            matchId // Ajouter matchId pour que le subGroup sache quel match est concerné
+        });
+    }
+    
+    return { success: true };
 }
 
 /**

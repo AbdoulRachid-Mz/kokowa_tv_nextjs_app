@@ -296,7 +296,7 @@ export function FighterControl({
                 <AlertCircle className="h-3 w-3" /> terrassé
               </Badge>
             )}
-            
+
           </div>
         </div>
 

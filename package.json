@@ -7,7 +7,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "node --experimental-strip-types server.ts",
+    "dev:next": "next dev",
     "dev:full": "concurrently \"next dev\" \"node --experimental-strip-types server.ts\"",
     "build": "next build",
     "start": "node --experimental-strip-types server.ts",

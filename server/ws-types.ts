@@ -67,6 +67,8 @@ export interface ServerStats {
     uptime: number;
     authenticatedClients: number;
     rateLimitedClients: number;
+    redisConnected: boolean;
+    instanceId: string;
 }
 
 export interface RedisMessage {
