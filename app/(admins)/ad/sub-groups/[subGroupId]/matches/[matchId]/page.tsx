@@ -68,7 +68,7 @@ export default function MatchDetailPage() {
   });
 
   // Realtime integration
-  const { isConnected, subscribe, subscribeToMatch, auth } = useRealtime({
+  const { isConnected, subscribe, unsubscribe, subscribeToMatch, auth } = useRealtime({
     autoConnect: true,
     onConnect: () => {
       if (!isNaN(parsedMatchId)) {
@@ -321,14 +321,28 @@ export default function MatchDetailPage() {
   // EFFECTS
   // ==========================
   useEffect(() => {
-    if (!matchId || !isConnected) return;
+    if (!isConnected) return;
 
-    subscribeToMatch(parsedMatchId);
+    // Subscribe to current match
+    if (!isNaN(parsedMatchId)) {
+      subscribeToMatch(parsedMatchId);
+    }
 
+    // Subscribe to sub-group
+    if (!isNaN(parsedSubGroupId)) {
+      subscribe('subGroup', parsedSubGroupId);
+    }
+
+    // Cleanup: unsubscribe when component unmounts
     return () => {
-      // Le serveur nettoie automatiquement
+      if (!isNaN(parsedMatchId)) {
+        unsubscribe('match', parsedMatchId);
+      }
+      if (!isNaN(parsedSubGroupId)) {
+        unsubscribe('subGroup', parsedSubGroupId);
+      }
     };
-  }, [matchId, parsedMatchId, isConnected, subscribeToMatch]);
+  }, [isConnected, parsedMatchId, parsedSubGroupId, subscribeToMatch, subscribe, unsubscribe]);
 
   useEffect(() => {
     if (subGroup) {

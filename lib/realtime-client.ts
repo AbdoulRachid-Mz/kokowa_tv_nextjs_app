@@ -70,30 +70,29 @@ export class RealtimeClient {
     }
 
     private reconnect() {
-        if (this.isManuallyClosed) return;
-        
-        if (this.reconnectAttempts >= (this.options.maxReconnectAttempts || 10)) {
-            console.error('[Realtime] Max reconnect attempts reached');
-            return;
-        }
-
-        const delay = Math.min(
-            (this.options.reconnectInterval || 1000) * Math.pow(2, this.reconnectAttempts),
-            30000 // Max 30s
-        );
-
-        console.log(`[Realtime] Reconnecting in ${delay}ms... (Attempt ${this.reconnectAttempts + 1})`);
-        
-        // Nettoyer l'ancien timeout s'il existe
-        if ((this as any).reconnectTimeout) {
-            clearTimeout((this as any).reconnectTimeout);
-        }
-
-        (this as any).reconnectTimeout = setTimeout(() => {
-            this.reconnectAttempts++;
-            this.connect();
-        }, delay);
+    if (this.isManuallyClosed) return;
+    
+    if (this.reconnectAttempts >= (this.options.maxReconnectAttempts || 10)) {
+      console.error('[Realtime] Max reconnect attempts reached');
+      return;
     }
+
+    const delay = Math.min(
+      (this.options.reconnectInterval || 1000) * Math.pow(2, this.reconnectAttempts),
+      30000
+    );
+
+    console.log(`[Realtime] Reconnecting in ${delay}ms... (Attempt ${this.reconnectAttempts + 1})`);
+    
+    if ((this as any).reconnectTimeout) {
+      clearTimeout((this as any).reconnectTimeout);
+    }
+
+    (this as any).reconnectTimeout = setTimeout(() => {
+      this.reconnectAttempts++;
+      this.connect();
+    }, delay);
+  }
 
     private resubscribe() {
         this.subscriptions.forEach(sub => {
@@ -134,4 +133,12 @@ export class RealtimeClient {
         this.ws?.close();
         this.ws = null;
     }
+
+    public forceReconnect() {
+    this.isManuallyClosed = false;
+    this.reconnectAttempts = 0;
+    this.disconnect();
+    this.connect();
+  }
+
 }

@@ -9,6 +9,7 @@ export function useRealtime(options: RealtimeOptions = {}) {
     const [isConnected, setIsConnected] = useState(false);
     const [lastMessage, setLastMessage] = useState<WSMessage | null>(null);
     const clientRef = useRef<RealtimeClient | null>(null);
+    const subscriptionsRef = useRef<Set<string>>(new Set()); // Store subscriptions
     const optionsRef = useRef(options);
 
     const getWebSocketURL = () => {
@@ -22,7 +23,7 @@ export function useRealtime(options: RealtimeOptions = {}) {
         return `${protocol}//${host}/ws`;
     };
 
-    // Mettre à jour optionsRef sans déclencher d'effet
+    // Update optionsRef without triggering effect
     useEffect(() => {
         optionsRef.current = options;
     }, [options]);
@@ -35,6 +36,11 @@ export function useRealtime(options: RealtimeOptions = {}) {
             ...optionsRef.current,
             onConnect: () => {
                 setIsConnected(true);
+                // Resubscribe to all previous subscriptions
+                subscriptionsRef.current.forEach(sub => {
+                    const [entityType, entityId] = sub.split(':');
+                    clientRef.current?.send('subscribe', { entityType, entityId });
+                });
                 optionsRef.current.onConnect?.();
             },
             onDisconnect: () => {
@@ -56,13 +62,17 @@ export function useRealtime(options: RealtimeOptions = {}) {
             client.disconnect();
             clientRef.current = null;
         };
-    }, []); // Dépendance vide pour ne créer le client qu'une fois
+    }, []); // Empty dependency to create client only once
 
     const subscribe = useCallback((entityType: EntityType, entityId: string | number) => {
+        const subKey = `${entityType}:${entityId}`;
+        subscriptionsRef.current.add(subKey);
         clientRef.current?.subscribe(entityType, entityId);
     }, []);
 
     const unsubscribe = useCallback((entityType: EntityType, entityId: string | number) => {
+        const subKey = `${entityType}:${entityId}`;
+        subscriptionsRef.current.delete(subKey);
         clientRef.current?.unsubscribe(entityType, entityId);
     }, []);
 

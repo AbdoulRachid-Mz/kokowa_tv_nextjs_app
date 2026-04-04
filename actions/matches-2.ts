@@ -227,6 +227,12 @@ export async function updateMatch(
   // ✅ Appeler le service de mise à jour
   const result = await updateMatchAndRecompute(matchId, updates);
 
+  // ✅ Émettre l'événement explicitement
+  await emitRealtimeEvent('match', matchId, 'match_updated', {
+    match: result,
+    updates
+  });
+
   // 🔥 Revalider les chemins
   revalidatePath(`/ad/sub-groups/${existingMatch.sub_group_id}/matches`);
   revalidatePath(`/ad/sub-groups/${existingMatch.sub_group_id}/matches/${matchId}`);

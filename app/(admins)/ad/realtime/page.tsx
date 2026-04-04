@@ -35,6 +35,8 @@ export default function RealtimeAdminPage() {
   const [userToken, setUserToken] = useState<string | null>(null);
   const [authStatus, setAuthStatus] = useState<'authenticated' | 'anonymous' | 'loading'>('loading');
 
+  const { user, loading: authLoading } = useAuthContext();
+
   const {
     isConnected,
     subscribe,
@@ -103,24 +105,16 @@ export default function RealtimeAdminPage() {
 
   // Récupérer le token Firebase au chargement
   useEffect(() => {
-    const getToken = async () => {
-      try {
-        const user = useAuthContext().user;
-        if (user) {
-          const token = user.userDocument?.fcm_token;
-          setUserToken(token ?? null);
-          setAuthStatus('authenticated');
-        } else {
-          setAuthStatus('anonymous');
-        }
-      } catch (error) {
-        console.error('Erreur récupération token:', error);
+    if (!authLoading) {
+      if (user) {
+        const token = user.userDocument?.fcm_token;
+        setUserToken(token ?? null);
+        setAuthStatus('authenticated');
+      } else {
         setAuthStatus('anonymous');
       }
-    };
-
-    getToken();
-  }, []);
+    }
+  }, [user, authLoading]);
 
   // Authentifier automatiquement quand connecté
   useEffect(() => {

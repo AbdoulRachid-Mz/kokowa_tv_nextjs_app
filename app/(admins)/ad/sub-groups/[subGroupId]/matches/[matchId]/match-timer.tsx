@@ -80,7 +80,7 @@ export function MatchTimer({
         <CardContent className="space-y-4">
           {/* Affichage du temps */}
           <div className="text-center">
-            <Typography variant="h2" className="font-mono tracking-wider text-4xl font-bold">
+            <Typography variant="h2" className="font-mono tracking-wider text-3xl font-bold">
               {formattedTime}
             </Typography>
             <Typography variant="body-sm" theme="muted" className="mt-1">

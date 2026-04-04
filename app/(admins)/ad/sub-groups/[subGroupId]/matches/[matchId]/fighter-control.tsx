@@ -293,7 +293,7 @@ export function FighterControl({
 
             {eliminationStatus?.initialEliminated && !isLoser && (
               <Badge variant="destructive" className="gap-1 bg-orange-600">
-                <AlertCircle className="h-3 w-3" /> Éliminé (terrassé)
+                <AlertCircle className="h-3 w-3" /> terrassé
               </Badge>
             )}
           </div>
