@@ -271,11 +271,17 @@ class WSConnectionManager {
     }
 
     public broadcastToEntity(payload: RealtimeUpdatePayload) {
+        const { entityType, entityId, event } = payload;
+        const roomName = `${entityType}:${entityId}`;
+        
+        console.log(`📡 [WS Server] Broadcasting to ${roomName} - Event: ${event}`);
+
         // 1. Broadcast aux clients locaux
         this.broadcastToLocalClients(payload);
 
         // 2. Si Redis est configuré, broadcast aux autres instances
         if (this.redisClient) {
+            console.log(`  → Redis broadcast: publishing to ${this.REDIS_CHANNEL}`);
             const redisMsg: RedisMessage = {
                 type: 'broadcast',
                 payload,
@@ -293,6 +299,7 @@ class WSConnectionManager {
         const subscribers = this.rooms.get(roomName);
 
         if (!subscribers || subscribers.size === 0) {
+            console.log(`  → No local subscribers for ${roomName}`);
             return;
         }
 
@@ -314,7 +321,7 @@ class WSConnectionManager {
         });
 
         if (sentCount > 0) {
-            console.log(`[WS] Broadcast to ${roomName}: ${sentCount} clients`);
+            console.log(`  → Local broadcast: ${sentCount} clients notified in room ${roomName}`);
         }
     }
 

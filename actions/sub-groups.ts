@@ -4,6 +4,7 @@
 import { pool, query, queryOne } from '@/lib/db/neon-client';
 import { subGroupSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
+import { emitSubGroupEvent } from './realtime';
 import { SubGroup, SubGroupFilters, PaginatedResponse, Region } from '@/types';
 import { getEditionFighters, getEditionRegions } from '@/actions/editions';
 
@@ -1330,6 +1331,9 @@ export async function createSubGroup(formData: FormData) {
     revalidatePath('/ad/phase-groups');
     revalidatePath(`/ad/phase-groups/${validatedData.group_id}`);
     
+    // 🔥 Émission WS
+    await emitSubGroupEvent(result[0].id, 'subgroup_created', { id: result[0].id, group_id: validatedData.group_id });
+
     return { 
       success: true, 
       id: result[0].id,
@@ -1521,6 +1525,9 @@ export async function updateSubGroup(id: number, formData: FormData) {
     revalidatePath(`/phase-groups/${existing.group_id}`);
     revalidatePath(`/sub-groups/${id}`);
     
+    // 🔥 Émission WS
+    await emitSubGroupEvent(id, 'subgroup_updated', { id, updates: cleanedData });
+
     return { 
       success: true, 
       message: 'Sous-groupe modifié avec succès' 
@@ -1562,6 +1569,9 @@ export async function updateSubGroupMedia(id: number, formData: FormData) {
 
     revalidatePath(`/sub-groups/${id}`);
     
+    // 🔥 Émission WS
+    await emitSubGroupEvent(id, 'subgroup_media_updated', { id, video_url: formData.get('video_url') });
+
     return { 
       success: true, 
       message: 'Médias mis à jour avec succès' 
@@ -1596,6 +1606,10 @@ export async function deleteSubGroup(id: number) {
     
     revalidatePath('/phase-groups');
     revalidatePath(`/phase-groups/${existing.group_id}`);
+    
+    // 🔥 Émission WS
+    await emitSubGroupEvent(id, 'subgroup_deleted', { id, group_id: existing.group_id });
+
     return { 
       success: true, 
       message: 'Sous-groupe supprimé avec succès' 

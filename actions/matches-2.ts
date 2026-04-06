@@ -7,7 +7,7 @@ import { sendPushToTopic } from '@/lib/push';
 import { Match } from '@/types/match';
 import { PoolClient } from 'pg';
 import { MatchUpdate, updateMatchAndRecompute } from '@/lib/services/match-update.service';
-import { emitRealtimeEvent, emitMatchEvent } from './realtime';
+import { emitRealtimeEvent, emitMatchEvent, emitSubGroupEvent } from './realtime';
 
 // ========== READ ==========
 
@@ -674,6 +674,9 @@ export async function completeSubGroup(subGroupId: number) {
 
     revalidatePath(`/ad/sub-groups/${subGroupId}`);
     revalidatePath(`/ad/sub-groups/${subGroupId}/matches`);
+    
+    // 🔥 Émission WS
+    await emitSubGroupEvent(subGroupId, 'subgroup_completed', { id: subGroupId });
 
     return { success: true };
   } catch (error) {

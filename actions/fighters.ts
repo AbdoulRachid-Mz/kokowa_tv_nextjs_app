@@ -4,6 +4,7 @@
 import { query, queryOne } from '@/lib/db/neon-client';
 import { fighterSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
+import { emitFighterEvent } from './realtime';
 import { ArchiveFighterAchievementFilters, Fighter, FighterFilters, PaginatedResponse } from '@/types';
 
 export async function getFighters(
@@ -242,6 +243,9 @@ export async function createFighter(validatedData: any) {
     if (validatedData.region_id) {
       revalidatePath(`/admin/regions/${validatedData.region_id}`);
     }
+    
+    // 🔥 Émission WS
+    await emitFighterEvent(result[0].id, 'fighter_created', { id: result[0].id, ...validatedData });
 
     return { 
       success: true, 
@@ -347,6 +351,9 @@ export async function updateFighter(id: number, formData: FormData) {
       }
     }
     
+    // 🔥 Émission WS
+    await emitFighterEvent(id, 'fighter_updated', { id, ...validatedData });
+
     return { 
       success: true, 
       message: 'Lutteur modifié avec succès' 
@@ -394,6 +401,9 @@ export async function deleteFighter(id: number) {
       revalidatePath(`/admin/regions/${existing.region_id}`);
     }
     
+    // 🔥 Émission WS
+    await emitFighterEvent(id, 'fighter_deleted', { id });
+
     return { 
       success: true, 
       message: 'Lutteur supprimé avec succès' 

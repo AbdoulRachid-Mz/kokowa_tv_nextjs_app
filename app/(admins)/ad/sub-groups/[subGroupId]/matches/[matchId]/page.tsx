@@ -42,6 +42,7 @@ import { addFighterCard, updateMatch } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
 import { FloatingMatchScore } from "./floating-match-score";
 import { useAuthContext } from "@/contexts/auth-context";
+import { Bug } from "lucide-react";
 
 export default function MatchDetailPage() {
   const { subGroupId, matchId } = useParams();
@@ -70,34 +71,61 @@ export default function MatchDetailPage() {
   // Realtime integration
   const { isConnected, subscribe, unsubscribe, subscribeToMatch, auth } = useRealtime({
     autoConnect: true,
-    onConnect: () => {
-      if (!isNaN(parsedMatchId)) {
-        subscribeToMatch(parsedMatchId);
-      }
-      if (!isNaN(parsedSubGroupId)) {
-        subscribe('subGroup', parsedSubGroupId);
-      }
-
-      // Auto-auth if user is logged in
-      if (user?.userDocument?.id) {
-        auth(user.userDocument.id.toString(), user.userDocument.fcm_token || 'dummy_token');
-      }
-    },
     onMessage: (msg) => {
       if (msg.type === 'update') {
         const { entityType, entityId, event } = msg.data;
-        console.log(`📨 Realtime event: ${event} for ${entityType}:${entityId}`);
+        console.log(`📨 [WS Client] Realtime event: ${event} for ${entityType}:${entityId}`);
 
-        if (entityType === 'match' && entityId == parsedMatchId) {
-          queryClient.invalidateQueries({ queryKey: ['match', parsedMatchId] });
+        // ✅ Invalider TOUTES les requêtes du type concerné pour assurer la cohérence
+        if (entityType === 'match') {
+          queryClient.invalidateQueries({ queryKey: ['match'] });
+          queryClient.refetchQueries({ queryKey: ['match', parsedMatchId] });
         }
 
-        if (entityType === 'subGroup' && entityId == parsedSubGroupId) {
-          queryClient.invalidateQueries({ queryKey: ['sub-group', subGroupId] });
+        if (entityType === 'subGroup') {
+          queryClient.invalidateQueries({ queryKey: ['sub-group'] });
+          queryClient.refetchQueries({ queryKey: ['sub-group', parsedSubGroupId] });
+        }
+
+        if (entityType === 'fighter') {
+          queryClient.invalidateQueries({ queryKey: ['fighter'] });
+        }
+
+        if (entityType === 'edition') {
+          queryClient.invalidateQueries({ queryKey: ['edition'] });
         }
       }
     }
   });
+
+  // ✅ Gestion unique des souscriptions
+  useEffect(() => {
+    if (!isConnected) return;
+
+    console.log('🔄 [WS] Subscribing to match and sub-group...');
+    
+    if (!isNaN(parsedMatchId)) {
+      subscribeToMatch(parsedMatchId);
+    }
+    if (!isNaN(parsedSubGroupId)) {
+      subscribe('subGroup', parsedSubGroupId);
+    }
+
+    // Auth automatique si l'utilisateur est connecté
+    if (user?.userDocument?.id) {
+      auth(user.userDocument.id.toString(), user.userDocument.fcm_token || 'dummy_token');
+    }
+
+    return () => {
+      console.log('🔕 [WS] Unsubscribing from match and sub-group...');
+      if (!isNaN(parsedMatchId)) {
+        unsubscribe('match', parsedMatchId);
+      }
+      if (!isNaN(parsedSubGroupId)) {
+        unsubscribe('subGroup', parsedSubGroupId);
+      }
+    };
+  }, [isConnected, parsedMatchId, parsedSubGroupId, subscribeToMatch, subscribe, unsubscribe, user, auth]);
 
   // ==========================
   // CONTROLLER PRINCIPAL
@@ -923,6 +951,31 @@ export default function MatchDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ✅ Composant de debug flottant (uniquement en dev) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-background/80 backdrop-blur-sm shadow-lg border-primary/20"
+            onClick={() => {
+              console.log('🔍 [DEBUG] WebSocket State:');
+              console.log('  isConnected:', isConnected);
+              console.log('  match status:', match?.status);
+              console.log('  match data:', match);
+              console.log('  subGroup data:', subGroup);
+              console.log('  query cache match:', queryClient.getQueryData(['match', parsedMatchId]));
+              console.log('  query cache subGroup:', queryClient.getQueryData(['sub-group', parsedSubGroupId]));
+              
+              toast.info(`WS: ${isConnected ? '✅ Connecté' : '❌ Déconnecté'} | Match: ${match?.status}`);
+            }}
+          >
+            <Bug className="h-4 w-4 mr-2 text-primary" />
+            Debug WS
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -48,6 +48,20 @@ export function useRealtime(options: RealtimeOptions = {}) {
                 optionsRef.current.onDisconnect?.();
             },
             onMessage: (msg) => {
+                console.log('📨 [WS Client] Message received:', JSON.stringify(msg, null, 2));
+                
+                if (msg.type === 'update') {
+                    console.log(`🔄 [WS Client] Update for ${msg.data.entityType}:${msg.data.entityId} - ${msg.data.event}`);
+                }
+                
+                if (msg.type === 'auth_success') {
+                    console.log('🔐 [WS Client] Authentication successful');
+                }
+                
+                if (msg.type === 'error') {
+                    console.error('❌ [WS Client] Server Error:', msg.data);
+                }
+
                 setLastMessage(msg);
                 optionsRef.current.onMessage?.(msg);
             },

@@ -8,6 +8,7 @@ import {
   editionRegionSchema,
 } from "@/validation/schemas";
 import { revalidatePath } from "next/cache";
+import { emitEditionEvent } from "./realtime";
 import {
   CompetitionEdition,
   EditionFighter,
@@ -1318,6 +1319,10 @@ export async function addFighterToEdition(
 
     revalidatePath(`/ad/editions/${editionId}/figthers`);
     revalidatePath(`/ad/editions/${editionId}`);
+    
+    // 🔥 Émission WS
+    await emitEditionEvent(editionId, 'fighter_added', { id: returnedId, fighterId, regionId });
+
     return {
       success: true,
       id: returnedId,
@@ -1357,6 +1362,10 @@ export async function addRegionToEdition(
 
     revalidatePath(`/ad/editions/${editionId}/regions`);
     revalidatePath(`/ad/editions/${editionId}`);
+    
+    // 🔥 Émission WS
+    await emitEditionEvent(editionId, 'region_added', { id: result[0].id, regionId });
+
     return {
       success: true,
       id: result[0].id,
@@ -1382,6 +1391,10 @@ export async function removeFighterFromEdition(
 
     revalidatePath(`/ad/editions/${editionId}/figthers`);
     revalidatePath(`/ad/editions/${editionId}`);
+    
+    // 🔥 Émission WS
+    await emitEditionEvent(editionId, 'fighter_removed', { fighterId });
+
     return {
       success: true,
       message: "Lutteur retiré de l'édition avec succès",
@@ -1406,6 +1419,10 @@ export async function removeRegionFromEdition(
 
     revalidatePath(`/ad/editions/${editionId}/regions`);
     revalidatePath(`/ad/editions/${editionId}`);
+    
+    // 🔥 Émission WS
+    await emitEditionEvent(editionId, 'region_removed', { regionId });
+
     return {
       success: true,
       message: "Région retirée de l'édition avec succès",
@@ -1457,6 +1474,10 @@ export async function updateEditionFighter(
 
     revalidatePath(`/ad/editions/${editionId}/fighters`);
     revalidatePath(`/ad/editions/${editionId}`);
+    
+    // 🔥 Émission WS
+    await emitEditionEvent(editionId, 'fighter_updated', { fighterId, updates: rows[0] });
+
     return { success: true, data: rows[0] };
   } catch (e) {
     console.error("updateEditionFighter error:", e);
@@ -1499,6 +1520,10 @@ export async function updateEditionRegion(
 
     revalidatePath(`/ad/editions/${editionId}/regions`);
     revalidatePath(`/ad/editions/${editionId}`);
+    
+    // 🔥 Émission WS
+    await emitEditionEvent(editionId, 'region_updated', { regionId, updates: rows[0] });
+
     return { success: true, data: rows[0] };
   } catch (e) {
     console.error("updateEditionRegion error:", e);

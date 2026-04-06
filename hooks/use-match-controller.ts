@@ -1,7 +1,7 @@
 // hooks/use-match-controller.ts - Version améliorée
 'use client';
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useMatchTimer } from './use-match-timer-2';
@@ -18,6 +18,7 @@ interface UseMatchControllerProps {
 export function useMatchController({ matchId, subGroupId }: UseMatchControllerProps) {
   const queryClient = useQueryClient();
   const isUpdatingRef = useRef(false);
+  const [pollingInterval, setPollingInterval] = useState<number | false>(false);
 
   // ==========================
   // QUERY
@@ -26,8 +27,20 @@ export function useMatchController({ matchId, subGroupId }: UseMatchControllerPr
   const { data: match, isLoading, refetch } = useQuery({
     queryKey: ['match', matchId],
     queryFn: () => getMatchById(matchId),
-    enabled: !!matchId
+    enabled: !!matchId,
+    refetchInterval: pollingInterval,
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Toujours stale pour les matchs live
   });
+
+  // Activer le polling seulement quand le match est en cours
+  useEffect(() => {
+    if (match?.status === 'live' || match?.status === 'round_break' || match?.status === 'reclamation') {
+      setPollingInterval(2000); // Polling de secours toutes les 2s
+    } else {
+      setPollingInterval(false);
+    }
+  }, [match?.status]);
 
   // ==========================
   // TIMER (ISOLÉ)
@@ -38,28 +51,36 @@ export function useMatchController({ matchId, subGroupId }: UseMatchControllerPr
     initialStatus: match?.status ?? 'scheduled'
   });
 
+  // ✅ Synchroniser le timer avec les données serveur
   useEffect(() => {
     if (!match) return;
 
-    const durationInSeconds = parseDurationToSeconds(
-      match.total_duration ?? "00:00:00"
-    );
+    const durationInSeconds = parseDurationToSeconds(match.total_duration ?? "00:00:00");
+    const currentDuration = timer.elapsed;
+    const durationDiff = Math.abs(currentDuration - durationInSeconds);
+    
+    // Si la différence est significative (> 2s), on synchronise
+    if (durationDiff > 2) {
+      console.log(`🔄 [WS Sync] Synchronisation du timer: ${currentDuration}s -> ${durationInSeconds}s`);
+      timer.setTime(durationInSeconds);
+    }
 
-    timer.setTime(durationInSeconds);
-
-    if (match.status === "live") {
+    // Synchroniser le statut du timer avec le statut du match
+    if (match.status === "live" && !timer.isRunning) {
+      console.log('🔄 [WS Sync] Démarrage du timer (match live)');
       timer.start();
-    }
-
-    if (match.status === "round_break") {
+    } else if ((match.status === "round_break" || match.status === "reclamation") && timer.isRunning) {
+      console.log(`🔄 [WS Sync] Pause du timer (match ${match.status})`);
       timer.pause();
-    }
-
-    if (match.status === "completed") {
+    } else if (match.status === "completed" && timer.isRunning) {
+      console.log('🔄 [WS Sync] Arrêt du timer (match terminé)');
       timer.stop();
+    } else if (match.status === "scheduled" && (timer.isRunning || timer.elapsed > 0)) {
+      console.log('🔄 [WS Sync] Reset du timer (match programmé)');
+      timer.reset();
     }
 
-  }, [match]);
+  }, [match?.total_duration, match?.status]); // On observe les changements de durée et de statut
 
   // ==========================
   // MUTATION
