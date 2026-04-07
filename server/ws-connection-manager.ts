@@ -1,420 +1,347 @@
 // @/server/ws-connection-manager.ts
-import { WebSocket } from 'ws';
-import { IncomingMessage } from 'http';
-import type { WSClient, WSMessage, WSMessageType, SubscriptionData, RealtimeUpdatePayload, ServerStats, Platform, RedisMessage } from './ws-types.ts';
-import * as admin from 'firebase-admin';
-import { createClient } from 'redis';
-import crypto from 'crypto';
+import { WebSocket } from "ws";
+import { IncomingMessage } from "http";
+import {
+  WSClient,
+  WSMessage,
+  WSMessageType,
+  SubscriptionData,
+  RealtimeUpdatePayload,
+  ServerStats,
+  Platform,
+  RedisMessage,
+} from "./ws-types";
 
-// Configuration
+import * as admin from "firebase-admin";
+import { createClient, RedisClientType } from "redis";
+import crypto from "crypto";
+
+// ================= CONFIG =================
+
 const RATE_LIMIT = {
-    MESSAGES_PER_MINUTE: 60,
-    SUBSCRIBES_PER_MINUTE: 30,
-    WINDOW_MS: 60000, // 1 minute
+  MESSAGES_PER_MINUTE: 60,
+  SUBSCRIBES_PER_MINUTE: 30,
+  WINDOW_MS: 60000,
 };
 
+const PING_FREQ = 30000;
+const CLIENT_TIMEOUT = 65000;
+
+const REDIS_CHANNEL = "ws:broadcast";
+
+// ================= CLASS =================
+
 class WSConnectionManager {
-    private clients: Map<string, WSClient> = new Map();
-    private rooms: Map<string, Set<string>> = new Map();
+  private clients = new Map<string, WSClient>();
+  private rooms = new Map<string, Set<string>>();
 
-    private pingInterval: NodeJS.Timeout | null = null;
-    private rateLimitCleanupInterval: NodeJS.Timeout | null = null;
-    private readonly PING_FREQ = 30000; // 30s
-    private readonly CLIENT_TIMEOUT = 65000; // 65s
+  private pubClient: RedisClientType | null = null;
+  private subClient: RedisClientType | null = null;
 
-    // Redis client for multi-instance support
-    private redisClient: ReturnType<typeof createClient> | null = null;
-    private readonly instanceId: string;
-    private readonly REDIS_CHANNEL = 'ws:broadcast';
+  private instanceId: string;
 
-    constructor() {
-        this.instanceId = crypto.randomBytes(16).toString('hex');
-        this.startHeartbeat();
-        this.startRateLimitCleanup();
-        this.connectRedis();
+  private pingInterval: NodeJS.Timeout | null = null;
+  private rateLimitInterval: NodeJS.Timeout | null = null;
+
+  constructor() {
+    this.instanceId = crypto.randomBytes(12).toString("hex");
+
+    this.init();
+  }
+
+  // ================= INIT =================
+
+  private async init() {
+    this.startHeartbeat();
+    this.startRateLimitCleanup();
+    await this.connectRedis();
+  }
+
+  private async connectRedis() {
+    if (!process.env.REDIS_WS_URL) {
+      console.warn("⚠️ No Redis → single instance mode");
+      return;
     }
 
-    private async connectRedis() {
-        if (!process.env.REDIS_WS_URL) {
-            console.warn('⚠️ REDIS_WS_URL not set, running in single-instance mode');
-            return;
-        }
+    try {
+      this.pubClient = createClient({
+        url: process.env.REDIS_WS_URL,
+      });
 
+      this.subClient = this.pubClient.duplicate();
+
+      await this.pubClient.connect();
+      await this.subClient.connect();
+
+      console.log(`✅ Redis connected (${this.instanceId})`);
+
+      await this.subClient.subscribe(REDIS_CHANNEL, (message) => {
         try {
-            this.redisClient = createClient({ url: process.env.REDIS_WS_URL });
+          const parsed: RedisMessage = JSON.parse(message);
 
-            await this.redisClient.connect();
-            console.log(`✅ Redis connected for WebSocket (instance: ${this.instanceId})`);
+          if (parsed.instanceId === this.instanceId) return;
 
-            // Subscribe to broadcast channel
-            await this.redisClient.subscribe(this.REDIS_CHANNEL, (message) => {
-                try {
-                    const redisMsg: RedisMessage = JSON.parse(message);
-
-                    // Ignore messages from this instance
-                    if (redisMsg.instanceId === this.instanceId) return;
-
-                    // Broadcast to local clients
-                    this.broadcastToLocalClients(redisMsg.payload);
-                } catch (err) {
-                    console.error('❌ Redis message parse error:', err);
-                }
-            });
-
+          this.broadcastToLocal(parsed.payload);
         } catch (err) {
-            console.error('❌ Redis connection failed:', err);
-            this.redisClient = null;
+          console.error("❌ Redis parse error:", err);
         }
+      });
+    } catch (err) {
+      console.error("❌ Redis connection failed:", err);
+      this.pubClient = null;
+      this.subClient = null;
+    }
+  }
+
+  // ================= CLIENT =================
+
+  public addClient(ws: WebSocket, req: IncomingMessage) {
+    const id = crypto.randomBytes(8).toString("hex");
+
+    const client: WSClient = {
+      id,
+      ws,
+      authenticated: false,
+      subscriptions: new Set(),
+      connectedAt: new Date(),
+      userAgent: req.headers["user-agent"] || "",
+      platform: this.detectPlatform(req.headers["user-agent"] || ""),
+      lastPing: Date.now(),
+      rateLimit: {
+        messageCount: 0,
+        subscribeCount: 0,
+        lastReset: Date.now(),
+      },
+    };
+
+    this.clients.set(id, client);
+
+    ws.on("message", (data) => this.handleMessage(id, data));
+    ws.on("close", () => this.removeClient(id));
+    ws.on("error", () => this.removeClient(id));
+    ws.on("pong", () => (client.lastPing = Date.now()));
+
+    this.send(id, "connected", {
+      clientId: id,
+      instanceId: this.instanceId,
+    });
+
+    return id;
+  }
+
+  private removeClient(clientId: string) {
+    const client = this.clients.get(clientId);
+    if (!client) return;
+
+    client.subscriptions.forEach((room) => {
+      const set = this.rooms.get(room);
+      set?.delete(clientId);
+
+      if (set?.size === 0) this.rooms.delete(room);
+    });
+
+    this.clients.delete(clientId);
+
+    if (client.ws.readyState !== WebSocket.CLOSED) {
+      client.ws.terminate();
+    }
+  }
+
+  // ================= MESSAGE =================
+
+  private async handleMessage(clientId: string, raw: any) {
+    const client = this.clients.get(clientId);
+    if (!client) return;
+
+    if (!this.checkRateLimit(client, "message")) {
+      return this.send(clientId, "rate_limit_exceeded", {});
     }
 
-    private startHeartbeat() {
-        this.pingInterval = setInterval(() => this.checkAlive(), this.PING_FREQ);
+    try {
+      const msg: WSMessage = JSON.parse(raw.toString());
+
+      switch (msg.type) {
+        case "auth":
+          await this.handleAuth(client, msg.data);
+          break;
+
+        case "subscribe":
+          this.handleSubscribe(client, msg.data);
+          break;
+
+        case "unsubscribe":
+          this.handleUnsubscribe(client, msg.data);
+          break;
+
+        case "ping":
+          this.send(clientId, "pong", {});
+          break;
+      }
+    } catch {
+      this.send(clientId, "error", { message: "Invalid message" });
+    }
+  }
+
+  private async handleAuth(client: WSClient, data: any) {
+    try {
+      const decoded = await admin.auth().verifyIdToken(data.token);
+
+      client.userId = decoded.uid;
+      client.authenticated = true;
+
+      this.send(client.id, "auth_success", { userId: decoded.uid });
+    } catch {
+      this.send(client.id, "error", { message: "Auth failed" });
+    }
+  }
+
+  private handleSubscribe(client: WSClient, data: SubscriptionData) {
+    if (!this.checkRateLimit(client, "subscribe")) return;
+
+    const room = `${data.entityType}:${data.entityId}`;
+
+    client.subscriptions.add(room);
+
+    if (!this.rooms.has(room)) this.rooms.set(room, new Set());
+
+    this.rooms.get(room)!.add(client.id);
+
+    this.send(client.id, "subscribed", data);
+  }
+
+  private handleUnsubscribe(client: WSClient, data: SubscriptionData) {
+    const room = `${data.entityType}:${data.entityId}`;
+
+    client.subscriptions.delete(room);
+    this.rooms.get(room)?.delete(client.id);
+  }
+
+  // ================= BROADCAST =================
+
+  public broadcast(payload: RealtimeUpdatePayload) {
+    this.broadcastToLocal(payload);
+
+    if (this.pubClient) {
+      const msg: RedisMessage = {
+        type: "broadcast",
+        payload,
+        instanceId: this.instanceId,
+        timestamp: Date.now(),
+      };
+
+      this.pubClient.publish(REDIS_CHANNEL, JSON.stringify(msg));
+    }
+  }
+
+  private broadcastToLocal(payload: RealtimeUpdatePayload) {
+    const room = `${payload.entityType}:${payload.entityId}`;
+    const clients = this.rooms.get(room);
+
+    if (!clients) return;
+
+    const message = JSON.stringify({
+      type: "update",
+      data: payload,
+    });
+
+    clients.forEach((id) => {
+      const c = this.clients.get(id);
+      if (c?.ws.readyState === WebSocket.OPEN) {
+        c.ws.send(message);
+      }
+    });
+  }
+
+  // ================= UTILS =================
+
+  private send(clientId: string, type: WSMessageType, data: any) {
+    const client = this.clients.get(clientId);
+    if (client?.ws.readyState === WebSocket.OPEN) {
+      client.ws.send(JSON.stringify({ type, data }));
+    }
+  }
+
+  private detectPlatform(ua: string): Platform {
+    if (ua.includes("Flutter")) return "flutter";
+    if (ua.includes("Mozilla")) return "web";
+    return "unknown";
+  }
+
+  private checkRateLimit(client: WSClient, type: "message" | "subscribe") {
+    const now = Date.now();
+
+    if (now - client.rateLimit.lastReset > RATE_LIMIT.WINDOW_MS) {
+      client.rateLimit.messageCount = 0;
+      client.rateLimit.subscribeCount = 0;
+      client.rateLimit.lastReset = now;
     }
 
-    private startRateLimitCleanup() {
-        this.rateLimitCleanupInterval = setInterval(() => this.resetRateLimits(), RATE_LIMIT.WINDOW_MS);
+    if (type === "message") {
+      return ++client.rateLimit.messageCount <= RATE_LIMIT.MESSAGES_PER_MINUTE;
     }
 
-    private resetRateLimits() {
-        const now = Date.now();
-        this.clients.forEach(client => {
-            if (now - client.rateLimit.lastReset >= RATE_LIMIT.WINDOW_MS) {
-                client.rateLimit.messageCount = 0;
-                client.rateLimit.subscribeCount = 0;
-                client.rateLimit.lastReset = now;
-            }
-        });
-    }
+    return (
+      ++client.rateLimit.subscribeCount <= RATE_LIMIT.SUBSCRIBES_PER_MINUTE
+    );
+  }
 
-    private checkRateLimit(client: WSClient, type: 'message' | 'subscribe'): boolean {
-        const now = Date.now();
+  private startHeartbeat() {
+    this.pingInterval = setInterval(() => {
+      const now = Date.now();
 
-        // Reset if window expired
-        if (now - client.rateLimit.lastReset >= RATE_LIMIT.WINDOW_MS) {
-            client.rateLimit.messageCount = 0;
-            client.rateLimit.subscribeCount = 0;
-            client.rateLimit.lastReset = now;
-        }
-
-        if (type === 'message') {
-            client.rateLimit.messageCount++;
-            return client.rateLimit.messageCount <= RATE_LIMIT.MESSAGES_PER_MINUTE;
+      this.clients.forEach((c, id) => {
+        if (now - c.lastPing > CLIENT_TIMEOUT) {
+          this.removeClient(id);
         } else {
-            client.rateLimit.subscribeCount++;
-            return client.rateLimit.subscribeCount <= RATE_LIMIT.SUBSCRIBES_PER_MINUTE;
+          c.ws.ping();
         }
-    }
+      });
+    }, PING_FREQ);
+  }
 
-    public addClient(ws: WebSocket, req: IncomingMessage): string {
-        const clientId = Math.random().toString(36).substring(2, 15);
-        const userAgent = req.headers['user-agent'] || '';
-        const platform = this.detectPlatform(userAgent);
-        const ip = req.socket.remoteAddress || 'unknown';
+  private startRateLimitCleanup() {
+    this.rateLimitInterval = setInterval(() => {
+      const now = Date.now();
 
-        console.log(`[WS] Client connecting: ${clientId} (${platform}) from ${ip}`);
-
-        const client: WSClient = {
-            ws,
-            id: clientId,
-            authenticated: false,
-            subscriptions: new Set(),
-            connectedAt: new Date(),
-            userAgent,
-            platform,
-            lastPing: Date.now(),
-            rateLimit: {
-                messageCount: 0,
-                subscribeCount: 0,
-                lastReset: Date.now()
-            }
-        };
-
-        this.clients.set(clientId, client);
-
-        ws.on('message', (data) => this.handleMessage(clientId, data));
-        ws.on('close', () => {
-            console.log(`[WS] Client disconnected: ${clientId}`);
-            this.removeClient(clientId);
-        });
-        ws.on('error', (err) => {
-            console.error(`[WS] Client error ${clientId}:`, err);
-            this.removeClient(clientId);
-        });
-        ws.on('pong', () => {
-            const c = this.clients.get(clientId);
-            if (c) c.lastPing = Date.now();
-        });
-
-        this.sendToClient(clientId, 'connected', {
-            clientId,
-            heartbeat: this.PING_FREQ,
-            timestamp: Date.now(),
-            instanceId: this.instanceId
-        });
-
-        console.log(`[WS] Client connected: ${clientId} (Total: ${this.clients.size})`);
-        return clientId;
-    }
-
-    private async handleMessage(clientId: string, rawData: any) {
-        const client = this.clients.get(clientId);
-        if (!client) return;
-
-        // Rate limiting
-        if (!this.checkRateLimit(client, 'message')) {
-            this.sendToClient(clientId, 'rate_limit_exceeded', {
-                message: 'Rate limit exceeded. Slow down!',
-                limit: RATE_LIMIT.MESSAGES_PER_MINUTE,
-                windowMs: RATE_LIMIT.WINDOW_MS
-            });
-            return;
+      this.clients.forEach((c) => {
+        if (now - c.rateLimit.lastReset > RATE_LIMIT.WINDOW_MS) {
+          c.rateLimit.messageCount = 0;
+          c.rateLimit.subscribeCount = 0;
+          c.rateLimit.lastReset = now;
         }
+      });
+    }, RATE_LIMIT.WINDOW_MS);
+  }
 
-        try {
-            const message: WSMessage = JSON.parse(rawData.toString());
-            const { type, data } = message;
+  public getStats(): ServerStats {
+    return {
+      totalClients: this.clients.size,
+      activeSubscriptions: this.rooms.size,
+      uptime: process.uptime(),
+      memoryUsage: process.memoryUsage(),
+      redisConnected: !!this.pubClient,
+      instanceId: this.instanceId,
+      clientsByPlatform: { web: 0, flutter: 0, unknown: 0 },
+      authenticatedClients: 0,
+      rateLimitedClients: 0,
+    };
+  }
 
-            switch (type) {
-                case 'auth':
-                    await this.handleAuth(client, data);
-                    break;
-                case 'subscribe':
-                    this.handleSubscribe(client, data);
-                    break;
-                case 'unsubscribe':
-                    this.handleUnsubscribe(client, data);
-                    break;
-                case 'ping':
-                    this.sendToClient(clientId, 'pong', { timestamp: Date.now() });
-                    break;
-                default:
-                    console.warn(`[WS] Unknown message type: ${type} from ${clientId}`);
-            }
-        } catch (error) {
-            this.sendToClient(clientId, 'error', { message: 'Protocol error' });
-        }
-    }
+  public async shutdown() {
+    this.clients.forEach((c) => c.ws.close());
 
-    private async handleAuth(client: WSClient, data: any) {
-        const { token } = data;
-        if (!token) {
-            this.sendToClient(client.id, 'error', { message: 'Token required' });
-            return;
-        }
+    if (this.pubClient) await this.pubClient.quit();
+    if (this.subClient) await this.subClient.quit();
 
-        try {
-            // Vérification du token Firebase
-            const decodedToken = await admin.auth().verifyIdToken(token);
-            client.userId = decodedToken.uid;
-            client.authenticated = true;
-            client.roles = (decodedToken.roles as string[]) || [];
-
-            console.log(`[WS] Client authenticated: ${client.id} (${client.userId})`);
-
-            this.sendToClient(client.id, 'auth_success', {
-                userId: client.userId,
-                roles: client.roles,
-                message: 'Authenticated successfully'
-            });
-        } catch (error) {
-            console.error(`[WS] Auth failed for ${client.id}:`, error);
-            this.sendToClient(client.id, 'error', { message: 'Authentication failed' });
-        }
-    }
-
-    private handleSubscribe(client: WSClient, data: SubscriptionData) {
-        // Rate limiting pour les souscriptions
-        if (!this.checkRateLimit(client, 'subscribe')) {
-            this.sendToClient(client.id, 'rate_limit_exceeded', {
-                message: 'Subscribe rate limit exceeded',
-                limit: RATE_LIMIT.SUBSCRIBES_PER_MINUTE
-            });
-            return;
-        }
-
-        const { entityType, entityId } = data;
-        const roomName = `${entityType}:${entityId}`;
-
-        // Vérification d'authentification pour certaines rooms
-        if (entityType === 'admin' && !client.roles?.includes('admin')) {
-            this.sendToClient(client.id, 'error', {
-                message: 'Unauthorized: Admin access required'
-            });
-            return;
-        }
-
-        // Vérification pour les matchs (optionnel : exiger auth)
-        // if (entityType === 'match' && !client.authenticated) {
-        //     this.sendToClient(client.id, 'error', {
-        //         message: 'Authentication required for match updates'
-        //     });
-        //     return;
-        // }
-
-        client.subscriptions.add(roomName);
-        if (!this.rooms.has(roomName)) this.rooms.set(roomName, new Set());
-        this.rooms.get(roomName)!.add(client.id);
-
-        console.log(`[WS] ${client.id} subscribed to ${roomName}`);
-        this.sendToClient(client.id, 'subscribed', { entityType, entityId });
-    }
-
-    private handleUnsubscribe(client: WSClient, data: SubscriptionData) {
-        const { entityType, entityId } = data;
-        const roomName = `${entityType}:${entityId}`;
-
-        client.subscriptions.delete(roomName);
-        this.rooms.get(roomName)?.delete(client.id);
-
-        console.log(`[WS] ${client.id} unsubscribed from ${roomName}`);
-        this.sendToClient(client.id, 'unsubscribed', { entityType, entityId });
-    }
-
-    public broadcastToEntity(payload: RealtimeUpdatePayload) {
-        const { entityType, entityId, event } = payload;
-        const roomName = `${entityType}:${entityId}`;
-        
-        console.log(`📡 [WS Server] Broadcasting to ${roomName} - Event: ${event}`);
-
-        // 1. Broadcast aux clients locaux
-        this.broadcastToLocalClients(payload);
-
-        // 2. Si Redis est configuré, broadcast aux autres instances
-        if (this.redisClient) {
-            console.log(`  → Redis broadcast: publishing to ${this.REDIS_CHANNEL}`);
-            const redisMsg: RedisMessage = {
-                type: 'broadcast',
-                payload,
-                timestamp: Date.now(),
-                instanceId: this.instanceId
-            };
-
-            this.redisClient.publish(this.REDIS_CHANNEL, JSON.stringify(redisMsg))
-                .catch(err => console.error('❌ Redis publish error:', err));
-        }
-    }
-
-    private broadcastToLocalClients(payload: RealtimeUpdatePayload) {
-        const roomName = `${payload.entityType}:${payload.entityId}`;
-        const subscribers = this.rooms.get(roomName);
-
-        if (!subscribers || subscribers.size === 0) {
-            console.log(`  → No local subscribers for ${roomName}`);
-            return;
-        }
-
-        const message = JSON.stringify({
-            type: 'update',
-            data: {
-                ...payload,
-                _instance: this.instanceId // Pour debug
-            }
-        });
-
-        let sentCount = 0;
-        subscribers.forEach(clientId => {
-            const client = this.clients.get(clientId);
-            if (client && client.ws.readyState === WebSocket.OPEN) {
-                client.ws.send(message);
-                sentCount++;
-            }
-        });
-
-        if (sentCount > 0) {
-            console.log(`  → Local broadcast: ${sentCount} clients notified in room ${roomName}`);
-        }
-    }
-
-    private checkAlive() {
-        const now = Date.now();
-        let timedOut = 0;
-
-        this.clients.forEach((client, clientId) => {
-            if (now - client.lastPing > this.CLIENT_TIMEOUT) {
-                console.log(`[WS] Client timeout: ${clientId} (no ping for ${Math.round((now - client.lastPing) / 1000)}s)`);
-                this.removeClient(clientId);
-                timedOut++;
-            } else if (client.ws.readyState === WebSocket.OPEN) {
-                client.ws.ping();
-            }
-        });
-
-        if (timedOut > 0) {
-            console.log(`[WS] Cleaned up ${timedOut} stale clients`);
-        }
-    }
-
-    private removeClient(clientId: string) {
-        const client = this.clients.get(clientId);
-        if (!client) return;
-
-        // Nettoyer les souscriptions
-        client.subscriptions.forEach(roomName => {
-            this.rooms.get(roomName)?.delete(clientId);
-        });
-
-        this.clients.delete(clientId);
-
-        if (client.ws.readyState !== WebSocket.CLOSED) {
-            client.ws.terminate();
-        }
-    }
-
-    private sendToClient(clientId: string, type: WSMessageType, data: any) {
-        const client = this.clients.get(clientId);
-        if (client && client.ws.readyState === WebSocket.OPEN) {
-            client.ws.send(JSON.stringify({ type, data }));
-        }
-    }
-
-    private detectPlatform(userAgent: string): Platform {
-        if (userAgent.includes('Flutter') || userAgent.includes('Dart')) return 'flutter';
-        if (userAgent.includes('Mozilla') || userAgent.includes('Chrome') || userAgent.includes('Safari')) return 'web';
-        return 'unknown';
-    }
-
-    public getStats(): ServerStats {
-        const stats: Record<Platform, number> = { web: 0, flutter: 0, unknown: 0 };
-        let authenticated = 0;
-        let rateLimited = 0;
-
-        this.clients.forEach(c => {
-            stats[c.platform]++;
-            if (c.authenticated) authenticated++;
-            if (c.rateLimit.messageCount > RATE_LIMIT.MESSAGES_PER_MINUTE * 0.8) rateLimited++;
-        });
-
-        return {
-            totalClients: this.clients.size,
-            clientsByPlatform: stats,
-            activeSubscriptions: this.rooms.size,
-            memoryUsage: process.memoryUsage(),
-            uptime: process.uptime(),
-            authenticatedClients: authenticated,
-            rateLimitedClients: rateLimited,
-            redisConnected: this.redisClient !== null,
-            instanceId: this.instanceId
-        };
-    }
-
-    public shutdown() {
-        console.log('[WS] Shutting down...');
-
-        if (this.pingInterval) clearInterval(this.pingInterval);
-        if (this.rateLimitCleanupInterval) clearInterval(this.rateLimitCleanupInterval);
-
-        // Notifier tous les clients
-        this.clients.forEach(c => {
-            c.ws.close(1000, 'Server shutdown');
-        });
-
-        // Fermer Redis
-        if (this.redisClient) {
-            this.redisClient.unsubscribe(this.REDIS_CHANNEL);
-            this.redisClient.quit();
-        }
-    }
+    if (this.pingInterval) clearInterval(this.pingInterval);
+    if (this.rateLimitInterval) clearInterval(this.rateLimitInterval);
+  }
 }
 
+// ================= SINGLETON =================
+
 export const wsManager = (global as any).wsManager || new WSConnectionManager();
-if (process.env.NODE_ENV !== 'production') (global as any).wsManager = wsManager;
+
+if (process.env.NODE_ENV !== "production") {
+  (global as any).wsManager = wsManager;
+}

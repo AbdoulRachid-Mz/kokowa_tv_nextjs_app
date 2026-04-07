@@ -12,27 +12,18 @@ export function useRealtime(options: RealtimeOptions = {}) {
   const subscriptionsRef = useRef<Set<string>>(new Set()); // Store subscriptions
   const optionsRef = useRef(options);
 
-  const getWebSocketURL = () => {
-    if (typeof window === "undefined") {
-      return process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3000/ws";
-    }
+const getWebSocketURL = () => {
+  if (process.env.NEXT_PUBLIC_WS_URL) {
+    return process.env.NEXT_PUBLIC_WS_URL;
+  }
 
-    // 🔥 PRIORITÉ à l'URL explicite
-    if (process.env.NEXT_PUBLIC_WS_URL) {
-      console.log(
-        `🔌 [WS] Using explicit URL: ${process.env.NEXT_PUBLIC_WS_URL}`,
-      );
-      return process.env.NEXT_PUBLIC_WS_URL;
-    }
-
-    // Fallback: construire l'URL dynamiquement
+  if (typeof window !== "undefined") {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws`;
+    return `${protocol}//${window.location.host}/ws`;
+  }
 
-    console.log(`🔌 [WS] Dynamic URL: ${wsUrl}`);
-    return wsUrl;
-  };
+  return "ws://localhost:3000/ws";
+};
 
   // Update optionsRef without triggering effect
   useEffect(() => {
