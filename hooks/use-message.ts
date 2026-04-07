@@ -154,7 +154,8 @@ export function useUnreadMessagesCount(userId: number) {
     queryKey: messageKeys.unread(userId),
     queryFn: () => getUnreadMessagesCount(userId),
     enabled: !!userId,
-    refetchInterval: 1000 * 30, // 30 seconds
+    // refetchInterval: 1000 * 30, // 30 seconds
+    refetchInterval: false, // 30 seconds
   })
 }
 

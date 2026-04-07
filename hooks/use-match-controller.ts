@@ -28,7 +28,7 @@ export function useMatchController({ matchId, subGroupId }: UseMatchControllerPr
     queryKey: ['match', matchId],
     queryFn: () => getMatchById(matchId),
     enabled: !!matchId,
-    refetchInterval: pollingInterval,
+    // refetchInterval: pollingInterval,
     refetchOnWindowFocus: true,
     staleTime: 0, // Toujours stale pour les matchs live
   });

@@ -278,7 +278,7 @@ export function useLiveMatches({ limit = 10, refetchInterval = 60000 }: UseLiveM
   } = useQuery({
     queryKey: ['liveMatches', { limit }],
     queryFn: () => getMatches({ status: 'live', limit }),
-    refetchInterval,
+    refetchInterval: false,
     staleTime: 30000, // 30s
   });
 

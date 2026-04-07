@@ -50,8 +50,7 @@ export default function MatchDetailPage() {
       return data.data;
     },
     staleTime: 30000,
-    refetchInterval: (query) =>
-      query.state.data?.status === "live" ? 10000 : false, // Polling pour les matchs en direct
+    refetchInterval: false // Polling pour les matchs en direct
   });
 
   // Gestion des erreurs
