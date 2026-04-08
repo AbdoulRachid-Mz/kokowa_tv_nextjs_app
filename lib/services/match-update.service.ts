@@ -6,7 +6,6 @@ import type { PoolClient } from "pg";
 import { emitMatchEvent } from "@/actions/realtime";
 import { getMatchById } from "@/actions/matches-2";
 
-
 export interface MatchUpdate {
   sub_group_id?: number;
   match_number?: number;
@@ -16,14 +15,27 @@ export interface MatchUpdate {
   start_time2?: string; // NOUVEAU - timestamp ISO complet
   fighter1_id?: number | null;
   fighter2_id?: number | null;
-  fighter1_initial_state?: 'eliminated' | 'not_eliminated';
-  fighter2_initial_state?: 'eliminated' | 'not_eliminated';
+  fighter1_initial_state?: "eliminated" | "not_eliminated";
+  fighter2_initial_state?: "eliminated" | "not_eliminated";
   winner_fighter_id?: number | null;
   loser_fighter_id?: number | null;
-  match_result?: 'fighter1_win' | 'fighter2_win' | 'draw' | 'cancelled' | 'postponed' | undefined;
+  match_result?:
+    | "fighter1_win"
+    | "fighter2_win"
+    | "draw"
+    | "cancelled"
+    | "postponed"
+    | undefined;
   total_duration?: string;
   break_count?: number;
-  status?: 'scheduled' | 'live' | 'round_break' | 'completed' | 'cancelled' | 'postponed' | 'reclamation';
+  status?:
+    | "scheduled"
+    | "live"
+    | "round_break"
+    | "completed"
+    | "cancelled"
+    | "postponed"
+    | "reclamation";
   audience_count?: number;
   video_url?: string;
   live_stream_url?: string;
@@ -52,7 +64,7 @@ class MatchStateCalculator {
   static async calculateState(
     client: PoolClient,
     subGroupId: number,
-    excludeMatchId?: number
+    excludeMatchId?: number,
   ): Promise<MatchState> {
     // 1. Récupérer les infos de base
     const subGroupRes = await client.query(
@@ -61,11 +73,11 @@ class MatchStateCalculator {
        JOIN phase_groups pg ON sg.group_id = pg.id
        JOIN phases p ON pg.phase_id = p.id
        WHERE sg.id = $1`,
-      [subGroupId]
+      [subGroupId],
     );
 
     if (!subGroupRes.rowCount) {
-      throw new Error('Sous-groupe non trouvé');
+      throw new Error("Sous-groupe non trouvé");
     }
 
     const { region1_id, region2_id, edition_id } = subGroupRes.rows[0];
@@ -82,8 +94,8 @@ class MatchStateCalculator {
        WHERE m.sub_group_id = $1
          AND m.status = 'completed'
          AND m.is_active = true
-         ${excludeMatchId ? 'AND m.id != $2' : ''}`,
-      excludeMatchId ? [subGroupId, excludeMatchId] : [subGroupId]
+         ${excludeMatchId ? "AND m.id != $2" : ""}`,
+      excludeMatchId ? [subGroupId, excludeMatchId] : [subGroupId],
     );
 
     // 3. Initialiser l'état
@@ -91,17 +103,25 @@ class MatchStateCalculator {
       sub_group: {
         score_region1: 0,
         score_region2: 0,
-        nulls: 0
+        nulls: 0,
       },
       region1_id,
       region2_id,
       edition_regions: new Map(),
-      edition_fighters: new Map()
+      edition_fighters: new Map(),
     };
 
     // Initialiser les régions avec 0 points
-    if (region1_id) state.edition_regions.set(region1_id, { points: 0, is_eliminated: false });
-    if (region2_id) state.edition_regions.set(region2_id, { points: 0, is_eliminated: false });
+    if (region1_id)
+      state.edition_regions.set(region1_id, {
+        points: 0,
+        is_eliminated: false,
+      });
+    if (region2_id)
+      state.edition_regions.set(region2_id, {
+        points: 0,
+        is_eliminated: false,
+      });
 
     // 4. Collecter tous les fighter_ids uniques
     const fighterIds = new Set<number>();
@@ -117,7 +137,7 @@ class MatchStateCalculator {
     if (fighterIds.size > 0) {
       const fightersRes = await client.query(
         `SELECT id, region_id FROM fighters WHERE id = ANY($1)`,
-        [Array.from(fighterIds)]
+        [Array.from(fighterIds)],
       );
       for (const row of fightersRes.rows) {
         fighterRegionMap.set(row.id, row.region_id);
@@ -135,10 +155,10 @@ class MatchStateCalculator {
   private static applyMatchToState(
     state: MatchState,
     match: any,
-    fighterRegionMap: Map<number, number>
+    fighterRegionMap: Map<number, number>,
   ) {
     // Match nul
-    if (match.match_result === 'draw') {
+    if (match.match_result === "draw") {
       state.sub_group.nulls += 1;
 
       // +1 point pour chaque région
@@ -177,7 +197,9 @@ class MatchStateCalculator {
 
         // Marquer le vaincu comme éliminé
         if (match.loser_fighter_id) {
-          state.edition_fighters.set(match.loser_fighter_id, { is_eliminated: true });
+          state.edition_fighters.set(match.loser_fighter_id, {
+            is_eliminated: true,
+          });
         }
       }
     }
@@ -186,7 +208,7 @@ class MatchStateCalculator {
   static async syncState(
     client: PoolClient,
     subGroupId: number,
-    calculatedState: MatchState
+    calculatedState: MatchState,
   ) {
     // 1. Mettre à jour le sous-groupe
     await client.query(
@@ -199,8 +221,8 @@ class MatchStateCalculator {
         calculatedState.sub_group.score_region1,
         calculatedState.sub_group.score_region2,
         calculatedState.sub_group.nulls,
-        subGroupId
-      ]
+        subGroupId,
+      ],
     );
 
     // 2. Mettre à jour edition_regions
@@ -216,7 +238,7 @@ class MatchStateCalculator {
            JOIN phases p ON pg.phase_id = p.id
            WHERE sg.id = $3
          ) AND region_id = $4`,
-        [regionState.points, regionState.is_eliminated, subGroupId, regionId]
+        [regionState.points, regionState.is_eliminated, subGroupId, regionId],
       );
     }
 
@@ -232,7 +254,7 @@ class MatchStateCalculator {
            JOIN phases p ON pg.phase_id = p.id
            WHERE sg.id = $2
          ) AND fighter_id = $3`,
-        [fighterState.is_eliminated, subGroupId, fighterId]
+        [fighterState.is_eliminated, subGroupId, fighterId],
       );
     }
   }
@@ -243,7 +265,7 @@ class MatchStateCalculator {
  */
 async function checkAndUpdateGroupStatus(
   client: PoolClient,
-  subGroupId: number
+  subGroupId: number,
 ) {
   // 1. Vérifier si TOUS les matchs actifs sont terminés
   const checkRes = await client.query(
@@ -252,7 +274,7 @@ async function checkAndUpdateGroupStatus(
        COUNT(*) FILTER (WHERE status = 'completed') as completed
      FROM matches
      WHERE sub_group_id = $1 AND is_active = true`,
-    [subGroupId]
+    [subGroupId],
   );
 
   const { total, completed } = checkRes.rows[0];
@@ -260,7 +282,7 @@ async function checkAndUpdateGroupStatus(
   // S'il n'y a pas de matchs, on ne fait rien
   if (total === 0) return;
 
-  const allCompleted = (total === completed);
+  const allCompleted = total === completed;
 
   // 🔥 Mettre à jour le statut du sous-groupe
   await client.query(
@@ -271,14 +293,14 @@ async function checkAndUpdateGroupStatus(
          END,
          is_completed = $1
      WHERE id = $2`,
-    [allCompleted, subGroupId]
+    [allCompleted, subGroupId],
   );
 
   // 2. Mettre à jour le groupe parent (phase_groups)
   // Récupérer l'ID du groupe parent
   const groupRes = await client.query(
     `SELECT group_id FROM sub_groups WHERE id = $1`,
-    [subGroupId]
+    [subGroupId],
   );
 
   const groupId = groupRes.rows[0]?.group_id;
@@ -291,29 +313,35 @@ async function checkAndUpdateGroupStatus(
          COUNT(*) FILTER (WHERE is_completed = true) as completed
        FROM sub_groups
        WHERE group_id = $1 AND is_active = true`,
-      [groupId]
+      [groupId],
     );
 
     const { total: subTotal, completed: subCompleted } = subGroupsRes.rows[0];
-    const allSubGroupsCompleted = (subTotal === subCompleted);
+    const allSubGroupsCompleted = subTotal === subCompleted;
 
     // Mettre à jour le groupe parent
     await client.query(
       `UPDATE phase_groups
        SET is_completed = $1
        WHERE id = $2`,
-      [allSubGroupsCompleted, groupId]
+      [allSubGroupsCompleted, groupId],
     );
 
     if (allSubGroupsCompleted) {
-      console.log(`✅ Groupe parent ${groupId} marqué comme terminé (tous les sous-groupes terminés)`);
+      console.log(
+        `✅ Groupe parent ${groupId} marqué comme terminé (tous les sous-groupes terminés)`,
+      );
     }
   }
 
   if (allCompleted) {
-    console.log(`✅ Sous-groupe ${subGroupId} marqué comme terminé (${completed}/${total} matchs)`);
+    console.log(
+      `✅ Sous-groupe ${subGroupId} marqué comme terminé (${completed}/${total} matchs)`,
+    );
   } else {
-    console.log(`🔄 Sous-groupe ${subGroupId} en cours (${completed}/${total} matchs terminés)`);
+    console.log(
+      `🔄 Sous-groupe ${subGroupId} en cours (${completed}/${total} matchs terminés)`,
+    );
   }
 }
 
@@ -324,10 +352,10 @@ async function ensureUniqueLiveStates(
   client: PoolClient,
   matchId: number,
   subGroupId: number,
-  targetStatus: string
+  targetStatus: string,
 ) {
   // Si on passe en mode live
-  if (targetStatus === 'live') {
+  if (targetStatus === "live") {
     console.log(`🔴 Passage du match ${matchId} en live`);
 
     // 1. Mettre fin à tous les autres matchs live
@@ -338,11 +366,13 @@ async function ensureUniqueLiveStates(
        WHERE id != $1
        AND status = 'live'
        RETURNING id`,
-      [matchId]
+      [matchId],
     );
 
     if (liveMatchesRes.rowCount && liveMatchesRes.rowCount > 0) {
-      console.log(`   → ${liveMatchesRes.rowCount} autre(s) match(s) live arrêté(s)`);
+      console.log(
+        `   → ${liveMatchesRes.rowCount} autre(s) match(s) live arrêté(s)`,
+      );
     }
 
     // 2. Mettre fin à tous les autres sous-groupes ongoing
@@ -352,11 +382,13 @@ async function ensureUniqueLiveStates(
        WHERE id != $1
        AND status = 'ongoing'
        RETURNING id`,
-      [subGroupId]
+      [subGroupId],
     );
 
     if (ongoingSubGroupsRes.rowCount && ongoingSubGroupsRes.rowCount > 0) {
-      console.log(`   → ${ongoingSubGroupsRes.rowCount} autre(s) sous-groupe(s) ongoing arrêté(s)`);
+      console.log(
+        `   → ${ongoingSubGroupsRes.rowCount} autre(s) sous-groupe(s) ongoing arrêté(s)`,
+      );
     }
 
     // 3. Activer le sous-groupe du match (s'il n'est pas déjà terminé)
@@ -365,20 +397,20 @@ async function ensureUniqueLiveStates(
        SET status = 'ongoing'
        WHERE id = $1
        AND status != 'completed'`,
-      [subGroupId]
+      [subGroupId],
     );
 
     console.log(`   → Sous-groupe ${subGroupId} activé (ongoing)`);
   }
 
   // Si on passe en round_break, le match n'est plus live mais le sous-groupe reste ongoing
-  else if (targetStatus === 'round_break' || targetStatus === 'reclamation') {
+  else if (targetStatus === "round_break" || targetStatus === "reclamation") {
     console.log(`⏸️ Match ${matchId} en pause (${targetStatus})`);
     // Le sous-groupe reste ongoing, on ne change rien
   }
 
   // Si on passe en completed, le match est terminé
-  else if (targetStatus === 'completed') {
+  else if (targetStatus === "completed") {
     console.log(`✅ Match ${matchId} terminé`);
     // Le sous-groupe sera mis à jour par checkAndUpdateGroupStatus
   }
@@ -389,7 +421,7 @@ async function ensureUniqueLiveStates(
  */
 export async function updateMatchAndRecompute(
   matchId: number,
-  updates: MatchUpdate
+  updates: MatchUpdate,
 ) {
   const client = await pool.connect();
 
@@ -397,7 +429,9 @@ export async function updateMatchAndRecompute(
     await client.query("BEGIN");
 
     // 🔒 LOCK
-    await client.query(`SELECT id FROM matches WHERE id = $1 FOR UPDATE`, [matchId]);
+    await client.query(`SELECT id FROM matches WHERE id = $1 FOR UPDATE`, [
+      matchId,
+    ]);
 
     const oldMatchRes = await client.query(
       `SELECT m.*, sg.region1_id, sg.region2_id, p.edition_id, sg.id as sub_group_id,
@@ -408,43 +442,47 @@ export async function updateMatchAndRecompute(
        JOIN phase_groups pg ON sg.group_id = pg.id
        JOIN phases p ON pg.phase_id = p.id
        WHERE m.id = $1`,
-      [matchId]
+      [matchId],
     );
 
     if (!oldMatchRes.rowCount) throw new Error("Match introuvable");
     const oldMatch = oldMatchRes.rows[0];
 
     // 🟡 RESET MANUEL ou passage en réclamation
-    if (updates.force_reset ||
-      (oldMatch.status === 'completed' && updates.status === 'reclamation')) {
-
+    if (
+      updates.force_reset ||
+      (oldMatch.status === "completed" && updates.status === "reclamation")
+    ) {
       // Recalculer l'état SANS ce match
       const stateWithoutMatch = await MatchStateCalculator.calculateState(
         client,
         oldMatch.sub_group_id,
-        matchId
+        matchId,
       );
 
       // Appliquer l'état recalculé
       await MatchStateCalculator.syncState(
         client,
         oldMatch.sub_group_id,
-        stateWithoutMatch
+        stateWithoutMatch,
       );
     }
 
-    // 🧠 AUTO CALCUL DU LOSER
+    // 🧠 AUTO CALCUL DU LOSER (seulement si les deux fighters existent)
     if (
       updates.winner_fighter_id &&
-      (updates.loser_fighter_id === undefined)
+      (updates.loser_fighter_id === undefined || updates.loser_fighter_id === null)
     ) {
       const fighter1 = oldMatch.fighter1_id;
       const fighter2 = oldMatch.fighter2_id;
 
-      if (updates.winner_fighter_id === fighter1) {
+      if (updates.winner_fighter_id === fighter1 && fighter2) {
         updates.loser_fighter_id = fighter2;
-      } else if (updates.winner_fighter_id === fighter2) {
+      } else if (updates.winner_fighter_id === fighter2 && fighter1) {
         updates.loser_fighter_id = fighter1;
+      } else {
+        // Victoire par forfait - pas de loser
+        updates.loser_fighter_id = null;
       }
     }
 
@@ -454,29 +492,33 @@ export async function updateMatchAndRecompute(
         client,
         matchId,
         oldMatch.sub_group_id,
-        updates.status
+        updates.status,
       );
     }
 
     // 🔄 UPDATE DU MATCH
-    const updatedMatch = await updateMatchInTransaction(client, matchId, updates);
+    const updatedMatch = await updateMatchInTransaction(
+      client,
+      matchId,
+      updates,
+    );
 
     // 🔺 Si le match est maintenant terminé, recalculer l'état COMPLET
     if (
-      oldMatch.status !== 'completed' &&
-      updatedMatch.status === 'completed'
+      oldMatch.status !== "completed" &&
+      updatedMatch.status === "completed"
     ) {
       // Recalculer l'état complet (avec tous les matchs)
       const fullState = await MatchStateCalculator.calculateState(
         client,
-        oldMatch.sub_group_id
+        oldMatch.sub_group_id,
       );
 
       // Synchroniser
       await MatchStateCalculator.syncState(
         client,
         oldMatch.sub_group_id,
-        fullState
+        fullState,
       );
 
       // Notification push
@@ -489,10 +531,14 @@ export async function updateMatchAndRecompute(
     await client.query("COMMIT");
 
     // Émettre l'événement temps réel (au match et au sous-groupe)
-    await emitMatchEvent(matchId, "match_updated", { match: updatedMatch }, oldMatch.sub_group_id);
+    await emitMatchEvent(
+      matchId,
+      "match_updated",
+      { match: updatedMatch },
+      oldMatch.sub_group_id,
+    );
 
     return updatedMatch;
-
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("❌ updateMatchAndRecompute:", error);
@@ -505,39 +551,82 @@ export async function updateMatchAndRecompute(
 /**
  * 🔄 UPDATE MATCH DANS LA TRANSACTION
  */
-async function updateMatchInTransaction(client: PoolClient, matchId: number, updates: MatchUpdate) {
+async function updateMatchInTransaction(
+  client: PoolClient,
+  matchId: number,
+  updates: MatchUpdate,
+) {
   const fields: string[] = [];
   const values: any[] = [];
   let index = 1;
 
   // 🔥 Filtrer les champs qui n'existent pas dans la table
   const allowedFields = [
-    'sub_group_id', 'match_number', 'match_date', 'start_time', 'start_time2', 'end_time',
-    'fighter1_id', 'fighter2_id', 'fighter1_initial_state', 'fighter2_initial_state',
-    'initial_state', 'winner_fighter_id', 'loser_fighter_id', 'match_result',
-    'total_duration', 'break_count', 'status', 'audience_count', 'video_url',
-    'live_stream_url', 'notes'
+    "sub_group_id",
+    "match_number",
+    "match_date",
+    "start_time",
+    "start_time2",
+    "end_time",
+    "fighter1_id",
+    "fighter2_id",
+    "fighter1_initial_state",
+    "fighter2_initial_state",
+    "initial_state",
+    "winner_fighter_id",
+    "loser_fighter_id",
+    "match_result",
+    "total_duration",
+    "break_count",
+    "status",
+    "audience_count",
+    "video_url",
+    "live_stream_url",
+    "notes",
   ];
 
   for (const [key, value] of Object.entries(updates)) {
     // Ignorer force_reset car ce n'est pas une colonne
-    if (key === 'force_reset') continue;
+    if (key === "force_reset") continue;
 
-    // Ne mettre à jour que les champs autorisés et non undefined
-    if (allowedFields.includes(key) && value !== undefined) {
-      fields.push(`${key} = $${index}`);
-      values.push(value);
-      index++;
+    // Ne mettre à jour que les champs autorisés
+    if (allowedFields.includes(key)) {
+      // ✅ Gérer spécifiquement loser_fighter_id pour éviter -1
+      if (key === "loser_fighter_id") {
+        // Si la valeur est -1 ou undefined, on met null
+        const normalizedValue =
+          value === -1 || value === undefined ? null : value;
+        fields.push(`${key} = $${index}`);
+        values.push(normalizedValue);
+        index++;
+      }
+      // ✅ Gérer winner_fighter_id aussi
+      else if (
+        key === "winner_fighter_id" &&
+        (value === -1 || value === undefined)
+      ) {
+        fields.push(`${key} = $${index}`);
+        values.push(null);
+        index++;
+      }
+      // Pour les autres champs, si la valeur est undefined, on ignore
+      else if (value !== undefined) {
+        fields.push(`${key} = $${index}`);
+        values.push(value);
+        index++;
+      }
     }
   }
 
   if (fields.length > 0) {
     await client.query(
       `UPDATE matches SET ${fields.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE id = $${index}`,
-      [...values, matchId]
+      [...values, matchId],
     );
   }
 
-  const res = await client.query(`SELECT * FROM matches WHERE id = $1`, [matchId]);
+  const res = await client.query(`SELECT * FROM matches WHERE id = $1`, [
+    matchId,
+  ]);
   return res.rows[0];
 }

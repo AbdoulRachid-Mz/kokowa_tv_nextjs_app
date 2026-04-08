@@ -179,7 +179,7 @@ const { data: match, isLoading, refetch } = useQuery({
   queryFn: () => getMatchById(matchId),
   enabled: !!matchId,
   refetchInterval: pollingInterval,
-  refetchOnWindowFocus: true,
+  refetchOnWindowFocus: false,
   staleTime: 0, // Toujours stale pour les matchs live
 });
 

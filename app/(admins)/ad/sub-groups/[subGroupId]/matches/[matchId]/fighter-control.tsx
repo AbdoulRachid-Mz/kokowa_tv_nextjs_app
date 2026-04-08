@@ -372,10 +372,10 @@ export function FighterControl({
               </DialogFooter>
             </DialogContent>
           </Dialog>
-
+ 
           {/* Match nul - désactivé si l'autre lutteur n'est pas assigné */}
           <Button
-            disabled={matchStatus === "completed" || !canSetDraw || !otherFighterAssigned || eliminationStatus?.isEliminated}
+            disabled={matchStatus === "completed" || !otherFighterAssigned}
             variant="outline"
             onClick={onSetDraw}
             size="sm"
