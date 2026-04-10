@@ -223,6 +223,7 @@ async function getEditionInfo(editionId: number) {
   return edition;
 }
 
+// Modifions d'abord la fonction getPhasesWithGroupsAndSubgroups
 async function getPhasesWithGroupsAndSubgroups(editionId: number) {
   // Récupérer les phases
   const phasesSql = `
@@ -246,13 +247,14 @@ async function getPhasesWithGroupsAndSubgroups(editionId: number) {
 
   // Pour chaque phase, récupérer les groupes et sous-groupes
   for (const phase of phases) {
-    phase.groups = await getGroupsWithSubgroups(phase.id);
+    phase.groups = await getGroupsWithSubgroups(phase.id, phase.phaseType);
   }
 
   return phases;
 }
 
-async function getGroupsWithSubgroups(phaseId: number) {
+// Modifions getGroupsWithSubgroups pour passer le phaseType
+async function getGroupsWithSubgroups(phaseId: number, phaseType: string) {
   // Fetch groups
   const groupsSql = `
     SELECT 
@@ -271,12 +273,257 @@ async function getGroupsWithSubgroups(phaseId: number) {
 
   const groups = await query(groupsSql, [phaseId]);
 
-  // For each group, fetch subgroups
+  // For each group, fetch subgroups with matches if phase type is not 'group'
   for (const group of groups) {
-    group.subGroups = await getSubgroupsForGroup(group.id);
+    if (phaseType !== 'group') {
+      // Pour les phases knockout, quarterfinal, semifinal, final, qualification
+      group.subGroups = await getSubgroupsWithMatchesForGroup(group.id);
+    } else {
+      // Pour les phases de type 'group', garder le comportement original
+      group.subGroups = await getSubgroupsForGroup(group.id);
+    }
   }
 
   return groups;
+}
+
+// Nouvelle fonction pour récupérer les sous-groupes avec leurs matches
+async function getSubgroupsWithMatchesForGroup(groupId: number) {
+  const sql = `
+    SELECT 
+      sg.id,
+      sg.name,
+      sg.sub_group_order as "subGroupOrder",
+      sg.description,
+      sg.period,
+      sg.score_region1 as "scoreRegion1",
+      sg.score_region2 as "scoreRegion2",
+      sg.nulls,
+      sg.status,
+      sg.region1_id as "region1Id",
+      sg.region2_id as "region2Id",
+      r1.name as "region1Name",
+      r2.name as "region2Name",
+      r1.color as "region1Color",
+      r2.color as "region2Color",
+      r1.flag_image as "region1FlagImage",
+      r2.flag_image as "region2FlagImage",
+      sg.belt_region1 as "beltRegion1Id",
+      sg.belt_region2 as "beltRegion2Id",
+      b1.color as "beltRegion1Color",
+      b2.color as "beltRegion2Color",
+      sg.main_referee_id as "mainRefereeId",
+      ref.first_name as "refereeFirstName",
+      ref.last_name as "refereeLastName",
+      ref.nickname as "refereeNickname",
+      sg.is_completed as "isCompleted",
+      sg.is_active as "isActive",
+      sg.created_at as "createdAt"
+    FROM sub_groups sg
+    LEFT JOIN regions r1 ON sg.region1_id = r1.id
+    LEFT JOIN regions r2 ON sg.region2_id = r2.id
+    LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
+    LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
+    LEFT JOIN referees ref ON sg.main_referee_id = ref.id
+    WHERE sg.group_id = $1
+    ORDER BY sg.sub_group_order
+  `;
+
+  const subGroups = await query(sql, [groupId]);
+
+  // Pour chaque sous-groupe, récupérer les matches
+  for (const subGroup of subGroups) {
+    subGroup.matches = await getMatchesForSubGroup(subGroup.id);
+    
+    // Format scores
+    subGroup.scores = {
+      region1: subGroup.scoreRegion1,
+      region2: subGroup.scoreRegion2,
+      nulls: subGroup.nulls,
+    };
+    subGroup.matchStatus = subGroup.status;
+    
+    // Nettoyer les champs redondants
+    const fieldsToDelete = [
+      "scoreRegion1", "scoreRegion2", "nulls",
+      "region1Id", "region2Id", "region1Name", "region2Name",
+      "region1Color", "region2Color", "region1FlagImage", "region2FlagImage",
+      "beltRegion1Id", "beltRegion2Id", "beltRegion1Color", "beltRegion2Color",
+      "mainRefereeId", "refereeFirstName", "refereeLastName", "refereeNickname"
+    ];
+    
+    fieldsToDelete.forEach((field) => delete subGroup[field]);
+  }
+
+  return subGroups;
+}
+
+// Fonction pour récupérer les matches d'un sous-groupe (format simplifié comme demandé)
+async function getMatchesForSubGroup(subGroupId: number) {
+  const sql = `
+    SELECT 
+      m.id,
+      m.match_number as "matchNumber",
+      m.match_date as "matchDate",
+      m.start_time2 as "startTime2",
+      m.status,
+      m.total_duration as "totalDuration",
+      m.break_count as "breakCount",
+      m.video_url as "videoUrl",
+      m.live_stream_url as "liveStreamUrl",
+      m.notes,
+      
+      -- Fighter 1
+      m.fighter1_id as "fighter1Id",
+      f1.first_name as "fighter1FirstName",
+      f1.last_name as "fighter1LastName",
+      f1.nickname as "fighter1Nickname",
+      f1.profile_image as "fighter1ProfileImage",
+      m.fighter1_initial_state as "fighter1InitialState",
+      r1.name as "fighter1RegionName",
+      
+      -- Fighter 2
+      m.fighter2_id as "fighter2Id",
+      f2.first_name as "fighter2FirstName",
+      f2.last_name as "fighter2LastName",
+      f2.nickname as "fighter2Nickname",
+      f2.profile_image as "fighter2ProfileImage",
+      r2.name as "fighter2RegionName",
+      m.fighter2_initial_state as "fighter2InitialState",
+      
+      -- Winner
+      m.winner_fighter_id as "winnerFighterId",
+      m.loser_fighter_id as "loserFighterId",
+      
+      -- Winner fighter details
+      wf.first_name as "winnerFirstName",
+      wf.last_name as "winnerLastName",
+      wf.nickname as "winnerNickname",
+      wf.profile_image as "winnerProfileImage",
+      wf.region_id as "winnerRegionId",
+      wr.name as "winnerRegionName",
+      
+      -- Loser fighter details
+      lf.first_name as "loserFirstName",
+      lf.last_name as "loserLastName",
+      lf.nickname as "loserNickname",
+      lf.profile_image as "loserProfileImage",
+      lf.region_id as "loserRegionId",
+      lr.name as "loserRegionName",
+      
+      -- Cards count
+      (SELECT COUNT(*) FROM fighter_cards fc WHERE fc.match_id = m.id) as total_cards,
+      (SELECT COUNT(*) FROM fighter_cards fc WHERE fc.match_id = m.id AND fc.card_type = 'yellow') as yellow_cards,
+      (SELECT COUNT(*) FROM fighter_cards fc WHERE fc.match_id = m.id AND fc.card_type = 'red') as red_cards
+      
+    FROM matches m
+    JOIN fighters f1 ON m.fighter1_id = f1.id
+    JOIN fighters f2 ON m.fighter2_id = f2.id
+    JOIN regions r1 ON f1.region_id = r1.id
+    JOIN regions r2 ON f2.region_id = r2.id
+    LEFT JOIN fighters wf ON m.winner_fighter_id = wf.id
+    LEFT JOIN regions wr ON wf.region_id = wr.id
+    LEFT JOIN fighters lf ON m.loser_fighter_id = lf.id
+    LEFT JOIN regions lr ON lf.region_id = lr.id
+    WHERE m.sub_group_id = $1
+    ORDER BY m.match_number ASC
+  `;
+
+  const matches = await query(sql, [subGroupId]);
+  
+  // Formater chaque match selon le modèle demandé
+  return matches.map((match) => {
+    // Structurer les données des fighters
+    const fighter1 = {
+      id: match.fighter1Id,
+      firstName: match.fighter1FirstName,
+      lastName: match.fighter1LastName,
+      nickname: match.fighter1Nickname || "",
+      profileImage: match.fighter1ProfileImage,
+      region: {
+        id: match.fighter1RegionId,
+        name: match.fighter1RegionName,
+      },
+      initialState: match.fighter1InitialState,
+    };
+
+    const fighter2 = {
+      id: match.fighter2Id,
+      firstName: match.fighter2FirstName,
+      lastName: match.fighter2LastName,
+      nickname: match.fighter2Nickname || "",
+      profileImage: match.fighter2ProfileImage,
+      region: {
+        id: match.fighter2RegionId,
+        name: match.fighter2RegionName,
+      },
+      initialState: match.fighter2InitialState,
+    };
+
+    // Structurer le résultat
+    let winner = null;
+    let loser = null;
+    
+    if (match.winnerFighterId) {
+      winner = {
+        id: match.winnerFighterId,
+        firstName: match.winnerFirstName,
+        lastName: match.winnerLastName,
+        nickname: match.winnerNickname || "",
+        profileImage: match.winnerProfileImage,
+        region: {
+          id: match.winnerRegionId,
+          name: match.winnerRegionName,
+        },
+      };
+    }
+    
+    if (match.loserFighterId) {
+      loser = {
+        id: match.loserFighterId,
+        firstName: match.loserFirstName,
+        lastName: match.loserLastName,
+        nickname: match.loserNickname || "",
+        profileImage: match.loserProfileImage,
+        region: {
+          id: match.loserRegionId,
+          name: match.loserRegionName,
+        },
+      };
+    }
+
+    // Formater le match selon le modèle demandé
+    const formattedMatch = {
+      id: match.id,
+      matchNumber: match.matchNumber,
+      matchDate: match.matchDate,
+      startTime2: match.startTime2,
+      status: match.status,
+      totalDuration: match.totalDuration,
+      breakCount: match.breakCount,
+      videoUrl: match.videoUrl,
+      liveStreamUrl: match.liveStreamUrl,
+      notes: match.notes,
+      fighters: {
+        fighter1,
+        fighter2,
+      },
+      result: {
+        winner,
+        loser,
+      },
+      // stats: {
+      //   totalCards: match.total_cards,
+      //   yellowCards: match.yellow_cards,
+      //   redCards: match.red_cards,
+      //   duration: {},
+      //   breaks: match.breakCount,
+      // },
+      allCards: [], // Les cartes détaillées peuvent être ajoutées dans une requête séparée si nécessaire
+    };
+
+    return formattedMatch;
+  });
 }
 
 async function getSubgroupsForGroup(groupId: number) {
