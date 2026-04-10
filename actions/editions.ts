@@ -324,17 +324,17 @@ export async function getEditions(options: EditionFilters = {}) {
         edition.phases = edition.phases.map((phase: any) => {
           phase.groups =
             edition.phase_groups?.filter(
-              (group: any) => group.phase_id === phase.id
+              (group: any) => group.phase_id === phase.id,
             ) || [];
           phase.groups.forEach((group: any) => {
             group.sub_groups =
               edition.sub_groups?.filter(
-                (sub: any) => sub.group_id === group.id
+                (sub: any) => sub.group_id === group.id,
               ) || [];
             group.sub_groups.forEach((subGroup: any) => {
               subGroup.matches =
                 edition.matches?.filter(
-                  (match: any) => match.sub_group_id === subGroup.id
+                  (match: any) => match.sub_group_id === subGroup.id,
                 ) || [];
             });
           });
@@ -379,7 +379,7 @@ export async function getEditionById(
       with_matches?: boolean;
     };
     is_active?: boolean;
-  } = {}
+  } = {},
 ) {
   try {
     const { with_relations = true, relations = {}, is_active } = options;
@@ -582,7 +582,7 @@ export async function getEditionById(
           isActiveFlag,
           with_groups,
           with_subGroups,
-          with_matches
+          with_matches,
         );
       }
 
@@ -788,90 +788,88 @@ export async function createEdition(formData: FormData) {
   try {
     const rawData = {
       competition_id: formData.get("competition_id"),
-      edition_number: formData.get("edition_number"),
       year: formData.get("year"),
       theme: formData.get("theme"),
       start_date: formData.get("start_date"),
       end_date: formData.get("end_date"),
+      region_id: formData.get("region_id"),
+      winner_fighter_id: formData.get("winner_fighter_id"),
     };
 
     const cleanedData = {
       competition_id: Number(rawData.competition_id),
-      edition_number: rawData.edition_number
-        ? Number(rawData.edition_number)
-        : undefined,
       year: Number(rawData.year),
-      theme: (rawData.theme as string) || undefined,
-      start_date: (rawData.start_date as string) || undefined,
-      end_date: (rawData.end_date as string) || undefined,
+      theme: (rawData.theme as string) || null,
+      start_date: (rawData.start_date as string) || null,
+      end_date: (rawData.end_date as string) || null,
+      region_id: rawData.region_id ? Number(rawData.region_id) : null,
+      winner_fighter_id: rawData.winner_fighter_id
+        ? Number(rawData.winner_fighter_id)
+        : null,
     };
 
-    // Déterminer le numéro d'édition
-    let finalEditionNumber = cleanedData.edition_number;
+    let inserted = false;
+    let result;
 
-    if (finalEditionNumber === undefined || finalEditionNumber === null) {
-      // Récupérer le plus grand numéro d'édition existant pour cette compétition
-      const maxNumberResult = await query<{ max_number: number }>(
-        `SELECT COALESCE(MAX(edition_number), 0) as max_number 
-         FROM competition_editions WHERE competition_id = $1`,
-        [cleanedData.competition_id]
+    while (!inserted) {
+      // 1. Récupérer max actuel
+      const maxRes = await query<{ max: number }>(
+        `
+        SELECT COALESCE(MAX(edition_number), 0) as max
+        FROM competition_editions
+        WHERE competition_id = $1
+        `,
+        [cleanedData.competition_id],
       );
 
-      finalEditionNumber = maxNumberResult[0]?.max_number + 1 || 1;
-    } else {
-      // Vérifier si le numéro existe déjà
-      const existingNumberCheck = await query<{ id: number }>(
-        `SELECT id FROM competition_editions 
-         WHERE edition_number = $1 AND competition_id = $2`,
-        [finalEditionNumber, cleanedData.competition_id]
-      );
+      const nextNumber = (maxRes[0]?.max || 0) + 1;
 
-      if (existingNumberCheck.length > 0) {
-        // Trouver le prochain numéro disponible
-        const numbersResult = await query<{ edition_number: number }>(
-          `SELECT edition_number FROM competition_editions 
-           WHERE competition_id = $1 
-           ORDER BY edition_number`,
-          [cleanedData.competition_id]
+      try {
+        // 2. Tentative d'insertion
+        result = await query<{ id: number }>(
+          `
+          INSERT INTO competition_editions (
+            competition_id,
+            edition_number,
+            year,
+            theme,
+            start_date,
+            end_date,
+            is_active,
+            region_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          RETURNING id
+          `,
+          [
+            cleanedData.competition_id,
+            nextNumber,
+            cleanedData.year,
+            cleanedData.theme,
+            cleanedData.start_date,
+            cleanedData.end_date,
+            true,
+            cleanedData.region_id,
+          ],
         );
 
-        const existingNumbers = numbersResult.map((r) => r.edition_number);
-        let nextNumber = finalEditionNumber;
+        inserted = true;
 
-        while (existingNumbers.includes(nextNumber)) {
-          nextNumber++;
+        revalidatePath("/ad/competitions");
+        revalidatePath(`/ad/competitions/${cleanedData.competition_id}`);
+
+        return {
+          success: true,
+          id: result[0].id,
+          message: `Édition #${nextNumber} (${cleanedData.year}) créée avec succès`,
+        };
+      } catch (error: any) {
+        // 🔥 gestion propre du conflit
+        if (error.code === "23505") {
+          continue; // retry
         }
-
-        finalEditionNumber = nextNumber;
+        throw error;
       }
     }
-
-    const sql = `
-      INSERT INTO competition_editions (
-        competition_id, edition_number, year, theme, 
-        start_date, end_date, is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id
-    `;
-
-    const result = await query<{ id: number }>(sql, [
-      cleanedData.competition_id,
-      finalEditionNumber,
-      cleanedData.year,
-      cleanedData.theme || null,
-      cleanedData.start_date || null,
-      cleanedData.end_date || null,
-      true, // is_active par défaut à true
-    ]);
-
-    revalidatePath("/ad/competitions");
-    revalidatePath(`/ad/competitions/${cleanedData.competition_id}`);
-
-    return {
-      success: true,
-      id: result[0].id,
-      message: `Édition #${finalEditionNumber} (${cleanedData.year}) créée avec succès`,
-    };
   } catch (error) {
     console.error("Error in createEdition:", error);
     throw new Error("Erreur lors de la création de l'édition");
@@ -951,7 +949,7 @@ export async function deleteEdition(id: number) {
         (SELECT COUNT(*) FROM edition_fighters WHERE edition_id = $1) as fighter_count,
         (SELECT COUNT(*) FROM edition_regions WHERE edition_id = $1) as region_count
     `,
-      [id]
+      [id],
     );
 
     const counts = relatedData[0];
@@ -962,7 +960,7 @@ export async function deleteEdition(id: number) {
     ) {
       throw new Error(
         `Impossible de supprimer cette édition car elle contient des données liées: 
-        ${counts.phase_count} phase(s), ${counts.fighter_count} lutteur(s), ${counts.region_count} région(s)`
+        ${counts.phase_count} phase(s), ${counts.fighter_count} lutteur(s), ${counts.region_count} région(s)`,
       );
     }
 
@@ -996,7 +994,7 @@ export interface EditionParticipantsFilters {
 // Récupérer les lutteurs participants d'une édition
 export async function getEditionFighters(
   editionId: number,
-  options: EditionParticipantsFilters = {}
+  options: EditionParticipantsFilters = {},
 ): Promise<PaginatedResponse<any>> {
   try {
     const {
@@ -1133,7 +1131,7 @@ export async function getEditionFighters(
 // Récupérer les régions participantes d'une édition
 export async function getEditionRegions(
   editionId: number,
-  options: EditionParticipantsFilters = {}
+  options: EditionParticipantsFilters = {},
 ): Promise<PaginatedResponse<any>> {
   try {
     const {
@@ -1253,7 +1251,7 @@ export async function addFighterToEdition(
   editionId: number,
   fighterId: number,
   status: string = "registered",
-  regionId?: number
+  regionId?: number,
 ) {
   try {
     const validatedData = editionFighterSchema.parse({
@@ -1267,7 +1265,7 @@ export async function addFighterToEdition(
     // Vérifier si le lien existe déjà
     const existing = await query<{ id: number; region_id: number | null }>(
       `SELECT id, region_id FROM edition_fighters WHERE edition_id = $1 AND fighter_id = $2`,
-      [validatedData.edition_id, validatedData.fighter_id]
+      [validatedData.edition_id, validatedData.fighter_id],
     );
 
     let returnedId: number;
@@ -1289,7 +1287,7 @@ export async function addFighterToEdition(
               validatedData.edition_id,
               validatedData.fighter_id,
               validatedData.status,
-            ]
+            ],
       );
       returnedId = updateResult[0].id;
     } else {
@@ -1312,16 +1310,20 @@ export async function addFighterToEdition(
               validatedData.edition_id,
               validatedData.fighter_id,
               validatedData.status,
-            ]
+            ],
       );
       returnedId = insertResult[0].id;
     }
 
     revalidatePath(`/ad/editions/${editionId}/figthers`);
     revalidatePath(`/ad/editions/${editionId}`);
-    
+
     // 🔥 Émission WS
-    await emitEditionEvent(editionId, 'fighter_added', { id: returnedId, fighterId, regionId });
+    await emitEditionEvent(editionId, "fighter_added", {
+      id: returnedId,
+      fighterId,
+      regionId,
+    });
 
     return {
       success: true,
@@ -1338,7 +1340,7 @@ export async function addFighterToEdition(
 export async function addRegionToEdition(
   editionId: number,
   regionId: number,
-  status: string = "registered"
+  status: string = "registered",
 ) {
   try {
     const validatedData = editionRegionSchema.parse({
@@ -1362,9 +1364,12 @@ export async function addRegionToEdition(
 
     revalidatePath(`/ad/editions/${editionId}/regions`);
     revalidatePath(`/ad/editions/${editionId}`);
-    
+
     // 🔥 Émission WS
-    await emitEditionEvent(editionId, 'region_added', { id: result[0].id, regionId });
+    await emitEditionEvent(editionId, "region_added", {
+      id: result[0].id,
+      regionId,
+    });
 
     return {
       success: true,
@@ -1379,7 +1384,7 @@ export async function addRegionToEdition(
 
 export async function removeFighterFromEdition(
   editionId: number,
-  fighterId: number
+  fighterId: number,
 ) {
   try {
     const sql = `
@@ -1391,9 +1396,9 @@ export async function removeFighterFromEdition(
 
     revalidatePath(`/ad/editions/${editionId}/figthers`);
     revalidatePath(`/ad/editions/${editionId}`);
-    
+
     // 🔥 Émission WS
-    await emitEditionEvent(editionId, 'fighter_removed', { fighterId });
+    await emitEditionEvent(editionId, "fighter_removed", { fighterId });
 
     return {
       success: true,
@@ -1407,7 +1412,7 @@ export async function removeFighterFromEdition(
 
 export async function removeRegionFromEdition(
   editionId: number,
-  regionId: number
+  regionId: number,
 ) {
   try {
     const sql = `
@@ -1419,9 +1424,9 @@ export async function removeRegionFromEdition(
 
     revalidatePath(`/ad/editions/${editionId}/regions`);
     revalidatePath(`/ad/editions/${editionId}`);
-    
+
     // 🔥 Émission WS
-    await emitEditionEvent(editionId, 'region_removed', { regionId });
+    await emitEditionEvent(editionId, "region_removed", { regionId });
 
     return {
       success: true,
@@ -1441,7 +1446,7 @@ export async function updateEditionFighter(
       EditionFighter,
       "status" | "region_id" | "is_champion" | "is_eliminated"
     >
-  >
+  >,
 ) {
   try {
     const allowed: (keyof EditionFighter)[] = [
@@ -1474,9 +1479,12 @@ export async function updateEditionFighter(
 
     revalidatePath(`/ad/editions/${editionId}/fighters`);
     revalidatePath(`/ad/editions/${editionId}`);
-    
+
     // 🔥 Émission WS
-    await emitEditionEvent(editionId, 'fighter_updated', { fighterId, updates: rows[0] });
+    await emitEditionEvent(editionId, "fighter_updated", {
+      fighterId,
+      updates: rows[0],
+    });
 
     return { success: true, data: rows[0] };
   } catch (e) {
@@ -1488,7 +1496,7 @@ export async function updateEditionFighter(
 export async function updateEditionRegion(
   editionId: number,
   regionId: number,
-  updates: Partial<Pick<EditionRegion, "status" | "is_eliminated" | "points">>
+  updates: Partial<Pick<EditionRegion, "status" | "is_eliminated" | "points">>,
 ) {
   try {
     const allowed: (keyof EditionRegion)[] = [
@@ -1520,9 +1528,12 @@ export async function updateEditionRegion(
 
     revalidatePath(`/ad/editions/${editionId}/regions`);
     revalidatePath(`/ad/editions/${editionId}`);
-    
+
     // 🔥 Émission WS
-    await emitEditionEvent(editionId, 'region_updated', { regionId, updates: rows[0] });
+    await emitEditionEvent(editionId, "region_updated", {
+      regionId,
+      updates: rows[0],
+    });
 
     return { success: true, data: rows[0] };
   } catch (e) {

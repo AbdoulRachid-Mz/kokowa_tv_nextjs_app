@@ -412,7 +412,7 @@ export function ParticipantsManagerV2({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               fighter_id: itemId,
-              status: "registered",
+              // status: "registered",
               region_id: regionId,
             }),
           });
@@ -422,7 +422,7 @@ export function ParticipantsManagerV2({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               region_id: itemId,
-              status: "registered",
+              // status: "registered",
             }),
           });
         }

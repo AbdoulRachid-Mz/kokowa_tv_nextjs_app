@@ -51,17 +51,20 @@ import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { createSubGroup } from "@/actions/sub-groups";
+import { REGIONS } from "@/constants/regions";
+import { Region } from "@/types";
+import { getEditionRegions } from "@/actions/editions";
 
 interface SubGroupFormData {
   id?: number;
   name: string;
   sub_group_order: number;
   description?: string;
-  period: 'matin' | 'soir';
+  period: "matin" | "soir";
   score_region1?: number;
   score_region2?: number;
   nulls?: number;
-  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed';
+  status: "upcoming" | "ongoing" | "completed" | "cancelled" | "postponed";
   region1_id?: number;
   region2_id?: number;
   belt_region1?: number;
@@ -92,15 +95,16 @@ export default function SubGroupFormV2({
   const [newSubGroups, setNewSubGroups] = useState<SubGroupFormData[]>([]);
 
   // États pour les données de référence
-  const [regions, setRegions] = useState<any[]>([]);
+  const [regions, setRegions] = useState<Region[]>(REGIONS);
   const [belts, setBelts] = useState<any[]>([]);
   const [referees, setReferees] = useState<any[]>([]);
   const [editionRegions, setEditionRegions] = useState<any[]>([]);
+  console.log("regions", regions);
 
   // États de chargement
   const [loading, setLoading] = useState({
     group: !initialGroupData,
-    regions: true,
+    regions: false, // ✅ IMPORTANT
     belts: true,
     referees: true,
     editionRegions: true,
@@ -112,7 +116,9 @@ export default function SubGroupFormV2({
   // Calculer le prochain ordre disponible
   const calculateNextOrder = useCallback(() => {
     if (subGroups.length === 0) return 1;
-    const maxOrder = Math.max(...subGroups.map((sg) => sg.sub_group_order || 0));
+    const maxOrder = Math.max(
+      ...subGroups.map((sg) => sg.sub_group_order || 0),
+    );
     return maxOrder + 1;
   }, [subGroups]);
 
@@ -122,11 +128,11 @@ export default function SubGroupFormV2({
       name: `Combat 1`,
       sub_group_order: 1,
       description: "",
-      period: 'matin',
+      period: "matin",
       score_region1: undefined,
       score_region2: undefined,
       nulls: undefined,
-      status: 'upcoming',
+      status: "upcoming",
       is_completed: false,
       is_active: true,
     };
@@ -153,7 +159,7 @@ export default function SubGroupFormV2({
       setLoading((prev) => ({ ...prev, group: true }));
       try {
         const response = await fetch(
-          `/api/phase-groups/${groupId}?with_relations=true`
+          `/api/phase-groups/${groupId}?with_relations=true`,
         );
         if (response.ok) {
           const data = await response.json();
@@ -176,17 +182,18 @@ export default function SubGroupFormV2({
     }
   }, [groupId, initialGroupData]);
 
-  // Charger les données de référence
+  // Charger les données de référence de base
   useEffect(() => {
-    const loadReferenceData = async () => {
+    const loadBasicData = async () => {
       try {
         // Charger toutes les régions
         const regionsResponse = await fetch(
-          "/api/regions?is_active=true&limit=1000"
+          "/api/regions?is_active=true&limit=1000&with_fighters=false&with_coach=false",
         );
         if (regionsResponse.ok) {
           const regionsData = await regionsResponse.json();
-          setRegions(regionsData.data || regionsData || []);
+          const fetched = regionsData.data || regionsData;
+          setRegions(fetched?.length ? fetched : REGIONS);
         }
 
         // Charger les ceintures
@@ -198,43 +205,54 @@ export default function SubGroupFormV2({
 
         // Charger les arbitres
         const refereesResponse = await fetch(
-          "/api/referees?is_active=true&limit=1000"
+          "/api/referees?is_active=true&limit=1000",
         );
         if (refereesResponse.ok) {
           const refereesData = await refereesResponse.json();
           setReferees(refereesData.data || refereesData || []);
         }
-
-        // Charger les régions de l'édition si on a les données du groupe
-        if (groupData?.phase?.edition?.id) {
-          const editionId = groupData.phase.edition.id;
-          const editionRegionsResponse = await fetch(
-            `/api/editions/${editionId}/regions/list?status=approved&with_region=true&limit=1000`
-          );
-          if (editionRegionsResponse.ok) {
-            const editionRegionsData = await editionRegionsResponse.json();
-            setEditionRegions(
-              editionRegionsData.data || editionRegionsData || []
-            );
-          }
-        }
       } catch (error) {
         console.error(
-          "Erreur lors du chargement des données de référence:",
-          error
+          "Erreur lors du chargement des données de référence de base:",
+          error,
         );
       } finally {
-        setLoading({
-          group: false,
+        setLoading((prev) => ({
+          ...prev,
           regions: false,
           belts: false,
           referees: false,
-          editionRegions: false,
-        });
+        }));
       }
     };
 
-    loadReferenceData();
+    loadBasicData();
+  }, []);
+
+  // Charger les régions de l'édition seulement quand l'ID est disponible
+  useEffect(() => {
+    const loadEditionRegions = async () => {
+      if (!groupData?.phase?.edition?.id) return;
+
+      setLoading((prev) => ({ ...prev, editionRegions: true }));
+      try {
+        const data = await getEditionRegions(groupData.phase.edition.id, {
+          with_region: true,
+          limit: 100,
+        });
+        setEditionRegions(data.data || []);
+      } catch (error) {
+        console.error(
+          "Erreur lors du chargement des régions de l'édition:",
+          error,
+        );
+        setEditionRegions([]);
+      } finally {
+        setLoading((prev) => ({ ...prev, editionRegions: false }));
+      }
+    };
+
+    loadEditionRegions();
   }, [groupData?.phase?.edition?.id]);
 
   // Ajouter un nouveau sous-groupe
@@ -246,11 +264,11 @@ export default function SubGroupFormV2({
         name: `Combat ${nextOrder}`,
         sub_group_order: nextOrder,
         description: "",
-        period: 'matin',
+        period: "matin",
         score_region1: undefined,
         score_region2: undefined,
         nulls: undefined,
-        status: 'upcoming',
+        status: "upcoming",
         is_completed: false,
         is_active: true,
       },
@@ -266,7 +284,7 @@ export default function SubGroupFormV2({
         ...sg,
         sub_group_order: calculateNextOrder() + i,
         name: `Combat ${calculateNextOrder() + i}`,
-      }))
+      })),
     );
   };
 
@@ -274,15 +292,22 @@ export default function SubGroupFormV2({
   const handleUpdateSubGroup = (
     index: number,
     field: keyof SubGroupFormData,
-    value: any
+    value: any,
   ) => {
     setNewSubGroups((prev) => {
       const updated = [...prev];
-      
+
       // Convertir les valeurs numériques pour les scores et nulls
-      if (field === 'score_region1' || field === 'score_region2' || field === 'nulls') {
-        updated[index] = { ...updated[index], [field]: value === '' ? undefined : Number(value) };
-      } else if (field === 'period' || field === 'status') {
+      if (
+        field === "score_region1" ||
+        field === "score_region2" ||
+        field === "nulls"
+      ) {
+        updated[index] = {
+          ...updated[index],
+          [field]: value === "" ? undefined : Number(value),
+        };
+      } else if (field === "period" || field === "status") {
         updated[index] = { ...updated[index], [field]: value };
       } else {
         updated[index] = { ...updated[index], [field]: value };
@@ -340,11 +365,11 @@ export default function SubGroupFormV2({
       if (sg.score_region1 !== undefined && sg.score_region1 < 0) {
         newErrors[`${index}_score_region1`] = "Le score doit être positif";
       }
-      
+
       if (sg.score_region2 !== undefined && sg.score_region2 < 0) {
         newErrors[`${index}_score_region2`] = "Le score doit être positif";
       }
-      
+
       if (sg.nulls !== undefined && sg.nulls < 0) {
         newErrors[`${index}_nulls`] = "Le nombre de nulls doit être positif";
       }
@@ -373,7 +398,7 @@ export default function SubGroupFormV2({
         formData.append("name", sg.name);
         formData.append("sub_group_order", String(sg.sub_group_order));
         formData.append("description", sg.description || "");
-        
+
         // Nouveaux champs
         formData.append("period", sg.period);
         if (sg.score_region1 !== undefined) {
@@ -402,13 +427,13 @@ export default function SubGroupFormV2({
         if (sg.belt_region1 || belts[0]?.id) {
           formData.append(
             "belt_region1",
-            String(sg.belt_region1 || belts[0]?.id || "")
+            String(sg.belt_region1 || belts[0]?.id || ""),
           );
         }
         if (sg.belt_region2 || belts[0]?.id) {
           formData.append(
             "belt_region2",
-            String(sg.belt_region2 || belts[0]?.id || "")
+            String(sg.belt_region2 || belts[0]?.id || ""),
           );
         }
 
@@ -416,7 +441,7 @@ export default function SubGroupFormV2({
         if (sg.main_referee_id || referees[0]?.id) {
           formData.append(
             "main_referee_id",
-            String(sg.main_referee_id || referees[0]?.id || "")
+            String(sg.main_referee_id || referees[0]?.id || ""),
           );
         }
 
@@ -429,7 +454,7 @@ export default function SubGroupFormV2({
 
       if (allSuccess) {
         toast.success(
-          `${newSubGroups.length} sous-groupe(s) créé(s) avec succès`
+          `${newSubGroups.length} sous-groupe(s) créé(s) avec succès`,
         );
 
         if (onSuccess) {
@@ -535,7 +560,7 @@ export default function SubGroupFormV2({
                 }
                 className={cn(
                   "text-lg font-semibold border-none shadow-none focus-visible:ring-0",
-                  errors[`${index}_name`] && "border-red-500"
+                  errors[`${index}_name`] && "border-red-500",
                 )}
               />
             </div>
@@ -575,7 +600,7 @@ export default function SubGroupFormV2({
               >
                 <SelectTrigger
                   className={cn(
-                    errors[`${index}_region1_id`] && "border-red-500"
+                    errors[`${index}_region1_id`] && "border-red-500",
                   )}
                 >
                   <SelectValue placeholder="Sélectionnez une région">
@@ -596,25 +621,20 @@ export default function SubGroupFormV2({
                         }}
                       />
                     </div>
-                    {editionRegions.length > 0
-                      ? editionRegions.map((er) => (
-                          <SelectItem
-                            key={er.region?.id || er.id}
-                            value={
-                              er.region?.id?.toString() || er.id.toString()
-                            }
-                          >
-                            {renderRegionOption(er.region || er)}
-                          </SelectItem>
-                        ))
-                      : regions.map((region) => (
-                          <SelectItem
-                            key={region.id}
-                            value={region.id.toString()}
-                          >
-                            {renderRegionOption(region)}
-                          </SelectItem>
-                        ))}
+                    {(() => {
+                      const availableRegions =
+                        editionRegions?.length > 0
+                          ? editionRegions.map((er) => er.region || er)
+                          : regions;
+                      return availableRegions.map((region) => (
+                        <SelectItem
+                          key={region.id}
+                          value={region.id.toString()}
+                        >
+                          {renderRegionOption(region)}
+                        </SelectItem>
+                      ));
+                    })()}
                   </div>
                 </SelectContent>
               </Select>
@@ -658,7 +678,7 @@ export default function SubGroupFormV2({
               >
                 <SelectTrigger
                   className={cn(
-                    errors[`${index}_region2_id`] && "border-red-500"
+                    errors[`${index}_region2_id`] && "border-red-500",
                   )}
                 >
                   <SelectValue placeholder="Sélectionnez une région">
@@ -736,14 +756,21 @@ export default function SubGroupFormV2({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Période */}
             <div className="space-y-2">
-              <Label htmlFor={`period-${index}`} className="flex items-center gap-1">
+              <Label
+                htmlFor={`period-${index}`}
+                className="flex items-center gap-1"
+              >
                 <Clock className="h-4 w-4" />
                 Période
               </Label>
               <Select
                 value={sg.period}
                 onValueChange={(value) =>
-                  handleUpdateSubGroup(index, "period", value as 'matin' | 'soir')
+                  handleUpdateSubGroup(
+                    index,
+                    "period",
+                    value as "matin" | "soir",
+                  )
                 }
               >
                 <SelectTrigger>
@@ -758,7 +785,10 @@ export default function SubGroupFormV2({
 
             {/* Score Région 1 */}
             <div className="space-y-2">
-              <Label htmlFor={`score1-${index}`} className="flex items-center gap-1">
+              <Label
+                htmlFor={`score1-${index}`}
+                className="flex items-center gap-1"
+              >
                 <Target className="h-4 w-4" />
                 Score Région 1
               </Label>
@@ -766,13 +796,13 @@ export default function SubGroupFormV2({
                 id={`score1-${index}`}
                 type="number"
                 min="0"
-                value={sg.score_region1 === undefined ? '' : sg.score_region1}
+                value={sg.score_region1 === undefined ? "" : sg.score_region1}
                 onChange={(e) =>
                   handleUpdateSubGroup(index, "score_region1", e.target.value)
                 }
                 placeholder="0"
                 className={cn(
-                  errors[`${index}_score_region1`] && "border-red-500"
+                  errors[`${index}_score_region1`] && "border-red-500",
                 )}
               />
               {errors[`${index}_score_region1`] && (
@@ -784,7 +814,10 @@ export default function SubGroupFormV2({
 
             {/* Score Région 2 */}
             <div className="space-y-2">
-              <Label htmlFor={`score2-${index}`} className="flex items-center gap-1">
+              <Label
+                htmlFor={`score2-${index}`}
+                className="flex items-center gap-1"
+              >
                 <Target className="h-4 w-4" />
                 Score Région 2
               </Label>
@@ -792,13 +825,13 @@ export default function SubGroupFormV2({
                 id={`score2-${index}`}
                 type="number"
                 min="0"
-                value={sg.score_region2 === undefined ? '' : sg.score_region2}
+                value={sg.score_region2 === undefined ? "" : sg.score_region2}
                 onChange={(e) =>
                   handleUpdateSubGroup(index, "score_region2", e.target.value)
                 }
                 placeholder="0"
                 className={cn(
-                  errors[`${index}_score_region2`] && "border-red-500"
+                  errors[`${index}_score_region2`] && "border-red-500",
                 )}
               />
               {errors[`${index}_score_region2`] && (
@@ -810,7 +843,10 @@ export default function SubGroupFormV2({
 
             {/* Nulls */}
             <div className="space-y-2">
-              <Label htmlFor={`nulls-${index}`} className="flex items-center gap-1">
+              <Label
+                htmlFor={`nulls-${index}`}
+                className="flex items-center gap-1"
+              >
                 <Divide className="h-4 w-4" />
                 Matchs Nuls
               </Label>
@@ -818,14 +854,12 @@ export default function SubGroupFormV2({
                 id={`nulls-${index}`}
                 type="number"
                 min="0"
-                value={sg.nulls === undefined ? '' : sg.nulls}
+                value={sg.nulls === undefined ? "" : sg.nulls}
                 onChange={(e) =>
                   handleUpdateSubGroup(index, "nulls", e.target.value)
                 }
                 placeholder="0"
-                className={cn(
-                  errors[`${index}_nulls`] && "border-red-500"
-                )}
+                className={cn(errors[`${index}_nulls`] && "border-red-500")}
               />
               {errors[`${index}_nulls`] && (
                 <p className="text-red-500 text-xs">
@@ -838,14 +872,21 @@ export default function SubGroupFormV2({
           {/* Statut de la rencontre */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor={`status-${index}`} className="flex items-center gap-1">
+              <Label
+                htmlFor={`status-${index}`}
+                className="flex items-center gap-1"
+              >
                 <Activity className="h-4 w-4" />
                 Statut
               </Label>
               <Select
                 value={sg.status}
                 onValueChange={(value) =>
-                  handleUpdateSubGroup(index, "status", value as SubGroupFormData['status'])
+                  handleUpdateSubGroup(
+                    index,
+                    "status",
+                    value as SubGroupFormData["status"],
+                  )
                 }
               >
                 <SelectTrigger>
@@ -866,7 +907,9 @@ export default function SubGroupFormV2({
               <Label htmlFor={`referee-${index}`}>Arbitre Principal</Label>
               <Select
                 value={
-                  sg.main_referee_id?.toString() || referee?.id?.toString() || ""
+                  sg.main_referee_id?.toString() ||
+                  referee?.id?.toString() ||
+                  ""
                 }
                 onValueChange={(value) =>
                   handleUpdateSubGroup(index, "main_referee_id", Number(value))
@@ -993,10 +1036,11 @@ export default function SubGroupFormV2({
                     <Typography variant="caption2" theme="muted">
                       Période:{" "}
                       <span className="font-semibold">
-                        {sg.period === 'matin' ? 'Matin' : 'Soir'}
+                        {sg.period === "matin" ? "Matin" : "Soir"}
                       </span>
                     </Typography>
-                    {(sg.score_region1 !== undefined || sg.score_region2 !== undefined) && (
+                    {(sg.score_region1 !== undefined ||
+                      sg.score_region2 !== undefined) && (
                       <Typography variant="caption2" theme="muted">
                         Score:{" "}
                         <span className="font-semibold">
@@ -1047,16 +1091,28 @@ export default function SubGroupFormV2({
                   <Activity className="h-4 w-4 text-muted-foreground" />
                   <Typography variant="caption1" theme="muted">
                     Statut:{" "}
-                    <Badge variant={
-                      sg.status === 'completed' ? 'default' :
-                      sg.status === 'ongoing' ? 'secondary' :
-                      sg.status === 'cancelled' ? 'destructive' :
-                      sg.status === 'postponed' ? 'outline' : 'secondary'
-                    }>
-                      {sg.status === 'upcoming' ? 'À venir' :
-                       sg.status === 'ongoing' ? 'En cours' :
-                       sg.status === 'completed' ? 'Terminé' :
-                       sg.status === 'cancelled' ? 'Annulé' : 'Reporté'}
+                    <Badge
+                      variant={
+                        sg.status === "completed"
+                          ? "default"
+                          : sg.status === "ongoing"
+                            ? "secondary"
+                            : sg.status === "cancelled"
+                              ? "destructive"
+                              : sg.status === "postponed"
+                                ? "outline"
+                                : "secondary"
+                      }
+                    >
+                      {sg.status === "upcoming"
+                        ? "À venir"
+                        : sg.status === "ongoing"
+                          ? "En cours"
+                          : sg.status === "completed"
+                            ? "Terminé"
+                            : sg.status === "cancelled"
+                              ? "Annulé"
+                              : "Reporté"}
                     </Badge>
                   </Typography>
                 </div>
@@ -1084,7 +1140,7 @@ export default function SubGroupFormV2({
                   <Typography variant="caption1" theme="muted">
                     Rencontre terminée:{" "}
                     <span className="font-medium">
-                      {sg.is_completed ? 'Oui' : 'Non'}
+                      {sg.is_completed ? "Oui" : "Non"}
                     </span>
                   </Typography>
                 </div>
@@ -1257,23 +1313,38 @@ export default function SubGroupFormV2({
                     <div className="mb-3 space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Période:</span>
-                        <span className="font-medium">{sg.period === 'matin' ? 'Matin' : 'Soir'}</span>
+                        <span className="font-medium">
+                          {sg.period === "matin" ? "Matin" : "Soir"}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Statut:</span>
-                        <Badge variant={
-                          sg.status === 'completed' ? 'default' :
-                          sg.status === 'ongoing' ? 'secondary' :
-                          sg.status === 'cancelled' ? 'destructive' :
-                          sg.status === 'postponed' ? 'outline' : 'secondary'
-                        }>
-                          {sg.status === 'upcoming' ? 'À venir' :
-                           sg.status === 'ongoing' ? 'En cours' :
-                           sg.status === 'completed' ? 'Terminé' :
-                           sg.status === 'cancelled' ? 'Annulé' : 'Reporté'}
+                        <Badge
+                          variant={
+                            sg.status === "completed"
+                              ? "default"
+                              : sg.status === "ongoing"
+                                ? "secondary"
+                                : sg.status === "cancelled"
+                                  ? "destructive"
+                                  : sg.status === "postponed"
+                                    ? "outline"
+                                    : "secondary"
+                          }
+                        >
+                          {sg.status === "upcoming"
+                            ? "À venir"
+                            : sg.status === "ongoing"
+                              ? "En cours"
+                              : sg.status === "completed"
+                                ? "Terminé"
+                                : sg.status === "cancelled"
+                                  ? "Annulé"
+                                  : "Reporté"}
                         </Badge>
                       </div>
-                      {(sg.score_region1 !== undefined || sg.score_region2 !== undefined) && (
+                      {(sg.score_region1 !== undefined ||
+                        sg.score_region2 !== undefined) && (
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">Score:</span>
                           <span className="font-medium">

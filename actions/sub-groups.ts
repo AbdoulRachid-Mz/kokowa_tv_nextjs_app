@@ -1,21 +1,20 @@
 // @/actions/sub-groups.ts - VERSION CORRIGÉE
-'use server';
+"use server";
 
-import { pool, query, queryOne } from '@/lib/db/neon-client';
-import { subGroupSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
-import { emitSubGroupEvent } from './realtime';
-import { SubGroup, SubGroupFilters, PaginatedResponse, Region } from '@/types';
-import { getEditionFighters, getEditionRegions } from '@/actions/editions';
-
+import { pool, query, queryOne } from "@/lib/db/neon-client";
+import { subGroupSchema } from "@/validation/schemas";
+import { revalidatePath } from "next/cache";
+import { emitSubGroupEvent } from "./realtime";
+import { SubGroup, SubGroupFilters, PaginatedResponse, Region } from "@/types";
+import { getEditionFighters, getEditionRegions } from "@/actions/editions";
 
 export async function getSubGroups(
-  filters: SubGroupFilters = {}
+  filters: SubGroupFilters = {},
 ): Promise<PaginatedResponse<SubGroup>> {
   try {
     const {
       group_id,
-      search = '',
+      search = "",
       page = 1,
       limit = 20,
       with_group = true,
@@ -34,9 +33,9 @@ export async function getSubGroups(
       main_referee_id,
     } = filters;
 
-    let whereClause = 'WHERE 1=1';
+    let whereClause = "WHERE 1=1";
     const params: any[] = [];
-    const selectFields: string[] = ['sg.*'];
+    const selectFields: string[] = ["sg.*"];
     const joins: string[] = [];
 
     // Filtres de base
@@ -53,12 +52,12 @@ export async function getSubGroups(
       )`;
     }
 
-    if (typeof is_active === 'boolean') {
+    if (typeof is_active === "boolean") {
       params.push(is_active);
       whereClause += ` AND sg.is_active = $${params.length}`;
     }
 
-    if (typeof is_completed === 'boolean') {
+    if (typeof is_completed === "boolean") {
       params.push(is_completed);
       whereClause += ` AND sg.is_completed = $${params.length}`;
     }
@@ -108,9 +107,9 @@ export async function getSubGroups(
 
     // Régions
     if (with_regions) {
-      joins.push('LEFT JOIN regions r1 ON sg.region1_id = r1.id');
-      joins.push('LEFT JOIN regions r2 ON sg.region2_id = r2.id');
-      
+      joins.push("LEFT JOIN regions r1 ON sg.region1_id = r1.id");
+      joins.push("LEFT JOIN regions r2 ON sg.region2_id = r2.id");
+
       selectFields.push(`
         CASE WHEN r1.id IS NOT NULL THEN
           JSON_BUILD_OBJECT(
@@ -139,9 +138,9 @@ export async function getSubGroups(
 
     // Ceintures
     if (with_belts) {
-      joins.push('LEFT JOIN belt b1 ON sg.belt_region1 = b1.id');
-      joins.push('LEFT JOIN belt b2 ON sg.belt_region2 = b2.id');
-      
+      joins.push("LEFT JOIN belt b1 ON sg.belt_region1 = b1.id");
+      joins.push("LEFT JOIN belt b2 ON sg.belt_region2 = b2.id");
+
       selectFields.push(`
         CASE WHEN b1.id IS NOT NULL THEN
           JSON_BUILD_OBJECT(
@@ -162,9 +161,9 @@ export async function getSubGroups(
 
     // Arbitre principal avec sa région
     if (with_referee) {
-      joins.push('LEFT JOIN referees ref ON sg.main_referee_id = ref.id');
-      joins.push('LEFT JOIN regions ref_r ON ref.region_id = ref_r.id');
-      
+      joins.push("LEFT JOIN referees ref ON sg.main_referee_id = ref.id");
+      joins.push("LEFT JOIN regions ref_r ON ref.region_id = ref_r.id");
+
       selectFields.push(`
         CASE WHEN ref.id IS NOT NULL THEN
           JSON_BUILD_OBJECT(
@@ -238,8 +237,8 @@ export async function getSubGroups(
 
     // Matchs avec leurs relations
     if (with_matches) {
-      const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
-      
+      const isActiveFlag = typeof is_active === "boolean" ? is_active : true;
+
       selectFields.push(`
         COALESCE(
           (SELECT JSON_AGG(
@@ -334,12 +333,12 @@ export async function getSubGroups(
     const countSql = `
       SELECT COUNT(*) as total
       FROM sub_groups sg
-      ${joins.join(' ')}
+      ${joins.join(" ")}
       ${whereClause}
     `;
 
     const countResult = await query<{ total: string }>(countSql, params);
-    const total = parseInt(countResult[0]?.total ?? '0');
+    const total = parseInt(countResult[0]?.total ?? "0");
 
     // Pagination
     const validatedPage = Math.max(1, page);
@@ -349,18 +348,19 @@ export async function getSubGroups(
 
     // Requête principale
     const dataSql = `
-      SELECT ${selectFields.join(', ')}
+      SELECT ${selectFields.join(", ")}
       FROM sub_groups sg
-      ${joins.join(' ')}
+      ${joins.join(" ")}
       ${whereClause}
       ORDER BY sg.sub_group_order ASC, sg.name ASC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
 
-    const data = await query<SubGroup>(
-      dataSql, 
-      [...params, validatedLimit, offset]
-    );
+    const data = await query<SubGroup>(dataSql, [
+      ...params,
+      validatedLimit,
+      offset,
+    ]);
 
     return {
       data,
@@ -368,41 +368,40 @@ export async function getSubGroups(
         page: validatedPage,
         limit: validatedLimit,
         total,
-        totalPages
-      }
+        totalPages,
+      },
     };
   } catch (error) {
-    console.error('Error in getSubGroups:', error);
-    throw new Error('Erreur lors de la récupération des sous-groupes');
+    console.error("Error in getSubGroups:", error);
+    throw new Error("Erreur lors de la récupération des sous-groupes");
   }
 }
 
 // ==================== FONCTION PRINCIPALE CORRIGÉE ====================
 
-export async function getSubGroupById(id: number, options: { 
-  with_relations?: boolean;
-  relations?: {
-    with_group?: boolean;
-    with_phase?: boolean;
-    with_edition?: boolean;
-    with_competition?: boolean;
-    with_fighters?: boolean;
-    with_regions?: boolean;
-    with_belts?: boolean;
-    with_referee?: boolean;
-    with_matches?: boolean;
-    with_edition_fighters?: boolean;
-    with_edition_regions?: boolean;
-  };
-  is_active?: boolean;
-} = {}) {
+export async function getSubGroupById(
+  id: number,
+  options: {
+    with_relations?: boolean;
+    relations?: {
+      with_group?: boolean;
+      with_phase?: boolean;
+      with_edition?: boolean;
+      with_competition?: boolean;
+      with_fighters?: boolean;
+      with_regions?: boolean;
+      with_belts?: boolean;
+      with_referee?: boolean;
+      with_matches?: boolean;
+      with_edition_fighters?: boolean;
+      with_edition_regions?: boolean;
+    };
+    is_active?: boolean;
+  } = {},
+) {
   try {
-    const { 
-      with_relations = true,
-      relations = {},
-      is_active 
-    } = options;
-    
+    const { with_relations = true, relations = {}, is_active } = options;
+
     // Extraire les relations avec des valeurs par défaut
     const {
       with_group = true,
@@ -410,18 +409,18 @@ export async function getSubGroupById(id: number, options: {
       with_edition = true,
       with_competition = true,
       with_regions = true,
-      with_belts = true, 
+      with_belts = true,
       with_referee = true,
       with_matches = true,
       with_edition_fighters = true,
-      with_edition_regions = true
+      with_edition_regions = true,
     } = relations;
-    
+
     const params: any[] = [id];
-    let whereClause = 'WHERE sg.id = $1';
-    
+    let whereClause = "WHERE sg.id = $1";
+
     // Ajouter le filtre is_active si spécifié
-    if (typeof is_active === 'boolean') {
+    if (typeof is_active === "boolean") {
       params.push(is_active);
       whereClause += ` AND sg.is_active = $${params.length}`;
     }
@@ -430,37 +429,41 @@ export async function getSubGroupById(id: number, options: {
     if (!with_relations) {
       const sql = `SELECT * FROM sub_groups sg ${whereClause}`;
       const result = await queryOne<SubGroup>(sql, params);
-      
+
       if (!result) {
-        throw new Error('Sous-groupe non trouvé');
+        throw new Error("Sous-groupe non trouvé");
       }
-      
+
       return result;
     }
 
     // Construire la requête complète avec toutes les relations
-    const selectFields = ['sg.*']; // NOUVEAU: tous les champs du sous-groupe incluent les nouveaux
+    const selectFields = ["sg.*"]; // NOUVEAU: tous les champs du sous-groupe incluent les nouveaux
     const joins: string[] = [];
 
     // 1. Groupe avec arbre hiérarchique complet
     if (with_group) {
       const hierarchyJoins = [];
-      hierarchyJoins.push('LEFT JOIN phase_groups pg ON sg.group_id = pg.id');
-      
+      hierarchyJoins.push("LEFT JOIN phase_groups pg ON sg.group_id = pg.id");
+
       if (with_phase) {
-        hierarchyJoins.push('LEFT JOIN phases p ON pg.phase_id = p.id');
-        
+        hierarchyJoins.push("LEFT JOIN phases p ON pg.phase_id = p.id");
+
         if (with_edition) {
-          hierarchyJoins.push('LEFT JOIN competition_editions ce ON p.edition_id = ce.id');
-          
+          hierarchyJoins.push(
+            "LEFT JOIN competition_editions ce ON p.edition_id = ce.id",
+          );
+
           if (with_competition) {
-            hierarchyJoins.push('LEFT JOIN competitions c ON ce.competition_id = c.id');
+            hierarchyJoins.push(
+              "LEFT JOIN competitions c ON ce.competition_id = c.id",
+            );
           }
         }
       }
-      
+
       joins.push(...hierarchyJoins);
-      
+
       selectFields.push(`
         JSON_BUILD_OBJECT(
           'id', pg.id,
@@ -470,7 +473,9 @@ export async function getSubGroupById(id: number, options: {
           'date', pg.date, -- NOUVEAU: date du groupe de phase
           'is_completed', pg.is_completed,
           'is_active', pg.is_active,
-          'phase', ${with_phase ? `
+          'phase', ${
+            with_phase
+              ? `
             JSON_BUILD_OBJECT(
               'id', p.id,
               'name', p.name,
@@ -479,7 +484,9 @@ export async function getSubGroupById(id: number, options: {
               'description', p.description,
               'is_completed', p.is_completed,
               'is_active', p.is_active,
-              'edition', ${with_edition ? `
+              'edition', ${
+                with_edition
+                  ? `
                 JSON_BUILD_OBJECT(
                   'id', ce.id,
                   'edition_number', ce.edition_number,
@@ -490,7 +497,9 @@ export async function getSubGroupById(id: number, options: {
                   'total_participants', ce.total_participants,
                   'prize_pool', ce.prize_pool,
                   'is_active', ce.is_active,
-                  'competition', ${with_competition ? `
+                  'competition', ${
+                    with_competition
+                      ? `
                     JSON_BUILD_OBJECT(
                       'id', c.id,
                       'name', c.name,
@@ -500,20 +509,26 @@ export async function getSubGroupById(id: number, options: {
                       'featured_image', c.featured_image,
                       'is_active', c.is_active
                     )
-                  ` : 'NULL'}
+                  `
+                      : "NULL"
+                  }
                 )
-              ` : 'NULL'}
+              `
+                  : "NULL"
+              }
             )
-          ` : 'NULL'}
+          `
+              : "NULL"
+          }
         ) as group
       `);
     }
 
     // 2. Régions du sous-groupe
     if (with_regions) {
-      joins.push('LEFT JOIN regions r1 ON sg.region1_id = r1.id');
-      joins.push('LEFT JOIN regions r2 ON sg.region2_id = r2.id');
-      
+      joins.push("LEFT JOIN regions r1 ON sg.region1_id = r1.id");
+      joins.push("LEFT JOIN regions r2 ON sg.region2_id = r2.id");
+
       selectFields.push(`
         CASE WHEN r1.id IS NOT NULL THEN
           JSON_BUILD_OBJECT(
@@ -550,9 +565,9 @@ export async function getSubGroupById(id: number, options: {
 
     // 3. Ceintures
     if (with_belts) {
-      joins.push('LEFT JOIN belt b1 ON sg.belt_region1 = b1.id');
-      joins.push('LEFT JOIN belt b2 ON sg.belt_region2 = b2.id');
-      
+      joins.push("LEFT JOIN belt b1 ON sg.belt_region1 = b1.id");
+      joins.push("LEFT JOIN belt b2 ON sg.belt_region2 = b2.id");
+
       selectFields.push(`
         CASE WHEN b1.id IS NOT NULL THEN
           JSON_BUILD_OBJECT(
@@ -575,9 +590,9 @@ export async function getSubGroupById(id: number, options: {
 
     // 4. Arbitre principal avec sa région
     if (with_referee) {
-      joins.push('LEFT JOIN referees ref ON sg.main_referee_id = ref.id');
-      joins.push('LEFT JOIN regions ref_r ON ref.region_id = ref_r.id');
-      
+      joins.push("LEFT JOIN referees ref ON sg.main_referee_id = ref.id");
+      joins.push("LEFT JOIN regions ref_r ON ref.region_id = ref_r.id");
+
       selectFields.push(`
         CASE WHEN ref.id IS NOT NULL THEN
           JSON_BUILD_OBJECT(
@@ -613,8 +628,8 @@ export async function getSubGroupById(id: number, options: {
 
     // 5. Matchs avec toutes leurs relations
     if (with_matches) {
-      const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
-      
+      const isActiveFlag = typeof is_active === "boolean" ? is_active : true;
+
       selectFields.push(`
         COALESCE(
           (SELECT JSON_AGG(
@@ -739,100 +754,104 @@ export async function getSubGroupById(id: number, options: {
 
     // Construire la requête finale
     const sql = `
-      SELECT ${selectFields.join(', ')}
+      SELECT ${selectFields.join(", ")}
       FROM sub_groups sg
-      ${joins.join(' ')}
+      ${joins.join(" ")}
       ${whereClause}
     `;
 
     const result = await queryOne<SubGroup>(sql, params);
-    
+
     if (!result) {
-      throw new Error('Sous-groupe non trouvé');
+      throw new Error("Sous-groupe non trouvé");
     }
-    
+
     // Récupérer les données de l'édition séparément en utilisant les méthodes existantes
     if (with_edition_fighters || with_edition_regions) {
       // Récupérer l'ID de l'édition depuis le résultat
       const editionId = result.group?.phase?.edition?.id;
-      
+
       if (editionId) {
         // Récupérer les lutteurs de l'édition
         if (with_edition_fighters) {
           try {
             const fightersResponse = await getEditionFighters(editionId, {
               limit: 100,
-              status: 'qualified',
+              status: "qualified",
               with_fighter: true,
               with_region: true,
-              sort_by: 'ranking',
-              sort_order: 'desc'
+              sort_by: "ranking",
+              sort_order: "desc",
             });
-            
+
             result.edition_fighters = fightersResponse.data;
           } catch (error) {
-            console.error('Error fetching edition fighters:', error);
+            console.error("Error fetching edition fighters:", error);
             result.edition_fighters = [];
           }
         }
-        
+
         // Récupérer les régions de l'édition
         if (with_edition_regions) {
           try {
             const regionsResponse = await getEditionRegions(editionId, {
-              status: 'approved',
+              status: "approved",
               with_region: true,
-              sort_by: 'name',
-              sort_order: 'asc'
+              sort_by: "name",
+              sort_order: "asc",
             });
-            
+
             result.edition_regions = regionsResponse.data;
           } catch (error) {
-            console.error('Error fetching edition regions:', error);
+            console.error("Error fetching edition regions:", error);
             result.edition_regions = [];
           }
         }
-        
+
         // Optionnel : Filtrer les lutteurs par région si des régions sont spécifiées dans le sous-groupe
         if (result.edition_fighters && result.edition_fighters.length > 0) {
           if (result.region1?.id) {
-            const region1Fighters = result.edition_fighters.filter((ef: any) => 
-              ef.fighter?.region_id === result.region1?.id
+            const region1Fighters = result.edition_fighters.filter(
+              (ef: any) => ef.fighter?.region_id === result.region1?.id,
             );
             // Ensure region1 is a full Region object before adding fighters
             if (!result.region1) {
               result.region1 = {
                 id: 0,
-                name: '',
-                code: '',
-                created_at: new Date().toISOString()
+                name: "",
+                code: "",
+                created_at: new Date().toISOString(),
               } as Region;
             }
-            (result.region1 as any).fighters = region1Fighters.map((ef: any) => ef.fighter);
+            (result.region1 as any).fighters = region1Fighters.map(
+              (ef: any) => ef.fighter,
+            );
           }
-          
+
           if (result.region2?.id) {
-            const region2Fighters = result.edition_fighters.filter((ef: any) => 
-              ef.fighter?.region_id === result.region2?.id
+            const region2Fighters = result.edition_fighters.filter(
+              (ef: any) => ef.fighter?.region_id === result.region2?.id,
             );
             // Ensure region2 is a full Region object before adding fighters
             if (!result.region2) {
               result.region2 = {
                 id: 0,
-                name: '',
-                code: '',
-                created_at: new Date().toISOString()
+                name: "",
+                code: "",
+                created_at: new Date().toISOString(),
               } as Region;
             }
-            (result.region2 as any).fighters = region2Fighters.map((ef: any) => ef.fighter);
+            (result.region2 as any).fighters = region2Fighters.map(
+              (ef: any) => ef.fighter,
+            );
           }
         }
       }
     }
-    
+
     return result;
   } catch (error) {
-    console.error('Error in getSubGroupById:', error);
+    console.error("Error in getSubGroupById:", error);
     throw error;
   }
 }
@@ -845,32 +864,32 @@ export async function getSubGroupById(id: number, options: {
 // export async function completeSubGroup(subGroupId: number) {
 //   try {
 //     const client = await pool.connect();
-    
+
 //     try {
 //       await client.query('BEGIN');
-      
+
 //       // 1️⃣ Vérifier que TOUS les matchs sont completed
 //       const checkRes = await client.query(
-//         `SELECT 
+//         `SELECT
 //            COUNT(*) as total,
 //            COUNT(*) FILTER (WHERE status = 'completed') as completed
 //          FROM matches
 //          WHERE sub_group_id = $1 AND is_active = true`,
 //         [subGroupId]
 //       );
-      
+
 //       const { total, completed } = checkRes.rows[0];
-      
+
 //       if (total === 0) {
 //         throw new Error("Ce sous-groupe n'a aucun match");
 //       }
-      
+
 //       if (completed !== total) {
 //         throw new Error(
 //           `Impossible de terminer : ${completed}/${total} matchs terminés`
 //         );
 //       }
-      
+
 //       // 2️⃣ Marquer comme terminé
 //       await client.query(
 //         `UPDATE sub_groups
@@ -879,18 +898,18 @@ export async function getSubGroupById(id: number, options: {
 //          WHERE id = $1`,
 //         [subGroupId]
 //       );
-      
+
 //       await client.query('COMMIT');
-      
+
 //       // Revalidation
 //       revalidatePath(`/ad/sub-groups/${subGroupId}`);
 //       revalidatePath(`/ad/sub-groups/${subGroupId}/organisation`);
-      
+
 //       return {
 //         success: true,
 //         message: "Sous-groupe marqué comme terminé avec succès"
 //       };
-      
+
 //     } catch (error) {
 //       await client.query('ROLLBACK');
 //       throw error;
@@ -979,9 +998,9 @@ async function getEditionFightersDetailed(editionId: number): Promise<any[]> {
         AND f.is_active = true
       ORDER BY f.ranking DESC NULLS LAST, f.last_name, f.first_name
     `;
-    
+
     const result = await query<any>(sql, [editionId]);
-    
+
     // Formater les résultats
     return result.map((row: any) => ({
       id: row.id,
@@ -990,14 +1009,16 @@ async function getEditionFightersDetailed(editionId: number): Promise<any[]> {
       status: row.status,
       registration_date: row.registration_date,
       created_at: row.created_at,
-      fighter: row.fighter ? {
-        ...row.fighter,
-        region: row.fighter.region || null
-      } : null,
-      edition_region: row.edition_region
+      fighter: row.fighter
+        ? {
+            ...row.fighter,
+            region: row.fighter.region || null,
+          }
+        : null,
+      edition_region: row.edition_region,
     }));
   } catch (error) {
-    console.error('Error in getEditionFightersDetailed:', error);
+    console.error("Error in getEditionFightersDetailed:", error);
     return [];
   }
 }
@@ -1041,9 +1062,9 @@ async function getEditionRegionsDetailed(editionId: number): Promise<any[]> {
         AND er.status = 'approved'
       ORDER BY r.name
     `;
-    
+
     const result = await query<any>(sql, [editionId]);
-    
+
     // Formater les résultats
     return result.map((row: any) => ({
       id: row.id,
@@ -1053,10 +1074,10 @@ async function getEditionRegionsDetailed(editionId: number): Promise<any[]> {
       registration_date: row.registration_date,
       created_at: row.created_at,
       region: row.region,
-      competition_id: row.competition_id
+      competition_id: row.competition_id,
     }));
   } catch (error) {
-    console.error('Error in getEditionRegionsDetailed:', error);
+    console.error("Error in getEditionRegionsDetailed:", error);
     return [];
   }
 }
@@ -1066,23 +1087,23 @@ async function getEditionRegionsDetailed(editionId: number): Promise<any[]> {
  */
 function groupFightersByRegion(editionFighters: any[]): Map<number, any[]> {
   const map = new Map<number, any[]>();
-  
+
   for (const ef of editionFighters) {
     if (!ef.fighter || !ef.fighter.region_id) continue;
-    
+
     const regionId = ef.fighter.region_id;
-    
+
     if (!map.has(regionId)) {
       map.set(regionId, []);
     }
-    
+
     map.get(regionId)!.push({
       ...ef.fighter,
       edition_status: ef.status,
-      registration_date: ef.registration_date
+      registration_date: ef.registration_date,
     });
   }
-  
+
   return map;
 }
 
@@ -1106,11 +1127,11 @@ function groupFightersByRegion(editionFighters: any[]): Map<number, any[]> {
 //         with_edition_fighters: true
 //       }
 //     });
-    
+
 //     if (!subGroup) {
 //       throw new Error('Sous-groupe non trouvé');
 //     }
-    
+
 //     // Structure hiérarchique attendue
 //     const structuredData = {
 //       // Le sous-groupe de base
@@ -1121,7 +1142,7 @@ function groupFightersByRegion(editionFighters: any[]): Map<number, any[]> {
 //         phase: subGroup.phase,
 //         edition: subGroup.edition
 //       },
-      
+
 //       // Données additionnelles pour la page d'organisation
 //       organisation: {
 //         // Arbre hiérarchique complet
@@ -1135,13 +1156,13 @@ function groupFightersByRegion(editionFighters: any[]): Map<number, any[]> {
 //           phase: subGroup.phase,
 //           edition: subGroup.edition
 //         },
-        
+
 //         // Données de l'édition
 //         edition_data: {
 //           fighters: subGroup.edition_fighters || [],
 //           regions: subGroup.edition_regions || []
 //         },
-        
+
 //         // Régions spécifiques du sous-groupe avec leurs lutteurs
 //         assigned_regions: {
 //           region1: subGroup.region1 ? {
@@ -1153,19 +1174,18 @@ function groupFightersByRegion(editionFighters: any[]): Map<number, any[]> {
 //             fighters: subGroup.region2.edition_fighters || []
 //           } : null
 //         },
-        
+
 //         // Matchs du sous-groupe
 //         matches: subGroup.matches || []
 //       }
 //     };
-    
+
 //     return structuredData;
 //   } catch (error) {
 //     console.error('Error in getSubGroupOrganisationData:', error);
 //     throw new Error('Erreur lors du chargement des données d\'organisation');
 //   }
 // }
-
 
 // ==================== API ENDPOINTS SIMULÉS POUR LA PAGE ====================
 
@@ -1189,48 +1209,64 @@ function groupFightersByRegion(editionFighters: any[]): Map<number, any[]> {
 //   }
 // }
 
-
-
 export async function createSubGroup(formData: FormData) {
   try {
     const rawData = {
-      group_id: formData.get('group_id'),
-      name: formData.get('name'),
-      video_url: formData.get('video_url'),
-      sub_group_order: formData.get('sub_group_order'),
-      description: formData.get('description'),
-      period: formData.get('period'),
-      score_region1: formData.get('score_region1'),
-      score_region2: formData.get('score_region2'),
-      nulls: formData.get('nulls'),
-      status: formData.get('status'),
-      region1_id: formData.get('region1_id'),
-      region2_id: formData.get('region2_id'),
-      belt_region1: formData.get('belt_region1'),
-      belt_region2: formData.get('belt_region2'),
-      main_referee_id: formData.get('main_referee_id'),
-      is_completed: formData.get('is_completed'),
-      is_active: formData.get('is_active'),
+      group_id: formData.get("group_id"),
+      name: formData.get("name"),
+      video_url: formData.get("video_url"),
+      sub_group_order: formData.get("sub_group_order"),
+      description: formData.get("description"),
+      period: formData.get("period"),
+      score_region1: formData.get("score_region1"),
+      score_region2: formData.get("score_region2"),
+      nulls: formData.get("nulls"),
+      status: formData.get("status"),
+      region1_id: formData.get("region1_id"),
+      region2_id: formData.get("region2_id"),
+      belt_region1: formData.get("belt_region1"),
+      belt_region2: formData.get("belt_region2"),
+      main_referee_id: formData.get("main_referee_id"),
+      is_completed: formData.get("is_completed"),
+      is_active: formData.get("is_active"),
     };
 
     const cleanedData = {
       group_id: Number(rawData.group_id),
       name: rawData.name as string,
-      video_url: rawData.video_url as string || undefined,
-      sub_group_order: rawData.sub_group_order ? Number(rawData.sub_group_order) : undefined,
-      description: rawData.description as string || undefined,
-      period: (rawData.period as 'matin' | 'soir') || 'matin',
-      score_region1: rawData.score_region1 ? Number(rawData.score_region1) : undefined,
-      score_region2: rawData.score_region2 ? Number(rawData.score_region2) : undefined,
+      video_url: (rawData.video_url as string) || undefined,
+      sub_group_order: rawData.sub_group_order
+        ? Number(rawData.sub_group_order)
+        : undefined,
+      description: (rawData.description as string) || undefined,
+      period: (rawData.period as "matin" | "soir") || "matin",
+      score_region1: rawData.score_region1
+        ? Number(rawData.score_region1)
+        : undefined,
+      score_region2: rawData.score_region2
+        ? Number(rawData.score_region2)
+        : undefined,
       nulls: rawData.nulls ? Number(rawData.nulls) : undefined,
-      status: (rawData.status as 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed') || 'upcoming',
+      status:
+        (rawData.status as
+          | "upcoming"
+          | "ongoing"
+          | "completed"
+          | "cancelled"
+          | "postponed") || "upcoming",
       region1_id: rawData.region1_id ? Number(rawData.region1_id) : undefined,
       region2_id: rawData.region2_id ? Number(rawData.region2_id) : undefined,
-      belt_region1: rawData.belt_region1 ? Number(rawData.belt_region1) : undefined,
-      belt_region2: rawData.belt_region2 ? Number(rawData.belt_region2) : undefined,
-      main_referee_id: rawData.main_referee_id ? Number(rawData.main_referee_id) : undefined,
-      is_completed: rawData.is_completed === 'true',
-      is_active: rawData.is_active === 'true',
+      belt_region1: rawData.belt_region1
+        ? Number(rawData.belt_region1)
+        : undefined,
+      belt_region2: rawData.belt_region2
+        ? Number(rawData.belt_region2)
+        : undefined,
+      main_referee_id: rawData.main_referee_id
+        ? Number(rawData.main_referee_id)
+        : undefined,
+      is_completed: rawData.is_completed === "true",
+      is_active: rawData.is_active === "true",
     };
 
     // Validate with schema
@@ -1239,21 +1275,21 @@ export async function createSubGroup(formData: FormData) {
     // Vérifier et ajuster le nom si nécessaire
     let finalName = validatedData.name;
     let nameCounter = 1;
-    
+
     const existingNameCheck = await query<{ id: number }>(
       `SELECT id FROM sub_groups WHERE name = $1 AND group_id = $2`,
-      [finalName, validatedData.group_id]
+      [finalName, validatedData.group_id],
     );
-    
+
     while (existingNameCheck.length > 0) {
       finalName = `${validatedData.name} (${nameCounter})`;
       nameCounter++;
-      
+
       const newCheck = await query<{ id: number }>(
         `SELECT id FROM sub_groups WHERE name = $1 AND group_id = $2`,
-        [finalName, validatedData.group_id]
+        [finalName, validatedData.group_id],
       );
-      
+
       if (newCheck.length === 0) {
         break;
       }
@@ -1261,53 +1297,56 @@ export async function createSubGroup(formData: FormData) {
 
     // Déterminer l'ordre du sous-groupe
     let finalOrder = validatedData.sub_group_order;
-    
+
     if (finalOrder === undefined || finalOrder === null) {
       // Récupérer le plus grand ordre existant pour ce groupe
       const maxOrderResult = await query<{ max_order: number }>(
         `SELECT COALESCE(MAX(sub_group_order), 0) as max_order 
          FROM sub_groups WHERE group_id = $1`,
-        [validatedData.group_id]
+        [validatedData.group_id],
       );
-      
+
       finalOrder = maxOrderResult[0]?.max_order + 1 || 1;
     } else {
       // Vérifier si l'ordre existe déjà
       const existingOrderCheck = await query<{ id: number }>(
         `SELECT id FROM sub_groups WHERE sub_group_order = $1 AND group_id = $2`,
-        [finalOrder, validatedData.group_id]
+        [finalOrder, validatedData.group_id],
       );
-      
+
       if (existingOrderCheck.length > 0) {
         // Trouver le prochain ordre disponible
         const ordersResult = await query<{ sub_group_order: number }>(
           `SELECT sub_group_order FROM sub_groups 
            WHERE group_id = $1 
            ORDER BY sub_group_order`,
-          [validatedData.group_id]
+          [validatedData.group_id],
         );
-        
-        const existingOrders = ordersResult.map(r => r.sub_group_order);
+
+        const existingOrders = ordersResult.map((r) => r.sub_group_order);
         let nextOrder = finalOrder;
-        
+
         while (existingOrders.includes(nextOrder)) {
           nextOrder++;
         }
-        
+
         finalOrder = nextOrder;
       }
     }
 
     const sql = `
-      INSERT INTO sub_groups (
-        group_id, name, video_url, sub_group_order, description, period,
-        score_region1, score_region2, nulls, status,
-        region1_id, region2_id, belt_region1, belt_region2, 
-        main_referee_id, is_completed, is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-      RETURNING id
-    `;
-    
+  INSERT INTO sub_groups (
+    group_id, name, video_url, sub_group_order, description, period,
+    score_region1, score_region2, nulls, status,
+    region1_id, region2_id, belt_region1, belt_region2, 
+    main_referee_id, is_completed, is_active
+  ) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+    $11, $12, $13, $14, $15, $16, $17
+  )
+  RETURNING id
+`;
+
     const result = await query<{ id: number }>(sql, [
       validatedData.group_id,
       finalName,
@@ -1328,20 +1367,23 @@ export async function createSubGroup(formData: FormData) {
       validatedData.is_active,
     ]);
 
-    revalidatePath('/ad/phase-groups');
+    revalidatePath("/ad/phase-groups");
     revalidatePath(`/ad/phase-groups/${validatedData.group_id}`);
-    
-    // 🔥 Émission WS
-    await emitSubGroupEvent(result[0].id, 'subgroup_created', { id: result[0].id, group_id: validatedData.group_id });
 
-    return { 
-      success: true, 
+    // 🔥 Émission WS
+    await emitSubGroupEvent(result[0].id, "subgroup_created", {
       id: result[0].id,
-      message: `Sous-groupe "${finalName}" créé avec succès (ordre: ${finalOrder})`
+      group_id: validatedData.group_id,
+    });
+
+    return {
+      success: true,
+      id: result[0].id,
+      message: `Sous-groupe "${finalName}" créé avec succès (ordre: ${finalOrder})`,
     };
   } catch (error) {
-    console.error('Error in createSubGroup:', error);
-    throw new Error('Erreur lors de la création du sous-groupe');
+    console.error("Error in createSubGroup:", error);
+    throw new Error("Erreur lors de la création du sous-groupe");
   }
 }
 
@@ -1349,83 +1391,103 @@ export async function updateSubGroup(id: number, formData: FormData) {
   try {
     const existing = await getSubGroupById(id, { with_relations: false });
     if (!existing) {
-      throw new Error('Sous-groupe non trouvé');
+      throw new Error("Sous-groupe non trouvé");
     }
 
     const rawData = {
-      group_id: formData.get('group_id'),
-      name: formData.get('name'),
-      video_url: formData.get('video_url'),
-      sub_group_order: formData.get('sub_group_order'),
-      description: formData.get('description'),
-      period: formData.get('period'),
-      score_region1: formData.get('score_region1'),
-      score_region2: formData.get('score_region2'),
-      nulls: formData.get('nulls'),
-      status: formData.get('status'),
-      region1_id: formData.get('region1_id'),
-      region2_id: formData.get('region2_id'),
-      belt_region1: formData.get('belt_region1'),
-      belt_region2: formData.get('belt_region2'),
-      main_referee_id: formData.get('main_referee_id'),
-      is_completed: formData.get('is_completed'),
-      is_active: formData.get('is_active'),
+      group_id: formData.get("group_id"),
+      name: formData.get("name"),
+      video_url: formData.get("video_url"),
+      sub_group_order: formData.get("sub_group_order"),
+      description: formData.get("description"),
+      period: formData.get("period"),
+      score_region1: formData.get("score_region1"),
+      score_region2: formData.get("score_region2"),
+      nulls: formData.get("nulls"),
+      status: formData.get("status"),
+      region1_id: formData.get("region1_id"),
+      region2_id: formData.get("region2_id"),
+      belt_region1: formData.get("belt_region1"),
+      belt_region2: formData.get("belt_region2"),
+      main_referee_id: formData.get("main_referee_id"),
+      is_completed: formData.get("is_completed"),
+      is_active: formData.get("is_active"),
     };
 
     // Créer un objet avec uniquement les champs fournis
     const cleanedData: any = {};
 
     // Ne garder que les champs qui sont présents dans le FormData
-    if (formData.has('group_id')) {
+    if (formData.has("group_id")) {
       cleanedData.group_id = Number(rawData.group_id);
     }
-    if (formData.has('name')) {
+    if (formData.has("name")) {
       cleanedData.name = rawData.name as string;
     }
-    if (formData.has('video_url')) {
+    if (formData.has("video_url")) {
       cleanedData.video_url = (rawData.video_url as string) || undefined;
     }
-    if (formData.has('sub_group_order')) {
+    if (formData.has("sub_group_order")) {
       cleanedData.sub_group_order = Number(rawData.sub_group_order);
     }
-    if (formData.has('description')) {
+    if (formData.has("description")) {
       cleanedData.description = (rawData.description as string) || undefined;
     }
-    if (formData.has('period')) {
-      cleanedData.period = (rawData.period as 'matin' | 'soir') || 'matin';
+    if (formData.has("period")) {
+      cleanedData.period = (rawData.period as "matin" | "soir") || "matin";
     }
-    if (formData.has('score_region1')) {
-      cleanedData.score_region1 = rawData.score_region1 ? Number(rawData.score_region1) : undefined;
+    if (formData.has("score_region1")) {
+      cleanedData.score_region1 = rawData.score_region1
+        ? Number(rawData.score_region1)
+        : undefined;
     }
-    if (formData.has('score_region2')) {
-      cleanedData.score_region2 = rawData.score_region2 ? Number(rawData.score_region2) : undefined;
+    if (formData.has("score_region2")) {
+      cleanedData.score_region2 = rawData.score_region2
+        ? Number(rawData.score_region2)
+        : undefined;
     }
-    if (formData.has('nulls')) {
+    if (formData.has("nulls")) {
       cleanedData.nulls = rawData.nulls ? Number(rawData.nulls) : undefined;
     }
-    if (formData.has('status')) {
-      cleanedData.status = (rawData.status as 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'postponed') || 'upcoming';
+    if (formData.has("status")) {
+      cleanedData.status =
+        (rawData.status as
+          | "upcoming"
+          | "ongoing"
+          | "completed"
+          | "cancelled"
+          | "postponed") || "upcoming";
     }
-    if (formData.has('region1_id')) {
-      cleanedData.region1_id = rawData.region1_id ? Number(rawData.region1_id) : undefined;
+    if (formData.has("region1_id")) {
+      cleanedData.region1_id = rawData.region1_id
+        ? Number(rawData.region1_id)
+        : undefined;
     }
-    if (formData.has('region2_id')) {
-      cleanedData.region2_id = rawData.region2_id ? Number(rawData.region2_id) : undefined;
+    if (formData.has("region2_id")) {
+      cleanedData.region2_id = rawData.region2_id
+        ? Number(rawData.region2_id)
+        : undefined;
     }
-    if (formData.has('belt_region1')) {
-      cleanedData.belt_region1 = rawData.belt_region1 ? Number(rawData.belt_region1) : undefined;
+    if (formData.has("belt_region1")) {
+      cleanedData.belt_region1 = rawData.belt_region1
+        ? Number(rawData.belt_region1)
+        : undefined;
     }
-    if (formData.has('belt_region2')) {
-      cleanedData.belt_region2 = rawData.belt_region2 ? Number(rawData.belt_region2) : undefined;
+    if (formData.has("belt_region2")) {
+      cleanedData.belt_region2 = rawData.belt_region2
+        ? Number(rawData.belt_region2)
+        : undefined;
     }
-    if (formData.has('main_referee_id')) {
-      cleanedData.main_referee_id = rawData.main_referee_id ? Number(rawData.main_referee_id) : undefined;
+    if (formData.has("main_referee_id")) {
+      cleanedData.main_referee_id = rawData.main_referee_id
+        ? Number(rawData.main_referee_id)
+        : undefined;
     }
-    if (formData.has('is_completed')) {
-      cleanedData.is_completed = rawData.is_completed === 'true';
+    if (formData.has("is_completed")) {
+      cleanedData.is_completed = rawData.is_completed === "true";
     }
-    if (formData.has('is_active')) {
-      cleanedData.is_active = rawData.is_active === 'true';
+    if (formData.has("is_active")) {
+      cleanedData.is_active = rawData.is_active === "true";
     }
 
     // Valider seulement les champs fournis (ou utiliser un schéma partiel)
@@ -1507,33 +1569,36 @@ export async function updateSubGroup(id: number, formData: FormData) {
     }
 
     if (updates.length === 0) {
-      return { success: true, message: 'Aucune modification' };
+      return { success: true, message: "Aucune modification" };
     }
 
     // Ajouter l'ID à la fin
     values.push(id);
-    
+
     const sql = `
       UPDATE sub_groups 
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $${paramIndex}
     `;
 
     await query(sql, values);
 
-    revalidatePath('/phase-groups');
+    revalidatePath("/phase-groups");
     revalidatePath(`/phase-groups/${existing.group_id}`);
     revalidatePath(`/sub-groups/${id}`);
-    
-    // 🔥 Émission WS
-    await emitSubGroupEvent(id, 'subgroup_updated', { id, updates: cleanedData });
 
-    return { 
-      success: true, 
-      message: 'Sous-groupe modifié avec succès' 
+    // 🔥 Émission WS
+    await emitSubGroupEvent(id, "subgroup_updated", {
+      id,
+      updates: cleanedData,
+    });
+
+    return {
+      success: true,
+      message: "Sous-groupe modifié avec succès",
     };
   } catch (error) {
-    console.error('Error in updateSubGroup:', error);
+    console.error("Error in updateSubGroup:", error);
     throw error;
   }
 }
@@ -1544,40 +1609,43 @@ export async function updateSubGroupMedia(id: number, formData: FormData) {
     const values: any[] = [];
     let paramIndex = 1;
 
-    if (formData.has('video_url')) {
+    if (formData.has("video_url")) {
       updates.push(`video_url = $${paramIndex++}`);
-      values.push(formData.get('video_url') || null);
+      values.push(formData.get("video_url") || null);
     }
-    if (formData.has('status')) {
+    if (formData.has("status")) {
       updates.push(`status = $${paramIndex++}`);
-      values.push(formData.get('status'));
+      values.push(formData.get("status"));
     }
 
     if (updates.length === 0) {
-      return { success: true, message: 'Aucune modification' };
+      return { success: true, message: "Aucune modification" };
     }
 
     values.push(id);
-    
+
     const sql = `
       UPDATE sub_groups 
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE id = $${paramIndex}
     `;
 
     await query(sql, values);
 
     revalidatePath(`/sub-groups/${id}`);
-    
-    // 🔥 Émission WS
-    await emitSubGroupEvent(id, 'subgroup_media_updated', { id, video_url: formData.get('video_url') });
 
-    return { 
-      success: true, 
-      message: 'Médias mis à jour avec succès' 
+    // 🔥 Émission WS
+    await emitSubGroupEvent(id, "subgroup_media_updated", {
+      id,
+      video_url: formData.get("video_url"),
+    });
+
+    return {
+      success: true,
+      message: "Médias mis à jour avec succès",
     };
   } catch (error) {
-    console.error('Error in updateSubGroupMedia:', error);
+    console.error("Error in updateSubGroupMedia:", error);
     throw error;
   }
 }
@@ -1586,49 +1654,57 @@ export async function deleteSubGroup(id: number) {
   try {
     const existing = await getSubGroupById(id, { with_relations: false });
     if (!existing) {
-      throw new Error('Sous-groupe non trouvé');
+      throw new Error("Sous-groupe non trouvé");
     }
 
     // Vérifier les données liées
-    const relatedData = await query(`
+    const relatedData = await query(
+      `
       SELECT COUNT(*) as match_count FROM matches WHERE sub_group_id = $1
-    `, [id]);
+    `,
+      [id],
+    );
 
-    const matchCount = parseInt(relatedData[0]?.match_count ?? '0');
+    const matchCount = parseInt(relatedData[0]?.match_count ?? "0");
     if (matchCount > 0) {
       throw new Error(
-        `Impossible de supprimer ce sous-groupe car il contient ${matchCount} match(s)`
+        `Impossible de supprimer ce sous-groupe car il contient ${matchCount} match(s)`,
       );
     }
 
-    const sql = 'DELETE FROM sub_groups WHERE id = $1';
+    const sql = "DELETE FROM sub_groups WHERE id = $1";
     await query(sql, [id]);
-    
-    revalidatePath('/phase-groups');
-    revalidatePath(`/phase-groups/${existing.group_id}`);
-    
-    // 🔥 Émission WS
-    await emitSubGroupEvent(id, 'subgroup_deleted', { id, group_id: existing.group_id });
 
-    return { 
-      success: true, 
-      message: 'Sous-groupe supprimé avec succès' 
+    revalidatePath("/phase-groups");
+    revalidatePath(`/phase-groups/${existing.group_id}`);
+
+    // 🔥 Émission WS
+    await emitSubGroupEvent(id, "subgroup_deleted", {
+      id,
+      group_id: existing.group_id,
+    });
+
+    return {
+      success: true,
+      message: "Sous-groupe supprimé avec succès",
     };
   } catch (error) {
-    console.error('Error in deleteSubGroup:', error);
-    throw new Error('Erreur lors de la suppression du sous-groupe');
+    console.error("Error in deleteSubGroup:", error);
+    throw new Error("Erreur lors de la suppression du sous-groupe");
   }
 }
 
 export async function assignBeltsToSubGroup(
   subGroupId: number,
   belt_region1?: number,
-  belt_region2?: number
+  belt_region2?: number,
 ) {
   try {
-    const existing = await getSubGroupById(subGroupId, { with_relations: false });
+    const existing = await getSubGroupById(subGroupId, {
+      with_relations: false,
+    });
     if (!existing) {
-      throw new Error('Sous-groupe non trouvé');
+      throw new Error("Sous-groupe non trouvé");
     }
 
     const sql = `
@@ -1637,22 +1713,18 @@ export async function assignBeltsToSubGroup(
         belt_region1 = $1, belt_region2 = $2
       WHERE id = $3
     `;
-    
-    await query(sql, [
-      belt_region1 || null,
-      belt_region2 || null,
-      subGroupId,
-    ]);
 
-    revalidatePath('/sub-groups');
+    await query(sql, [belt_region1 || null, belt_region2 || null, subGroupId]);
+
+    revalidatePath("/sub-groups");
     revalidatePath(`/sub-groups/${subGroupId}`);
-    return { 
-      success: true, 
-      message: 'Ceintures assignées avec succès'
+    return {
+      success: true,
+      message: "Ceintures assignées avec succès",
     };
   } catch (error) {
-    console.error('Error in assignBeltsToSubGroup:', error);
-    throw new Error('Erreur lors de l\'assignation des ceintures');
+    console.error("Error in assignBeltsToSubGroup:", error);
+    throw new Error("Erreur lors de l'assignation des ceintures");
   }
 }
 
@@ -1660,38 +1732,44 @@ export async function assignBeltsToSubGroup(
 export async function completeSubGroup(subGroupId: number) {
   try {
     // Vérifier que tous les matchs sont terminés
-    const checkRes = await query(`
+    const checkRes = await query(
+      `
       SELECT 
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE status = 'completed') as completed
       FROM matches
       WHERE sub_group_id = $1 AND is_active = true
-    `, [subGroupId]);
+    `,
+      [subGroupId],
+    );
 
     const { total, completed } = checkRes[0];
-    
+
     if (total === 0) {
-      throw new Error('Ce sous-groupe n\'a aucun match');
+      throw new Error("Ce sous-groupe n'a aucun match");
     }
-    
+
     if (completed !== total) {
       throw new Error(`${completed}/${total} matchs terminés seulement`);
     }
 
     // Marquer comme terminé
-    await query(`
+    await query(
+      `
       UPDATE sub_groups
       SET status = 'completed',
           is_completed = true
       WHERE id = $1
-    `, [subGroupId]);
+    `,
+      [subGroupId],
+    );
 
     revalidatePath(`/ad/sub-groups/${subGroupId}`);
     revalidatePath(`/ad/sub-groups/${subGroupId}/matches`);
 
     return { success: true };
   } catch (error) {
-    console.error('❌ completeSubGroup error:', error);
+    console.error("❌ completeSubGroup error:", error);
     throw error;
   }
 }

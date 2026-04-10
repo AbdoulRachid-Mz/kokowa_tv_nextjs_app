@@ -81,7 +81,7 @@ export default function EditionFormPage() {
         // Charger la compétition
         if (competitionId) {
           const competitionResponse = await fetch(
-            `/api/competitions/${competitionId}`
+            `/api/competitions/${competitionId}`,
           );
           if (competitionResponse.ok) {
             const competitionData = await competitionResponse.json();
@@ -92,7 +92,7 @@ export default function EditionFormPage() {
         // Charger l'édition si en mode édition
         if (isEdit && editionId) {
           const editionResponse = await fetch(
-            `/api/editions/${editionId}?with_relations=true`
+            `/api/editions/${editionId}?with_relations=true`,
           );
           if (editionResponse.ok) {
             const editionData = await editionResponse.json();
@@ -101,6 +101,7 @@ export default function EditionFormPage() {
             // Pré-remplir le formulaire
             reset({
               edition_number: editionData.edition_number,
+              region_id: editionData.region_id || undefined,
               year: editionData.year,
               theme: editionData.theme || "",
               start_date: editionData.start_date
@@ -123,7 +124,7 @@ export default function EditionFormPage() {
         } else {
           // En création, charger les lutteurs et régions disponibles
           const fightersResponse = await fetch(
-            "/api/fighters?limit=100&is_active=true&with_region=true"
+            "/api/fighters?limit=100&is_active=true&with_region=true",
           );
           if (fightersResponse.ok) {
             const fightersData = await fightersResponse.json();
@@ -131,7 +132,7 @@ export default function EditionFormPage() {
           }
 
           const regionsResponse = await fetch(
-            "/api/regions?limit=100&with_fighters=true"
+            "/api/regions?limit=100&with_fighters=true",
           );
           if (regionsResponse.ok) {
             const regionsData = await regionsResponse.json();
@@ -153,13 +154,20 @@ export default function EditionFormPage() {
   const onSubmit = async (data: CompetitionEditionInput) => {
     setSaving(true);
     try {
-      // Calculer le prochain numéro d'édition
-      const nextEditionNumber = getNextEditionNumber();
+      // // Calculer le prochain numéro d'édition
+      // const nextEditionNumber = getNextEditionNumber();
 
       // Préparer FormData
       const formData = new FormData();
-      formData.append("competition_id", competitionId);
-      formData.append("edition_number", String(nextEditionNumber));
+      formData.append("competition_id", competitionId || "");
+      if (data.region_id)
+        formData.append("region_id", String(data.region_id) || "");
+      if (data.winner_fighter_id)
+        formData.append(
+          "winner_fighter_id",
+          String(data.winner_fighter_id) || "",
+        );
+      // formData.append("edition_number", String(nextEditionNumber));
       formData.append("year", String(data.year));
       if (data.theme) formData.append("theme", data.theme);
       if (data.start_date) formData.append("start_date", data.start_date);
@@ -171,12 +179,16 @@ export default function EditionFormPage() {
         result = await updateEdition(parseInt(editionId), formData);
       } else {
         // Appeler l'action serveur createEdition
-        result = await createEdition(formData);
+        const createResult = await createEdition(formData);
+        if (!createResult) {
+          throw new Error("createEdition returned undefined");
+        }
+        result = createResult;
       }
 
       if (result.success) {
         toast.success(
-          isEdit ? "Édition modifiée avec succès" : "Édition créée avec succès"
+          isEdit ? "Édition modifiée avec succès" : "Édition créée avec succès",
         );
 
         // Rediriger vers la page de détail
@@ -191,7 +203,7 @@ export default function EditionFormPage() {
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
       toast.error(
-        error instanceof Error ? error.message : "Erreur lors de la sauvegarde"
+        error instanceof Error ? error.message : "Erreur lors de la sauvegarde",
       );
     } finally {
       setSaving(false);
@@ -205,7 +217,7 @@ export default function EditionFormPage() {
     // En création, trouver le plus grand numéro d'édition existant
     if (competition?.editions && competition.editions.length > 0) {
       const maxEdition = Math.max(
-        ...competition.editions.map((e) => e.edition_number)
+        ...competition.editions.map((e) => e.edition_number),
       );
       return maxEdition + 1;
     }
@@ -287,6 +299,28 @@ export default function EditionFormPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Région hôte</Label>
+                  <Select
+                    onValueChange={(value) =>
+                      setValue("region_id", value ? parseInt(value) : undefined)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une région" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableRegions.map((region) => (
+                        <SelectItem
+                          key={region.id}
+                          value={region.id.toString()}
+                        >
+                          {region.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Numéro d'édition */}
                   {/* <div className="space-y-2">
@@ -377,7 +411,7 @@ export default function EditionFormPage() {
                       onValueChange={(value) =>
                         setValue(
                           "winner_fighter_id",
-                          value ? parseInt(value) : undefined
+                          value ? parseInt(value) : undefined,
                         )
                       }
                       defaultValue={
