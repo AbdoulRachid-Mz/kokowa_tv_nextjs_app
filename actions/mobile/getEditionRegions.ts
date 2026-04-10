@@ -88,32 +88,12 @@ async function getEditionInfo(editionId: number) {
         WHERE ef.edition_id = e.id
       ) as "totalFighters",
       
-      -- Total des lutteurs invaincus (qui n'ont jamais perdu dans CETTE édition)
+      -- Total des lutteurs invaincus (is_eliminated = false)
       (
-        SELECT COUNT(DISTINCT ef.fighter_id)
+        SELECT COUNT(*)
         FROM edition_fighters ef
         WHERE ef.edition_id = e.id
-          AND NOT EXISTS (
-            SELECT 1
-            FROM matches m
-            JOIN sub_groups sg ON m.sub_group_id = sg.id
-            JOIN phase_groups pg ON sg.group_id = pg.id
-            JOIN phases p ON pg.phase_id = p.id
-            WHERE p.edition_id = e.id
-              AND m.loser_fighter_id = ef.fighter_id
-              AND m.status = 'completed'
-          )
-          AND NOT EXISTS (
-            SELECT 1
-            FROM matches m
-            JOIN sub_groups sg ON m.sub_group_id = sg.id
-            JOIN phase_groups pg ON sg.group_id = pg.id
-            JOIN phases p ON pg.phase_id = p.id
-            WHERE p.edition_id = e.id
-              AND m.match_result = 'draw'
-              AND (m.fighter1_id = ef.fighter_id OR m.fighter2_id = ef.fighter_id)
-              AND m.status = 'completed'
-          )
+          AND ef.is_eliminated = false
       ) as "totalUnbeatenFighters"
       
     FROM competition_editions e
@@ -149,7 +129,7 @@ async function getRegionsWithStats(editionId: number) {
       SELECT 
         fe.fighter_id,
         fe.region_id,
-        fe.is_eliminated as db_is_eliminated,
+        fe.is_eliminated,
         
         -- Total des matchs
         COUNT(DISTINCT em.id) as total_matches,
@@ -194,20 +174,9 @@ async function getRegionsWithStats(editionId: number) {
     fighter_stats AS (
       SELECT 
         *,
-        -- Calculer le vrai statut d'élimination basé sur les matchs de CETTE édition
+        -- Invaincu = is_eliminated = false
         CASE 
-          -- Si le lutteur a perdu au moins un match dans cette édition, il est éliminé
-          WHEN losses > 0 THEN true
-          -- Si le lutteur a fait au moins un match nul dans cette édition, il est éliminé
-          WHEN draws > 0 THEN true
-          -- Sinon, on garde la valeur de la base
-          ELSE db_is_eliminated
-        END as calculated_is_eliminated,
-        
-        -- Calculer si le lutteur est invaincu dans CETTE édition
-        -- Invaincu = pas de défaite ET pas de match nul (peut avoir 0 match)
-        CASE 
-          WHEN losses = 0 AND draws = 0 THEN true
+          WHEN is_eliminated = false THEN true
           ELSE false
         END as is_unbeaten
         
@@ -217,10 +186,10 @@ async function getRegionsWithStats(editionId: number) {
       SELECT 
         fs.region_id,
         COUNT(DISTINCT fs.fighter_id) as total_fighters,
-        COUNT(DISTINCT fs.fighter_id) FILTER (WHERE fs.calculated_is_eliminated = false) as active_fighters,
-        COUNT(DISTINCT fs.fighter_id) FILTER (WHERE fs.calculated_is_eliminated = true) as eliminated_fighters,
+        COUNT(DISTINCT fs.fighter_id) FILTER (WHERE fs.is_eliminated = false) as active_fighters,
+        COUNT(DISTINCT fs.fighter_id) FILTER (WHERE fs.is_eliminated = true) as eliminated_fighters,
         COUNT(DISTINCT ef.fighter_id) FILTER (WHERE ef.is_champion = true) as champion_fighters,
-        COUNT(DISTINCT fs.fighter_id) FILTER (WHERE fs.is_unbeaten = true) as unbeaten_fighters,
+        COUNT(DISTINCT fs.fighter_id) FILTER (WHERE fs.is_eliminated = false) as unbeaten_fighters,
         
         -- Stats des matchs
         COALESCE(SUM(fs.wins), 0) as total_wins,
@@ -274,7 +243,7 @@ async function getRegionsWithStats(editionId: number) {
         END
       ) as stats,
       
-      -- Ratio pour le classement
+      -- Ratio pour le classement (basé sur is_eliminated = false)
       CASE 
         WHEN COALESCE(ra.total_fighters, 0) > 0 
         THEN ROUND((COALESCE(ra.unbeaten_fighters, 0) * 100.0) / COALESCE(ra.total_fighters, 0), 1)
@@ -342,7 +311,7 @@ async function getFightersForEdition(editionId: number) {
       SELECT 
         fe.fighter_id,
         fe.region_id,
-        fe.is_eliminated as db_is_eliminated,
+        fe.is_eliminated,
         COUNT(DISTINCT em.id) as total_matches,
         
         -- Victoires
@@ -397,12 +366,8 @@ async function getFightersForEdition(editionId: number) {
       r.name as "regionName",
       r.color as "regionColor",
       
-      -- Calculer le vrai statut d'élimination dans CETTE édition
-      CASE 
-        WHEN COALESCE(stats.losses, 0) > 0 THEN true
-        WHEN COALESCE(stats.draws, 0) > 0 THEN true
-        ELSE fe.is_eliminated
-      END as "isEliminated",
+      -- Utiliser directement is_eliminated de edition_fighters
+      fe.is_eliminated as "isEliminated",
       
       fe.is_champion as "isChampion",
       fe.created_at as "createdAt",
@@ -424,10 +389,9 @@ async function getFightersForEdition(editionId: number) {
         ELSE 0 
       END as "winRate",
       
-      -- Invaincu si pas de défaite ET pas de match nul dans CETTE édition
-      -- (un lutteur qui n'a pas combattu est considéré comme invaincu)
+      -- Invaincu = is_eliminated = false
       CASE 
-        WHEN COALESCE(stats.losses, 0) = 0 AND COALESCE(stats.draws, 0) = 0 THEN true
+        WHEN fe.is_eliminated = false THEN true
         ELSE false
       END as "isUnbeaten"
 
@@ -438,7 +402,7 @@ async function getFightersForEdition(editionId: number) {
     WHERE fe.edition_id = $1
     ORDER BY 
       fe.is_champion DESC,
-      CASE WHEN COALESCE(stats.losses, 0) = 0 AND COALESCE(stats.draws, 0) = 0 THEN 0 ELSE 1 END ASC,
+      fe.is_eliminated ASC,  -- Non éliminés d'abord
       COALESCE(stats.wins, 0) DESC,
       COALESCE(stats.total_matches, 0) DESC
   `;
@@ -488,7 +452,7 @@ function rankRegions(regions: any[]) {
     if (a.points !== b.points)
       return b.points - a.points;
 
-    // Nombre de lutteurs invaincus
+    // Nombre de lutteurs invaincus (is_eliminated = false)
     if (a.stats.unbeatenFighters !== b.stats.unbeatenFighters)
       return b.stats.unbeatenFighters - a.stats.unbeatenFighters;
 

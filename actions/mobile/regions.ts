@@ -423,22 +423,17 @@ export async function getRegionMatches(regionId: number, editionId?: number) {
   }
 }
 
+// Remplacer la fonction getAllMatchesForRegion
 async function getAllMatchesForRegion(regionId: number, editionId?: number) {
-  let whereClause = "(f1.region_id = $1 OR f2.region_id = $1)";
+  let whereClause = "(f1.region_id = $1 OR f2.region_id = $1) AND m.status = 'completed'";
   const params: any[] = [regionId];
+  let paramIndex = 2;
 
   // Ajouter le filtre par édition si fourni
   if (editionId) {
-    whereClause += " AND p.edition_id = $2";
+    whereClause += " AND p.edition_id = $" + paramIndex;
     params.push(editionId);
-  } else {
-    // Sinon, récupérer la dernière édition
-    whereClause += ` AND p.edition_id = (
-      SELECT id 
-      FROM competition_editions 
-      ORDER BY year DESC, id DESC 
-      LIMIT 1
-    )`;
+    paramIndex++;
   }
 
   const sql = `
@@ -530,12 +525,23 @@ async function getAllMatchesForRegion(regionId: number, editionId?: number) {
       END,
       m.match_date DESC,
       m.start_time DESC
+    LIMIT 50
   `;
 
+  console.log("SQL Query:", sql);
+  console.log("Params:", params);
+  
   const matches = await query(sql, params);
+  console.log("Matches found for region:", matches.length);
 
   // Enrichir les données des matchs
-  return Promise.all(matches.map(match => enrichRegionMatchData(match, regionId)));
+  const enrichedMatches = [];
+  for (const match of matches) {
+    const enriched = await enrichRegionMatchData(match, regionId);
+    enrichedMatches.push(enriched);
+  }
+  
+  return enrichedMatches;
 }
 
 async function enrichRegionMatchData(match: any, regionId: number) {

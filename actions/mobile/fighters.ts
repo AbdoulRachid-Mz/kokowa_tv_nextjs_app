@@ -437,22 +437,17 @@ async function getFighterCards(fighterId: number) {
   return await query(sql, [fighterId]);
 }
 
+// Remplacer la fonction getAllMatchesForFighter
 async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
-  let whereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";
+  let whereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1) AND m.status = 'completed'";
   const params: any[] = [fighterId];
+  let paramIndex = 2;
 
   // Ajouter le filtre par édition si fourni
   if (editionId) {
-    whereClause += " AND p.edition_id = $2";
+    whereClause += " AND p.edition_id = $" + paramIndex;
     params.push(editionId);
-  } else {
-    // Sinon, récupérer la dernière édition
-    whereClause += ` AND p.edition_id = (
-      SELECT id 
-      FROM competition_editions 
-      ORDER BY year DESC, id DESC 
-      LIMIT 1
-    )`;
+    paramIndex++;
   }
 
   const sql = `
@@ -550,12 +545,23 @@ async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
       m.match_date DESC,
       m.start_time DESC,
       m.start_time2 DESC
+    LIMIT 50
   `;
 
+  console.log("SQL Query:", sql);
+  console.log("Params:", params);
+  
   const matches = await query(sql, params);
+  console.log("Matches found:", matches.length);
 
   // Enrichir les données des matchs
-  return Promise.all(matches.map(match => enrichMatchData(match)));
+  const enrichedMatches = [];
+  for (const match of matches) {
+    const enriched = await enrichMatchData(match);
+    enrichedMatches.push(enriched);
+  }
+  
+  return enrichedMatches;
 }
 
 async function enrichMatchData(match: any) {
@@ -626,7 +632,7 @@ async function enrichMatchData(match: any) {
     matchNumber: match.matchNumber,
     matchDate: match.matchDate,
     startTime: formattedStartTime,
-    startTime2: match.startTime2, // NOUVEAU - timestamp ISO complet
+    startTime2: match.startTime2,
     endTime: match.endTime,
     status: match.status,
     matchResult: resultType,

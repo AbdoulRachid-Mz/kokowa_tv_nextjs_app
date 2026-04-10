@@ -499,7 +499,7 @@ async function getMatchesForSubGroup(subGroupId: number) {
       matchDate: match.matchDate,
       startTime2: match.startTime2,
       status: match.status,
-      totalDuration: match.totalDuration,
+      totalDuration: formatDuration(match.totalDuration),
       breakCount: match.breakCount,
       videoUrl: match.videoUrl,
       liveStreamUrl: match.liveStreamUrl,
