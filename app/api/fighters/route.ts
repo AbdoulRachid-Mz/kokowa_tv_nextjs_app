@@ -14,9 +14,12 @@ export async function GET(request: NextRequest) {
     const searchParam = searchParams.get('search');
 
     // Conversion and default values
-    const limit = limitParam ? Math.max(1, Number(limitParam)) : 20;
+    const rawLimit = limitParam ? Number(limitParam) : 20;
+    // 🔥 allow ALL mode
+    const limit = isNaN(rawLimit) ? 20 : rawLimit;
     const offset = offsetParam ? Math.max(0, Number(offsetParam)) : 0;
-    const page = Math.floor(offset / limit) + 1;
+    // ⚠️ avoid division by 0
+    const page = limit > 0 ? Math.floor(offset / limit) + 1 : 1;
     const orderBy =
       orderByParam === 'ranking' || orderByParam === 'id' || orderByParam === 'name'
         ? orderByParam
@@ -30,7 +33,11 @@ export async function GET(request: NextRequest) {
       page,
       search,
       region_id: searchParams.get('region_id') ? parseInt(searchParams.get('region_id')!) : undefined,
-      is_active: searchParams.get('is_active') === '1' || Boolean("true"),
+      is_active: searchParams.get('is_active') === '1'
+        ? true
+        : searchParams.get('is_active') === '0'
+        ? false
+        : undefined,
       is_champion: searchParams.get('is_champion') === '1',
       min_ranking: searchParams.get('min_ranking') ? parseInt(searchParams.get('min_ranking')!) : undefined,
       max_ranking: searchParams.get('max_ranking') ? parseInt(searchParams.get('max_ranking')!) : undefined,

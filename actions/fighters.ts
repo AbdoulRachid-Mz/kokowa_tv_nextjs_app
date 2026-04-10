@@ -28,7 +28,7 @@ export async function getFighters(
     const params: any[] = [];
     const selectFields = ['f.*'];
 
-    // Filtre de recherche
+    // Recherche
     if (search) {
       whereClause += ` AND (
         f.first_name ILIKE $${params.length + 1} OR 
@@ -38,7 +38,7 @@ export async function getFighters(
       params.push(`%${search}%`);
     }
 
-    // Filtres supplémentaires
+    // Filtres
     if (region_id !== undefined) {
       whereClause += ` AND f.region_id = $${params.length + 1}`;
       params.push(region_id);
@@ -64,7 +64,7 @@ export async function getFighters(
       params.push(max_ranking);
     }
 
-    // Jointure avec région si demandée
+    // JOIN region
     if (with_region) {
       selectFields.push(`
         JSON_BUILD_OBJECT(
@@ -77,7 +77,7 @@ export async function getFighters(
       `);
     }
 
-    // Jointure avec palmarès si demandée
+    // JOIN achievements
     if (with_achievements) {
       selectFields.push(`
         (SELECT JSON_AGG(
@@ -93,7 +93,7 @@ export async function getFighters(
       `);
     }
 
-    // Requête pour le total
+    // COUNT
     const countSql = `
       SELECT COUNT(*) as total
       FROM fighters f
@@ -106,23 +106,26 @@ export async function getFighters(
 
     // Pagination
     const validatedPage = Math.max(1, page);
-    const validatedLimit = Math.max(1, Math.min(100, limit));
-    const offset = (validatedPage - 1) * validatedLimit;
-    const totalPages = Math.ceil(total / validatedLimit);
 
-    // Requête principale
+    // 🔥 FIX ICI
+    const validatedLimit = limit <= 0 ? total : Math.max(1, limit);
+
+    const offset = (validatedPage - 1) * validatedLimit;
+    const totalPages = validatedLimit > 0 ? Math.ceil(total / validatedLimit) : 1;
+
+    // QUERY
     const dataSql = `
       SELECT ${selectFields.join(', ')}
       FROM fighters f
       ${with_region ? 'LEFT JOIN regions r ON f.region_id = r.id' : ''}
       ${whereClause}
       ORDER BY f.ranking ASC, f.last_name ASC, f.first_name ASC
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+      ${limit <= 0 ? '' : `LIMIT $${params.length + 1} OFFSET $${params.length + 2}`}
     `;
 
     const data = await query<Fighter>(
-      dataSql, 
-      [...params, validatedLimit, offset]
+      dataSql,
+      limit <= 0 ? params : [...params, validatedLimit, offset]
     );
 
     return {
@@ -131,7 +134,7 @@ export async function getFighters(
         page: validatedPage,
         limit: validatedLimit,
         total,
-        totalPages
+        totalPages,
       }
     };
   } catch (error) {

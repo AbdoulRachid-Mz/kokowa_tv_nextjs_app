@@ -27,19 +27,19 @@ export async function getRegions(
     const params: any[] = [];
     const selectFields: string[] = ['r.*'];
 
-    // Filtre de recherche
+    // SEARCH
     if (search) {
       whereClause += ` AND (r.name ILIKE $${params.length + 1} OR r.code ILIKE $${params.length + 1})`;
       params.push(`%${search}%`);
     }
 
-    // Filtre par code
+    // CODE
     if (code) {
       whereClause += ` AND r.code = $${params.length + 1}`;
       params.push(code);
     }
 
-    // Filtre par nombre de lutteurs
+    // FIGHTER COUNT FILTERS
     if (fighter_count_min !== undefined) {
       whereClause += ` AND r.total_fighters >= $${params.length + 1}`;
       params.push(fighter_count_min);
@@ -50,7 +50,7 @@ export async function getRegions(
       params.push(fighter_count_max);
     }
 
-    // Jointure avec les coaches si demandée
+    // COACH
     if (with_coach) {
       selectFields.push(`
         (SELECT JSON_BUILD_OBJECT(
@@ -64,11 +64,14 @@ export async function getRegions(
           'experience_years', c.experience_years,
           'specialties', c.specialties,
           'is_active', c.is_active
-        ) FROM coaches c WHERE c.region_id = r.id AND c.is_active = true LIMIT 1) as coach
+        )
+        FROM coaches c
+        WHERE c.region_id = r.id AND c.is_active = true
+        LIMIT 1) as coach
       `);
     }
 
-    // Jointure avec les lutteurs si demandée
+    // FIGHTERS
     if (with_fighters) {
       selectFields.push(`
         (SELECT JSON_AGG(
@@ -80,12 +83,16 @@ export async function getRegions(
             'ranking', f.ranking,
             'is_champion', f.is_champion,
             'profile_image', f.profile_image
-          ) ORDER BY f.ranking ASC
-        ) FROM fighters f WHERE f.region_id = r.id AND f.is_active = true LIMIT 10) as fighters
+          )
+          ORDER BY f.ranking ASC
+        )
+        FROM fighters f
+        WHERE f.region_id = r.id AND f.is_active = true
+        LIMIT 10) as fighters
       `);
     }
 
-    // Jointure avec les compétitions si demandée
+    // COMPETITIONS
     if (with_competitions) {
       selectFields.push(`
         (SELECT JSON_AGG(
@@ -94,12 +101,16 @@ export async function getRegions(
             'name', c.name,
             'status', c.status,
             'featured_image', c.featured_image
-          ) ORDER BY c.created_at DESC
-        ) FROM competitions c WHERE c.region_id = r.id LIMIT 5) as competitions
+          )
+          ORDER BY c.created_at DESC
+        )
+        FROM competitions c
+        WHERE c.region_id = r.id
+        LIMIT 5) as competitions
       `);
     }
 
-    // Requête pour le total
+    // COUNT
     const countSql = `
       SELECT COUNT(*) as total
       FROM regions r
@@ -109,24 +120,27 @@ export async function getRegions(
     const countResult = await query<{ total: string }>(countSql, params);
     const total = parseInt(countResult[0]?.total ?? '0');
 
-    // Pagination
+    // PAGINATION FIX
     const validatedPage = Math.max(1, page);
-    const validatedLimit = Math.max(1, Math.min(100, limit));
-    const offset = (validatedPage - 1) * validatedLimit;
-    const totalPages = Math.ceil(total / validatedLimit);
 
-    // Requête principale
+    // 🔥 IMPORTANT FIX (comme fighters)
+    const validatedLimit = limit <= 0 ? total : Math.max(1, limit);
+
+    const offset = (validatedPage - 1) * validatedLimit;
+    const totalPages = validatedLimit > 0 ? Math.ceil(total / validatedLimit) : 1;
+
+    // QUERY
     const dataSql = `
       SELECT ${selectFields.join(', ')}
       FROM regions r
       ${whereClause}
       ORDER BY r.total_fighters DESC, r.name ASC
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+      ${limit <= 0 ? '' : `LIMIT $${params.length + 1} OFFSET $${params.length + 2}`}
     `;
 
     const data = await query<Region>(
-      dataSql, 
-      [...params, validatedLimit, offset]
+      dataSql,
+      limit <= 0 ? params : [...params, validatedLimit, offset]
     );
 
     return {

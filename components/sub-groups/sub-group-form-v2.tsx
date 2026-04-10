@@ -352,10 +352,10 @@ export default function SubGroupFormV2({
         newErrors[`${index}_name`] = "Le nom est requis";
       }
 
-      if (sg.region1_id && sg.region2_id && sg.region1_id === sg.region2_id) {
-        newErrors[`${index}_region2_id`] =
-          "Les deux régions doivent être différentes";
-      }
+      // if (sg.region1_id && sg.region2_id && sg.region1_id === sg.region2_id) {
+      //   newErrors[`${index}_region2_id`] =
+      //     "Les deux régions doivent être différentes";
+      // }
 
       if (!sg.region1_id && !sg.region2_id) {
         newErrors[`${index}_region1_id`] = "Au moins une région est requise";

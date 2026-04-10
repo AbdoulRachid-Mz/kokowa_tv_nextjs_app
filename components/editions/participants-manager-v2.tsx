@@ -123,7 +123,7 @@ export function ParticipantsManagerV2({
     setDataState(prev => ({ ...prev, loading: true }));
     try {
       // Charger toutes les régions
-      const regionsResponse = await fetch(`/api/regions?limit=1000`);
+      const regionsResponse = await fetch(`/api/regions?limit=100`);
       const regionsData = await regionsResponse.json();
       const allRegions: RegionWithSelection[] = (regionsData.data || []).map((region: Region) => ({
         ...region,
@@ -134,7 +134,7 @@ export function ParticipantsManagerV2({
       let allFighters: FighterWithSelection[] = [];
       if (isFighters) {
         // Charger tous les lutteurs avec leurs régions
-        const fightersResponse = await fetch(`/api/fighters?limit=1000&with_region=true`);
+        const fightersResponse = await fetch(`/api/fighters?limit=1000`);
         const fightersData = await fightersResponse.json();
         allFighters = (fightersData.data || []).map((fighter: Fighter) => ({
           ...fighter,

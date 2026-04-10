@@ -13,9 +13,12 @@ export async function GET(request: NextRequest) {
     const searchParam = searchParams.get("search");
 
     // Conversion et valeurs par défaut
-    const limit = limitParam ? Math.max(1, Number(limitParam)) : 20;
+    const rawLimit = limitParam ? Number(limitParam) : 20;
+    // 🔥 allow ALL mode
+    const limit = isNaN(rawLimit) ? 20 : rawLimit;
     const offset = offsetParam ? Math.max(0, Number(offsetParam)) : 0;
-    const page = Math.floor(offset / limit) + 1;
+    // safe page
+    const page = limit > 0 ? Math.floor(offset / limit) + 1 : 1;
     const orderBy =
       orderByParam === "code" || orderByParam === "id" || orderByParam === "name"
         ? orderByParam
