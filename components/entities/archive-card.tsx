@@ -47,6 +47,28 @@ export const ArchiveAchievementCard = ({
     }
   };
 
+   const getReasonBadge = (reason?: string) => {
+    const reasons: Record<string, { label: string; color: string }> = {
+      correction: { label: "Correction", color: "bg-blue-100 text-blue-800" },
+      duplicate: { label: "Doublon", color: "bg-yellow-100 text-yellow-800" },
+      error: { label: "Erreur", color: "bg-red-100 text-red-800" },
+    };
+    const config = reasons[reason || "other"] || { label: "Autre", color: "bg-gray-100 text-gray-800" };
+    return config;
+  };
+
+   const getPositionLabel = (position: string) => {
+    const positions: Record<string, { label: string; icon: string; color: string }> = {
+      "1st": { label: "1ère Place", icon: "🥇", color: "bg-yellow-100 text-yellow-800" },
+      "2nd": { label: "2ème Place", icon: "🥈", color: "bg-gray-100 text-gray-800" },
+      "3rd": { label: "3ème Place", icon: "🥉", color: "bg-orange-100 text-orange-800" },
+      finalist: { label: "Finaliste", icon: "🏆", color: "bg-purple-100 text-purple-800" },
+      semifinalist: { label: "Demi-finaliste", icon: "🎯", color: "bg-blue-100 text-blue-800" },
+      quarterfinalist: { label: "Quart-de-finaliste", icon: "⭐", color: "bg-green-100 text-green-800" },
+    };
+    return positions[position] || { label: position, icon: "🏅", color: "bg-gray-100" };
+  };
+
   const getReasonColor = (reason: string) => {
     switch (reason?.toLowerCase()) {
       case "correction":
@@ -66,11 +88,9 @@ export const ArchiveAchievementCard = ({
         <CardContent className="p-4 h-full flex flex-col">
           {/* En-tête */}
           <div className="flex justify-between items-start mb-3">
-            <Badge className={getPositionColor(archive.position)}>
-              <Trophy className="h-3 w-3 mr-1" />
-              {archive.position === "1st" ? "🥇" :
-               archive.position === "2nd" ? "🥈" :
-               archive.position === "3rd" ? "🥉" : "🏅"}
+            <Badge className={getPositionLabel(archive.position).color}>
+              {getPositionLabel(archive.position).icon}
+              {getPositionLabel(archive.position).label}
             </Badge>
             <Badge variant="secondary">
               <History className="h-3 w-3 mr-1" />
@@ -108,8 +128,8 @@ export const ArchiveAchievementCard = ({
           {/* Raison et actions */}
           <div className="space-y-3">
             {archive.archive_reason && (
-              <Badge className={getReasonColor(archive.archive_reason)}>
-                {archive.archive_reason}
+              <Badge className={getReasonBadge(archive.archive_reason).color}>
+                {getReasonBadge(archive.archive_reason).label}
               </Badge>
             )}
             
@@ -154,7 +174,8 @@ export const ArchiveAchievementCard = ({
                 {archive.title}
               </Typography>
               <Badge className={getPositionColor(archive.position)}>
-                {archive.position}
+                {getPositionLabel(archive.position).icon}
+                {getPositionLabel(archive.position).label}
               </Badge>
             </div>
             
@@ -191,8 +212,8 @@ export const ArchiveAchievementCard = ({
           <div className="flex flex-col items-end gap-2">
             <div className="flex gap-2">
               {archive.archive_reason && (
-                <Badge className={getReasonColor(archive.archive_reason)}>
-                  {archive.archive_reason}
+                <Badge className={getReasonBadge(archive.archive_reason).color}>
+                  {getReasonBadge(archive.archive_reason).label}
                 </Badge>
               )}
               <Badge variant="outline">
