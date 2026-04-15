@@ -11,6 +11,7 @@ import { Archive, CheckCircle, Clock, XCircle, TrendingUp, RotateCcw, History } 
 import { CardStats } from "@/components/entities/card-stats";
 import { useEffect, useState } from "react";
 import { ArchiveAchievementCard } from "@/components/entities/archive-card";
+import { useRouter } from "next/navigation";
 
 export default function ArchivesPage() {
   const [stats, setStats] = useState({
@@ -20,6 +21,7 @@ export default function ArchivesPage() {
     error_archives: 0,
     avg_year: 0,
   });
+  const router = useRouter();
 
   const handleRestore = async (id: string) => {
     try {
@@ -74,6 +76,10 @@ export default function ArchivesPage() {
       with_edition: true,
     },
   });
+
+  const handleCreate = () => {
+    router.push("/ad/achievements/create");
+  };
 
   // Charger les statistiques
   useEffect(() => {
@@ -170,7 +176,7 @@ export default function ArchivesPage() {
       onSearchChange={setSearchTerm}
       filters={filters}
       onFilterChange={setFilters}
-      onAdd={onAdd}
+      onAdd={handleCreate}
       onExport={onExport}
       onRefresh={onRefresh}
       viewMode={viewMode}

@@ -40,6 +40,7 @@ import { Typography } from "@/components/ui/typography";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Trophy, Medal, Calendar, MapPin, User } from "lucide-react";
 import Image from "next/image";
+import { AdvancedUpload } from "../ui/advanced-upload";
 
 interface AchievementFormProps {
   // Pour la création
@@ -237,7 +238,7 @@ export function AchievementForm({
         if (onSuccess) {
           onSuccess();
         } else {
-          router.push("/admin/achievements");
+          router.push("/ad/achievements");
           router.refresh();
         }
       } else {
@@ -574,10 +575,20 @@ export function AchievementForm({
                             Image du médaillon
                           </FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="URL de l'image du médaillon"
-                              {...field}
+                            <AdvancedUpload
                               value={field.value ?? ""}
+                              onChange={field.onChange}
+                              maxSizeMB={2}
+                              maxWidthOrHeight={1024}
+                              uploadPath="achievements/medals"
+                              isRounded
+                              showInternalSelection
+                              internalImagesFolder="achievements/medals"
+                              imageFilters={{
+                                withSubfolders: true,
+                                sortBy: "name",
+                                sortOrder: "asc",
+                              }}
                             />
                           </FormControl>
                           <FormDescription>
@@ -587,22 +598,6 @@ export function AchievementForm({
                         </FormItem>
                       )}
                     />
-
-                    {form.watch("medal_image") && (
-                      <div className="mt-4 p-4 border rounded-lg bg-muted/30">
-                        <Typography variant="body-sm" weight="medium" className="mb-2">
-                          Aperçu:
-                        </Typography>
-                        <div className="relative w-32 h-32 mx-auto rounded-full overflow-hidden border-4 border-yellow-400 shadow-lg">
-                          <Image
-                            src={form.watch("medal_image")!}
-                            alt="Médaillon"
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
