@@ -75,12 +75,10 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
       -- Région d'origine
       ft.from_region_id as "fromRegionId",
       fr.name as "fromRegionName",
-      fr.flag_image as "fromRegionFlagImage",
       
       -- Région de destination
       ft.to_region_id as "toRegionId",
       tr.name as "toRegionName",
-      tr.flag_image as "toRegionFlagImage",
       
       -- Approbateur
       ft.approved_by_user_id as "approvedByUserId",
@@ -103,34 +101,71 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
     params.push(status);
   }
 
-  sql += ` ORDER BY ft.transfer_date DESC, ft.created_at DESC
-          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-
-  params.push(limit, offset);
-
   if (search) {
-    sql += ` AND (f.id = $${params.length + 1} OR fr.id = $${params.length + 1} OR tr.id = $${params.length + 1} OR u.username LIKE $${params.length + 1})`;
+    sql += ` AND (f.first_name ILIKE $${params.length + 1} OR f.last_name ILIKE $${params.length + 1} OR f.nickname ILIKE $${params.length + 1})`;
     params.push(`%${search}%`);
   }
 
+  sql += ` ORDER BY ft.transfer_date DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+  params.push(limit, offset);
+
   const transfers = await query(sql, params);
 
+  // Formater les transferts selon le modèle
+  const formattedTransfers = transfers.map((t: any) => ({
+    id: t.id,
+    transferDate: t.transferDate,
+    transferReason: t.transferReason,
+    transferFee: t.transferFee,
+    contractDuration: t.contractDuration,
+    isPermanent: t.isPermanent,
+    status: t.status,
+    fighter: {
+      id: t.fighterId,
+      firstName: t.fighterFirstName,
+      lastName: t.fighterLastName,
+      nickname: t.fighterNickname,
+      profileImage: t.fighterProfileImage,
+      currentRegionId: t.currentRegionId
+    },
+    fromRegion: {
+      id: t.fromRegionId,
+      name: t.fromRegionName
+    },
+    toRegion: {
+      id: t.toRegionId,
+      name: t.toRegionName
+    },
+    approvedBy: t.approvedByUserId ? {
+      id: t.approvedByUserId,
+      username: t.approvedByUsername,
+      firstName: t.approvedByFirstName,
+      lastName: t.approvedByLastName
+    } : null
+  }));
+
   // Compter le total pour la pagination
-  const total = await getTotalTransfers(status, search);
+  let countSql = `SELECT COUNT(*) as total FROM fighter_transfers ft WHERE 1=1`;
+  const countParams: any[] = [];
+  if (status) {
+    countSql += ` AND ft.status = $${countParams.length + 1}`;
+    countParams.push(status);
+  }
+  const countResult = await query(countSql, countParams);
+  const total = parseInt(countResult[0]?.total || '0');
 
   return {
     success: true,
     data: {
-      transfers: formatTransfers(transfers),
+      transfers: formattedTransfers,
       pagination: {
         total,
         limit,
         offset,
-        hasMore: (offset + transfers.length) < total
+        hasMore: offset + formattedTransfers.length < total
       },
       filters: {
-        status,
-        search
+        status
       },
       timestamp: new Date().toISOString()
     },
@@ -355,7 +390,6 @@ function formatTransfers(transfers: any[]) {
     contractDuration: transfer.contractDuration,
     isPermanent: Boolean(transfer.isPermanent),
     status: transfer.status,
-    createdAt: transfer.createdAt,
     
     fighter: {
       id: transfer.fighterId,
@@ -368,16 +402,12 @@ function formatTransfers(transfers: any[]) {
     
     fromRegion: {
       id: transfer.fromRegionId,
-      name: transfer.fromRegionName,
-      code: transfer.fromRegionCode,
-      flagImage: transfer.fromRegionFlagImage
+      name: transfer.fromRegionName
     },
     
     toRegion: {
       id: transfer.toRegionId,
-      name: transfer.toRegionName,
-      code: transfer.toRegionCode,
-      flagImage: transfer.toRegionFlagImage
+      name: transfer.toRegionName
     },
     
     approvedBy: transfer.approvedByUserId ? {
@@ -390,24 +420,6 @@ function formatTransfers(transfers: any[]) {
 }
 
 // Méthodes utilitaires
-async function getTotalTransfers(status: string | null = null, search?: string) {
-  let sql = "SELECT COUNT(*) as total FROM fighter_transfers WHERE 1=1";
-  const params: any[] = [];
-  
-  if (status) {
-    sql += " AND status = $1";
-    params.push(status);
-  }
-
-  if (search) {
-    sql += " AND (fighter_id = $2 OR from_region_id = $2 OR to_region_id = $2 OR approved_by_user_id = $2)";
-    params.push(search);
-  }
-
-  const result = await query<{ total: string }>(sql, params);
-  return parseInt(result[0]?.total ?? '0');
-}
-
 async function getTotalTransfersByFighter(fighterId: number, status: string | null = null, search?: string) {
   let sql = "SELECT COUNT(*) as total FROM fighter_transfers WHERE fighter_id = $1";
   const params: any[] = [fighterId];
@@ -455,7 +467,7 @@ async function getFighterInfo(fighterId: number) {
 async function getRegionInfo(regionId: number) {
   const sql = `
     SELECT 
-      id, name, stadium_name as "stadiumName"
+      id, name
     FROM regions 
     WHERE id = $1
   `;

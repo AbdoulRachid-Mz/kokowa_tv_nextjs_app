@@ -240,7 +240,7 @@ export default function MediaPage() {
       availableFilters={availableFilters}
       renderCard={(media, viewMode) => (
         <MediaCard
-          media={media}
+          item={media}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={handleView}

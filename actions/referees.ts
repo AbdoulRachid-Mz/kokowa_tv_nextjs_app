@@ -31,12 +31,15 @@ export async function getReferees(
       certification_level,
       experience_min,
       with_region = true,
-      with_sub_groups = true,
+      with_sub_groups = false,
     } = options;
 
     let whereClause = 'WHERE 1=1';
     const params: any[] = [];
-    const selectFields: string[] = ['r.*'];
+    const selectFields: string[] = [
+      'r.*',
+      '(SELECT COUNT(*) FROM sub_groups sg WHERE sg.main_referee_id = r.id) as total_sub_groups_assigned'
+    ];
 
     // Filtre de recherche
     if (search) {

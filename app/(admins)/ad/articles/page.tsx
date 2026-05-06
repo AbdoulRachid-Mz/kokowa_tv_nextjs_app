@@ -16,6 +16,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
 
 export default function ArticlesPage() {
   const {
@@ -125,11 +126,11 @@ export default function ArticlesPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <StatsCarousel>
         {statsData.map((stat, index) => (
           <CardStats key={index} {...stat} />
         ))}
-      </div>
+      </StatsCarousel>
     );
   };
 
@@ -224,7 +225,7 @@ export default function ArticlesPage() {
       availableFilters={availableFilters}
       renderCard={(article, viewMode) => (
         <ArticleCard
-          article={article}
+          item={article}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={handleView}

@@ -27,7 +27,7 @@ export async function getCompetitions(options: CompetitionFilters) {
   const params: any[] = [];
 
   let whereClause = "WHERE 1=1";
-  const selectFields = ["c.*"];
+  const selectFields = ["c.id", "c.name", "c.slug", "c.status", "c.featured_image", "c.is_active", "c.created_at"];
   const joins: string[] = [];
 
   // === JOINS de base ===
@@ -89,18 +89,11 @@ export async function getCompetitions(options: CompetitionFilters) {
             'id', ce2.id,
             'edition_number', ce2.edition_number,
             'year', ce2.year,
-            'theme', ce2.theme,
-            'start_date', ce2.start_date,
-            'end_date', ce2.end_date,
-            'winner_fighter', JSON_BUILD_OBJECT(
-              'id', wf.id,
-              'first_name', wf.first_name,
-              'last_name', wf.last_name
-            )
+            'status', ce2.status
           ))
           FROM competition_editions ce2
-          LEFT JOIN fighters wf ON wf.id = ce2.winner_fighter_id
           WHERE ce2.competition_id = c.id
+          LIMIT 5
         ),
         '[]'
       ) AS editions

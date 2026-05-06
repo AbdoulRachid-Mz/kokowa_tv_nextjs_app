@@ -16,7 +16,7 @@ import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { getRegionById } from "@/actions/regions";
 import { useEntityList } from "@/hooks/use-entity-list";
-import { EntityList } from "@/components/entities/entity-list";
+import { EntityList } from "@/components/shared/entity-list";
 
 export default function ClientRegionDetail({ regionId }: { regionId: number }) {
   const router = useRouter();
@@ -254,15 +254,15 @@ export default function ClientRegionDetail({ regionId }: { regionId: number }) {
         onRefresh={onRefresh}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        renderCard={(fighter, mode) => (
-          <FighterCard
-            key={fighter.id}
-            viewMode={mode}
-            fighter={fighter}
-            onView={() => router.push(`/ad/fighters/${fighter.id}`)}
-            onEdit={() => router.push(`/ad/fighters/${fighter.id}/edit`)}
-          />
-        )}
+        renderCard={(fighter, viewMode) => (
+            <FighterCard
+              key={fighter.id}
+              item={fighter}
+              viewMode={viewMode}
+              onView={() => router.push(`/ad/fighters/${fighter.id}`)}
+              onEdit={() => router.push(`/ad/fighters/${fighter.id}/edit`)}
+            />
+          )}
       />
 
       {/* Dialog pour lutteur */}

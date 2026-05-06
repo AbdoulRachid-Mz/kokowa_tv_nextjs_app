@@ -1,9 +1,12 @@
 // @/lib/server/rate-limit.ts
 
-import { NextRequest } from 'next/server';
+import { NextRequest } from "next/server";
 
 export interface Store {
-  increment(key: string, windowMs: number): Promise<{ count: number; ttl: number }>;
+  increment(
+    key: string,
+    windowMs: number,
+  ): Promise<{ count: number; ttl: number }>;
 }
 
 interface RateLimitConfig {
@@ -17,7 +20,10 @@ interface RateLimitConfig {
 class MemoryStore implements Store {
   private store = new Map<string, { count: number; expires: number }>();
 
-  async increment(key: string, windowMs: number): Promise<{ count: number; ttl: number }> {
+  async increment(
+    key: string,
+    windowMs: number,
+  ): Promise<{ count: number; ttl: number }> {
     const now = Date.now();
     const record = this.store.get(key);
 
@@ -32,9 +38,10 @@ class MemoryStore implements Store {
     record.count++;
     const ttl = record.expires - now;
     this.store.set(key, record);
-    
+
     // Nettoyage périodique
-    if (Math.random() < 0.01) { // 1% de chance de nettoyer
+    if (Math.random() < 0.01) {
+      // 1% de chance de nettoyer
       this.cleanup();
     }
 
@@ -59,7 +66,8 @@ export class RateLimiter {
     this.config = {
       windowMs: config.windowMs || 60 * 1000,
       max: config.max || 60,
-      message: config.message || 'Trop de requêtes, veuillez réessayer plus tard',
+      message:
+        config.message || "Trop de requêtes, veuillez réessayer plus tard",
       statusCode: config.statusCode || 429,
       store: config.store || new MemoryStore(),
     };
@@ -73,15 +81,18 @@ export class RateLimiter {
     statusCode?: number;
   }> {
     const identifier = this.getIdentifier(request);
-    const { count, ttl } = await this.store.increment(identifier, this.config.windowMs);
+    const { count, ttl } = await this.store.increment(
+      identifier,
+      this.config.windowMs,
+    );
 
     const remaining = Math.max(0, this.config.max - count);
     const resetTime = Date.now() + ttl;
 
     const headers = {
-      'X-RateLimit-Limit': this.config.max.toString(),
-      'X-RateLimit-Remaining': remaining.toString(),
-      'X-RateLimit-Reset': Math.ceil(resetTime / 1000).toString(),
+      "X-RateLimit-Limit": this.config.max.toString(),
+      "X-RateLimit-Remaining": remaining.toString(),
+      "X-RateLimit-Reset": Math.ceil(resetTime / 1000).toString(),
     };
 
     if (count > this.config.max) {
@@ -97,21 +108,10 @@ export class RateLimiter {
   }
 
   private getIdentifier(request: NextRequest): string {
-    // Priorité: utilisateur connecté > IP
-    const authHeader = request.headers.get('authorization');
-    if (authHeader) {
-      // Utiliser un hash du token pour identifier l'utilisateur
-      const token = authHeader.split(' ')[1];
-      if (token) {
-        // Hash simple (en production, utiliser crypto.createHash)
-        return `user:${Buffer.from(token).toString('base64').slice(0, 32)}`;
-      }
-    }
-    
-    // Fallback sur l'IP
-    const forwarded = request.headers.get('x-forwarded-for');
-    const realIp = request.headers.get('x-real-ip');
-    const ip = forwarded?.split(',')[0] || realIp || 'unknown';
+    // Use IP only to avoid inconsistent rate limits due to Firebase token refresh
+    const forwarded = request.headers.get("x-forwarded-for");
+    const realIp = request.headers.get("x-real-ip");
+    const ip = forwarded?.split(",")[0] || realIp || "unknown";
     return `ip:${ip}`;
   }
 }

@@ -8,6 +8,7 @@ import { Region } from "@/types";
 import { Typography } from "@/components/ui/typography";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Users, Award, TrendingUp } from "lucide-react";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
 
 export default function ClientRegionsPage() {
   const {
@@ -71,7 +72,7 @@ export default function ClientRegionsPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+      <StatsCarousel>
         {stats.map((stat, index) => (
           <Card key={index}>
             <CardContent className="p-2">
@@ -91,7 +92,7 @@ export default function ClientRegionsPage() {
             </CardContent>
           </Card>
         ))}
-      </div>
+      </StatsCarousel>
     );
   };
 
@@ -130,11 +131,11 @@ export default function ClientRegionsPage() {
       onRefresh={onRefresh}
       viewMode={viewMode}
       onViewModeChange={setViewMode}
-      // renderStats={renderStats}
+      renderStats={renderStats}
       availableFilters={availableFilters}
       renderCard={(region, viewMode) => (
         <EntityCards.Region
-          region={region}
+          item={region}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={onView}

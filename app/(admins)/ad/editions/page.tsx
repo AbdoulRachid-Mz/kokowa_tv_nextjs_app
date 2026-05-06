@@ -132,7 +132,7 @@ export default function EditionsPage() {
       // availableFilters={availableFilters}
       renderCard={(edition, viewMode) => (
         <EditionCard
-          edition={edition}
+          item={edition}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={onView}

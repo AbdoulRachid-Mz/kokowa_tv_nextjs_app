@@ -44,34 +44,14 @@ export async function getMobileAdvertisements(filters?: {
         a.title,
         a.description,
         a.media,
-        a.media_type as "mediaType",
-        a.price,
         a.link_url as "linkUrl",
         a.cta_text as "ctaText",
-        a.position,
-        a.priority,
-        a.is_active as "isActive",
-        a.target_audience as "targetAudience",
-        a.advertiser_name as "advertiserName",
-        a.created_at as "createdAt",
-        
-        -- Vérifier si l'utilisateur a interagi avec cette pub
-        ${userId ? `
-        EXISTS(
-          SELECT 1
-          FROM interactions i
-          WHERE i.entity_type = 'advertisement'
-            AND i.entity_id = a.id
-            AND i.interaction_type = 'click'
-            AND i.user_id = $1
-        ) as "hasClicked"
-        ` : 'FALSE as "hasClicked"'}
-        
+        a.position
       FROM advertisements a
       WHERE 1=1
     `;
 
-    const params: any[] = userId ? [userId] : [];
+    const params: any[] = [];
 
     if (is_active !== undefined) {
       sql += ` AND a.is_active = $${params.length + 1}`;
@@ -250,48 +230,14 @@ export async function getMobileAdvertisementById(adId: number, userId?: number) 
         a.title,
         a.description,
         a.media,
-        a.media_type as "mediaType",
-        a.price,
         a.link_url as "linkUrl",
         a.cta_text as "ctaText",
-        a.position,
-        a.priority,
-        a.start_date as "startDate",
-        a.end_date as "endDate",
-        a.is_active as "isActive",
-        a.click_count as "clickCount",
-        a.impression_count as "impressionCount",
-        a.target_audience as "targetAudience",
-        a.advertiser_name as "advertiserName",
-        a.advertiser_contact as "advertiserContact",
-        a.created_at as "createdAt",
-        a.updated_at as "updatedAt",
-        
-        -- Calculer le CTR
-        CASE 
-          WHEN a.impression_count > 0 
-          THEN ROUND((a.click_count::DECIMAL / a.impression_count * 100)::DECIMAL, 2)
-          ELSE 0 
-        END as "ctr",
-        
-        ${userId ? `
-        -- Vérifier si l'utilisateur a cliqué
-        EXISTS(
-          SELECT 1
-          FROM interactions i
-          WHERE i.entity_type = 'advertisement'
-            AND i.entity_id = a.id
-            AND i.interaction_type = 'click'
-            AND i.user_id = $2
-        ) as "hasClicked"
-        ` : 'FALSE as "hasClicked"'}
-        
+        a.position
       FROM advertisements a
       WHERE a.id = $1
     `;
 
-    const params = userId ? [adId, userId] : [adId];
-    const result = await query(sql, params);
+    const result = await query(sql, [adId]);
     const advertisement = result[0];
 
     return {

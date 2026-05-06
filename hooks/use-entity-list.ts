@@ -76,7 +76,9 @@ export interface UseEntityListProps<T> {
   withRelations?: boolean;
   defaultData?: T[];
   useDefaultData?: boolean;
-  autoFetch?: boolean; // Nouveau: pour contrôler si on fetch automatiquement
+  autoFetch?: boolean;
+  isLocal?: boolean; // New: for local pagination/filtering
+  apiPath?: string; // New: for custom API endpoints
 }
 
 export function useEntityList<T>({
@@ -86,22 +88,58 @@ export function useEntityList<T>({
   withRelations = true,
   defaultData = [],
   useDefaultData = false,
-  autoFetch = true, // Par défaut, on fetch automatiquement
+  autoFetch = true,
+  isLocal = false,
+  apiPath,
 }: UseEntityListProps<T>) {
   const router = useRouter();
   const abortControllerRef = useRef<AbortController | null>(null);
   const isMounted = useRef(true);
   
   // États
-  const [data, setData] = useState<T[]>(useDefaultData ? defaultData : []);
-  const [total, setTotal] = useState(useDefaultData ? defaultData.length : 0);
-  const [loading, setLoading] = useState(autoFetch && (!useDefaultData || defaultData.length === 0));
+  const [serverData, setServerData] = useState<T[]>(useDefaultData ? defaultData : []);
+  const [serverTotal, setServerTotal] = useState(useDefaultData ? defaultData.length : 0);
+  const [loading, setLoading] = useState(autoFetch && !isLocal && (!useDefaultData || defaultData.length === 0));
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(defaultLimit);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<EntityFilters>(defaultFilters);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
   const [error, setError] = useState<string | null>(null);
+  
+  // Local Data Management
+  const processedData = useMemo(() => {
+    if (!isLocal) return { data: serverData, total: serverTotal };
+
+    let filtered = [...defaultData];
+
+    // Simple search filtering for local data
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter((item: any) => {
+        // Try to find any string property that matches
+        return Object.values(item).some(val => 
+          typeof val === 'string' && val.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+
+    // Basic filter application (equality check for local data)
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== 'all' && value !== undefined && value !== null && value !== '') {
+        filtered = filtered.filter((item: any) => item[key] === value);
+      }
+    });
+
+    const totalCount = filtered.length;
+    const startIndex = (page - 1) * limit;
+    const paginated = filtered.slice(startIndex, startIndex + limit);
+
+    return { data: paginated, total: totalCount };
+  }, [isLocal, defaultData, searchTerm, filters, page, limit, serverData, serverTotal]);
+
+  const data = processedData.data;
+  const total = processedData.total;
   
   // Nettoyage à la destruction du composant
   useEffect(() => {
@@ -119,6 +157,8 @@ export function useEntityList<T>({
   
   // Construction des paramètres de requête
   const buildQueryParams = useCallback((): Record<string, string> => {
+    if (isLocal) return {};
+
     const params: Record<string, string> = {
       page: page.toString(),
       limit: limit.toString(),
@@ -379,7 +419,8 @@ export function useEntityList<T>({
 
     try {
       const queryString = new URLSearchParams(queryParams).toString();
-      const response = await fetch(`/api/${entityType}?${queryString}`, {
+      const fetchPath = apiPath || `/api/${entityType}`;
+      const response = await fetch(`${fetchPath}?${queryString}`, {
         signal: abortControllerRef.current.signal,
         headers: {
           'Cache-Control': 'no-cache',
@@ -421,8 +462,8 @@ export function useEntityList<T>({
       }
 
       if (isMounted.current) {
-        setData(dataArray);
-        setTotal(totalCount);
+        setServerData(dataArray);
+        setServerTotal(totalCount);
       }
       
     } catch (error: any) {
@@ -435,8 +476,8 @@ export function useEntityList<T>({
       
       if (isMounted.current) {
         setError(error.message || 'Erreur lors du chargement des données');
-        setData([]);
-        setTotal(0);
+        setServerData([]);
+        setServerTotal(0);
       }
     } finally {
       if (isMounted.current) {
@@ -451,8 +492,8 @@ export function useEntityList<T>({
     
     if (useDefaultData && defaultData.length > 0) {
       // Utiliser les données par défaut
-      setData(defaultData);
-      setTotal(defaultData.length);
+      setServerData(defaultData);
+      setServerTotal(defaultData.length);
       setLoading(false);
     } else {
       // Charger depuis l'API

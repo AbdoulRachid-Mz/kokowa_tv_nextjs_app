@@ -42,6 +42,10 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EntityType } from "@/actions/entities";
 import { UseEntitiesReturn } from "@/hooks/use-entities";
+import { EntityFilters } from "./entity-filters";
+import { StatsCarousel } from "./stats-carousel";
+import { MobileScreen } from "./mobile-screen";
+import { useScreenSize } from "@/hooks/use-screen";
 
 // Interface des props du composant
 export interface EntityListProps<T> {
@@ -132,6 +136,7 @@ export function EntityList<T extends { id?: number }>({
         // Filtres
         filters,
         updateFilter,
+        setFilters,
         resetFilters,
 
         // Actions
@@ -153,6 +158,8 @@ export function EntityList<T extends { id?: number }>({
         hasNextPage,
         hasPrevPage,
     } = entities;
+
+    const { isMobile } = useScreenSize();
 
     // État local pour le mode d'affichage
     const [viewMode, setViewMode] = React.useState<"grid" | "list">(externalViewMode);
@@ -262,76 +269,27 @@ export function EntityList<T extends { id?: number }>({
             </div>
 
             {/* Statistiques */}
-            {renderStats?.()}
+            {renderStats && (
+                <div className="mb-6">
+                    <StatsCarousel>
+                        {renderStats()}
+                    </StatsCarousel>
+                </div>
+            )}
 
             {/* Barre de recherche et filtres */}
             {(showSearch || showFilters) && (
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex flex-col lg:flex-row gap-4">
-                            {/* Recherche */}
-                            {showSearch && (
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder={`Rechercher...`}
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-9"
-                                    />
-                                    {searchTerm && (
-                                        <button
-                                            onClick={() => setSearchTerm("")}
-                                            className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                                        >
-                                            <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Filtres */}
-                            {showFilters && (
-                                <div className="flex flex-wrap gap-2">
-                                    {availableFilters.map((filter) => (
-                                        <Select
-                                            key={filter.key}
-                                            value={String((filters as any)[filter.key] || "all")}
-                                            onValueChange={(value) =>
-                                                updateFilter(filter.key as any, value === "all" ? undefined : value)
-                                            }
-                                        >
-                                            <SelectTrigger className="w-[180px]">
-                                                <SelectValue placeholder={filter.label} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {filter.options.map((option) => (
-                                                    <SelectItem key={option.value} value={option.value}>
-                                                        {option.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    ))}
-
-                                    {/* Filtres personnalisés */}
-                                    {renderFilters?.()}
-
-                                    {/* Bouton de réinitialisation */}
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={resetFilters}
-                                        className="h-10"
-                                    >
-                                        <Filter className="h-4 w-4 mr-2" />
-                                        Réinitialiser
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                <EntityFilters
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    filters={filters || {}}
+                    onFilterChange={setFilters}
+                    availableFilters={availableFilters}
+                    renderCustomFilters={renderFilters}
+                    onReset={resetFilters}
+                    showSearch={showSearch}
+                    showFilters={showFilters}
+                />
             )}
 
             {/* Barre de sélection */}

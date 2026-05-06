@@ -223,10 +223,15 @@ export async function getPhases(
 
 export async function getPhaseById(id: number, options: { 
   with_relations?: boolean,
-  is_active?: boolean
+  is_active?: boolean,
+  with_stats?: boolean
 } = {}) {
   try {
-    const { with_relations = true, is_active } = options;
+    const { 
+      with_relations = false, 
+      is_active,
+      with_stats = true 
+    } = options;
     
     const params: any[] = [id];
     let whereClause = 'WHERE p.id = $1';
@@ -237,170 +242,80 @@ export async function getPhaseById(id: number, options: {
       whereClause += ` AND p.is_active = $${params.length}`;
     }
 
-    let sql = `SELECT * FROM phases p ${whereClause}`;
+    // Construire les champs de statistiques (compteurs)
+    const statsFields = with_stats ? [
+      `(SELECT COUNT(*) FROM phase_groups WHERE phase_id = p.id) as groups_count`,
+      `(SELECT COUNT(*) FROM phase_groups WHERE phase_id = p.id AND is_completed = true) as groups_completed_count`,
+      `(SELECT COUNT(*) FROM sub_groups sg JOIN phase_groups pg ON sg.group_id = pg.id WHERE pg.phase_id = p.id) as sub_groups_count`,
+      `(SELECT COUNT(*) FROM matches m JOIN sub_groups sg ON m.sub_group_id = sg.id JOIN phase_groups pg ON sg.group_id = pg.id WHERE pg.phase_id = p.id) as matches_count`
+    ] : [];
 
-    if (with_relations) {
-      // Utiliser directement les valeurs booléennes pour les conditions
-      const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
-      
-      sql = `
+    if (!with_relations) {
+      const sql = `
         SELECT 
           p.*,
+          ${statsFields.length > 0 ? statsFields.join(", ") + "," : ""}
           JSON_BUILD_OBJECT(
             'id', ce.id,
             'edition_number', ce.edition_number,
             'year', ce.year,
-            'start_date', ce.start_date,
-            'end_date', ce.end_date,
-            'theme', ce.theme,
             'competition', JSON_BUILD_OBJECT(
               'id', c.id,
-              'name', c.name,
-              'slug', c.slug,
-              'description', c.description
+              'name', c.name
             )
-          ) as edition,
-          COALESCE(
-            (SELECT JSON_AGG(
-              JSON_BUILD_OBJECT(
-                'id', pg.id,
-                'name', pg.name,
-                'group_order', pg.group_order,
-                'description', pg.description,
-                'is_completed', pg.is_completed,
-                'is_active', pg.is_active,
-                'sub_groups', COALESCE(
-                  (SELECT JSON_AGG(
-                    JSON_BUILD_OBJECT(
-                      'id', sg.id,
-                      'name', sg.name,
-                      'sub_group_order', sg.sub_group_order,
-                      'description', sg.description,
-                      'region1_id', sg.region1_id,
-                      'region2_id', sg.region2_id,
-                      'belt_region1', sg.belt_region1,
-                      'belt_region2', sg.belt_region2,
-                      'main_referee_id', sg.main_referee_id,
-                      'is_completed', sg.is_completed,
-                      'is_active', sg.is_active,
-                      'region1', CASE 
-                        WHEN sg.region1_id IS NOT NULL THEN 
-                          JSON_BUILD_OBJECT('id', r1.id, 'name', r1.name, 'code', r1.code)
-                        ELSE NULL
-                      END,
-                      'region2', CASE 
-                        WHEN sg.region2_id IS NOT NULL THEN 
-                          JSON_BUILD_OBJECT('id', r2.id, 'name', r2.name, 'code', r2.code)
-                        ELSE NULL
-                      END,
-                      'belt1', CASE 
-                        WHEN sg.belt_region1 IS NOT NULL THEN 
-                          JSON_BUILD_OBJECT('id', b1.id, 'color', b1.color)
-                        ELSE NULL
-                      END,
-                      'belt2', CASE 
-                        WHEN sg.belt_region2 IS NOT NULL THEN 
-                          JSON_BUILD_OBJECT('id', b2.id, 'color', b2.color)
-                        ELSE NULL
-                      END,
-                      'main_referee', CASE 
-                        WHEN sg.main_referee_id IS NOT NULL THEN 
-                          JSON_BUILD_OBJECT(
-                            'id', ref.id, 
-                            'first_name', ref.first_name,
-                            'last_name', ref.last_name,
-                            'nickname', ref.nickname
-                          )
-                        ELSE NULL
-                      END,
-                      'matches', COALESCE(
-                        (SELECT JSON_AGG(
-                          JSON_BUILD_OBJECT(
-                            'id', m.id,
-                            'match_number', m.match_number,
-                            'match_date', m.match_date,
-                            'start_time', m.start_time,
-                            'end_time', m.end_time,
-                            'fighter1_id', m.fighter1_id,
-                            'fighter2_id', m.fighter2_id,
-                            'winner_fighter_id', m.winner_fighter_id,
-                            'loser_fighter_id', m.loser_fighter_id,
-                            'match_result', m.match_result,
-                            'total_duration', m.total_duration,
-                            'break_count', m.break_count,
-                            'status', m.status,
-                            'audience_count', m.audience_count,
-                            'video_url', m.video_url,
-                            'live_stream_url', m.live_stream_url,
-                            'notes', m.notes,
-                            'fighter1', CASE 
-                              WHEN m.fighter1_id IS NOT NULL THEN 
-                                JSON_BUILD_OBJECT(
-                                  'id', f1.id,
-                                  'first_name', f1.first_name,
-                                  'last_name', f1.last_name,
-                                  'nickname', f1.nickname,
-                                  'profile_image', f1.profile_image
-                                )
-                              ELSE NULL
-                            END,
-                            'fighter2', CASE 
-                              WHEN m.fighter2_id IS NOT NULL THEN 
-                                JSON_BUILD_OBJECT(
-                                  'id', f2.id,
-                                  'first_name', f2.first_name,
-                                  'last_name', f2.last_name,
-                                  'nickname', f2.nickname,
-                                  'profile_image', f2.profile_image
-                                )
-                              ELSE NULL
-                            END,
-                            'winner', CASE 
-                              WHEN m.winner_fighter_id IS NOT NULL THEN 
-                                JSON_BUILD_OBJECT(
-                                  'id', fw.id,
-                                  'first_name', fw.first_name,
-                                  'last_name', fw.last_name,
-                                  'nickname', fw.nickname,
-                                  'profile_image', fw.profile_image
-                                )
-                              ELSE NULL
-                            END
-                          ) ORDER BY m.match_number
-                        ) FROM matches m
-                        LEFT JOIN fighters f1 ON m.fighter1_id = f1.id
-                        LEFT JOIN fighters f2 ON m.fighter2_id = f2.id
-                        LEFT JOIN fighters fw ON m.winner_fighter_id = fw.id
-                        WHERE m.sub_group_id = sg.id
-                          AND (${isActiveFlag} IS FALSE OR m.is_active = true)
-                        ),
-                        '[]'::json
-                      )
-                    ) ORDER BY sg.sub_group_order
-                  ) FROM sub_groups sg
-                  LEFT JOIN regions r1 ON sg.region1_id = r1.id
-                  LEFT JOIN regions r2 ON sg.region2_id = r2.id
-                  LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
-                  LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
-                  LEFT JOIN referees ref ON sg.main_referee_id = ref.id
-                  WHERE sg.group_id = pg.id
-                    AND (${isActiveFlag} IS FALSE OR sg.is_active = true)
-                  ),
-                  '[]'::json
-                )
-              ) ORDER BY pg.group_order
-            ) FROM phase_groups pg 
-            WHERE pg.phase_id = p.id 
-              AND (${isActiveFlag} IS FALSE OR pg.is_active = true)
-            ),
-            '[]'::json
-          ) as groups
+          ) as edition
         FROM phases p
         LEFT JOIN competition_editions ce ON p.edition_id = ce.id
         LEFT JOIN competitions c ON ce.competition_id = c.id
         ${whereClause}
       `;
+      const result = await queryOne<any>(sql, params);
+      if (!result) throw new Error('Phase non trouvée');
+      return result;
     }
+
+    // Version avec relations
+    const isActiveFlag = typeof is_active === 'boolean' ? is_active : true;
+    const sql = `
+      SELECT 
+        p.*,
+        ${statsFields.length > 0 ? statsFields.join(", ") + "," : ""}
+        JSON_BUILD_OBJECT(
+          'id', ce.id,
+          'edition_number', ce.edition_number,
+          'year', ce.year,
+          'start_date', ce.start_date,
+          'end_date', ce.end_date,
+          'theme', ce.theme,
+          'competition', JSON_BUILD_OBJECT(
+            'id', c.id,
+            'name', c.name,
+            'slug', c.slug,
+            'description', c.description
+          )
+        ) as edition,
+        COALESCE(
+          (SELECT JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', pg.id,
+              'name', pg.name,
+              'group_order', pg.group_order,
+              'description', pg.description,
+              'is_completed', pg.is_completed,
+              'is_active', pg.is_active,
+              'sub_groups_count', (SELECT COUNT(*) FROM sub_groups WHERE group_id = pg.id)
+            ) ORDER BY pg.group_order
+          ) FROM phase_groups pg 
+          WHERE pg.phase_id = p.id 
+            AND (${isActiveFlag} IS FALSE OR pg.is_active = true)
+          ),
+          '[]'::json
+        ) as groups
+      FROM phases p
+      LEFT JOIN competition_editions ce ON p.edition_id = ce.id
+      LEFT JOIN competitions c ON ce.competition_id = c.id
+      ${whereClause}
+    `;
 
     const result = await queryOne<Phase>(sql, params);
     

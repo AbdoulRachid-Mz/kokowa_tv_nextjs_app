@@ -9,6 +9,7 @@ import { Typography } from "@/components/ui/typography";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, CheckCircle, Clock, XCircle, TrendingUp } from "lucide-react";
 import { CardStats } from "@/components/entities/card-stats";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
 
 export default function TransfersPage() {
   const {
@@ -71,11 +72,11 @@ export default function TransfersPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <StatsCarousel>
         {stats.map((stat, index) => (
-          <CardStats key={index} {...stat}  />
+          <CardStats key={index} {...stat} />
         ))}
-      </div>
+      </StatsCarousel>
     );
   };
 
@@ -103,7 +104,7 @@ export default function TransfersPage() {
       renderStats={renderStats}
       renderCard={(transfer, viewMode) => (
         <EntityCards.Transfer
-          transfer={transfer}
+          item={transfer}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={onView}

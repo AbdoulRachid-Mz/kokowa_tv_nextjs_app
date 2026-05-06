@@ -1,0 +1,108 @@
+{
+  "success": true,
+  "data": {
+    "edition": {
+      "id": 13,
+      "editionNumber": 1,
+      "year": 2025,
+      "theme": "50 ans de Kokowa",
+      "regionName": "Agadez",
+      "startDate": "2025-12-20T00:00:00.000Z",
+      "endDate": "2025-12-27T00:00:00.000Z",
+      "competition": {
+        "id": 14,
+        "name": "Sabre National"
+      },
+      "winner": null,
+      "phases": [
+        {
+          "id": 9,
+          "name": "Inter Régions",
+          "phaseOrder": 1,
+          "phaseType": "group",
+          "isActive": true,
+          "startDate": "2025-12-20T00:00:00.000Z",
+          "endDate": "2025-12-26T00:00:00.000Z",
+          "isCompleted": false,
+          "groups": [
+            {
+              "id": 24,
+              "name": "Samedi | 20",
+              "groupOrder": 1,
+              "isActive": true,
+              "date": null,
+              "isCompleted": false,
+              "subGroups": [
+                {
+                  "id": 66,
+                  "name": "Zinder vs Tillabéri",
+                  "subGroupOrder": 1,
+                  "period": "matin",
+                  "scoreRegion1": 4,
+                  "scoreRegion2": 6,
+                  "nulls": 0,
+                  "status": "completed",
+                  "region1Id": 6,
+                  "region2Id": 4,
+                  "region1Name": "Zinder",
+                  "region2Name": "Tillabéri",
+                  "beltRegion1Color": "blue",
+                  "beltRegion2Color": "green",
+                  "isCompleted": true,
+                  "isActive": true,
+                  "scores": {
+                    "region1": 4,
+                    "region2": 6,
+                    "nulls": 0
+                  },
+                  "matchStatus": "completed"
+                }]}
+               
+      ]}],
+      "liveMatch":  {
+                    "id": 75,
+                    "matchNumber": 8,
+                    "status": "completed",
+                    "startTime": "13:41:17",
+                    "totalDuration": "00:01:17",
+                    "breakCount": 0,
+                    "audienceCount": null,
+                    "videoUrl": null,
+                    "notes": "",
+                    "fighters": {
+                        "fighter1": {
+                            "id": 52,
+                            "firstName": "Zayanou",
+                            "lastName": "Sala",
+                            "nickname": "Le Nouveau Phénomène",
+                            "profileImage": "https://cloudinary.com/kokowa/fighters/profile5.jpg",
+                            "regionName": "Niamey",
+                            "initialState": null
+                        },
+                        "fighter2": {
+                            "id": 120,
+                            "firstName": "Moutari",
+                            "lastName": "Miko",
+                            "nickname": "Le Buffalo du Lac Tchad",
+                            "profileImage": "https://cloudinary.com/kokowa/fighters/profile4.jpg",
+                            "regionName": "Diffa",
+                            "initialState": null
+                        }
+                    },
+                    "result": {
+                        "winnerId": 120,
+                        "loserId": 52
+                    },
+                    "allCards": [
+                        {
+                            "id": 30,
+                            "fighterId": 50,
+                            "cardType": "yellow",
+                            "minuteGiven": "00:35:00"
+                        }
+                    ]
+                }
+    }
+  },
+  "message": "Édition récupérée avec succès"
+}

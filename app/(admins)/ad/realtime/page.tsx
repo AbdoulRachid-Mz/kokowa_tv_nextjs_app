@@ -150,9 +150,9 @@ export default function RealtimeAdminPage() {
 
   useEffect(() => {
     loadStats();
-    const interval = setInterval(loadStats, 5000); // Rafraîchir toutes les 5 secondes
-    return () => clearInterval(interval);
-  }, [loadStats]);
+    // const interval = setInterval(loadStats, 5000); // Rafraîchir toutes les 5 secondes
+    // return () => clearInterval(interval);
+  }, []);
 
   const handleSubscribe = (type: string, id: number) => {
     subscribe(type as any, id);

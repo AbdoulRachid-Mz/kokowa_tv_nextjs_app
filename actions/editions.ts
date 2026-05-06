@@ -39,7 +39,7 @@ export async function getEditions(options: EditionFilters = {}) {
     const baseParams: (string | number | boolean)[] = [];
     let whereClause = "WHERE 1=1";
     let joinClause = "";
-    const selectFields = ["ce.*"];
+    const selectFields = ["ce.id", "ce.competition_id", "ce.edition_number", "ce.year", "ce.theme", "ce.is_active", "ce.start_date", "ce.end_date", "ce.total_participants"];
 
     // Filtres de base avec typage explicite
     if (competition_id) {
@@ -104,24 +104,13 @@ export async function getEditions(options: EditionFilters = {}) {
             JSONB_BUILD_OBJECT(
               'id', ef.id,
               'fighter_id', ef.fighter_id,
-              'region_id', ef.region_id,
-              'status', ef.status,
-              'registration_date', ef.registration_date,
-              'fighter', JSONB_BUILD_OBJECT(
-                'id', f.id,
-                'first_name', f.first_name,
-                'last_name', f.last_name,
-                'nickname', f.nickname,
-                'ranking', f.ranking,
-                'profile_image', f.profile_image,
-                'is_active', f.is_active,
-                'is_champion', f.is_champion
-              )
-            ) ORDER BY f.ranking
+              'status', ef.status
+            )
           ) FROM edition_fighters ef
           JOIN fighters f ON ef.fighter_id = f.id
           WHERE ef.edition_id = ce.id
             AND (${isActiveFlag ? "f.is_active = true" : "1=1"})
+          LIMIT 10
           ),
           '[]'::jsonb
         ) as fighters
@@ -136,23 +125,12 @@ export async function getEditions(options: EditionFilters = {}) {
             JSONB_BUILD_OBJECT(
               'id', er.id,
               'region_id', er.region_id,
-              'status', er.status,
-              'registration_date', er.registration_date,
-              'region', JSONB_BUILD_OBJECT(
-                'id', r.id,
-                'name', r.name,
-                'code', r.code,
-                'color', r.color,
-                'flag_image', r.flag_image,
-                'stadium_name', r.stadium_name,
-                'stadium_image', r.stadium_image,
-                'total_fighters', r.total_fighters,
-                'total_champions', r.total_champions
-              )
-            ) ORDER BY r.name
+              'status', er.status
+            )
           ) FROM edition_regions er
           JOIN regions r ON er.region_id = r.id
           WHERE er.edition_id = ce.id
+          LIMIT 10
           ),
           '[]'::jsonb
         ) as regions
@@ -379,19 +357,25 @@ export async function getEditionById(
       with_matches?: boolean;
     };
     is_active?: boolean;
+    with_stats?: boolean;
   } = {},
 ) {
   try {
-    const { with_relations = true, relations = {}, is_active } = options;
+    const { 
+      with_relations = false, 
+      relations = {}, 
+      is_active,
+      with_stats = true 
+    } = options;
 
-    // Extraire les relations avec des valeurs par défaut
+    // Extraire les relations avec des valeurs par défaut (tous à false par défaut car lourd)
     const {
-      with_phases = true,
-      with_regions = true,
-      with_fighters = true,
-      with_groups = true,
-      with_subGroups = true,
-      with_matches = true,
+      with_phases = false,
+      with_regions = false,
+      with_fighters = false,
+      with_groups = false,
+      with_subGroups = false,
+      with_matches = false,
     } = relations;
 
     const params: any[] = [id];
@@ -403,10 +387,36 @@ export async function getEditionById(
       whereClause += ` AND ce.is_active = $${params.length}`;
     }
 
-    // Si with_relations est false, retourner seulement les données de base
+    // Construire les champs de statistiques (compteurs)
+    const statsFields = with_stats ? [
+      `(SELECT COUNT(*) FROM phases WHERE edition_id = ce.id) as phases_count`,
+      `(SELECT COUNT(*) FROM edition_fighters WHERE edition_id = ce.id) as fighters_count`,
+      `(SELECT COUNT(*) FROM edition_regions WHERE edition_id = ce.id) as regions_count`,
+      `(SELECT COUNT(*) FROM matches m 
+        JOIN sub_groups sg ON m.sub_group_id = sg.id 
+        JOIN phase_groups pg ON sg.group_id = pg.id 
+        JOIN phases p ON pg.phase_id = p.id 
+        WHERE p.edition_id = ce.id) as matches_count`
+    ] : [];
+
+    // Si with_relations est false, retourner seulement les données de base + stats
     if (!with_relations) {
-      const sql = `SELECT * FROM competition_editions ce ${whereClause}`;
-      const result = await queryOne<CompetitionEdition>(sql, params);
+      const sql = `
+        SELECT 
+          ce.*,
+          ${statsFields.length > 0 ? statsFields.join(", ") + "," : ""}
+          JSON_BUILD_OBJECT(
+            'id', c.id,
+            'name', c.name,
+            'slug', c.slug,
+            'status', c.status,
+            'featured_image', c.featured_image
+          ) as competition
+        FROM competition_editions ce
+        LEFT JOIN competitions c ON ce.competition_id = c.id
+        ${whereClause}
+      `;
+      const result = await queryOne<any>(sql, params);
 
       if (!result) {
         throw new Error("Édition non trouvée");
@@ -415,13 +425,11 @@ export async function getEditionById(
       return result;
     }
 
-    // Version avec toutes les relations
-    // Créer un tableau pour les paramètres conditionnels
+    // Version avec les relations demandées
     const conditionalParams: any[] = [];
-
-    // Construire la requête avec les relations dynamiques
     const selectFields = [
       "ce.*",
+      ...statsFields,
       `
         JSON_BUILD_OBJECT(
           'id', c.id,

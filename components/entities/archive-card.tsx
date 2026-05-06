@@ -15,241 +15,308 @@ import {
   RotateCcw,
   Eye,
   Edit,
+  MoreHorizontal,
+  Trash2,
+  Pencil,
+  RefreshCcw,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { BaseCardProps } from "./entity-cards";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-interface ArchiveAchievementCardProps {
-  archive: ArchiveFighterAchievement;
-  viewMode: "grid" | "list";
-  onEdit?: (id: number) => void;
-  onView?: (id: number) => void;
-  onRestore?: (id: number) => void;
-}
-
-export const ArchiveAchievementCard = ({
-  archive,
-  viewMode,
+export { ArchiveCard as ArchiveAchievementCard };
+// components/entities/entity-cards.tsx
+export function ArchiveCard({
+  item,
+  viewMode = "grid",
+  status,
+  isCliquable = true,
+  isMini = false,
+  activeAction = "view",
   onEdit,
   onView,
+  onDelete,
   onRestore,
-}: ArchiveAchievementCardProps) => {
-  const isGrid = viewMode === "grid";
+  className,
+}: BaseCardProps<ArchiveFighterAchievement> & {
+  onRestore?: () => Promise<void>;
+}) {
+  const archive = item;
+  const isListView = viewMode === "list";
+  const isCompact = viewMode === "compact" || isMini;
 
-  const getPositionColor = (position: string) => {
-    switch (position) {
-      case "1st":
-        return "bg-yellow-100 text-yellow-800";
-      case "2nd":
-        return "bg-gray-100 text-gray-800";
-      case "3rd":
-        return "bg-orange-100 text-orange-800";
-      default:
-        return "bg-blue-100 text-blue-800";
-    }
+  const handleMainAction = () => {
+    if (!isCliquable) return;
+    if (activeAction === "view" && onView) onView(archive);
+    else if (activeAction === "edit" && onEdit) onEdit(archive);
+    else if (activeAction === "delete" && onDelete) onDelete(archive);
+    else if (onView) onView(archive);
   };
 
-   const getReasonBadge = (reason?: string) => {
+  const getPositionLabel = (position: string) => {
+    const positions: Record<
+      string,
+      { label: string; icon: string; color: string }
+    > = {
+      "1st": {
+        label: "1ère Place",
+        icon: "🥇",
+        color: "bg-yellow-100 text-yellow-800",
+      },
+      "2nd": {
+        label: "2ème Place",
+        icon: "🥈",
+        color: "bg-gray-100 text-gray-800",
+      },
+      "3rd": {
+        label: "3ème Place",
+        icon: "🥉",
+        color: "bg-orange-100 text-orange-800",
+      },
+      finalist: {
+        label: "Finaliste",
+        icon: "🏆",
+        color: "bg-purple-100 text-purple-800",
+      },
+      semifinalist: {
+        label: "Demi-finaliste",
+        icon: "🎯",
+        color: "bg-blue-100 text-blue-800",
+      },
+      quarterfinalist: {
+        label: "Quart-de-finaliste",
+        icon: "⭐",
+        color: "bg-green-100 text-green-800",
+      },
+    };
+    return (
+      positions[position] || {
+        label: position,
+        icon: "🏅",
+        color: "bg-gray-100 text-gray-800",
+      }
+    );
+  };
+
+  const getReasonBadge = (reason?: string) => {
     const reasons: Record<string, { label: string; color: string }> = {
       correction: { label: "Correction", color: "bg-blue-100 text-blue-800" },
       duplicate: { label: "Doublon", color: "bg-yellow-100 text-yellow-800" },
       error: { label: "Erreur", color: "bg-red-100 text-red-800" },
     };
-    const config = reasons[reason || "other"] || { label: "Autre", color: "bg-gray-100 text-gray-800" };
-    return config;
+    return (
+      reasons[reason || "other"] || {
+        label: "Autre",
+        color: "bg-gray-100 text-gray-800",
+      }
+    );
   };
 
-   const getPositionLabel = (position: string) => {
-    const positions: Record<string, { label: string; icon: string; color: string }> = {
-      "1st": { label: "1ère Place", icon: "🥇", color: "bg-yellow-100 text-yellow-800" },
-      "2nd": { label: "2ème Place", icon: "🥈", color: "bg-gray-100 text-gray-800" },
-      "3rd": { label: "3ème Place", icon: "🥉", color: "bg-orange-100 text-orange-800" },
-      finalist: { label: "Finaliste", icon: "🏆", color: "bg-purple-100 text-purple-800" },
-      semifinalist: { label: "Demi-finaliste", icon: "🎯", color: "bg-blue-100 text-blue-800" },
-      quarterfinalist: { label: "Quart-de-finaliste", icon: "⭐", color: "bg-green-100 text-green-800" },
-    };
-    return positions[position] || { label: position, icon: "🏅", color: "bg-gray-100" };
-  };
-
-  const getReasonColor = (reason: string) => {
-    switch (reason?.toLowerCase()) {
-      case "correction":
-        return "bg-blue-100 text-blue-800";
-      case "duplicate":
-        return "bg-yellow-100 text-yellow-800";
+  const getStatusBorder = (status?: string) => {
+    switch (status) {
+      case "success":
+        return "border-l-4 border-l-green-500";
+      case "warning":
+        return "border-l-4 border-l-yellow-500";
       case "error":
-        return "bg-red-100 text-red-800";
+        return "border-l-4 border-l-red-500";
+      case "info":
+        return "border-l-4 border-l-blue-500";
+      case "default":
+        return "border-l-4 border-l-gray-300";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "";
     }
   };
 
-  if (isGrid) {
-    return (
-      <Card className="h-full hover:shadow-lg transition-shadow">
-        <CardContent className="p-4 h-full flex flex-col">
-          {/* En-tête */}
-          <div className="flex justify-between items-start mb-3">
-            <Badge className={getPositionLabel(archive.position).color}>
-              {getPositionLabel(archive.position).icon}
-              {getPositionLabel(archive.position).label}
-            </Badge>
-            <Badge variant="secondary">
-              <History className="h-3 w-3 mr-1" />
-              Archive
-            </Badge>
-          </div>
+  const hasActions = onEdit || onView || onDelete || onRestore;
 
-          {/* Titre */}
-          <Typography variant="h5" weight="semibold" className="mb-2 line-clamp-2">
-            {archive.title}
-          </Typography>
-
-          {/* Informations */}
-          <div className="space-y-2 mb-4 flex-1">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <Typography variant="body-sm" className="line-clamp-1">
-                {archive.fighter?.first_name} {archive.fighter?.last_name}
-              </Typography>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <Typography variant="body-sm" className="line-clamp-1">
-                {archive.region?.name}
-              </Typography>
-            </div>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <Typography variant="body-sm">
-                {archive.year}
-              </Typography>
-            </div>
-          </div>
-
-          {/* Raison et actions */}
-          <div className="space-y-3">
-            {archive.archive_reason && (
-              <Badge className={getReasonBadge(archive.archive_reason).color}>
-                {getReasonBadge(archive.archive_reason).label}
-              </Badge>
-            )}
-            
-            <div className="flex gap-2">
-              {onView && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => onView(archive.id)}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  Voir
-                </Button>
-              )}
-              {onRestore && (
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="flex-1"
-                  onClick={() => onRestore(archive.id)}
-                >
-                  <RotateCcw className="h-4 w-4 mr-1" />
-                  Restaurer
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Mode liste
   return (
-    <Card className="hover:bg-gray-50 transition-colors">
-      <CardContent className="p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-2 flex-1">
-            <div className="flex items-center gap-3">
-              <Typography variant="body-lg" weight="semibold">
+    <Card
+      className={cn(
+        "hover:shadow-md transition-all duration-300 group relative overflow-hidden",
+        isListView && "flex items-center",
+        isCliquable && "cursor-pointer active:scale-[0.98]",
+        getStatusBorder(status),
+        className,
+      )}
+      onClick={handleMainAction}
+    >
+      <div
+        className={cn(
+          "p-3 flex w-full gap-3",
+          isListView ? "flex-row items-center" : "flex-col",
+        )}
+      >
+        {/* Header Area */}
+        <div className={cn("flex items-center gap-3", !isListView && "w-full")}>
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+            <History className="h-5 w-5" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <Typography
+                variant={isCompact ? "body-sm" : "h4"}
+                weight="bold"
+                className="truncate group-hover:text-primary transition-colors"
+              >
                 {archive.title}
               </Typography>
-              <Badge className={getPositionColor(archive.position)}>
-                {getPositionLabel(archive.position).icon}
+              {!isListView && hasActions && (
+                <div
+                  className="flex-shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <CardActionMenu
+                    onEdit={() => onEdit?.(archive)}
+                    onView={() => onView?.(archive)}
+                    onDelete={() => onDelete?.(archive)}
+                    onRestore={onRestore}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge
+                className={cn(
+                  "text-[10px] h-5",
+                  getPositionLabel(archive.position).color,
+                )}
+              >
+                {getPositionLabel(archive.position).icon}{" "}
                 {getPositionLabel(archive.position).label}
               </Badge>
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <Typography variant="body-sm" theme="muted">
-                  {archive.fighter?.first_name} {archive.fighter?.last_name}
-                </Typography>
-              </div>
-              <span className="text-gray-300">•</span>
-              <div className="flex items-center gap-1">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <Typography variant="body-sm" theme="muted">
-                  {archive.region?.name}
-                </Typography>
-              </div>
-              <span className="text-gray-300">•</span>
-              <div className="flex items-center gap-1">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <Typography variant="body-sm" theme="muted">
+              {archive.year && (
+                <Typography variant="caption2" theme="muted">
                   {archive.year}
                 </Typography>
-              </div>
+              )}
             </div>
-            
+          </div>
+
+          {isListView && hasActions && (
+            <div
+              className="flex-shrink-0 ml-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <CardActionMenu
+                onEdit={() => onEdit?.(archive)}
+                onView={() => onView?.(archive)}
+                onDelete={() => onDelete?.(archive)}
+                onRestore={onRestore}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Content Area */}
+        {!isCompact && (
+          <div
+            className={cn(
+              "space-y-2",
+              isListView &&
+                "flex-1 px-4 border-l border-r border-border/50 mx-4",
+            )}
+          >
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {archive.fighter && (
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <User className="h-3 w-3" />
+                  <span>
+                    {archive.fighter.first_name} {archive.fighter.last_name}
+                  </span>
+                </div>
+              )}
+              {archive.region && (
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <MapPin className="h-3 w-3" />
+                  <span>{archive.region.name}</span>
+                </div>
+              )}
+            </div>
+
             {archive.description && (
-              <Typography variant="body-sm" className="line-clamp-2 text-muted-foreground">
+              <Typography
+                variant="caption1"
+                theme="muted"
+                className="line-clamp-2 italic"
+              >
                 {archive.description}
               </Typography>
             )}
-          </div>
 
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex gap-2">
-              {archive.archive_reason && (
-                <Badge className={getReasonBadge(archive.archive_reason).color}>
-                  {getReasonBadge(archive.archive_reason).label}
-                </Badge>
-              )}
-              <Badge variant="outline">
-                <History className="h-3 w-3 mr-1" />
-                Archive
-              </Badge>
-            </div>
-            
-            <div className="flex gap-2">
-              {onView && (
-                <Button
-                  size="sm"
+            {archive.archive_reason && (
+              <div className="pt-1">
+                <Badge
                   variant="outline"
-                  onClick={() => onView(archive.id)}
+                  className={cn(
+                    "text-[9px] h-4",
+                    getReasonBadge(archive.archive_reason).color,
+                  )}
                 >
-                  <Eye className="h-4 w-4" />
-                </Button>
-              )}
-              {onRestore && (
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={() => onRestore(archive.id)}
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Restaurer
-                </Button>
-              )}
-            </div>
-            
-            <Typography variant="caption2" theme="muted">
-              Archivé le {new Date(archive.archived_at).toLocaleDateString()}
-            </Typography>
+                  Raison: {getReasonBadge(archive.archive_reason).label}
+                </Badge>
+              </div>
+            )}
           </div>
-        </div>
-      </CardContent>
+        )}
+      </div>
     </Card>
   );
-};
+}
+
+function CardActionMenu({
+  onEdit,
+  onView,
+  onDelete,
+  onRestore,
+}: {
+  onEdit?: () => void;
+  onView?: () => void;
+  onDelete?: () => void;
+  onRestore?: () => void;
+}) {
+  if (!onEdit && !onView && !onDelete && !onRestore) return null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 bg-primary/20 text-primary rounded-full"
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {onView && (
+          <DropdownMenuItem onClick={onView}>
+            <Eye className="h-4 w-4 mr-2" /> Voir
+          </DropdownMenuItem>
+        )}
+        {onEdit && (
+          <DropdownMenuItem onClick={onEdit}>
+            <Pencil className="h-4 w-4 mr-2" /> Modifier
+          </DropdownMenuItem>
+        )}
+        {onDelete && (
+          <DropdownMenuItem onClick={onDelete} className="text-destructive">
+            <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+          </DropdownMenuItem>
+        )}
+        {onRestore && (
+          <DropdownMenuItem onClick={onRestore} className="text-success">
+            <RefreshCcw className="h-4 w-4 mr-2" /> Restaurer
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

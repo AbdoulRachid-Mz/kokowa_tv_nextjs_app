@@ -137,3 +137,49 @@ export async function checkUserPermissions(
     return { hasPermission: false };
   }
 }
+
+export async function getOrCreateUserFromFirebase(
+  firebaseUser: { uid: string; email?: string; displayName?: string; photoURL?: string; emailVerified?: boolean }
+): Promise<UserDocument> {
+  // 1. Rechercher l'utilisateur existant
+  let user = await queryOne<UserDocument>(
+    `SELECT id, auth_id, username, email, role, first_name, last_name, profile_picture, is_active, is_verified, created_at
+     FROM users WHERE auth_id = $1 AND is_active = true`,
+    [firebaseUser.uid]
+  );
+
+  if (user) {
+    // Mettre à jour last_login
+    await query(`UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1`, [user.id!]);
+    return user;
+  }
+
+  // 2. Créer un nouvel utilisateur
+  const username = `user_${firebaseUser.uid.slice(0, 8)}`;
+  const firstName = firebaseUser.displayName?.split(' ')[0] || '';
+  const lastName = firebaseUser.displayName?.split(' ').slice(1).join(' ') || '';
+
+  const insertResult = await query<UserDocument>(
+    `INSERT INTO users (auth_id, email, username, password_hash, role, first_name, last_name, profile_picture, is_active, is_verified)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING id, auth_id, username, email, role, first_name, last_name, profile_picture, is_active, is_verified, created_at`,
+    [
+      firebaseUser.uid,
+      firebaseUser.email || null,
+      username,
+      'firebase_auth',
+      'user',
+      firstName,
+      lastName,
+      firebaseUser.photoURL || null,
+      true,
+      firebaseUser.emailVerified || false,
+    ]
+  );
+
+  if (!insertResult || insertResult.length === 0) {
+    throw new Error('Erreur création utilisateur');
+  }
+
+  return insertResult[0];
+}

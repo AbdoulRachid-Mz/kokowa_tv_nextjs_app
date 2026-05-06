@@ -8,6 +8,9 @@ import { Calendar, Trophy, Users, Clock } from "lucide-react";
 import { Phase } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { CardStats } from "@/components/entities/card-stats";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
+import { DynamicActionMenu, MenuItemAction } from "@/components/shared/dynamic-action-menu";
+import { Eye, Pencil, Trash2, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function PhasesPage() {
@@ -77,11 +80,11 @@ export default function PhasesPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+      <StatsCarousel>
         {stats.map((stat, index) => (
           <CardStats key={index} {...stat} />
         ))}
-      </div>
+      </StatsCarousel>
     );
   };
 
@@ -143,32 +146,56 @@ export default function PhasesPage() {
       onViewModeChange={setViewMode}
       renderStats={renderStats}
       availableFilters={availableFilters}
-      renderCard={(phase, viewMode) => (
-        <Card key={phase.id} className="p-2">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <Typography variant="h4">{phase.name}</Typography>
-              <Typography variant="body-sm" theme="muted">
-                {phase.phase_type} - Ordre: {phase.phase_order}
-              </Typography>
-              <Typography variant="body-sm" theme="muted">
+      renderCard={(phase, viewMode) => {
+        const actions: MenuItemAction[] = [];
+        if (onView) actions.push({ id: 'view', label: 'Voir', icon: Eye, onClick: () => onView(phase) });
+        if (onEdit) actions.push({ id: 'edit', label: 'Modifier', icon: Pencil, onClick: () => onEdit(phase) });
+        
+        return (
+          <Card key={phase.id} className="p-2 relative group hover:shadow-lg transition-all cursor-pointer" onClick={() => onView?.(phase)}>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <Typography variant="h4">{phase.name}</Typography>
+                <Typography variant="body-sm" theme="muted">
+                  {phase.phase_type} - Ordre: {phase.phase_order}
+                </Typography>
+                <Typography variant="body-sm" theme="muted">
+                  {phase.is_completed ? "Terminé" : "En cours"}
+                </Typography>
+              </div>
+              <Badge variant={phase.is_completed ? "default" : "secondary"} className="mr-8">
                 {phase.is_completed ? "Terminé" : "En cours"}
-              </Typography>
+              </Badge>
             </div>
-            <Badge variant={phase.is_completed ? "default" : "secondary"}>
-              {phase.is_completed ? "Terminé" : "En cours"}
-            </Badge>
-          </div>
-          {phase.groups && phase.groups.length > 0 && (
-            <div className="mt-3 pt-3 border-t">
-              <Typography variant="body-sm" theme="muted">
-                {phase.groups.length} groupe(s)
-              </Typography>
+            {phase.groups && phase.groups.length > 0 && (
+              <div className="mt-3 pt-3 border-t">
+                <Typography variant="body-sm" theme="muted">
+                  {phase.groups.length} groupe(s)
+                </Typography>
+              </div>
+            )}
+            
+            <div className="absolute top-2 right-2 z-10">
+              {actions.length > 0 && (
+                <DynamicActionMenu 
+                  variant="inline" 
+                  actions={actions}
+                  menuTitle="Actions"
+                >
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 rounded-full hover:bg-muted"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DynamicActionMenu>
+              )}
             </div>
-          )}
-          <Button onClick={() => onView(phase)}>Voir détails</Button>
-        </Card>
-      )}
+          </Card>
+        );
+      }}
     />
   );
 }

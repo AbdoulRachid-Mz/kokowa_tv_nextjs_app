@@ -1,40 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { AuthService } from '@/lib/firebase/auth-service';
-import { ResetPasswordCredentials } from '@/types/user';
+// app/api/auth/forgot-password/route.ts
+import { NextRequest } from 'next/server';
+import { publicHandler } from '@/lib/server/api-handler';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '@/configs/firebase/config';
 
-export async function POST(request: NextRequest) {
-  try {
-    const body: ResetPasswordCredentials = await request.json();
-    const { email } = body;
-
-    // Valider l'email
-    if (!email) {
-      return NextResponse.json(
-        { error: 'L\'adresse email est requise' },
-        { status: 400 }
-      );
-    }
-
-    // Envoyer l'email de réinitialisation
-    const resetResult = await AuthService.sendPasswordResetEmail(email);
-
-    if (!resetResult.success) {
-      return NextResponse.json(
-        { error: resetResult.error },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Un email de réinitialisation a été envoyé'
-    });
-
-  } catch (error) {
-    console.error('API Error POST /api/auth/forget-password:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de l\'envoi de l\'email de réinitialisation' },
-      { status: 500 }
-    );
-  }
-}
+export const POST = (request: NextRequest) =>
+  publicHandler(
+    async (req) => {
+      const { email } = await req.json();
+      if (!email) {
+        return Response.json({ success: false, error: 'Email requis' }, { status: 400 });
+      }
+      await sendPasswordResetEmail(auth, email);
+      return Response.json({ success: true });
+    },
+    { requireAppCheck: false, rateLimit: { windowMs: 60000, max: 3 } }
+  )(request, {} as any);

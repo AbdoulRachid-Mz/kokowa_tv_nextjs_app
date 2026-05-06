@@ -33,6 +33,10 @@ import {
 } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { EntityFilters } from "@/components/shared/entity-filters";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
+import { MobileScreen } from "@/components/shared/mobile-screen";
+import { useScreenSize } from "@/hooks/use-screen";
 
 // Types génériques
 export interface EntityListProps<T> {
@@ -108,6 +112,7 @@ export function EntityList<T>({
   renderStats,
   availableFilters = [],
 }: EntityListProps<T>) {
+  const { isMobile } = useScreenSize();
   const totalPages = Math.ceil(total / limit);
 
   // Filtres spécifiques par type d'entité
@@ -256,49 +261,26 @@ export function EntityList<T>({
       </div>
 
       {/* Statistiques */}
-      {renderStats && renderStats()}
+      {renderStats && (
+        <div className="mb-6">
+          <StatsCarousel>
+            {renderStats()}
+          </StatsCarousel>
+        </div>
+      )}
 
       {/* Barre de recherche et filtres */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Recherche */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={`Rechercher des ${title.toLowerCase()}...`}
-                value={searchTerm}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            {/* Filtres */}
-            <div className="flex flex-wrap gap-2">
-              {entityFilters.map((filter) => (
-                <Select
-                  key={filter.key}
-                  value={filters[filter.key] || "all"}
-                  onValueChange={(value) =>
-                    onFilterChange({ ...filters, [filter.key]: value })
-                  }
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder={filter.label} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filter.options.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <EntityFilters
+        searchTerm={searchTerm}
+        onSearchChange={onSearchChange}
+        filters={filters}
+        onFilterChange={onFilterChange}
+        availableFilters={[...getEntitySpecificFilters(), ...availableFilters]}
+        onReset={() => {
+          onSearchChange("");
+          onFilterChange({});
+        }}
+      />
 
       {/* Contenu */}
       <Card>

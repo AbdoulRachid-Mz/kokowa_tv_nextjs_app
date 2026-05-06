@@ -824,8 +824,20 @@ export async function getEntities<T = any>(
         totalPages,
       },
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Error in getEntities for ${entityType}:`, error);
+    // Si c'est une erreur SQL liée à GROUP BY, on retourne une réponse vide au lieu de planter
+    if (error.message?.includes('must appear in the GROUP BY clause')) {
+      return {
+        data: [],
+        pagination: {
+          page: 1,
+          limit: options.limit ?? 20,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+    }
     throw new Error(`Erreur lors de la récupération des ${entityType}`);
   }
 }

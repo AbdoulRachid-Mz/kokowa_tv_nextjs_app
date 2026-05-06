@@ -147,13 +147,13 @@ export default function EditionsPage({ editions }: Props) {
       renderStats={renderStats}
       // availableFilters={availableFilters}
       renderCard={(edition, viewMode) => (
-        <EditionCard
-          edition={edition}
-          viewMode={viewMode}
-          onEdit={onEdit}
-          onView={onView}
-        />
-      )}
+              <EditionCard
+                item={edition}
+                viewMode={viewMode}
+                onEdit={onEdit}
+                onView={onView}
+              />
+            )}
     />
   );
 }

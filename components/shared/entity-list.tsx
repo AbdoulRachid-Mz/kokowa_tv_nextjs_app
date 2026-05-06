@@ -22,6 +22,7 @@ import {
   Plus,
   Download,
   RefreshCw,
+  LayoutGrid,
 } from "lucide-react";
 import {
   Pagination,
@@ -82,11 +83,11 @@ export interface EntityListProps<T> {
   onRefresh?: () => void;
 
   // Affichage
-  viewMode?: "grid" | "list";
-  onViewModeChange?: (mode: "grid" | "list") => void;
+  viewMode?: "grid" | "list" | "compact";
+  onViewModeChange?: (mode: "grid" | "list" | "compact") => void;
 
   // Renderers personnalisés
-  renderCard: (item: T, viewMode: "grid" | "list") => React.ReactNode;
+  renderCard: (item: T, viewMode: "grid" | "list" | "compact") => React.ReactNode;
   renderStats?: () => React.ReactNode;
 
   // Filtres disponibles
@@ -663,12 +664,13 @@ export function EntityList<T>({
 
         <div className="flex items-center gap-2">
           {onViewModeChange && (
-            <div className="flex border rounded-lg p-1">
+            <div className="flex border rounded-lg p-1 bg-muted/50">
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => onViewModeChange("grid")}
                 className="h-8 w-8 p-0"
+                title="Grille"
               >
                 <Grid className="h-4 w-4" />
               </Button>
@@ -677,8 +679,18 @@ export function EntityList<T>({
                 size="sm"
                 onClick={() => onViewModeChange("list")}
                 className="h-8 w-8 p-0"
+                title="Liste"
               >
                 <List className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "compact" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => onViewModeChange("compact")}
+                className="h-8 w-8 p-0"
+                title="Compact"
+              >
+                <LayoutGrid className="h-4 w-4" />
               </Button>
             </div>
           )}
@@ -728,10 +740,14 @@ export function EntityList<T>({
               {entityFilters.map((filter) => (
                 <Select
                   key={filter.key}
-                  value={filters[filter.key] ?? "all"}
-                  onValueChange={(value) =>
-                    onFilterChange({ ...filters, [filter.key]: value })
-                  }
+                  value={filter.key === "limit" ? limit.toString() : (filters[filter.key] ?? "all")}
+                  onValueChange={(value) => {
+                    if (filter.key === "limit") {
+                      onLimitChange(Number(value));
+                    } else {
+                      onFilterChange({ ...filters, [filter.key]: value });
+                    }
+                  }}
                 >
                   <SelectTrigger className="w-[150px]">
                     <SelectValue placeholder={filter.label || filter.key} />
@@ -769,9 +785,9 @@ export function EntityList<T>({
             <div
               className={cn(
                 "grid gap-2",
-                viewMode === "grid"
-                  ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
-                  : "grid-cols-1"
+                viewMode === "grid" && "grid-cols-1 md:grid-cols-2 xl:grid-cols-3",
+                viewMode === "list" && "grid-cols-1",
+                viewMode === "compact" && "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
               )}
             >
               {Array.from({ length: 6 }).map((_, index) => (
@@ -804,9 +820,9 @@ export function EntityList<T>({
             <div
               className={cn(
                 "grid gap-4",
-                viewMode === "grid"
-                  ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
-                  : "grid-cols-1"
+                viewMode === "grid" && "grid-cols-1 md:grid-cols-2 xl:grid-cols-3",
+                viewMode === "list" && "grid-cols-1",
+                viewMode === "compact" && "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
               )}
             >
               {data.map((item, index) => (

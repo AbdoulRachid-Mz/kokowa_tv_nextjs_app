@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "data": {
+    "matches": {
+      "all": [
+       
+      ]
+    },
+    "summary": {
+      "total": 1,
+      "live": 0,
+      "scheduled": 0,
+      "completed": 1,
+      "other": 1,
+      "wins": 1,
+      "losses": 0
+    }
+  },
+  "message": "Matchs du lutteur récupérés avec succès"
+}

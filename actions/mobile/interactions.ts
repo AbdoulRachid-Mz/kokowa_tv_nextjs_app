@@ -80,109 +80,79 @@ export async function getMobileInteractions(
     // 📦 DATA : récupération DES ENTITÉS
     const dataSql = `
       SELECT
-        i.entity_type,
-        i.created_at,
+        i.entity_type as "entityType",
+        i.entity_id as "id",
+        i.created_at as "likedAt",
 
         -- ARTICLE
-        a.id as article_id,
         a.title as article_title,
         a.featured_image as article_image,
 
         -- FIGHTER
-        f.id as fighter_id,
         f.first_name as fighter_name,
-        f.nickname,
         f.profile_image as fighter_photo,
 
         -- REGION
-        r.id as region_id,
-        r.name as region_name,
-        r.flag_image as region_image,
-
-        -- USER (if requested)
-        ${filters.withUser
-        ? `JSON_BUILD_OBJECT(
-                 'id', u.id,
-                 'username', u.username,
-                 'firstName', u.first_name,
-                 'lastName', u.last_name,
-                 'profilePicture', u.profile_picture
-               ) as user`
-        : `NULL as user`
-      }
+        r.name as region_name
 
       FROM interactions i
-      LEFT JOIN articles a 
-        ON i.entity_type = 'article' AND i.entity_id = a.id
-      LEFT JOIN fighters f 
-        ON i.entity_type = 'fighter' AND i.entity_id = f.id
-      LEFT JOIN regions r 
-        ON i.entity_type = 'region' AND i.entity_id = r.id
-      ${filters.withUser
-        ? `LEFT JOIN users u ON i.user_id = u.id`
-        : ``
-      }
-
+      LEFT JOIN articles a ON i.entity_type = 'article' AND i.entity_id = a.id
+      LEFT JOIN fighters f ON i.entity_type = 'fighter' AND i.entity_id = f.id
+      LEFT JOIN regions r ON i.entity_type = 'region' AND i.entity_id = r.id
       ${whereClause}
       ORDER BY i.created_at DESC
-      LIMIT $${i} OFFSET $${i + 1}
+      LIMIT $${i++} OFFSET $${i++}
     `;
 
     params.push(limit, offset);
-    const rows = await query(dataSql, params);
+    const results = await query(dataSql, params);
 
-    // 🌳 Organisation en arbre
-    const tree: Record<string, Record<string, any[]>> = {};
+    // �️ Groupement par entity_type
+    const grouped: Record<string, any[]> = {
+      article: [],
+      fighter: [],
+      region: [],
+    };
 
-    for (const row of rows) {
-      const type = interactionType;
-      const entityType = row.entity_type;
+    results.forEach((row: any) => {
+      const type = row.entityType;
+      if (!grouped[type]) grouped[type] = [];
 
-      if (!tree[type]) tree[type] = {};
-      if (!tree[type][entityType]) tree[type][entityType] = [];
-
-      const baseItem = {
-        id: row[`${entityType}_id`],
-        likedAt: row.created_at,
-        ...(row.user && { user: row.user }),
-      };
-
-      if (entityType === "article") {
-        tree[type][entityType].push({
-          ...baseItem,
+      if (type === "article") {
+        grouped.article.push({
+          id: row.id,
+          likedAt: row.likedAt,
           title: row.article_title,
           image: row.article_image,
         });
-      }
-
-      if (entityType === "fighter") {
-        tree[type][entityType].push({
-          ...baseItem,
+      } else if (type === "fighter") {
+        grouped.fighter.push({
+          id: row.id,
+          likedAt: row.likedAt,
           name: row.fighter_name,
           photo: row.fighter_photo,
         });
-      }
-
-      if (entityType === "region") {
-        tree[type][entityType].push({
-          ...baseItem,
+      } else if (type === "region") {
+        grouped.region.push({
+          id: row.id,
+          likedAt: row.likedAt,
           name: row.region_name,
         });
       }
-    }
-
-    const totalPages = Math.ceil(total / limit);
+    });
 
     return {
       success: true,
       data: {
-        interactions: tree,
+        interactions: {
+          [interactionType]: grouped
+        },
         pagination: {
           page,
           limit,
           total,
-          totalPages,
-          hasNext: page < totalPages,
+          totalPages: Math.ceil(total / limit),
+          hasNext: page < Math.ceil(total / limit),
           hasPrev: page > 1,
         },
         timestamp: new Date().toISOString(),

@@ -69,22 +69,15 @@ export async function getArticles(filters?: {
     const countResult = await query(countSql, params);
     const total = parseInt(countResult[0]?.total || "0");
 
-    // Build selection fields with likes and favorites
+    // Build selection fields with likes
     const selectFields = `
       a.id,
       a.title,
-      a.slug,
       a.type,
       a.excerpt,
-      a.content,
       a.featured_image as "featuredImage",
-      a.author_id as "authorId",
-      a.status,
-      a.language,
       a.view_count as "viewCount",
       a.share_count as "shareCount",
-      a.meta_title as "metaTitle",
-      a.meta_description as "metaDescription",
       a.published_at as "publishedAt",
       
       -- Author information
@@ -97,7 +90,6 @@ export async function getArticles(filters?: {
       ) as author
     `;
 
-    // Add likes from interactions table
     const likesField = `
       , COALESCE((
         SELECT COUNT(*)
@@ -108,37 +100,20 @@ export async function getArticles(filters?: {
       ), 0) as "likes"
     `;
 
-    // Add favorite check for user
-    const favoriteField = userId ? `
-      , EXISTS(
-        SELECT 1
-        FROM interactions i
-        WHERE i.entity_type = 'article'
-          AND i.entity_id = a.id
-          AND i.interaction_type = 'like'
-          AND i.user_id = $${paramIndex}
-      ) as "isMyFavorite"
-    ` : ', FALSE as "isMyFavorite"';
-
-    // Get articles with author information and media
+    // Get articles with author information
     const articlesSql = `
       SELECT 
         ${selectFields}
         ${likesField}
-        ${favoriteField}
         
       FROM articles a
       LEFT JOIN users u ON a.author_id = u.id
       ${whereClause}
       ORDER BY a.published_at DESC, a.created_at DESC
-      LIMIT $${userId ? paramIndex + 1 : paramIndex} 
-      OFFSET $${userId ? paramIndex + 2 : paramIndex + 1}
+      LIMIT $${paramIndex} 
+      OFFSET $${paramIndex + 1}
     `;
 
-    // Add user ID to params if provided
-    if (userId) {
-      params.push(userId);
-    }
     params.push(limit, offset);
 
     const articles = await query(articlesSql, params);
@@ -194,27 +169,19 @@ export async function getArticleById(articleId: number, userId?: number) {
     const selectFields = `
       a.id,
       a.title,
-      a.slug,
       a.type,
       a.excerpt,
       a.content,
       a.featured_image as "featuredImage",
-      a.author_id as "authorId",
-      a.status,
-      a.language,
       a.view_count as "viewCount",
-      a.like_count as "likes",
       a.share_count as "shareCount",
-      a.meta_title as "metaTitle",
-      a.meta_description as "metaDescription",
       a.published_at as "publishedAt",
       JSON_BUILD_OBJECT(
         'id', u.id,
         'username', u.username,
         'firstName', u.first_name,
         'lastName', u.last_name,
-        'profilePicture', u.profile_picture,
-        'bio', u.bio
+        'profilePicture', u.profile_picture
       ) as author
     `;
 
@@ -225,32 +192,19 @@ export async function getArticleById(articleId: number, userId?: number) {
         WHERE i.entity_type = 'article'
           AND i.entity_id = a.id
           AND i.interaction_type = 'like'
-      ), 0) as "interactionLikes"
+      ), 0) as "likes"
     `;
-
-    const favoriteField = userId ? `
-      , EXISTS(
-        SELECT 1
-        FROM interactions i
-        WHERE i.entity_type = 'article'
-          AND i.entity_id = a.id
-          AND i.interaction_type = 'like'
-          AND i.user_id = $2
-      ) as "isMyFavorite"
-    ` : ', FALSE as "isMyFavorite"';
 
     const articleSql = `
       SELECT 
         ${selectFields}
         ${likesField}
-        ${favoriteField}
       FROM articles a
       LEFT JOIN users u ON a.author_id = u.id
       WHERE a.id = $1
     `;
 
-    const params = userId ? [articleId, userId] : [articleId];
-    const result = await query(articleSql, params);
+    const result = await query(articleSql, [articleId]);
     const article = result[0];
 
     if (!article) {
@@ -263,8 +217,6 @@ export async function getArticleById(articleId: number, userId?: number) {
         },
       };
     }
-
-    article.likes = article.interactionLikes || article.likes || 0;
 
     const mediaSql = `
       SELECT 

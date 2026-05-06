@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CreateGroupDialog } from "@/components/phases/create-group-dialog";
 import { CardStats } from "@/components/entities/card-stats";
 import { toast } from "sonner";
+import { PhaseGroupCard } from "@/components/entities/entity-cards";
 
 export default function PhaseDetailPage() {
   const params = useParams();
@@ -44,7 +45,7 @@ export default function PhaseDetailPage() {
     const fetchPhase = async () => {
       try {
         const response = await fetch(
-          `/api/phases/${phaseId}?with_relations=true`
+          `/api/phases/${phaseId}?with_relations=false`
         );
         if (response.ok) {
           const data = await response.json();
@@ -67,55 +68,41 @@ export default function PhaseDetailPage() {
   // Hook pour les groupes
   const groupsList = useEntityList<PhaseGroup>({
     entityType: "phase-groups",
-    defaultData: phase?.groups || [],
-    useDefaultData: true,
     defaultFilters: {
       phase_id: parseInt(phaseId),
-      with_sub_groups: true,
     },
+    defaultLimit: 10
   });
 
   // Statistiques pour la phase
   const getPhaseStats = () => {
     if (!phase) return [];
 
-    const totalGroups = phase.groups?.length || 0;
-    const totalSubGroups =
-      phase.groups?.reduce(
-        (sum, group) => sum + (group.sub_groups?.length || 0),
-        0
-      ) || 0;
-    const completedGroups =
-      phase.groups?.filter((g) => g.is_completed).length || 0;
-
     return [
       {
         label: "Groupes",
-        value: totalGroups,
+        value: phase?.groups_count || 0,
         icon: Folder,
         color: "text-blue-600",
         description: "Groupes créés",
       },
       {
         label: "Rencontres",
-        value: totalSubGroups,
+        value: phase?.sub_groups_count || 0,
         icon: Layers,
         color: "text-green-600",
         description: "Rencontres totales",
       },
       {
-        label: "Groupes Terminés",
-        value: completedGroups,
-        icon: Trophy,
+        label: "Matchs",
+        value: phase?.matches_count || 0,
+        icon: Swords,
         color: "text-purple-600",
-        description: "Groupes complétés",
+        description: "Matchs prévus",
       },
       {
         label: "Progression",
-        value:
-          totalGroups > 0
-            ? `${Math.round((completedGroups / totalGroups) * 100)}%`
-            : "0%",
+        value: (phase?.groups_count ?? 0) > 0 ? `${Math.round(((phase?.groups_completed_count || 0) / (phase?.groups_count || 1)) * 100)}%` : "0%",
         icon: Award,
         color: "text-orange-600",
         description: "Taux de complétion",
@@ -159,142 +146,6 @@ export default function PhaseDetailPage() {
 
   const handleAddSubGroups = (group: PhaseGroup) => {
     router.push(`/ad/phase-groups/${group.id}/sub-groups/new`);
-  };
-
-  // Rendu des cartes pour les groupes
-  const renderGroupCard = (group: PhaseGroup, viewMode: "grid" | "list") => {
-    const isListView = viewMode === "list";
-    const statusConfig = getStatusBadge(group.is_completed);
-    const subGroupsCount = group.sub_groups?.length || 0;
-
-    return (
-      <Card
-        className={cn(
-          "hover:shadow-lg transition-all duration-300 cursor-pointer group border-l-4 p-2",
-          isListView && "flex",
-          group.is_completed ? "border-l-green-500" : "border-l-orange-500"
-        )}
-      >
-        <div
-          className={cn("p-2", isListView && "flex items-center gap-3 flex-1")}
-        >
-          <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
-            <div
-              className={cn(
-                "w-12 h-12 rounded-lg flex items-center justify-center text-white",
-                group.is_completed
-                  ? "bg-gradient-to-br from-green-500 to-emerald-600"
-                  : "bg-gradient-to-br from-orange-500 to-red-600"
-              )}
-            >
-              <Folder className="h-6 w-6" />
-            </div>
-          </div>
-
-          <div
-            className={cn(
-              "flex-1",
-              isListView && "flex items-center justify-between"
-            )}
-          >
-            <div className={cn(isListView && "flex items-center gap-6")}>
-              <div>
-                <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                  {group.name}
-                </CardTitle>
-
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge
-                    variant={statusConfig.variant}
-                    className={statusConfig.color}
-                  >
-                    {group.is_completed ? "Terminé" : "En cours"}
-                  </Badge>
-
-                  <Badge variant="outline">{subGroupsCount} rencontre(s)</Badge>
-                </div>
-
-                <div className="space-y-1 text-sm">
-                  <Typography
-                    variant="body-sm"
-                    className="text-muted-foreground"
-                  >
-                    Ordre: {group.group_order}
-
-                  </Typography>
-                  {group.date && (
-                    <Typography
-                      variant="body-sm"
-                      className="text-muted-foreground"
-                    >
-                      Date: {new Date(group.date).toLocaleDateString()}
-                    </Typography>
-                  )}
-
-                  {group.description && (
-                    <Typography
-                      variant="body-sm"
-                      className="text-muted-foreground line-clamp-2"
-                    >
-                      {group.description}
-                    </Typography>
-                  )}
-                </div>
-              </div>
-
-              {isListView && (
-                <div className="text-right">
-                  <Typography
-                    variant="h4"
-                    weight="bold"
-                    className="text-primary"
-                  >
-                    {group.group_order}
-                  </Typography>
-                  <Typography variant="caption2" theme="muted">
-                    Ordre
-                  </Typography>
-                </div>
-              )}
-            </div>
-
-            <div className={cn("flex gap-2 mt-3", isListView && "mt-0")}>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAddSubGroups(group);
-                }}
-              >
-                <Typography hasTooltip tooltipContent="ajouter des Rencontres">
-                  <Plus className="h-4 w-4 mr-1" />
-                </Typography>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleViewGroup(group);
-                }}
-              >
-                Voir
-              </Button>
-              <Button
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditGroup(group);
-                }}
-              >
-                Modifier
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Card>
-    );
   };
 
   if (loading) {
@@ -608,13 +459,13 @@ export default function PhaseDetailPage() {
         </TabsContent>
 
         {/* Groupes */}
-        <TabsContent value="groups">
-          <EntityList
+        <TabsContent value="groups" className="space-y-4">
+          <EntityList<PhaseGroup>
             title="Groupes de la Phase"
             description={`Gérez les groupes de la phase ${phase.name}`}
             entityType="phase-groups"
-            data={phase?.groups || []}
-            total={phase?.groups?.length || 0}
+            data={groupsList.data}
+            total={groupsList.total}
             loading={groupsList.loading}
             page={groupsList.page}
             limit={groupsList.limit}
@@ -628,7 +479,14 @@ export default function PhaseDetailPage() {
             onRefresh={groupsList.onRefresh}
             viewMode={groupsList.viewMode}
             onViewModeChange={groupsList.setViewMode}
-            renderCard={renderGroupCard}
+            renderCard={(group, viewMode) => (
+              <PhaseGroupCard
+                item={group}
+                viewMode={viewMode}
+                onView={() => handleViewGroup(group)}
+                onEdit={() => handleEditGroup(group)}
+              />
+            )}
           />
         </TabsContent>
 

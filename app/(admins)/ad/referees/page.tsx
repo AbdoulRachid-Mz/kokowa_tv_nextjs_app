@@ -9,6 +9,7 @@ import { Typography } from "@/components/ui/typography";
 import { Card, CardContent } from "@/components/ui/card";
 import { Shield, Users, Award, Clock, MapPin } from "lucide-react";
 import { CardStats } from "@/components/entities/card-stats";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
 
 export default function RefereesPage() {
   const {
@@ -75,11 +76,11 @@ export default function RefereesPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <StatsCarousel>
         {stats.map((stat, index) => (
           <CardStats key={index} {...stat} />
         ))}
-      </div>
+      </StatsCarousel>
     );
   };
 
@@ -141,7 +142,7 @@ export default function RefereesPage() {
       // availableFilters={availableFilters}
       renderCard={(referee, viewMode) => (
         <EntityCards.Referee
-          referee={referee}
+          item={referee}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={onView}

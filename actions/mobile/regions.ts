@@ -29,43 +29,15 @@ export async function getMobileRegions(filters?: {
       SELECT 
         id,
         name,
-        stadium_name as "stadiumName",
         code,
         description,
-        flag_image as "flagImage",
-        stadium_image as "stadiumImage",
-        color,
-        total_fighters as "totalFighters",
-        total_champions as "totalChampions",
-        created_at as "createdAt",
-        
-        -- Compter le nombre de likes
-        COALESCE((
-          SELECT COUNT(*)
-          FROM interactions i
-          WHERE i.entity_type = 'region'
-            AND i.entity_id = regions.id
-            AND i.interaction_type = 'like'
-        ), 0) as "likes",
-        
-        -- Vérifier si l'utilisateur a liké cette région
-        ${userId ? `
-        EXISTS(
-          SELECT 1
-          FROM interactions i
-          WHERE i.entity_type = 'region'
-            AND i.entity_id = regions.id
-            AND i.interaction_type = 'like'
-            AND i.user_id = $1
-        ) as "isMyFavorite"
-        ` : 'FALSE as "isMyFavorite"'}
-        
+        flag_image as "flagImage"
       FROM regions 
       ORDER BY name
-      LIMIT ${userId ? '$2' : '$1'} OFFSET ${userId ? '$3' : '$2'}
+      LIMIT $1 OFFSET $2
     `;
 
-    const params = userId ? [userId, limit, offset] : [limit, offset];
+    const params = [limit, offset];
     const regions = await query<Region>(sql, params);
 
     // Calculer la pagination
@@ -317,7 +289,7 @@ async function getRegionInfo(regionId: number, userId?: number) {
       ) as "isMyFavorite"
       ` : 'FALSE as "isMyFavorite"'},
       
-      -- Infos du coach directement dans les champs de la région
+      -- Infos du coach
       c.id as "coachId",
       c.first_name as "coachFirstName",
       c.last_name as "coachLastName",
@@ -341,21 +313,10 @@ async function getRegionFighters(regionId: number) {
       f.first_name as "firstName",
       f.last_name as "lastName",
       f.nickname,
-      f.profile_image as "profileImage",
-      f.birth_date as "birthDate",
-      f.height,
-      f.weight,
-      f.fighting_style as "fightingStyle",
-      f.ranking,
-      f.is_champion as "isChampion",
-      f.is_active as "isActive",
-      f.created_at as "createdAt",
-      r.name as "regionName",
-      r.color as "regionColor"
+      f.profile_image as "profileImage"
     FROM fighters f
-    JOIN regions r ON f.region_id = r.id
     WHERE f.region_id = $1
-    ORDER BY f.ranking ASC, f.nickname ASC
+    ORDER BY f.nickname ASC
   `;
 
   return await query(sql, [regionId]);

@@ -1,0 +1,107 @@
+{
+  "success": true,
+  "data": {
+    "region": {
+      "id": 4,
+      "name": "Tillabéri",
+      "code": "TIL",
+      "color": "#FFFF00",
+      "stadiumName": "Stade de Tillabéri",
+      "description": "Région de Tillabéri",
+      "totalChampions": 1,
+      "flagImage": null,
+      "stadiumImage": "",
+      "totalFighters": 15,
+      "createdAt": "2025-11-10T16:59:37.443Z",
+      "likes": "1",
+      "isMyFavorite": false,
+      "coachId": 4,
+      "coachFirstName": "Fatima",
+      "coachLastName": "Issa",
+      "coachProfileImage": "",
+      "editions": [
+        {
+          "id": 13,
+          "year": 2025,
+          "editionNumber": 1,
+          "regionName": "Tillabéri"
+        }
+      ],
+      "fighters": [
+        {
+          "id": 76,
+          "firstName": "Mawane",
+          "lastName": "Maman Bello",
+          "nickname": "Le Rocher de Tillabéri",
+          "profileImage": "https://res.cloudinary.com/dwgbrbcf7/image/upload/v1770124332/ibrahim_yacouba_wojqcl.jpg"
+        },
+        {
+          "id": 78,
+          "firstName": "Ousman",
+          "lastName": "Hassan",
+          "nickname": "Le Jeune Espoir",
+          "profileImage": "https://res.cloudinary.com/dwgbrbcf7/image/upload/v1770124333/karim_idrissa_io5apq.jpg"
+        }
+      ],
+      "transfers": [],
+      "achievements": {
+        "all": [
+          {
+            "id": 12,
+            "fighterId": 78,
+            "fighterNickname": "Le Jeune Espoir",
+            "editionId": 13,
+            "editionTheme": "50 ans de Kokowa",
+            "editionYear": 2025,
+            "position": "1st",
+            "title": "Dance",
+            "description": "rtyui",
+            "createdAt": "2026-02-07T12:10:49.474Z"
+          }
+        ],
+        "byCompetition": [
+          {
+            "edition": {
+              "theme": "50 ans de Kokowa",
+              "year": 2025
+            },
+            "achievements": [
+              {
+                "id": 12,
+                "fighterId": 78,
+                "fighterNickname": "Le Jeune Espoir",
+                "editionId": 13,
+                "editionTheme": "50 ans de Kokowa",
+                "editionYear": 2025,
+                "position": "1st",
+                "title": "Dance",
+                "description": "rtyui",
+                "createdAt": "2026-02-07T12:10:49.474Z"
+              }
+            ]
+          }
+        ]
+      },
+      "stats": {
+        "totalMatches": 0,
+        "wins": 0,
+        "losses": 0,
+        "winRate": 0,
+        "totalFighters": 15,
+        "champions": 0,
+        "totalAchievements": 1
+      },
+      "summary": {
+        "totalFighters": 15,
+        "totalEditions": 1,
+        "totalTransfers": 0,
+        "totalAchievements": 1,
+        "liveMatches": 0,
+        "wins": 0,
+        "losses": 0
+      }
+    },
+    "timestamp": "2026-03-04T13:53:51.455Z"
+  },
+  "message": "Données de la région récupérées avec succès"
+}

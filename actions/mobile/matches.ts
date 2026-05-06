@@ -106,22 +106,16 @@ async function getSubGroupInfo(subGroupId: number) {
     SELECT 
       sg.id,
       sg.name,
-      sg.sub_group_order as "subGroupOrder",
-      sg.description,
       sg.period,
+      sg.status,
+      sg.video_url as "videoUrl",
       sg.score_region1 as "scoreRegion1",
       sg.score_region2 as "scoreRegion2",
       sg.nulls,
-      sg.status,
-      sg.video_url as "videoUrl",
       sg.region1_id as "region1Id",
       sg.region2_id as "region2Id",
       r1.name as "region1Name",
       r2.name as "region2Name",
-      r1.color as "region1Color",
-      r2.color as "region2Color",
-      r1.flag_image as "region1FlagImage",
-      r2.flag_image as "region2FlagImage",
       sg.belt_region1 as "beltRegion1Id",
       sg.belt_region2 as "beltRegion2Id",
       b1.color as "beltRegion1Color",
@@ -129,38 +123,14 @@ async function getSubGroupInfo(subGroupId: number) {
       sg.main_referee_id as "mainRefereeId",
       ref.first_name as "refereeFirstName",
       ref.last_name as "refereeLastName",
-      ref.nickname as "refereeNickname",
       sg.is_completed as "isCompleted",
-      sg.is_active as "isActive",
-      sg.created_at as "createdAt",
-      pg.id as "groupId",
-      pg.name as "groupName",
-      pg.date as "groupDate",
-      p.id as "phaseId",
-      p.name as "phaseName",
-      p.phase_type as "phaseType",
-      -- Coach region1
-      c1.id as "coach1Id",
-      c1.first_name as "coach1FirstName",
-      c1.last_name as "coach1LastName",
-      c1.nickname as "coach1Nickname",
-      c1.profile_image as "coach1ProfileImage",
-      -- Coach region2
-      c2.id as "coach2Id",
-      c2.first_name as "coach2FirstName",
-      c2.last_name as "coach2LastName",
-      c2.nickname as "coach2Nickname",
-      c2.profile_image as "coach2ProfileImage"
+      sg.is_active as "isActive"
     FROM sub_groups sg
     LEFT JOIN regions r1 ON sg.region1_id = r1.id
     LEFT JOIN regions r2 ON sg.region2_id = r2.id
     LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
     LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
-    JOIN phase_groups pg ON sg.group_id = pg.id
-    JOIN phases p ON pg.phase_id = p.id
     LEFT JOIN referees ref ON sg.main_referee_id = ref.id
-    LEFT JOIN coaches c1 ON r1.id = c1.region_id AND c1.is_active = TRUE
-    LEFT JOIN coaches c2 ON r2.id = c2.region_id AND c2.is_active = TRUE
     WHERE sg.id = $1
   `;
 
@@ -173,7 +143,6 @@ async function getSubGroupInfo(subGroupId: number) {
       region1: subGroup.scoreRegion1,
       region2: subGroup.scoreRegion2,
       nulls: subGroup.nulls,
-      // videoUrl: subGroup.videoUrl,
     };
 
     subGroup.belts = {
@@ -196,55 +165,14 @@ async function getSubGroupInfo(subGroupId: number) {
         id: subGroup.mainRefereeId,
         firstName: subGroup.refereeFirstName,
         lastName: subGroup.refereeLastName,
-        nickname: subGroup.refereeNickname,
       }
       : null;
 
-    // Ajouter les coachs
-    subGroup.coaches = {
-      region1: subGroup.coach1Id
-        ? {
-          id: subGroup.coach1Id,
-          firstName: subGroup.coach1FirstName,
-          lastName: subGroup.coach1LastName,
-          nickname: subGroup.coach1Nickname,
-          profileImage: subGroup.coach1ProfileImage,
-        }
-        : null,
-      region2: subGroup.coach2Id
-        ? {
-          id: subGroup.coach2Id,
-          firstName: subGroup.coach2FirstName,
-          lastName: subGroup.coach2LastName,
-          nickname: subGroup.coach2Nickname,
-          profileImage: subGroup.coach2ProfileImage,
-        }
-        : null,
-    };
-
     // Nettoyer les données redondantes
     const fieldsToDelete = [
-      "scoreRegion1",
-      "scoreRegion2",
-      "nulls",
-      "beltRegion1Id",
-      "beltRegion2Id",
-      "beltRegion1Color",
-      "beltRegion2Color",
-      "mainRefereeId",
-      "refereeFirstName",
-      "refereeLastName",
-      "refereeNickname",
-      "coach1Id",
-      "coach1FirstName",
-      "coach1LastName",
-      "coach1Nickname",
-      "coach1ProfileImage",
-      "coach2Id",
-      "coach2FirstName",
-      "coach2LastName",
-      "coach2Nickname",
-      "coach2ProfileImage",
+      "scoreRegion1", "scoreRegion2", "nulls",
+      "beltRegion1Id", "beltRegion2Id", "beltRegion1Color", "beltRegion2Color",
+      "mainRefereeId", "refereeFirstName", "refereeLastName"
     ];
 
     fieldsToDelete.forEach((field) => delete subGroup[field]);
@@ -258,22 +186,13 @@ async function getAllMatchesForSubGroup(subGroupId: number) {
     SELECT 
       m.id,
       m.match_number as "matchNumber",
-      m.match_date as "matchDate",
-      m.start_time as "startTime",
-      m.start_time2 as "startTime2",
-      m.end_time as "endTime",
       m.status,
-      m.match_result as "matchResult",
+      m.start_time as "startTime",
       m.total_duration as "totalDuration",
       m.break_count as "breakCount",
       m.audience_count as "audienceCount",
       m.video_url as "videoUrl",
-      m.live_stream_url as "liveStreamUrl",
       m.notes,
-      m.created_at as "createdAt",
-      m.updated_at as "updatedAt",
-      m.fighter1_initial_state as "fighter1InitialState",
-      m.fighter2_initial_state as "fighter2InitialState",
       
       -- Lutteur 1
       m.fighter1_id as "fighter1Id",
@@ -281,15 +200,7 @@ async function getAllMatchesForSubGroup(subGroupId: number) {
       f1.last_name as "fighter1LastName",
       f1.nickname as "fighter1Nickname",
       f1.profile_image as "fighter1ProfileImage",
-      f1.birth_date as "fighter1BirthDate",
-      f1.height as "fighter1Height",
-      f1.weight as "fighter1Weight",
-      f1.fighting_style as "fighter1Style",
-      f1.ranking as "fighter1Ranking",
-      f1.region_id as "fighter1RegionId",
       r1.name as "fighter1RegionName",
-      r1.color as "fighter1RegionColor",
-      r1.code as "fighter1RegionCode",
       
       -- Lutteur 2
       m.fighter2_id as "fighter2Id",
@@ -297,45 +208,22 @@ async function getAllMatchesForSubGroup(subGroupId: number) {
       f2.last_name as "fighter2LastName",
       f2.nickname as "fighter2Nickname",
       f2.profile_image as "fighter2ProfileImage",
-      f2.birth_date as "fighter2BirthDate",
-      f2.height as "fighter2Height",
-      f2.weight as "fighter2Weight",
-      f2.fighting_style as "fighter2Style",
-      f2.ranking as "fighter2Ranking",
-      f2.region_id as "fighter2RegionId",
       r2.name as "fighter2RegionName",
-      r2.color as "fighter2RegionColor",
-      r2.code as "fighter2RegionCode",
       
       -- Vainqueur et perdant
       m.winner_fighter_id as "winnerFighterId",
-      m.loser_fighter_id as "loserFighterId",
-      
-      -- Sous-groupe
-      sg.id as "subGroupId",
-      sg.name as "subGroupName",
-      sg.region1_id as "subGroupRegion1Id",
-      sg.region2_id as "subGroupRegion2Id",
-      
-      -- Groupe et Phase
-      pg.id as "groupId",
-      pg.name as "groupName",
-      p.id as "phaseId",
-      p.name as "phaseName",
-      p.phase_type as "phaseType"
+      m.loser_fighter_id as "loserFighterId"
 
     FROM matches m
-    JOIN sub_groups sg ON m.sub_group_id = sg.id
-    JOIN phase_groups pg ON sg.group_id = pg.id
-    JOIN phases p ON pg.phase_id = p.id
-    LEFT JOIN fighters f1 ON m.fighter1_id = f1.id
-    LEFT JOIN fighters f2 ON m.fighter2_id = f2.id
-    LEFT JOIN regions r1 ON f1.region_id = r1.id
-    LEFT JOIN regions r2 ON f2.region_id = r2.id
+    JOIN fighters f1 ON m.fighter1_id = f1.id
+    JOIN fighters f2 ON m.fighter2_id = f2.id
+    JOIN regions r1 ON f1.region_id = r1.id
+    JOIN regions r2 ON f2.region_id = r2.id
     WHERE m.sub_group_id = $1
     ORDER BY 
       CASE 
         WHEN m.status IN ('live', 'round_break') THEN 0
+        ELSE 1
       END,
       m.match_number ASC
   `;
@@ -442,26 +330,15 @@ async function enrichMatchData(match: any) {
     }
   }
 
-  // Formater les données des lutteurs (inchangé)
+  // Formater les données des lutteurs
   const fighter1 = {
     id: match.fighter1Id,
     firstName: match.fighter1FirstName,
     lastName: match.fighter1LastName,
     nickname: match.fighter1Nickname,
     profileImage: match.fighter1ProfileImage,
-    birthDate: match.fighter1BirthDate,
-    height: match.fighter1Height,
-    weight: match.fighter1Weight,
-    fightingStyle: match.fighter1Style,
-    ranking: match.fighter1Ranking,
-    region: {
-      id: match.fighter1RegionId,
-      name: match.fighter1RegionName,
-      color: match.fighter1RegionColor,
-      code: match.fighter1RegionCode,
-    },
-    initialState: match.fighter1InitialState,
-    cards: cards.filter((card: any) => card.fighterId === match.fighter1Id),
+    regionName: match.fighter1RegionName,
+    initialState: null
   };
 
   const fighter2 = {
@@ -470,84 +347,39 @@ async function enrichMatchData(match: any) {
     lastName: match.fighter2LastName,
     nickname: match.fighter2Nickname,
     profileImage: match.fighter2ProfileImage,
-    birthDate: match.fighter2BirthDate,
-    height: match.fighter2Height,
-    weight: match.fighter2Weight,
-    fightingStyle: match.fighter2Style,
-    ranking: match.fighter2Ranking,
-    region: {
-      id: match.fighter2RegionId,
-      name: match.fighter2RegionName,
-      color: match.fighter2RegionColor,
-      code: match.fighter2RegionCode,
-    },
-    initialState: match.fighter2InitialState,
-    cards: cards.filter((card: any) => card.fighterId === match.fighter2Id),
+    regionName: match.fighter2RegionName,
+    initialState: null
   };
-
-  // Déterminer le vainqueur et le perdant
-  let winner = null;
-  let loser = null;
-
-  if (match.winnerFighterId) {
-    winner = match.winnerFighterId === match.fighter1Id ? fighter1 : fighter2;
-    loser = match.winnerFighterId === match.fighter1Id ? fighter2 : fighter1;
-  }
 
   // Formater la réponse avec les champs formatés
   const enrichedMatch = {
     id: match.id,
     matchNumber: match.matchNumber,
-    matchDate: match.matchDate,
-    startTime: formattedStartTime,
-    startTime2: match.startTime2, // NOUVEAU - timestamp ISO complet
-    endTime: match.endTime,
     status: match.status,
-    matchResult: match.matchResult,
+    startTime: match.startTime,
     totalDuration: formattedDuration,
     breakCount: match.breakCount,
     audienceCount: match.audienceCount,
     videoUrl: match.videoUrl,
-    liveStreamUrl: match.liveStreamUrl,
     notes: match.notes,
-    createdAt: match.createdAt,
-    updatedAt: match.updatedAt,
 
     fighters: {
       fighter1,
       fighter2,
     },
 
-    result: winner
-      ? {
-        winner,
-        loser,
-        resultType: match.matchResult,
-      }
-      : null,
-
-    context: {
-      subGroup: {
-        id: match.subGroupId,
-        name: match.subGroupName,
-      },
-      group: {
-        id: match.groupId,
-        name: match.groupName,
-      },
-      phase: {
-        id: match.phaseId,
-        name: match.phaseName,
-        type: match.phaseType,
-      },
+    result: {
+      winnerId: match.winnerFighterId,
+      loserId: match.loserFighterId
     },
 
-    stats,
-    allCards: cards,
+    allCards: cards.map((card: any) => ({
+      id: card.id,
+      fighterId: card.fighterId,
+      cardType: card.cardType,
+      minuteGiven: card.minuteGiven
+    }))
   };
-
-  // Nettoyer les données redondantes
-  cleanMatchData(enrichedMatch);
 
   return enrichedMatch;
 }
@@ -615,8 +447,4 @@ async function getBreakCount(matchId: number) {
   return result[0]?.breakCount || 0;
 }
 
-function cleanMatchData(match: any) {
-  // Supprimer les données redondantes déjà formatées
-  delete match.fighters.fighter1.cards;
-  delete match.fighters.fighter2.cards;
-}
+

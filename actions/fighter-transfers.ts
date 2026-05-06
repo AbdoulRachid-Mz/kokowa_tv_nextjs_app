@@ -22,12 +22,12 @@ export async function getFighterTransfers(
       date_to,
       with_fighter = true,
       with_regions = true,
-      with_approver = true,
+      with_approver = false,
     } = filters;
 
     let whereClause = 'WHERE 1=1';
     const params: any[] = [];
-    const selectFields = ['ft.*'];
+    const selectFields = ['ft.id', 'ft.fighter_id', 'ft.from_region_id', 'ft.to_region_id', 'ft.transfer_date', 'ft.status', 'ft.is_permanent', 'ft.transfer_fee'];
 
     // Filtre de recherche
     if (search) {
@@ -80,9 +80,7 @@ export async function getFighterTransfers(
           'id', f.id,
           'first_name', f.first_name,
           'last_name', f.last_name,
-          'nickname', f.nickname,
-          'profile_image', f.profile_image,
-          'is_active', f.is_active
+          'profile_image', f.profile_image
         ) as fighter
       `);
     }

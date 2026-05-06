@@ -9,6 +9,7 @@ import { Typography } from "@/components/ui/typography";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Swords, Trophy, Clock } from "lucide-react";
 import { CardStats } from "@/components/entities/card-stats";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
 
 export default function SubGroupsPage() {
   const {
@@ -63,18 +64,18 @@ export default function SubGroupsPage() {
       },
       {
         label: "Matchs Total",
-        value: data.reduce((acc, sg) => acc + (sg.matches?.length || 0), 0),
+        value: data.reduce((acc, sg) => acc + (Number(sg.matches_count) || sg.matches?.length || 0), 0),
         icon: Users,
         color: "text-purple-600",
       },
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+      <StatsCarousel>
         {stats.map((stat, index) => (
           <CardStats key={index} {...stat} />
         ))}
-      </div>
+      </StatsCarousel>
     );
   };
 
@@ -102,7 +103,7 @@ export default function SubGroupsPage() {
       renderStats={renderStats}
       renderCard={(subGroup, viewMode) => (
         <EntityCards.SubGroup
-          subGroup={subGroup}
+          item={subGroup}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={onView}

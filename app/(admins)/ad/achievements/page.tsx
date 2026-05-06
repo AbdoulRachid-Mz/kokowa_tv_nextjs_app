@@ -182,17 +182,9 @@ export default function ArchivesPage() {
       viewMode={viewMode}
       onViewModeChange={setViewMode}
       renderStats={renderStats}
-    //   actionButtons={[
-    //     {
-    //       label: "Historique complet",
-    //       icon: History,
-    //       onClick: () => window.location.href = "/ad/archives/history",
-    //       variant: "outline" as const,
-    //     }
-    //   ]}
       renderCard={(archive, viewMode) => (
         <ArchiveAchievementCard
-          archive={archive}
+          item={archive}
           viewMode={viewMode}
           onEdit={() => onEdit(archive)}
           onView={() => onView(archive)}

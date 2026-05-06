@@ -9,6 +9,7 @@ import { Typography } from "@/components/ui/typography";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Award, TrendingUp } from "lucide-react";
 import { CardStats } from "@/components/entities/card-stats";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
 
 export default function FightersPage() {
   const {
@@ -62,11 +63,11 @@ export default function FightersPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <StatsCarousel>
         {stats.map((stat, index) => (
           <CardStats key={index} {...stat} />
         ))}
-      </div>
+      </StatsCarousel>
     );
   };
 
@@ -94,7 +95,7 @@ export default function FightersPage() {
       renderStats={renderStats}
       renderCard={(fighter, viewMode) => (
         <EntityCards.Fighter
-          fighter={fighter}
+          item={fighter}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={onView}

@@ -47,8 +47,8 @@ interface HeaderProps {
 
 export function Header({ showNavigation = true, user }: HeaderProps) {
   const pathname = usePathname();
-  const { isLargeScreen, isLargerThan } = useScreenSize(1024);
-  const isMobile = !isLargerThan;
+  const { isLargeScreen, isLargerThan } = useScreenSize();
+  const isMobile = !isLargerThan(1024);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { signOut } = useAuthContext();
 
@@ -263,10 +263,10 @@ export function Header({ showNavigation = true, user }: HeaderProps) {
             ) : (
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" asChild>
-                  <Link href="/auth/login">Connexion</Link>
+                  <Link href="/auth/sign-in">Connexion</Link>
                 </Button>
                 <Button size="sm" asChild>
-                  <Link href="/auth/register">Inscription</Link>
+                  <Link href="/auth/sign-up">Inscription</Link>
                 </Button>
               </div>
             )}

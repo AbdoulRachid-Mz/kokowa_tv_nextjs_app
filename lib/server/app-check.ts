@@ -17,7 +17,7 @@ export async function verifyAppCheckToken(token: string): Promise<AppCheckResult
     const appCheckToken = await admin.appCheck().verifyToken(token);
     
     // Vérifier que le token provient de notre app Firebase
-    const expectedAppId = process.env.FIREBASE_APP_ID;
+    const expectedAppId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
     if (expectedAppId && appCheckToken.appId !== expectedAppId) {
       console.error('App ID Firebase ne correspond pas:', {
         expected: expectedAppId,

@@ -213,13 +213,8 @@ async function getRegionsWithStats(editionId: number) {
       re.region_id as "regionId",
       r.name as "regionName",
       r.code as "regionCode",
-      r.color as "regionColor",
       r.flag_image as "flagImage",
-      r.stadium_name as "stadiumName",
-      r.stadium_image as "stadiumImage",
-      re.points,
       re.is_eliminated as "isEliminated",
-      re.created_at as "createdAt",
       
       -- Statistiques agrégées
       json_build_object(
@@ -228,10 +223,8 @@ async function getRegionsWithStats(editionId: number) {
         'eliminatedFighters', COALESCE(ra.eliminated_fighters, 0),
         'championFighters', COALESCE(ra.champion_fighters, 0),
         'unbeatenFighters', COALESCE(ra.unbeaten_fighters, 0),
-        'totalMatches', COALESCE(ra.total_wins, 0) + COALESCE(ra.total_losses, 0) + COALESCE(ra.total_draws, 0),
         'totalWins', COALESCE(ra.total_wins, 0),
         'totalLosses', COALESCE(ra.total_losses, 0),
-        'totalDraws', COALESCE(ra.total_draws, 0),
         'totalTerraces', COALESCE(ra.total_terraces, 0),
         'totalBeenTerraced', COALESCE(ra.total_terraces_taken, 0),
         'yellowCards', COALESCE(ra.total_yellow_cards, 0),

@@ -255,27 +255,17 @@ async function getFighterInfo(fighterId: number, userId?: number) {
       f.first_name as "firstName",
       f.last_name as "lastName",
       f.nickname,
-      f.slug,
       f.birth_date as "birthDate",
       f.birth_place as "birthPlace",
       f.region_id as "regionId",
       f.height,
       f.weight,
       f.profile_image as "profileImage",
-      f.cover_image as "coverImage",
-      f.bio,
-      f.fighting_style as "fightingStyle",
       f.debut_year as "debutYear",
-      f.ranking,
       f.is_active as "isActive",
       f.is_champion as "isChampion",
-      f.social_links as "socialLinks",
-      f.created_at as "createdAt",
-      f.updated_at as "updatedAt",
       
       r.name as "regionName",
-      r.code as "regionCode",
-      r.color as "regionColor",
       r.flag_image as "regionFlagImage",
       
       -- Compter le nombre de likes
@@ -285,32 +275,15 @@ async function getFighterInfo(fighterId: number, userId?: number) {
         WHERE i.entity_type = 'fighter'
           AND i.entity_id = f.id
           AND i.interaction_type = 'like'
-      ), 0) as "likes",
-      
-      -- Vérifier si l'utilisateur a liké ce lutteur
-      ${userId ? `
-      EXISTS(
-        SELECT 1
-        FROM interactions i
-        WHERE i.entity_type = 'fighter'
-          AND i.entity_id = f.id
-          AND i.interaction_type = 'like'
-          AND i.user_id = $2
-      ) as "isMyFavorite"
-      ` : 'FALSE as "isMyFavorite"'}
+      ), 0) as "likes"
       
     FROM fighters f
     LEFT JOIN regions r ON f.region_id = r.id
     WHERE f.id = $1
   `;
 
-  const params = userId ? [fighterId, userId] : [fighterId];
-  const result = await query(sql, params);
+  const result = await query(sql, [fighterId]);
   const fighter = result[0];
-
-  if (!fighter.socialLinks) {
-    fighter.socialLinks = [];
-  }
 
   return fighter;
 }
@@ -322,9 +295,7 @@ async function getFighterRegion(regionId: number) {
 
   const sql = `
     SELECT 
-      id, name, code, color, flag_image as "flagImage",
-      stadium_name as "stadiumName", stadium_image as "stadiumImage",
-      total_fighters as "totalFighters", total_champions as "totalChampions"
+      id, name, flag_image as "flagImage"
     FROM regions 
     WHERE id = $1
   `;

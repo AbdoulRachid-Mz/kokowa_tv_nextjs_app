@@ -27,8 +27,10 @@ import { EntityList } from "@/components/shared/entity-list";
 import { useEntityList } from "@/hooks/use-entity-list";
 import { cn } from "@/lib/utils";
 import { PhaseFormDialog } from "@/components/editions/phase-form";
-import { FighterCard, RegionCard } from "@/components/entities/entity-cards";
+import { PhaseCard, FighterCard, RegionCard } from "@/components/entities/entity-cards";
+import { MiniFighterCard, MiniRegionCard } from "@/components/entities/mini-entity-cards";
 import { CardStats } from "@/components/entities/card-stats";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
 import { toast } from "sonner"
 
 export default function EditionDetailPage() {
@@ -52,7 +54,7 @@ export default function EditionDetailPage() {
     const fetchEdition = async () => {
       try {
         const response = await fetch(
-          `/api/editions/${editionId}?with_relations=true`
+          `/api/editions/${editionId}?with_competition=true&with_fighters=false&with_regions=false&with_phases=false`
         );
         if (response.ok) {
           const data = await response.json();
@@ -72,96 +74,57 @@ export default function EditionDetailPage() {
     }
   }, [editionId]);
 
-  // No need to fetch phases, fighters, or regions again – they are already included in the edition object
-  const phasesList = {
-    data: edition?.phases || [],
-    total: edition?.phases?.length || 0,
-    loading: false,
-    page: 1,
-    limit: 20,
-    setPage: () => { },
-    setLimit: () => { },
-    searchTerm: "",
-    setSearchTerm: () => { },
-    filters: {},
-    setFilters: () => { },
-    onRefresh: () => { },
-    viewMode: "grid" as const,
-    setViewMode: () => { },
-  };
+  // Utilisation de useEntityList pour fetcher les données séparément
+  const phasesList = useEntityList<Phase>({
+    entityType: 'phases',
+    defaultFilters: { edition_id: Number(editionId) },
+    defaultLimit: 10
+  });
 
-  const fightersList = {
-    data: edition?.fighters || [],
-    total: edition?.fighters?.length || 0,
-    loading: false,
-    page: 1,
-    limit: 20,
-    setPage: () => { },
-    setLimit: () => { },
-    searchTerm: "",
-    setSearchTerm: () => { },
-    filters: {},
-    setFilters: () => { },
-    onRefresh: () => { },
-    viewMode: "grid" as const,
-    setViewMode: () => { },
-  };
+  const fightersList = useEntityList<any>({
+    entityType: 'fighters',
+    apiPath: `/api/editions/${editionId}/fighters`,
+    defaultLimit: 10
+  });
 
-  const regionsList = {
-    data: edition?.regions || [],
-    total: edition?.regions?.length || 0,
-    loading: false,
-    page: 1,
-    limit: 20,
-    setPage: () => { },
-    setLimit: () => { },
-    searchTerm: "",
-    setSearchTerm: () => { },
-    filters: {},
-    setFilters: () => { },
-    onRefresh: () => { },
-    viewMode: "grid" as const,
-    setViewMode: () => { },
-  };
+  const regionsList = useEntityList<any>({
+    entityType: 'regions',
+    apiPath: `/api/editions/${editionId}/regions`,
+    defaultLimit: 10
+  });
 
   // Statistiques pour l'édition
   const getEditionStats = () => {
     if (!edition) return [];
 
-    const totalFighters = edition.fighters?.length || 0;
-    const totalRegions = edition.regions?.length || 0;
-    const totalPhases = edition.phases?.length || 0;
-    const completedPhases =
-      edition.phases?.filter((p) => p.is_completed).length || 0;
-
     return [
       {
         label: "Lutteurs Inscrits",
-        value: totalFighters,
+        value: edition.fighters_count || 0,
         icon: Users,
         color: "text-blue-600",
         description: "Participants individuels",
       },
       {
         label: "Régions Participantes",
-        value: totalRegions,
+        value: edition.regions_count || 0,
         icon: MapPin,
         color: "text-green-600",
         description: "Régions engagées",
       },
       {
         label: "Phases de Compétition",
-        value: totalPhases,
+        value: edition.phases_count || 0,
         icon: Trophy,
         color: "text-purple-600",
-        description: `${completedPhases} terminée(s)`,
+        description: `Total des phases`,
       },
       {
-        label: "Participants Total",
-        value: edition.total_participants || 0,
-        icon: Award,
+        label: "Matchs Total",
+        value: edition.matches_count || 0,
+        icon: Swords,
         color: "text-orange-600",
-        description: "Lutteurs et régions",
+        description: "Matchs prévus",
       },
     ];
   };
@@ -226,125 +189,6 @@ export default function EditionDetailPage() {
 
   const handleEditEdition = () => {
     router.push(`/ad/editions/${editionId}/edit`);
-  };
-
-  // Rendu des cartes pour les phases
-  const renderPhaseCard = (phase: Phase, viewMode: "grid" | "list") => {
-    const isListView = viewMode === "list";
-    const statusConfig = getStatusBadge(
-      phase.is_completed ? "completed" : "ongoing"
-    );
-
-    return (
-      <Card
-        className={cn(
-          "hover:shadow-lg transition-all p-2 duration-300 cursor-pointer group border-l-4",
-          isListView && "flex",
-          phase.is_completed ? "border-l-green-500" : "border-l-orange-500"
-        )}
-      >
-        <div
-          className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}
-        >
-          <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
-            <div
-              className={cn(
-                "w-12 h-12 rounded-lg flex items-center justify-center text-white",
-                phase.is_completed
-                  ? "bg-gradient-to-br from-green-500 to-emerald-600"
-                  : "bg-gradient-to-br from-orange-500 to-red-600"
-              )}
-            >
-              <Trophy className="h-6 w-6" />
-            </div>
-          </div>
-
-          <div
-            className={cn(
-              "flex-1",
-              isListView && "flex items-center justify-between"
-            )}
-          >
-            <div className={cn(isListView && "flex items-center gap-2")}>
-              <div>
-                <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                  {phase.name}
-                </CardTitle>
-
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge
-                    variant={statusConfig.variant}
-                    className={
-                      "color" in statusConfig ? statusConfig.color : undefined
-                    }
-                  >
-                    {phase.is_completed ? "Terminée" : "En cours"}
-                  </Badge>
-
-                  <Badge variant="outline">{phase.phase_type}</Badge>
-                </div>
-
-                <div className="space-y-1 text-sm">
-                  {phase.start_date && phase.end_date && (
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(phase.start_date).toLocaleDateString()} -{" "}
-                      {new Date(phase.end_date).toLocaleDateString()}
-                    </div>
-                  )}
-
-                  {phase.description && (
-                    <Typography
-                      variant="body-sm"
-                      className="text-muted-foreground"
-                    >
-                      {phase.description}
-                    </Typography>
-                  )}
-                </div>
-              </div>
-
-              {isListView && (
-                <div className="text-right">
-                  <Typography
-                    variant="h4"
-                    weight="bold"
-                    className="text-primary"
-                  >
-                    {phase.phase_order}
-                  </Typography>
-                  <Typography variant="caption2" theme="muted">
-                    Ordre
-                  </Typography>
-                </div>
-              )}
-            </div>
-
-            <div className={cn("flex gap-2 mt-3", isListView && "mt-0")}>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleViewPhase(phase);
-                }}
-              >
-                Voir
-              </Button>
-              <Button
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditPhase(phase);
-                }}
-              >
-                Modifier
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Card>
-    );
   };
 
   if (loading) {
@@ -421,11 +265,11 @@ export default function EditionDetailPage() {
         </div>
       </div>
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+      <StatsCarousel>
         {getEditionStats().map((stat, index) => (
           <CardStats key={index} label={stat.label} icon={stat.icon} value={stat.value} color={stat.color} />
         ))}
-      </div>
+      </StatsCarousel>
       {/* Informations et navigation */}
       <Tabs
         value={activeTab}
@@ -688,7 +532,14 @@ export default function EditionDetailPage() {
             onRefresh={phasesList.onRefresh}
             viewMode={phasesList.viewMode}
             onViewModeChange={phasesList.setViewMode}
-            renderCard={renderPhaseCard}
+            renderCard={(phase, viewMode) => (
+              <PhaseCard 
+                item={phase}
+                viewMode={viewMode}
+                onView={handleViewPhase}
+                onEdit={handleEditPhase}
+              />
+            )}
           />
         </TabsContent>
 
@@ -698,7 +549,7 @@ export default function EditionDetailPage() {
             title="Lutteurs de l'Édition"
             description={`Gérez les lutteurs de l'édition ${edition.edition_number}`}
             entityType="fighter"
-            data={fightersList.data.map((f) => ({ ...f, viewMode: fightersList.viewMode }))}
+            data={fightersList.data}
             total={fightersList.total}
             loading={fightersList.loading}
             page={fightersList.page}
@@ -713,7 +564,13 @@ export default function EditionDetailPage() {
             onRefresh={fightersList.onRefresh}
             viewMode={fightersList.viewMode}
             onViewModeChange={fightersList.setViewMode}
-            renderCard={FighterCard}
+            renderCard={(item: any, viewMode) => (
+              <MiniFighterCard 
+                item={item.fighter}
+                viewMode={viewMode}
+                onView={() => router.push(`/ad/fighters/${item.fighter.id}`)}
+              />
+            )}
           />
         </TabsContent>
 
@@ -723,7 +580,7 @@ export default function EditionDetailPage() {
             title="Regions de l'Édition"
             description={`Gérez les regions de l'édition ${edition.edition_number}`}
             entityType="region"
-            data={regionsList.data.map((r: any) => ({ ...r, viewMode: regionsList.viewMode }))}
+            data={regionsList.data}
             total={regionsList.total}
             loading={regionsList.loading}
             page={regionsList.page}
@@ -738,7 +595,13 @@ export default function EditionDetailPage() {
             onRefresh={regionsList.onRefresh}
             viewMode={regionsList.viewMode}
             onViewModeChange={regionsList.setViewMode}
-            renderCard={RegionCard}
+            renderCard={(item: any, viewMode) => (
+              <MiniRegionCard 
+                item={item.region} 
+                viewMode={viewMode}
+                onView={() => router.push(`/ad/regions/${item.region.id}`)}
+              />
+            )}
           />
         </TabsContent>
 

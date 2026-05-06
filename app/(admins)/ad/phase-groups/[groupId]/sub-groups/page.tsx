@@ -118,7 +118,7 @@ export default function SubGroupsPage() {
     //   renderStats={renderStats}
       renderCard={(subGroup, viewMode) => (
         <EntityCards.SubGroup
-          subGroup={subGroup}
+          item={subGroup}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={onView}

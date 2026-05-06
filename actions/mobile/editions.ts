@@ -118,40 +118,19 @@ async function getEditionInfo(editionId: number) {
       ce.edition_number as "editionNumber",
       ce.year,
       ce.theme,
-      ce.region_id as "regionId",
       r.name as "regionName",
-      r.stadium_name as "stadiumName",
-      r.stadium_image as "stadiumImage",
-      r.color as "regionColor",
       ce.start_date as "startDate",
       ce.end_date as "endDate",
       ce.winner_fighter_id as "winnerFighterId",
       f.first_name as "winnerFirstName",
       f.last_name as "winnerLastName",
       f.nickname as "winnerNickname",
-      f.profile_image as "winnerProfileImage",
-      ce.winner_region_id as "winnerRegionId",
-      wr.name as "winnerRegionName",
-      wr.color as "winnerRegionColor",
-      ce.is_active as "isActive",
-      ce.total_participants as "totalParticipants",
-      ce.prize_pool as "prizePool",
-      ce.registration_deadline as "registrationDeadline",
-      ce.created_at as "createdAt",
       c.id as "competitionId",
-      c.name as "competitionName",
-      c.slug as "competitionSlug",
-      c.description as "competitionDescription",
-      c.featured_image as "competitionFeaturedImage",
-      c.status as "competitionStatus",
-      -- Nouveaux champs de statistiques
-      (SELECT COUNT(*) FROM edition_fighters ef WHERE ef.edition_id = ce.id AND ef.is_champion = TRUE) as "championCount",
-      (SELECT COUNT(*) FROM edition_regions er WHERE er.edition_id = ce.id AND er.is_eliminated = FALSE) as "activeRegionsCount"
+      c.name as "competitionName"
     FROM competition_editions ce
     JOIN competitions c ON ce.competition_id = c.id
     LEFT JOIN regions r ON ce.region_id = r.id
     LEFT JOIN fighters f ON ce.winner_fighter_id = f.id
-    LEFT JOIN regions wr ON ce.winner_region_id = wr.id
     WHERE ce.id = $1
   `;
 
@@ -165,57 +144,26 @@ async function getEditionInfo(editionId: number) {
   edition.competition = {
     id: edition.competitionId,
     name: edition.competitionName,
-    slug: edition.competitionSlug,
-    description: edition.competitionDescription,
-    featuredImage: edition.competitionFeaturedImage,
-    status: edition.competitionStatus,
   };
 
   // Structurer les données du vainqueur
   edition.winner = edition.winnerFighterId
     ? {
-      fighter: {
         id: edition.winnerFighterId,
         firstName: edition.winnerFirstName,
         lastName: edition.winnerLastName,
         nickname: edition.winnerNickname,
-        profileImage: edition.winnerProfileImage,
-      },
-      region: edition.winnerRegionId
-        ? {
-          id: edition.winnerRegionId,
-          name: edition.winnerRegionName,
-          color: edition.winnerRegionColor,
-        }
-        : null,
-    }
+      }
     : null;
-
-  // Statistiques de l'édition
-  edition.stats = {
-    championCount: edition.championCount,
-    activeRegionsCount: edition.activeRegionsCount,
-    totalParticipants: edition.totalParticipants,
-  };
 
   // Nettoyer les données redondantes
   const fieldsToDelete = [
     "competitionId",
     "competitionName",
-    "competitionSlug",
-    "competitionDescription",
-    "competitionFeaturedImage",
-    "competitionStatus",
     "winnerFighterId",
     "winnerFirstName",
     "winnerLastName",
     "winnerNickname",
-    "winnerProfileImage",
-    "winnerRegionId",
-    "winnerRegionName",
-    "winnerRegionColor",
-    "championCount",
-    "activeRegionsCount",
   ];
 
   fieldsToDelete.forEach((field) => delete edition[field]);
@@ -233,11 +181,9 @@ async function getPhasesWithGroupsAndSubgroups(editionId: number) {
       p.phase_order as "phaseOrder",
       p.phase_type as "phaseType",
       p.is_active as "isActive",
-      p.description,
       p.start_date as "startDate",
       p.end_date as "endDate",
-      p.is_completed as "isCompleted",
-      p.created_at as "createdAt"
+      p.is_completed as "isCompleted"
     FROM phases p
     WHERE p.edition_id = $1
     ORDER BY p.phase_order
@@ -263,9 +209,7 @@ async function getGroupsWithSubgroups(phaseId: number, phaseType: string) {
       pg.group_order as "groupOrder",
       pg.is_active as "isActive",
       pg.date as "date",
-      pg.description,
-      pg.is_completed as "isCompleted",
-      pg.created_at as "createdAt"
+      pg.is_completed as "isCompleted"
     FROM phase_groups pg
     WHERE pg.phase_id = $1
     ORDER BY pg.group_order
@@ -294,7 +238,6 @@ async function getSubgroupsWithMatchesForGroup(groupId: number) {
       sg.id,
       sg.name,
       sg.sub_group_order as "subGroupOrder",
-      sg.description,
       sg.period,
       sg.score_region1 as "scoreRegion1",
       sg.score_region2 as "scoreRegion2",
@@ -304,27 +247,15 @@ async function getSubgroupsWithMatchesForGroup(groupId: number) {
       sg.region2_id as "region2Id",
       r1.name as "region1Name",
       r2.name as "region2Name",
-      r1.color as "region1Color",
-      r2.color as "region2Color",
-      r1.flag_image as "region1FlagImage",
-      r2.flag_image as "region2FlagImage",
-      sg.belt_region1 as "beltRegion1Id",
-      sg.belt_region2 as "beltRegion2Id",
       b1.color as "beltRegion1Color",
       b2.color as "beltRegion2Color",
-      sg.main_referee_id as "mainRefereeId",
-      ref.first_name as "refereeFirstName",
-      ref.last_name as "refereeLastName",
-      ref.nickname as "refereeNickname",
       sg.is_completed as "isCompleted",
-      sg.is_active as "isActive",
-      sg.created_at as "createdAt"
+      sg.is_active as "isActive"
     FROM sub_groups sg
     LEFT JOIN regions r1 ON sg.region1_id = r1.id
     LEFT JOIN regions r2 ON sg.region2_id = r2.id
     LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
     LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
-    LEFT JOIN referees ref ON sg.main_referee_id = ref.id
     WHERE sg.group_id = $1
     ORDER BY sg.sub_group_order
   `;
@@ -342,17 +273,6 @@ async function getSubgroupsWithMatchesForGroup(groupId: number) {
       nulls: subGroup.nulls,
     };
     subGroup.matchStatus = subGroup.status;
-    
-    // Nettoyer les champs redondants
-    const fieldsToDelete = [
-      "scoreRegion1", "scoreRegion2", "nulls",
-      "region1Id", "region2Id", "region1Name", "region2Name",
-      "region1Color", "region2Color", "region1FlagImage", "region2FlagImage",
-      "beltRegion1Id", "beltRegion2Id", "beltRegion1Color", "beltRegion2Color",
-      "mainRefereeId", "refereeFirstName", "refereeLastName", "refereeNickname"
-    ];
-    
-    fieldsToDelete.forEach((field) => delete subGroup[field]);
   }
 
   return subGroups;
@@ -532,7 +452,6 @@ async function getSubgroupsForGroup(groupId: number) {
       sg.id,
       sg.name,
       sg.sub_group_order as "subGroupOrder",
-      sg.description,
       sg.period,
       sg.score_region1 as "scoreRegion1",
       sg.score_region2 as "scoreRegion2",
@@ -542,27 +461,15 @@ async function getSubgroupsForGroup(groupId: number) {
       sg.region2_id as "region2Id",
       r1.name as "region1Name",
       r2.name as "region2Name",
-      r1.color as "region1Color",
-      r2.color as "region2Color",
-      r1.flag_image as "region1FlagImage",
-      r2.flag_image as "region2FlagImage",
-      sg.belt_region1 as "beltRegion1Id",
-      sg.belt_region2 as "beltRegion2Id",
       b1.color as "beltRegion1Color",
       b2.color as "beltRegion2Color",
-      sg.main_referee_id as "mainRefereeId",
-      ref.first_name as "refereeFirstName",
-      ref.last_name as "refereeLastName",
-      ref.nickname as "refereeNickname",
       sg.is_completed as "isCompleted",
-      sg.is_active as "isActive",
-      sg.created_at as "createdAt"
+      sg.is_active as "isActive"
     FROM sub_groups sg
     LEFT JOIN regions r1 ON sg.region1_id = r1.id
     LEFT JOIN regions r2 ON sg.region2_id = r2.id
     LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
     LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
-    LEFT JOIN referees ref ON sg.main_referee_id = ref.id
     WHERE sg.group_id = $1
     ORDER BY sg.sub_group_order
   `;
@@ -587,20 +494,13 @@ async function getLiveMatchForEdition(editionId: number) {
     SELECT 
       m.id,
       m.match_number as "matchNumber",
-      m.match_date as "matchDate",
-      m.start_time as "startTime",
-      m.start_time2 as "startTime2",
-      m.end_time as "endTime",
       m.status,
-      m.match_result as "matchResult",
+      m.start_time as "startTime",
       m.total_duration as "totalDuration",
       m.break_count as "breakCount",
       m.audience_count as "audienceCount",
       m.video_url as "videoUrl",
-      m.live_stream_url as "liveStreamUrl",
       m.notes,
-      m.created_at as "createdAt",
-      m.updated_at as "updatedAt",
       
       -- Lutteur 1
       m.fighter1_id as "fighter1Id",
@@ -608,9 +508,7 @@ async function getLiveMatchForEdition(editionId: number) {
       f1.last_name as "fighter1LastName",
       f1.nickname as "fighter1Nickname",
       f1.profile_image as "fighter1ProfileImage",
-      f1.region_id as "fighter1RegionId",
       r1.name as "fighter1RegionName",
-      r1.color as "fighter1RegionColor",
       
       -- Lutteur 2
       m.fighter2_id as "fighter2Id",
@@ -618,23 +516,11 @@ async function getLiveMatchForEdition(editionId: number) {
       f2.last_name as "fighter2LastName",
       f2.nickname as "fighter2Nickname",
       f2.profile_image as "fighter2ProfileImage",
-      f2.region_id as "fighter2RegionId",
       r2.name as "fighter2RegionName",
-      r2.color as "fighter2RegionColor",
       
       -- Vainqueur
       m.winner_fighter_id as "winnerFighterId",
-      
-      -- Sous-groupe
-      sg.id as "subGroupId",
-      sg.name as "subGroupName",
-      
-      -- Phase et Groupe
-      pg.id as "groupId",
-      pg.name as "groupName",
-      p.id as "phaseId",
-      p.name as "phaseName",
-      pg.date as "date"
+      m.loser_fighter_id as "loserFighterId"
 
     FROM matches m
     JOIN sub_groups sg ON m.sub_group_id = sg.id
@@ -654,18 +540,6 @@ async function getLiveMatchForEdition(editionId: number) {
   const liveMatch = result[0];
 
   if (liveMatch) {
-    // Formater les durées et heures
-    const formattedDuration = formatDuration(liveMatch.totalDuration);
-    const formattedStartTime = formatDateTime(liveMatch.matchDate, liveMatch.startTime);
-    const formattedEndTime = formatDateTime(liveMatch.matchDate, liveMatch.endTime);
-    
-    // Mettre à jour avec les valeurs formatées
-    liveMatch.totalDuration = formattedDuration;
-    liveMatch.startTime = formattedStartTime;
-    liveMatch.endTime = liveMatch.endTime;
-        liveMatch.startTime2 = liveMatch.startTime2; // NOUVEAU - timestamp ISO complet
-
-    
     // Formater les données du match en live
     liveMatch.fighters = {
       fighter1: {
@@ -674,11 +548,8 @@ async function getLiveMatchForEdition(editionId: number) {
         lastName: liveMatch.fighter1LastName,
         nickname: liveMatch.fighter1Nickname,
         profileImage: liveMatch.fighter1ProfileImage,
-        region: {
-          id: liveMatch.fighter1RegionId,
-          name: liveMatch.fighter1RegionName,
-          color: liveMatch.fighter1RegionColor,
-        },
+        regionName: liveMatch.fighter1RegionName,
+        initialState: null
       },
       fighter2: {
         id: liveMatch.fighter2Id,
@@ -686,31 +557,31 @@ async function getLiveMatchForEdition(editionId: number) {
         lastName: liveMatch.fighter2LastName,
         nickname: liveMatch.fighter2Nickname,
         profileImage: liveMatch.fighter2ProfileImage,
-        region: {
-          id: liveMatch.fighter2RegionId,
-          name: liveMatch.fighter2RegionName,
-          color: liveMatch.fighter2RegionColor,
-        },
+        regionName: liveMatch.fighter2RegionName,
+        initialState: null
       },
     };
 
+    liveMatch.result = {
+      winnerId: liveMatch.winnerFighterId,
+      loserId: liveMatch.loserFighterId
+    };
+
+    // Récupérer les cartons pour le match live
+    const cardsSql = `
+      SELECT id, fighter_id as "fighterId", card_type as "cardType"
+      FROM fighter_cards
+      WHERE match_id = $1
+    `;
+    liveMatch.allCards = await query(cardsSql, [liveMatch.id]);
+
     // Nettoyer les données redondantes
-    delete liveMatch.fighter1Id;
-    delete liveMatch.fighter1FirstName;
-    delete liveMatch.fighter1LastName;
-    delete liveMatch.fighter1Nickname;
-    delete liveMatch.fighter1ProfileImage;
-    delete liveMatch.fighter1RegionId;
-    delete liveMatch.fighter1RegionName;
-    delete liveMatch.fighter1RegionColor;
-    delete liveMatch.fighter2Id;
-    delete liveMatch.fighter2FirstName;
-    delete liveMatch.fighter2LastName;
-    delete liveMatch.fighter2Nickname;
-    delete liveMatch.fighter2ProfileImage;
-    delete liveMatch.fighter2RegionId;
-    delete liveMatch.fighter2RegionName;
-    delete liveMatch.fighter2RegionColor;
+    const fieldsToDelete = [
+      "fighter1Id", "fighter1FirstName", "fighter1LastName", "fighter1Nickname", "fighter1ProfileImage", "fighter1RegionName",
+      "fighter2Id", "fighter2FirstName", "fighter2LastName", "fighter2Nickname", "fighter2ProfileImage", "fighter2RegionName",
+      "winnerFighterId", "loserFighterId"
+    ];
+    fieldsToDelete.forEach(field => delete liveMatch[field]);
   }
 
   return liveMatch;

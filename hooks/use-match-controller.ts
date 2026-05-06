@@ -1,4 +1,4 @@
-// hooks/use-match-controller.ts - Version améliorée
+// hooks/use-match-controller.ts - Version améliorée avec WebSocket
 "use client";
 
 import { useEffect, useCallback, useRef, useState } from "react";
@@ -9,6 +9,7 @@ import { getMatchById, updateMatch } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
 import { updateSubGroup } from "@/actions/sub-groups";
 import { sendMatchPush } from "@/actions/matches";
+import { useRealtime } from "./use-realtime";
 
 interface UseMatchControllerProps {
   matchId: number;
@@ -24,6 +25,56 @@ export function useMatchController({
   const [pollingInterval, setPollingInterval] = useState<number | false>(false);
 
   // ==========================
+  // WEBSOCKET REALTIME
+  // ==========================
+
+  const { isConnected, subscribe } = useRealtime({
+    autoConnect: true,
+    onMessage: (msg) => {
+      if (msg.type === 'update' && msg.data.entityType === 'match' && msg.data.entityId === matchId) {
+        console.log(`📡 [WS] Update reçu pour match ${matchId}:`, msg.data.event);
+        
+        // Invalider le cache pour forcer un refetch
+        queryClient.invalidateQueries({ queryKey: ["match", matchId] });
+        
+        // Gérer les events spécifiques du timer
+        if (msg.data.event === 'timer_sync' && msg.data.data?.duration) {
+          const newDuration = parseDurationToSeconds(msg.data.data.duration);
+          const currentDuration = timer.elapsed;
+          if (Math.abs(currentDuration - newDuration) > 2) {
+            timer.setTime(newDuration);
+          }
+        }
+        
+        if (msg.data.event === 'status_change' && msg.data.data?.status) {
+          const newStatus = msg.data.data.status;
+          // Synchroniser le timer selon le nouveau statut
+          if (newStatus === "live" && !timer.isRunning) {
+            timer.start();
+          } else if ((newStatus === "round_break" || newStatus === "reclamation") && timer.isRunning) {
+            timer.pause();
+          } else if (newStatus === "completed" && timer.isRunning) {
+            timer.stop();
+          } else if (newStatus === "scheduled" && (timer.isRunning || timer.elapsed > 0)) {
+            timer.reset();
+          }
+        }
+      }
+    },
+    onError: (err) => {
+      console.error("❌ [WS] Erreur WebSocket:", err);
+    }
+  });
+
+  // S'abonner au match dès que la connexion WebSocket est prête
+  useEffect(() => {
+    if (isConnected && matchId) {
+      console.log(`🔌 [WS] Abonnement au match ${matchId}`);
+      subscribe("match", matchId);
+    }
+  }, [isConnected, matchId, subscribe]);
+
+  // ==========================
   // QUERY
   // ==========================
 
@@ -35,22 +86,15 @@ export function useMatchController({
     queryKey: ["match", matchId],
     queryFn: () => getMatchById(matchId),
     enabled: !!matchId,
-    // refetchInterval: pollingInterval,
+    refetchInterval: pollingInterval,
     refetchOnWindowFocus: false,
     staleTime: 0, // Toujours stale pour les matchs live
   });
 
-  // Activer le polling seulement quand le match est en cours
+  // Désactiver le polling complètement - WebSocket fait le travail
   useEffect(() => {
-    if (
-      match?.status === "live" ||
-      match?.status === "round_break" ||
-      match?.status === "reclamation"
-    ) {
-      setPollingInterval(2000); // Polling de secours toutes les 2s
-    } else {
-      setPollingInterval(false);
-    }
+    // Plus de polling agressif, on utilise WebSocket
+    setPollingInterval(false);
   }, [match?.status]);
 
   // ==========================
@@ -64,7 +108,7 @@ export function useMatchController({
     initialStatus: match?.status ?? "scheduled",
   });
 
-  // ✅ Synchroniser le timer avec les données serveur
+  // ✅ Synchroniser le timer avec les données serveur (via WebSocket)
   useEffect(() => {
     if (!match) return;
 
@@ -77,32 +121,32 @@ export function useMatchController({
     // Si la différence est significative (> 2s), on synchronise
     if (durationDiff > 2) {
       console.log(
-        `🔄 [WS Sync] Synchronisation du timer: ${currentDuration}s -> ${durationInSeconds}s`,
+        `🔄 [Sync] Synchronisation du timer: ${currentDuration}s -> ${durationInSeconds}s`,
       );
       timer.setTime(durationInSeconds);
     }
 
     // Synchroniser le statut du timer avec le statut du match
     if (match.status === "live" && !timer.isRunning) {
-      console.log("🔄 [WS Sync] Démarrage du timer (match live)");
+      console.log("🔄 [Sync] Démarrage du timer (match live)");
       timer.start();
     } else if (
       (match.status === "round_break" || match.status === "reclamation") &&
       timer.isRunning
     ) {
-      console.log(`🔄 [WS Sync] Pause du timer (match ${match.status})`);
+      console.log(`🔄 [Sync] Pause du timer (match ${match.status})`);
       timer.pause();
     } else if (match.status === "completed" && timer.isRunning) {
-      console.log("🔄 [WS Sync] Arrêt du timer (match terminé)");
+      console.log("🔄 [Sync] Arrêt du timer (match terminé)");
       timer.stop();
     } else if (
       match.status === "scheduled" &&
       (timer.isRunning || timer.elapsed > 0)
     ) {
-      console.log("🔄 [WS Sync] Reset du timer (match programmé)");
+      console.log("🔄 [Sync] Reset du timer (match programmé)");
       timer.reset();
     }
-  }, [match?.total_duration, match?.status]); // On observe les changements de durée et de statut
+  }, [match?.total_duration, match?.status, timer]);
 
   // ==========================
   // MUTATION
@@ -124,6 +168,7 @@ export function useMatchController({
     },
 
     onSuccess: () => {
+      // Invalider le cache - WebSocket s'occupera du reste
       queryClient.invalidateQueries({ queryKey: ["match", matchId] });
     },
 
@@ -318,6 +363,9 @@ export function useMatchController({
     match,
     isLoading,
     refetch,
+
+    // WebSocket status
+    wsConnected: isConnected,
 
     // timer
     elapsed: timer.elapsed,

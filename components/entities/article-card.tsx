@@ -13,26 +13,43 @@ import {
   Edit,
   Globe,
   Clock,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { BaseCardProps } from "./entity-cards";
 
-interface ArticleCardProps {
-  article: Article;
-  viewMode: "grid" | "list";
-  onEdit?: (article: Article) => void;
-  onView?: (article: Article) => void;
-  onPublish?: (article: Article) => void;
+
+// types
+interface ArticleProps extends BaseCardProps<Article> {
+  onPublish?: (article: Article) => Promise<void>;
 }
 
+
 export function ArticleCard({
-  article,
-  viewMode,
+  item: article,
+  viewMode = "grid",
+  status,
+  isCliquable = true,
+  isMini = false,
+  activeAction = "view",
   onEdit,
   onView,
+  onDelete,
   onPublish,
-}: ArticleCardProps) {
+  className,
+}: ArticleProps) {
   const isListView = viewMode === "list";
+  const isCompact = viewMode === "compact" || isMini;
 
   // Obtenir la couleur du badge en fonction du statut
   const getStatusColor = (status: string) => {
@@ -48,250 +65,133 @@ export function ArticleCard({
     }
   };
 
-  // typelabel
   const getTypeLabel = (type: ArticleType) => {
-    switch (type) {
-      case "news":
-        return "Actualité";
-      case "event":
-        return "Événement";
-      case "announcement":
-        return "Annonce";
-      case "highlight":
-        return "Emphasis";
-      case "interview":
-        return "Interviews";
-      case "analyse":
-        return "Analyse";
-      default:
-        return type;
-    }
+    const labels: Record<string, string> = {
+      news: "Actualité",
+      event: "Événement",
+      announcement: "Annonce",
+      highlight: "Focus",
+      interview: "Interview",
+      analyse: "Analyse",
+    };
+    return labels[type] || type;
   };
 
-  // Obtenir le label du statut
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "published":
-        return "Publié";
-      case "draft":
-        return "Brouillon";
-      case "archived":
-        return "Archivé";
-      default:
-        return status;
-    }
+  const handleMainAction = () => {
+    if (!isCliquable) return;
+    if (activeAction === "view" && onView) onView(article);
+    else if (activeAction === "edit" && onEdit) onEdit(article);
+    else if (activeAction === "delete" && onDelete) onDelete(article);
+    else if (onView) onView(article);
   };
 
-  // Obtenir le label de la langue
-  const getLanguageLabel = (language: string) => {
-    switch (language) {
-      case "fr":
-        return "Français";
-      case "ha":
-        return "Hausa";
-      case "en":
-        return "Anglais";
-      default:
-        return language.toUpperCase();
-    }
-  };
-
-  // Formater la date
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "Non publié";
-    return new Date(dateString).toLocaleDateString("fr-FR", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  // Estimer le temps de lecture
-  const estimateReadingTime = (content: string) => {
-    const wordsPerMinute = 200;
-    const words = content.trim().split(/\s+/).length;
-    const minutes = Math.ceil(words / wordsPerMinute);
-    return `${minutes} min`;
-  };
+  const hasActions = onEdit || onView || onDelete || onPublish;
 
   return (
     <Card
       className={cn(
-        "hover:shadow-lg transition-all duration-300 cursor-pointer group",
-        isListView && "flex"
+        "hover:shadow-md transition-all duration-300 group relative overflow-hidden",
+        isListView && "flex items-center",
+        isCliquable && "cursor-pointer active:scale-[0.98]",
+        status && `border-l-4 ${status}`,
+        className
       )}
+      onClick={handleMainAction}
     >
-      <div
-        className={cn("p-2", isListView && "flex items-center gap-2 flex-1")}
-      >
-        {/* Image en vedette */}
-        {article.featured_image && !isListView && (
-          <div className="flex-shrink-0 mb-2">
-            <div className="relative w-full h-48 rounded-lg overflow-hidden">
-              <Image
-                src={article.featured_image}
-                alt={article.title}
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              {/* Type */}
-              <Badge variant="outline" className="absolute top-2 right-2">
-                {getTypeLabel(article.type)}
-              </Badge>
+      <div className={cn("p-3 flex w-full gap-3", isListView ? "flex-row items-center" : "flex-col")}>
+        {/* Thumbnail Area */}
+        <div className={cn("relative flex-shrink-0 overflow-hidden rounded-lg bg-muted", isListView ? "w-24 h-24" : "w-full aspect-video")}>
+          {article.featured_image ? (
+            <Image
+              src={article.featured_image}
+              alt={article.title}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <BookOpen className="h-8 w-8 text-muted-foreground/20" />
             </div>
-          </div>
-        )}
-
-        {/* En mode liste, l'image est à gauche */}
-        {isListView && article.featured_image && (
-          <div className="flex-shrink-0">
-            <div className="relative w-24 h-24 rounded-lg overflow-hidden">
-              <Image
-                src={article.featured_image}
-                alt={article.title}
-                fill
-                className="object-cover"
-              />
-              {/* Type */}
-              <Badge variant="outline" className="absolute top-2 right-2">
-                {getTypeLabel(article.type)}
-              </Badge>
-            </div>
-          </div>
-        )}
-
-        <div
-          className={cn(
-            "flex-1",
-            isListView && "flex items-center justify-between"
           )}
-        >
-          <div className={cn(isListView && "flex items-center gap-3")}>
-            <div>
-              <CardTitle className="text-lg group-hover:text-primary transition-colors line-clamp-2">
-                {article.title}
-              </CardTitle>
+          <Badge variant="secondary" className="absolute top-2 left-2 text-[10px] h-5 bg-white/90 backdrop-blur-sm">
+            {getTypeLabel(article.type)}
+          </Badge>
+          
+          {!isListView && hasActions && (
+            <div className="absolute top-2 right-2" onClick={e => e.stopPropagation()}>
+              <CardActionMenu onEdit={() => onEdit?.(article)} onView={() => onView?.(article)} onDelete={() => onDelete?.(article)} onPublish={() => onPublish?.(article)} />
+            </div>
+          )}
+        </div>
 
-              {/* Extrait */}
+        {/* Content Area */}
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          <div className="flex items-center justify-between gap-2">
+            <Typography variant={isCompact ? "body-sm" : "h4"} weight="bold" className="truncate group-hover:text-primary transition-colors">
+              {article.title}
+            </Typography>
+            {isListView && hasActions && (
+              <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+                <CardActionMenu onEdit={() => onEdit?.(article)} onView={() => onView?.(article)} onDelete={() => onDelete?.(article)} onPublish={() => onPublish?.(article)} />
+              </div>
+            )}
+          </div>
+
+          {!isCompact && (
+            <>
               {article.excerpt && (
-                <Typography
-                  variant="body-sm"
-                  className="mt-2 text-muted-foreground line-clamp-2"
-                >
+                <Typography variant="caption2" theme="muted" className="line-clamp-2">
                   {article.excerpt}
                 </Typography>
               )}
-
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                {/* Statut */}
-                <Badge variant="outline" className={getStatusColor(article.status)}>
-                  {getStatusLabel(article.status)}
+              
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <Badge variant="outline" className={cn("text-[10px] h-5", getStatusColor(article.status))}>
+                  {article.status}
                 </Badge>
-
-                {/* Langue */}
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <Globe className="h-3 w-3" />
-                  {getLanguageLabel(article.language)}
-                </Badge>
-
-                {/* Date de publication */}
-                {article.published_at && (
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Calendar className="h-3 w-3" />
-                    <span>{formatDate(article.published_at)}</span>
-                  </div>
-                )}
-
-                {/* Auteur */}
-                {article.author && (
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <User className="h-3 w-3" />
-                    <span>{article.author.username}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Métriques */}
-              {!isListView && (
-                <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    <span>{article.view_count || 0} vues</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Heart className="h-3 w-3" />
-                    <span>{article.like_count || 0} likes</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    <span>{estimateReadingTime(article.content)}</span>
-                  </div>
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <Calendar className="h-3 w-3" />
+                  {article.published_at ? new Date(article.published_at).toLocaleDateString() : 'Brouillon'}
                 </div>
-              )}
-            </div>
-
-            {/* En mode liste, afficher les métriques à droite */}
-            {isListView && (
-              <div className="space-y-2 text-right">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 justify-end text-sm">
-                    <Eye className="h-3 w-3" />
-                    <span>{article.view_count || 0}</span>
-                  </div>
-                  <div className="flex items-center gap-1 justify-end text-sm">
-                    <Heart className="h-3 w-3" />
-                    <span>{article.like_count || 0}</span>
-                  </div>
-                </div>
-                {article.published_at && (
-                  <Typography variant="caption2" theme="muted">
-                    {formatDate(article.published_at)}
-                  </Typography>
-                )}
               </div>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className={cn("flex gap-2 mt-3", isListView && "mt-0")}>
-            {onView && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onView(article);
-                }}
-              >
-                <BookOpen className="h-4 w-4" />
-              </Button>
-            )}
-            {onEdit && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(article);
-                }}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-            )}
-            {onPublish && article.status === "draft" && (
-              <Button
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPublish(article);
-                }}
-              >
-                Publier
-              </Button>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
     </Card>
+  );
+}
+
+function CardActionMenu({ onEdit, onView, onDelete, onPublish }: { onEdit?: () => void, onView?: () => void, onDelete?: () => void, onPublish?: () => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="secondary" size="icon" className="h-7 w-7 rounded-full shadow-sm bg-primary/20 text-primary backdrop-blur-sm">
+          <MoreHorizontal className="h-4 w-4 " />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {onView && (
+          <DropdownMenuItem onClick={onView}>
+            <BookOpen className="h-4 w-4 mr-2" /> Lire
+          </DropdownMenuItem>
+        )}
+        {onEdit && (
+          <DropdownMenuItem onClick={onEdit}>
+            <Pencil className="h-4 w-4 mr-2" /> Modifier
+          </DropdownMenuItem>
+        )}
+        {onDelete && (
+          <DropdownMenuItem onClick={onDelete} className="text-destructive">
+            <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+          </DropdownMenuItem>
+        )}
+        {onPublish && (
+          <DropdownMenuItem onClick={onPublish} className="text-success">
+            <Send className="h-4 w-4 mr-2" /> Publier
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

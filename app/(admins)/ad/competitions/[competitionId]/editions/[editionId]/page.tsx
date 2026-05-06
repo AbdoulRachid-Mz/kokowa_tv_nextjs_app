@@ -24,6 +24,7 @@ import {
 import { CompetitionEdition, Phase, Fighter, Region } from "@/types";
 import { EntityList } from "@/components/shared/entity-list";
 import { useEntityList } from "@/hooks/use-entity-list";
+import { PhaseCard } from "@/components/entities/entity-cards";
 
 export default function EditionDetailPage() {
   const params = useParams();
@@ -170,98 +171,98 @@ export default function EditionDetailPage() {
     router.push(`/ad/editions/${editionId}/edit`);
   };
 
-  // Rendu des cartes pour les phases
-  const renderPhaseCard = (phase: Phase, viewMode: 'grid' | 'list') => {
-    const isListView = viewMode === 'list';
-    const statusConfig = getStatusBadge(phase.is_completed ? 'completed' : 'ongoing');
+  // // Rendu des cartes pour les phases
+  // const renderPhaseCard = (phase: Phase, viewMode: 'grid' | 'list' | 'compact') => {
+  //   const isListView = viewMode === 'list';
+  //   const statusConfig = getStatusBadge(phase.is_completed ? 'completed' : 'ongoing');
 
-    return (
-      <Card className={cn(
-        "hover:shadow-lg transition-all duration-300 cursor-pointer group border-l-4",
-        isListView && "flex",
-        phase.is_completed ? "border-l-green-500" : "border-l-orange-500"
-      )}>
-        <div className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}>
-          <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
-            <div className={cn(
-              "w-12 h-12 rounded-lg flex items-center justify-center text-white",
-              phase.is_completed ? "bg-gradient-to-br from-green-500 to-emerald-600" : "bg-gradient-to-br from-orange-500 to-red-600"
-            )}>
-              <Trophy className="h-6 w-6" />
-            </div>
-          </div>
+  //   return (
+  //     <Card className={cn(
+  //       "hover:shadow-lg transition-all duration-300 cursor-pointer group border-l-4",
+  //       isListView && "flex",
+  //       phase.is_completed ? "border-l-green-500" : "border-l-orange-500"
+  //     )}>
+  //       <div className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}>
+  //         <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
+  //           <div className={cn(
+  //             "w-12 h-12 rounded-lg flex items-center justify-center text-white",
+  //             phase.is_completed ? "bg-gradient-to-br from-green-500 to-emerald-600" : "bg-gradient-to-br from-orange-500 to-red-600"
+  //           )}>
+  //             <Trophy className="h-6 w-6" />
+  //           </div>
+  //         </div>
 
-          <div className={cn("flex-1", isListView && "flex items-center justify-between")}>
-            <div className={cn(isListView && "flex items-center gap-6")}>
-              <div>
-                <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                  {phase.name}
-                </CardTitle>
+  //         <div className={cn("flex-1", isListView && "flex items-center justify-between")}>
+  //           <div className={cn(isListView && "flex items-center gap-6")}>
+  //             <div>
+  //               <CardTitle className="text-lg group-hover:text-primary transition-colors">
+  //                 {phase.name}
+  //               </CardTitle>
                 
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant={statusConfig.variant} className={'color' in statusConfig ? statusConfig.color : undefined}>
-                    {phase.is_completed ? "Terminée" : "En cours"}
-                  </Badge>
+  //               <div className="flex items-center gap-2 mb-2">
+  //                 <Badge variant={statusConfig.variant} className={'color' in statusConfig ? statusConfig.color : undefined}>
+  //                   {phase.is_completed ? "Terminée" : "En cours"}
+  //                 </Badge>
                   
-                  <Badge variant="outline">
-                    {phase.phase_type}
-                  </Badge>
-                </div>
+  //                 <Badge variant="outline">
+  //                   {phase.phase_type}
+  //                 </Badge>
+  //               </div>
 
-                <div className="space-y-1 text-sm">
-                  {phase.start_date && phase.end_date && (
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(phase.start_date).toLocaleDateString()} - {new Date(phase.end_date).toLocaleDateString()}
-                    </div>
-                  )}
+  //               <div className="space-y-1 text-sm">
+  //                 {phase.start_date && phase.end_date && (
+  //                   <div className="flex items-center gap-1 text-muted-foreground">
+  //                     <Calendar className="h-3 w-3" />
+  //                     {new Date(phase.start_date).toLocaleDateString()} - {new Date(phase.end_date).toLocaleDateString()}
+  //                   </div>
+  //                 )}
                   
-                  {phase.description && (
-                    <Typography variant="body-sm" className="text-muted-foreground">
-                      {phase.description}
-                    </Typography>
-                  )}
-                </div>
-              </div>
+  //                 {phase.description && (
+  //                   <Typography variant="body-sm" className="text-muted-foreground">
+  //                     {phase.description}
+  //                   </Typography>
+  //                 )}
+  //               </div>
+  //             </div>
 
-              {isListView && (
-                <div className="text-right">
-                  <Typography variant="h4" weight="bold" className="text-primary">
-                    {phase.phase_order}
-                  </Typography>
-                  <Typography variant="caption2" theme="muted">
-                    Ordre
-                  </Typography>
-                </div>
-              )}
-            </div>
+  //             {isListView && (
+  //               <div className="text-right">
+  //                 <Typography variant="h4" weight="bold" className="text-primary">
+  //                   {phase.phase_order}
+  //                 </Typography>
+  //                 <Typography variant="caption2" theme="muted">
+  //                   Ordre
+  //                 </Typography>
+  //               </div>
+  //             )}
+  //           </div>
 
-            <div className={cn("flex gap-2 mt-3", isListView && "mt-0")}>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleViewPhase(phase);
-                }}
-              >
-                Voir
-              </Button>
-              <Button 
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditPhase(phase);
-                }}
-              >
-                Modifier
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Card>
-    );
-  };
+  //           <div className={cn("flex gap-2 mt-3", isListView && "mt-0")}>
+  //             <Button 
+  //               variant="outline" 
+  //               size="sm"
+  //               onClick={(e) => {
+  //                 e.stopPropagation();
+  //                 handleViewPhase(phase);
+  //               }}
+  //             >
+  //               Voir
+  //             </Button>
+  //             <Button 
+  //               size="sm"
+  //               onClick={(e) => {
+  //                 e.stopPropagation();
+  //                 handleEditPhase(phase);
+  //               }}
+  //             >
+  //               Modifier
+  //             </Button>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </Card>
+  //   );
+  // };
 
   if (loading) {
     return (
@@ -574,7 +575,7 @@ export default function EditionDetailPage() {
             onRefresh={phasesList.onRefresh}
             viewMode={phasesList.viewMode}
             onViewModeChange={phasesList.setViewMode}
-            renderCard={renderPhaseCard}
+            renderCard={(item, viewMode) => <PhaseCard item={item} viewMode={viewMode} onView={handleViewPhase} onEdit={handleEditPhase} />}
           />
         </TabsContent>
 

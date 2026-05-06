@@ -10,10 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import { SubGroup, Match } from "@/types";
-import { Edit, Plus, Users, MapPin, Trophy, Clock, Swords } from "lucide-react";
+import { Edit, Plus, Users, MapPin, Trophy, Clock, Swords, Award } from "lucide-react";
 import { MatchCard } from "./organisation/matches-card";
 import { getSubGroupById } from "@/actions/sub-groups";
 import { SimpleMatchCard } from "@/components/matches/match-card";
+import { useEntityList } from "@/hooks/use-entity-list";
+import { CardStats } from "@/components/entities/card-stats";
+import { EntityList } from "@/components/shared/entity-list";
 
 export default function SubGroupDetailPage() {
   const { subGroupId } = useParams();
@@ -21,7 +24,52 @@ export default function SubGroupDetailPage() {
   const id = parseInt(subGroupId as string);
 
   const [subGroup, setSubGroup] = useState<SubGroup | null>(null);
-  const [matches, setMatches] = useState<Match[]>([]);
+  // Hook pour les matchs
+  const matchesList = useEntityList<Match>({
+    entityType: "matches",
+    defaultFilters: {
+      sub_group_id: id,
+    },
+    defaultLimit: 10
+  });
+
+  const matches = matchesList.data;
+
+  // Statistiques pour la rencontre
+  const getGroupStats = () => {
+    if (!subGroup) return [];
+
+    return [
+      {
+        label: "Total Matchs",
+        value: subGroup.matches_count || 0,
+        icon: Users,
+        color: "text-blue-600",
+        description: "Matchs programmés",
+      },
+      {
+        label: "Terminés",
+        value: subGroup.matches_completed_count || 0,
+        icon: Trophy,
+        color: "text-green-600",
+        description: "Matchs complétés",
+      },
+      {
+        label: "Lutteurs",
+        value: subGroup.fighters_count || 0,
+        icon: Users,
+        color: "text-purple-600",
+        description: "Nombre de lutteurs",
+      },
+      {
+        label: "Progression",
+        value: (subGroup.matches_count ?? 0) > 0 ? `${Math.round(((subGroup.matches_completed_count || 0) / (subGroup.matches_count ?? 0)) * 100)}%` : "0%",
+        icon: Award,
+        color: "text-orange-600",
+        description: "Taux de complétion",
+      },
+    ];
+  };
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -33,22 +81,9 @@ export default function SubGroupDetailPage() {
     try {
       setLoading(true);
       const subGroupData = await getSubGroupById(id, {
-        with_relations: true,
-        relations: {
-          with_group: true,
-          with_phase: true,
-          with_edition: true,
-          with_regions: true,
-          with_fighters: true,
-          with_belts: true,
-          with_referee: true,
-          with_matches: true,
-          with_edition_regions: true,
-          with_edition_fighters: true,
-        },
+        with_relations: false,
       });
       setSubGroup(subGroupData);
-      setMatches(subGroupData.matches || []);
     } catch (error) {
       console.error("Erreur chargement sous-groupe:", error);
       setSubGroup(null);
@@ -62,7 +97,7 @@ export default function SubGroupDetailPage() {
 
     try {
       await api.delete(`/api/matches/${matchId}`);
-      setMatches(matches.filter((m) => m.id !== matchId));
+      matchesList.onRefresh();
       loadSubGroup(); // Recharger les données
     } catch (error) {
       console.error("Erreur suppression match:", error);
@@ -235,86 +270,74 @@ export default function SubGroupDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Statistiques */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+        {getGroupStats().map((stat, index) => (
+          <CardStats
+            key={index}
+            label={stat.label}
+            icon={stat.icon}
+            value={stat.value}
+            color={stat.color}
+          />
+        ))}
+      </div>
+
       {/* Contenu (onglets) */}
       <Card className="p-3">
-        <CardHeader>
-          <CardTitle>Gestion de la rencontre</CardTitle>
-        </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="flex justify-center mb-2">
               <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
               <TabsTrigger value="matches">
-                Matchs ({matches.length})
+                Matchs ({matchesList.total})
               </TabsTrigger>
               <TabsTrigger value="organization">Detail</TabsTrigger>
             </TabsList>
 
             {/* Onglet Vue d'ensemble */}
-            <TabsContent value="overview">
+            <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Info label="Groupe" value={subGroup.group?.name} />
                 <Info label="Ordre" value={subGroup.sub_group_order} />
-                <Info label="Groupe" value={subGroup?.video_url} />
+                <Info label="Vidéo" value={subGroup?.video_url} />
                 <Info label="Phase" value={subGroup.group?.phase?.name} />
                 <Info
                   label="Édition"
-                  value={`${subGroup.group?.phase?.edition?.edition_number} - ${subGroup.group?.phase?.edition?.year}`}
+                  value={subGroup.group?.phase?.edition ? `${subGroup.group.phase.edition.edition_number} - ${subGroup.group.phase.edition.year}` : "N/A"}
                 />
-                {subGroup.main_referee && (
-                  <Info
-                    label="Arbitre Principal"
-                    value={`${subGroup.main_referee.first_name} ${subGroup.main_referee.last_name}`}
-                  />
-                )}
-              </div>
-
-              {/* Statistiques des matchs */}
-              <div className="mt-3">
-                <Typography variant="h5" className="mb-4">
-                  Statistiques des matchs
-                </Typography>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <StatCard
-                    label="Total Matchs"
-                    value={matches.length}
-                    icon={Users}
-                  />
-                  <StatCard
-                    label="Terminés"
-                    value={
-                      matches.filter((m) => m.status === "completed").length
-                    }
-                    icon={Trophy}
-                  />
-                  <StatCard
-                    label="Programmés"
-                    value={
-                      matches.filter((m) => m.status === "scheduled").length
-                    }
-                    icon={Clock}
-                  />
-                  <StatCard
-                    label="En Direct"
-                    value={matches.filter((m) => m.status === "live").length}
-                    icon={Users}
-                  />
-                </div>
               </div>
             </TabsContent>
 
             {/* Onglet Matchs */}
-            <TabsContent value="matches">
-              <MatchesList
-                matches={matches}
-                subGroupId={id}
-                onEditMatch={(match) =>
-                  router.push(`/ad/matches/${match.id}/edit`)
-                }
-                onDeleteMatch={handleDeleteMatch}
-                onAddMatch={() =>
-                  router.push(`/ad/sub-groups/${id}/matches/new`)
-                }
+            <TabsContent value="matches" className="space-y-4">
+              <EntityList<Match>
+                entityType="match"
+                title="Liste des matchs"
+                data={matchesList.data}
+                loading={matchesList.loading}
+                total={matchesList.total}
+                page={matchesList.page}
+                limit={matchesList.limit}
+                onPageChange={matchesList.setPage}
+                onLimitChange={matchesList.setLimit}
+                onRefresh={matchesList.onRefresh}
+                searchTerm={matchesList.searchTerm}
+                onSearchChange={matchesList.setSearchTerm}
+                filters={matchesList.filters}
+                onFilterChange={matchesList.setFilters}
+                viewMode={matchesList.viewMode}
+                onViewModeChange={matchesList.setViewMode}
+                renderCard={(match, viewMode) => (
+                  <SimpleMatchCard
+                    key={match.id}
+                    match={match}
+                    subGroupId={id}
+                    compact={viewMode === 'compact'}
+                    onDelete={handleDeleteMatch}
+                    onEdit={(m) => router.push(`/ad/matches/${m.id}/edit`)}
+                  />
+                )}
               />
             </TabsContent>
 
@@ -328,63 +351,6 @@ export default function SubGroupDetailPage() {
           </Tabs>
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-// Composant pour la liste des matchs
-function MatchesList({
-  matches,
-  subGroupId,
-  onEditMatch,
-  onDeleteMatch,
-  onAddMatch,
-}: {
-  matches: Match[];
-  subGroupId: number;
-  onEditMatch: (match: Match) => void;
-  onDeleteMatch: (matchId: number) => void;
-  onAddMatch: () => void;
-}) {
-  if (matches.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <Typography variant="h4" theme="muted" className="mb-4">
-          Aucun match programmé
-        </Typography>
-        <Typography variant="body-sm" theme="muted" className="mb-6">
-          Commencez par ajouter des matchs à cette rencontre.
-        </Typography>
-        <Button onClick={onAddMatch}>
-          <Plus className="h-4 w-4 mr-2" />
-          Ajouter le premier match
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <Typography variant="h5">Liste des matchs</Typography>
-        <Button onClick={onAddMatch} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Nouveau match
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        {matches.map((match) => (
-          <SimpleMatchCard
-            key={match.id}
-            match={match}
-            subGroupId={subGroupId}
-            compact
-            onDelete={onDeleteMatch}
-            onEdit={onEditMatch}
-          />
-        ))}
-      </div>
     </div>
   );
 }

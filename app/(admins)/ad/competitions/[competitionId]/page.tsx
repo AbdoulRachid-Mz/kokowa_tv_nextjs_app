@@ -32,7 +32,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { CardStats } from "@/components/entities/card-stats";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
 import Image from "next/image"
+import { EditionCard } from "@/components/entities/edition-card";
 
 export default function CompetitionDetailPage() {
   const params = useParams();
@@ -175,127 +177,6 @@ export default function CompetitionDetailPage() {
     router.push(`/ad/competitions/${competitionId}/editions/new`);
   };
 
-  // Carte personnalisée pour les éditions
-  const renderEditionCard = (edition: CompetitionEdition, viewMode: 'grid' | 'list') => {
-    const isListView = viewMode === 'list';
-    const statusConfig = getStatusBadge(
-      edition.start_date && edition.end_date 
-        ? new Date() >= new Date(edition.start_date) && new Date() <= new Date(edition.end_date)
-          ? 'ongoing'
-          : new Date() > new Date(edition.end_date)
-          ? 'completed'
-          : 'upcoming'
-        : 'upcoming'
-    );
-
-    return (
-      <Card className={cn(
-        "hover:shadow-lg transition-all duration-300 cursor-pointer group border-l-4",
-        isListView && "flex",
-        'color' in statusConfig && statusConfig.color?.includes('green') && "border-l-green-500",
-        'color' in statusConfig && statusConfig.color?.includes('blue') && "border-l-blue-500",
-        'color' in statusConfig && statusConfig.color?.includes('orange') && "border-l-orange-500",
-        'color' in statusConfig && statusConfig.color?.includes('red') && "border-l-red-500",
-      )}>
-        <div className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}>
-          {/* Icône */}
-          <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white">
-              <Calendar className="h-6 w-6" />
-            </div>
-          </div>
-
-          <div className={cn("flex-1", isListView && "flex items-center justify-between")}>
-            <div className={cn(isListView && "flex items-center gap-6")}>
-              <div>
-                <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                  Édition {edition.edition_number} - {edition.year}
-                </CardTitle>
-                
-                {edition.theme && (
-                  <Typography variant="body-sm" theme="muted" className="italic mb-2">
-                    "{edition.theme}"
-                  </Typography>
-                )}
-
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant={statusConfig.variant} className={'color' in statusConfig ? statusConfig.color : undefined}>
-                    {statusConfig.label}
-                  </Badge>
-                  
-                  <Badge variant="outline">
-                    {edition.total_participants} participants
-                  </Badge>
-                </div>
-
-                <div className="space-y-1 text-sm">
-                  {edition.start_date && edition.end_date && (
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(edition.start_date).toLocaleDateString()} - {new Date(edition.end_date).toLocaleDateString()}
-                    </div>
-                  )}
-                  
-                  {edition.winner_fighter && (
-                    <div className="font-semibold text-green-600">
-                      Vainqueur: {edition.winner_fighter.first_name} {edition.winner_fighter.last_name}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {isListView && (
-                <div className="text-right">
-                  <Typography variant="h4" weight="bold" className="text-primary">
-                    {edition.total_participants}
-                  </Typography>
-                  <Typography variant="caption2" theme="muted">
-                    Participants
-                  </Typography>
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className={cn("flex gap-2 mt-3", isListView && "mt-0")}>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleViewEdition(edition);
-                }}
-              >
-                <Eye className="h-4 w-4 mr-1" />
-                Voir
-              </Button>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleEditEdition(edition)}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Modifier
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => handleDeleteEdition(edition)}
-                    className="text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Supprimer
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </div>
-      </Card>
-    );
-  };
 
   if (loading) {
     return (
@@ -372,12 +253,11 @@ export default function CompetitionDetailPage() {
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <StatsCarousel>
         {getCompetitionStats().map((stat, index) => (
           <CardStats key={index} label={stat.label} icon={stat.icon} value={stat.value} color={stat.color} />
-
         ))}
-      </div>
+      </StatsCarousel>
 
       {/* Informations de la compétition */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -457,22 +337,6 @@ export default function CompetitionDetailPage() {
               <Trophy className="h-4 w-4 mr-2" />
               Gérer les Phases
             </Button> 
-            {/* <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => router.push(`/ad/competitions/${competitionId}/participants`)}
-            >
-              <Users className="h-4 w-4 mr-2" />
-              Gérer les Participants
-            </Button> */}
-            {/* <Button 
-              variant="outline" 
-              className="w-full justify-start"
-              onClick={() => router.push(`/ad/competitions/${competitionId}/matches`)}
-            >
-              <Award className="h-4 w-4 mr-2" />
-              Voir les Matchs
-            </Button> */}
           </CardContent>
         </Card>
       </div>
@@ -497,7 +361,16 @@ export default function CompetitionDetailPage() {
         onRefresh={editionsList.onRefresh}
         viewMode={editionsList.viewMode}
         onViewModeChange={editionsList.setViewMode}
-        renderCard={renderEditionCard}
+        renderCard={(edition, viewMode) => (
+          <EditionCard
+            item={edition}
+            isCliquable={true}
+            viewMode={viewMode}
+            onView={handleViewEdition}
+            onEdit={handleEditEdition}
+            onDelete={handleDeleteEdition}
+          />
+        )}
       />
     </div>
   );

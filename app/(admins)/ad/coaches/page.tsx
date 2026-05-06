@@ -9,6 +9,7 @@ import { Typography } from "@/components/ui/typography";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Award, TrendingUp, GraduationCap } from "lucide-react";
 import { CardStats } from "@/components/entities/card-stats";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
 
 export default function CoachesPage() {
   const {
@@ -63,11 +64,11 @@ export default function CoachesPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <StatsCarousel>
         {stats.map((stat, index) => (
           <CardStats key={index} {...stat} />
         ))}
-      </div>
+      </StatsCarousel>
     );
   };
 
@@ -95,7 +96,7 @@ export default function CoachesPage() {
       renderStats={renderStats}
       renderCard={(coach, viewMode) => (
         <EntityCards.Coach
-          coach={coach}
+          item={coach}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={onView}

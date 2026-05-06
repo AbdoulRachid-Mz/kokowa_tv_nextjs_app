@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSubGroupDialog } from "@/components/phase-groups/create-sub-group-dialog";
 import { CardStats } from "@/components/entities/card-stats";
+import { SubGroupCard } from "@/components/entities/entity-cards";
 
 export default function PhaseGroupDetailPage() {
   const params = useParams();
@@ -44,7 +45,7 @@ export default function PhaseGroupDetailPage() {
     const fetchGroup = async () => {
       try {
         const response = await fetch(
-          `/api/phase-groups/${groupId}?with_relations=true`
+          `/api/phase-groups/${groupId}?with_relations=false`
         );
         if (response.ok) {
           const data = await response.json();
@@ -67,63 +68,43 @@ export default function PhaseGroupDetailPage() {
   // Hook pour les sous-groupes
   const subGroupsList = useEntityList<SubGroup>({
     entityType: "sub-groups",
-    // defaultData: group?.sub_groups || undefined,
     defaultFilters: {
       group_id: parseInt(groupId),
-      with_belt_fighters: true,
-      with_belt_regions: true,
-      with_matches: true,
     },
+    defaultLimit: 10
   });
-
-  const handleOnSuccess = () => {
-    setCreateSubGroupOpen(false);
-    subGroupsList.onRefresh();
-  };
 
   // Statistiques pour le groupe
   const getGroupStats = () => {
     if (!group) return [];
 
-    const totalSubGroups = group.sub_groups?.length || 0;
-    const totalMatches =
-      group.sub_groups?.reduce(
-        (sum, sg) => sum + (sg.matches?.length || 0),
-        0
-      ) || 0;
-    const completedSubGroups =
-      group.sub_groups?.filter((sg) => sg.is_completed).length || 0;
-    const groupsWithBelts =
-      group.sub_groups?.filter((sg) => sg.belt1 || sg.belt2).length || 0;
-
     return [
       {
-        label: "Rencontres",
-        value: totalSubGroups,
+        value: group?.sub_groups_count || 0,
         icon: Layers,
         color: "text-blue-600",
         description: "Rencontres créées",
       },
       {
-        label: "Matchs Programmes",
-        value: totalMatches,
+        label: "Matchs",
+        value: group?.matches_count || 0,
         icon: Swords,
         color: "text-green-600",
         description: "Matchs totaux",
       },
       {
-        label: "Rencontres Terminées",
-        value: completedSubGroups,
+        label: "Terminées",
+        value: group?.sub_groups_completed_count || 0,
         icon: Trophy,
         color: "text-purple-600",
         description: "Rencontres complétées",
       },
       {
-        label: "Avec Ceintures",
-        value: groupsWithBelts,
-        icon: Shield,
+        label: "Progression",
+        value: (group?.sub_groups_count ?? 0) > 0 ? `${Math.round(((group?.sub_groups_completed_count || 0) / (group?.sub_groups_count || 1)) * 100)}%` : "0%",
+        icon: Award,
         color: "text-orange-600",
-        description: "Rencontres avec ceintures",
+        description: "Taux de complétion",
       },
     ];
   };
@@ -147,179 +128,6 @@ export default function PhaseGroupDetailPage() {
 
   const handleManageGroupMatches = () => {
     router.push(`/ad/phase-groups/${groupId}/organisation`);
-  };
-
-  // Rendu des cartes pour les sous-groupes
-  const renderSubGroupCard = (
-    subGroup: SubGroup,
-    viewMode: "grid" | "list"
-  ) => {
-    const isListView = viewMode === "list";
-    const statusConfig = getStatusBadge(subGroup.is_completed);
-    const hasBelt1 = subGroup.belt1;
-    const hasBelt2 = subGroup.belt2;
-    const matchesCount = subGroup.matches?.length || 0;
-
-    return (
-      <Card
-        className={cn(
-          "hover:shadow-lg transition-all duration-300 cursor-pointer group border-l-4 p-2",
-          isListView && "flex",
-          subGroup.is_completed ? "border-l-green-500" : "border-l-orange-500"
-        )}
-      >
-        <div
-          className={cn("p-2", isListView && "flex items-center gap-2 flex-1")}
-        >
-          <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
-            <div
-              className={cn(
-                "w-12 h-12 rounded-lg flex items-center justify-center text-white",
-                subGroup.is_completed
-                  ? "bg-gradient-to-br from-green-500 to-emerald-600"
-                  : "bg-gradient-to-br from-orange-500 to-red-600"
-              )}
-            >
-              <Layers className="h-6 w-6" />
-            </div>
-          </div>
-
-          <div
-            className={cn(
-              "flex-1",
-              isListView && "flex items-center justify-between"
-            )}
-          >
-            <div className={cn(isListView && "flex items-center gap-4")}>
-              <div>
-                <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                  {subGroup.name}
-                </CardTitle>
-
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge
-                    variant={statusConfig.variant}
-                    className={statusConfig.color}
-                  >
-                    {subGroup.is_completed ? "Terminé" : "En cours"}
-                  </Badge>
-
-                  {matchesCount > 0 && (
-                    <Badge variant="outline">{matchesCount} match(s)</Badge>
-                  )}
-
-                  {(hasBelt1 || hasBelt2) && (
-                    <Badge variant="secondary">Ceintures</Badge>
-                  )}
-
-                  {subGroup.period && (
-                    <Badge variant="outline">
-                      {subGroup.period === "matin" ? "Matin" : "Soir"}
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <Typography
-                    variant="body-sm"
-                    className="text-muted-foreground"
-                  >
-                    Ordre: {subGroup.sub_group_order}
-                  </Typography>
-
-                  {/* Affichage des ceintures */}
-                  <div className="flex flex-wrap gap-2">
-                    {hasBelt1 && (
-                      <div className="flex items-center gap-1">
-                        <Shield className="h-3 w-3 text-blue-500" />
-                        <Typography
-                          variant="caption2"
-                          className="text-muted-foreground"
-                        >
-                          Ceinture 1:{" "}
-                          {subGroup.belt1?.color || (typeof subGroup.belt1 === 'string' ? subGroup.belt1 : '')}
-                        </Typography>
-                      </div>
-                    )}
-
-                    {hasBelt2 && (
-                      <div className="flex items-center gap-1">
-                        <Shield className="h-3 w-3 text-red-500" />
-                        <Typography
-                          variant="caption2"
-                          className="text-muted-foreground"
-                        >
-                          Ceinture 2:{" "}
-                          {subGroup.belt2?.color || (typeof subGroup.belt2 === 'string' ? subGroup.belt2 : '')}
-                        </Typography>
-                      </div>
-                    )}
-                  </div>
-
-                  {subGroup.description && (
-                    <Typography
-                      variant="body-sm"
-                      className="text-muted-foreground line-clamp-2"
-                    >
-                      {subGroup.description}
-                    </Typography>
-                  )}
-                </div>
-              </div>
-
-              {isListView && (
-                <div className="text-right">
-                  <Typography
-                    variant="h4"
-                    weight="bold"
-                    className="text-primary"
-                  >
-                    {subGroup.sub_group_order}
-                  </Typography>
-                  <Typography variant="caption2" theme="muted">
-                    Ordre
-                  </Typography>
-                </div>
-              )}
-            </div>
-
-            <div
-              className={cn("flex gap-2 mt-3", isListView && "mt-0 flex-col")}
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleManageMatches(subGroup);
-                }}
-              >
-                Matchs
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleViewSubGroup(subGroup);
-                }}
-              >
-                Voir
-              </Button>
-              <Button
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditSubGroup(subGroup);
-                }}
-              >
-                Modifier
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Card>
-    );
   };
 
   if (loading) {
@@ -411,7 +219,7 @@ export default function PhaseGroupDetailPage() {
         {getGroupStats().map((stat, index) => (
           <CardStats
             key={index}
-            label={stat.label}
+            label={stat.label ?? ""}
             icon={stat.icon}
             value={stat.value}
             color={stat.color}
@@ -626,27 +434,33 @@ export default function PhaseGroupDetailPage() {
         </TabsContent>
 
         {/* Sous-groupes */}
-        <TabsContent value="sub-groups">
-          <EntityList
-            title="Rencontres du Groupe"
-            description={`Gérez les rencontres de ${group.name}`}
+        <TabsContent value="sub-groups" className="space-y-4">
+          <EntityList<SubGroup>
             entityType="sub-group"
+            title="Rencontres du Groupe"
             data={subGroupsList.data}
-            total={subGroupsList.total}
             loading={subGroupsList.loading}
+            total={subGroupsList.total}
             page={subGroupsList.page}
             limit={subGroupsList.limit}
             onPageChange={subGroupsList.setPage}
             onLimitChange={subGroupsList.setLimit}
-            searchTerm={subGroupsList.searchTerm}
-            onSearchChange={subGroupsList.setSearchTerm}
-            filters={subGroupsList.filters}
-            onFilterChange={subGroupsList.setFilters}
-            onAdd={() => setCreateSubGroupOpen(true)}
-            onRefresh={subGroupsList.onRefresh}
-            viewMode={subGroupsList.viewMode}
+              onRefresh={subGroupsList.onRefresh}
+              searchTerm={subGroupsList.searchTerm}
+              onSearchChange={subGroupsList.setSearchTerm}
+              filters={subGroupsList.filters}
+              onFilterChange={subGroupsList.setFilters}
+              viewMode={subGroupsList.viewMode}
             onViewModeChange={subGroupsList.setViewMode}
-            renderCard={renderSubGroupCard}
+            renderCard={(subGroup, viewMode) => (
+              <SubGroupCard 
+                item={subGroup}
+                viewMode={viewMode}
+                onView={() => handleViewSubGroup(subGroup)}
+                onEdit={() => handleEditSubGroup(subGroup)}
+                onManageMatches={() => handleManageMatches(subGroup)}
+              />
+            )}
           />
         </TabsContent>
 

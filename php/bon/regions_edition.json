@@ -1,0 +1,76 @@
+{
+    "success": true,
+    "data": {
+        "edition": {
+            "id": 13,
+            "theme": "50 ans de Kokowa",
+            "year": 2025,
+            "startDate": "2025-12-20T00:00:00.000Z",
+            "endDate": "2025-12-27T00:00:00.000Z",
+            "isActive": true,
+            "competitionName": "Sabre National",
+            "competitionId": 14,
+            "totalRegions": "8",
+            "totalFighters": "80",
+            "totalUnbeatenFighters": "61"
+        },
+        "regions": [
+            {
+                "id": 38,
+                "regionId": 2,
+                "regionName": "Dosso",
+                "regionCode": "DOS",
+                "flagImage": "",
+                "isEliminated": false,
+                "stats": {
+                    "totalFighters": 10,
+                    "activeFighters": 9,
+                    "eliminatedFighters": 1,
+                    "championFighters": 0,
+                    "unbeatenFighters": 10,
+                    "totalWins": 0,
+                    "totalLosses": 0,
+                    "totalTerraces": 0,
+                    "totalBeenTerraced": 0,
+                    "yellowCards": 0,
+                    "redCards": 0,
+                    "winRate": 0
+                },
+                "unbeatenRatio": 100,
+                "rank": 1
+            }
+        ],
+        "fighters": [
+            {
+                "id": 146,
+                "fighterId": 95,
+                "firstName": "Abdourahamane",
+                "lastName": "Rabe",
+                "nickname": "Le Sultan du Sabre",
+                "profileImage": "https://cloudinary.com/kokowa/fighters/profile4.jpg",
+                "regionId": 6,
+                "regionName": "Zinder",
+                "isEliminated": false,
+                "isChampion": false,
+                "totalMatches": 1,
+                "wins": 1,
+                "losses": 0,
+                "terraces": 1,
+                "beenTerraced": 0,
+                "yellowCards": 0,
+                "redCards": 0,
+                "winRate": 100,
+                "unbeatenMatches": 1
+            }
+        ],
+        "summary": {
+            "totalRegions": "8",
+            "totalFighters": "80",
+            "totalUnbeatenFighters": "61",
+            "eliminatedRegions": 0,
+            "activeRegions": 8
+        },
+        "timestamp": "2026-03-04T12:36:38.126Z"
+    },
+    "message": "Données de l'édition récupérées avec succès"
+}

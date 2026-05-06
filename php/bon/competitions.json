@@ -1,0 +1,41 @@
+{
+  "success": true,
+  "data": {
+    "competitions": [
+      {
+        "id": 15,
+        "name": "Coupe Airtel",
+        "description": "voici la coupe airtel pour l'annee 2026\r\n",
+        "status": "upcoming",
+        "featuredImage": null,
+        "totalEditions": "0",
+        "editions": []
+      },
+      {
+        "id": 14,
+        "name": "Sabre National",
+        "description": null,
+        "status": "upcoming",
+        "featuredImage": null,
+        "totalEditions": "1",
+        "editions": [
+          {
+            "id": 13,
+            "editionNumber": 1,
+            "year": 2025,
+            "theme": "50 ans de Kokowa",
+            "regionName": "Agadez",
+            "startDate": "2025-12-20T00:00:00.000Z",
+            "endDate": "2025-12-27T00:00:00.000Z",
+            "winnerFirstName": null,
+            "winnerLastName": null,
+            "winnerNickname": null
+          }
+        ]
+      }
+    ],
+    "count": 2,
+    "timestamp": "2026-03-04T11:26:26.287Z"
+  },
+  "message": "Compétitions récupérées avec succès"
+}

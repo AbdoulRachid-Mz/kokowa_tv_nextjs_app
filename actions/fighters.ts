@@ -26,7 +26,7 @@ export async function getFighters(
 
     let whereClause = 'WHERE 1=1';
     const params: any[] = [];
-    const selectFields = ['f.*'];
+    const selectFields = ['f.id', 'f.first_name', 'f.last_name', 'f.nickname', 'f.slug', 'f.profile_image', 'f.ranking', 'f.is_active', 'f.is_champion', 'f.region_id'];
 
     // Recherche
     if (search) {
@@ -80,16 +80,18 @@ export async function getFighters(
     // JOIN achievements
     if (with_achievements) {
       selectFields.push(`
-        (SELECT JSON_AGG(
-          JSON_BUILD_OBJECT(
-            'id', fa.id,
-            'title', fa.title,
-            'year', fa.year,
-            'position', fa.position,
-            'description', fa.description,
-            'medal_image', fa.medal_image
-          ) ORDER BY fa.year DESC
-        ) FROM fighter_achievements fa WHERE fa.fighter_id = f.id) as achievements
+        (SELECT JSON_AGG(sub)
+        FROM (
+          SELECT
+            fa.id,
+            fa.title,
+            fa.year,
+            fa.position
+          FROM fighter_achievements fa
+          WHERE fa.fighter_id = f.id
+          ORDER BY fa.year DESC
+          LIMIT 3
+        ) sub) as achievements
       `);
     }
 

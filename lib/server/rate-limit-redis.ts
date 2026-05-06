@@ -8,12 +8,16 @@ export interface Store {
 export class RedisStore implements Store {
   private redis: Redis;
 
-  constructor(redisUrl: string) {
-    this.redis = new Redis({
-      url: redisUrl,
-      token: process.env.UPSTASH_REDIS_TOKEN,
-    });
+constructor(redisUrl: string) {
+  if (!process.env.UPSTASH_REDIS_TOKEN) {
+    throw new Error("UPSTASH_REDIS_TOKEN manquant");
   }
+
+  this.redis = new Redis({
+    url: redisUrl,
+    token: process.env.UPSTASH_REDIS_TOKEN,
+  });
+}
 
   async increment(key: string, windowMs: number): Promise<{ count: number; ttl: number }> {
     const now = Date.now();

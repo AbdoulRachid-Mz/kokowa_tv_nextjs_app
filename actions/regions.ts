@@ -25,7 +25,7 @@ export async function getRegions(
 
     let whereClause = 'WHERE 1=1';
     const params: any[] = [];
-    const selectFields: string[] = ['r.*'];
+    const selectFields: string[] = ['r.id', 'r.name', 'r.code', 'r.flag_image', 'r.total_fighters', 'r.total_champions', 'r.color', 'r.stadium_name'];
 
     // SEARCH
     if (search) {
@@ -57,13 +57,7 @@ export async function getRegions(
           'id', c.id,
           'first_name', c.first_name,
           'last_name', c.last_name,
-          'nickname', c.nickname,
-          'profile_image', c.profile_image,
-          'license_number', c.license_number,
-          'certification_level', c.certification_level,
-          'experience_years', c.experience_years,
-          'specialties', c.specialties,
-          'is_active', c.is_active
+          'profile_image', c.profile_image
         )
         FROM coaches c
         WHERE c.region_id = r.id AND c.is_active = true
@@ -74,39 +68,36 @@ export async function getRegions(
     // FIGHTERS
     if (with_fighters) {
       selectFields.push(`
-        (SELECT JSON_AGG(
-          JSON_BUILD_OBJECT(
-            'id', f.id,
-            'first_name', f.first_name,
-            'last_name', f.last_name,
-            'nickname', f.nickname,
-            'ranking', f.ranking,
-            'is_champion', f.is_champion,
-            'profile_image', f.profile_image
-          )
+        (SELECT JSON_AGG(sub)
+        FROM (
+          SELECT
+            f.id,
+            f.first_name,
+            f.last_name,
+            f.profile_image
+          FROM fighters f
+          WHERE f.region_id = r.id AND f.is_active = true
           ORDER BY f.ranking ASC
-        )
-        FROM fighters f
-        WHERE f.region_id = r.id AND f.is_active = true
-        LIMIT 10) as fighters
+          LIMIT 5
+        ) sub) as fighters
       `);
     }
 
     // COMPETITIONS
     if (with_competitions) {
       selectFields.push(`
-        (SELECT JSON_AGG(
-          JSON_BUILD_OBJECT(
-            'id', c.id,
-            'name', c.name,
-            'status', c.status,
-            'featured_image', c.featured_image
-          )
+        (SELECT JSON_AGG(sub)
+        FROM (
+          SELECT
+            c.id,
+            c.name,
+            c.status,
+            c.featured_image
+          FROM competitions c
+          WHERE c.region_id = r.id
           ORDER BY c.created_at DESC
-        )
-        FROM competitions c
-        WHERE c.region_id = r.id
-        LIMIT 5) as competitions
+          LIMIT 5
+        ) sub) as competitions
       `);
     }
 

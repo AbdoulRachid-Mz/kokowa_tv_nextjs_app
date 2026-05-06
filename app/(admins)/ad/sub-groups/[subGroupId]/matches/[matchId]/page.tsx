@@ -434,7 +434,7 @@ export default function MatchDetailPage() {
   // ==========================
   // COMPUTED
   // ==========================
-  const matches = subGroup?.matches || [];
+  const matches = subGroup?.matches as Match[] || [];
   const totalMatches = matches.length;
   const completedMatches = matches.filter(
     (m) => m.status === "completed",

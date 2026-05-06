@@ -1,10 +1,18 @@
-// components/entities/edition-card.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Typography } from "@/components/ui/typography";
 import { CompetitionEdition } from "@/types";
-import { Calendar, Users, Award, MapPin, MoreHorizontal } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  Award,
+  MapPin,
+  MoreHorizontal,
+  Eye,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -12,161 +20,218 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { BaseCardProps } from "./entity-cards";
 
-interface EditionCardProps {
-  edition: CompetitionEdition;
-  viewMode: 'grid' | 'list';
-  onEdit?: (edition: CompetitionEdition) => void;
-  onView?: (edition: CompetitionEdition) => void;
-  onDelete?: (edition: CompetitionEdition) => void;
-}
+export function EditionCard({
+  item: edition,
+  viewMode = "grid",
+  status: propStatus,
+  isCliquable = true,
+  isMini = false,
+  activeAction = "view",
+  onEdit,
+  onView,
+  onDelete,
+  className,
+}: BaseCardProps<CompetitionEdition>) {
+  const isListView = viewMode === "list";
+  const isCompact = viewMode === "compact" || isMini;
 
-export function EditionCard({ edition, viewMode, onEdit, onView, onDelete }: EditionCardProps) {
-  const isListView = viewMode === 'list';
-  
   const getEditionStatus = () => {
-    if (!edition.start_date || !edition.end_date) return 'upcoming';
-    
+    if (!edition.start_date || !edition.end_date) return "upcoming";
+
     const now = new Date();
     const start = new Date(edition.start_date);
     const end = new Date(edition.end_date);
-    
-    if (now >= start && now <= end) return 'ongoing';
-    if (now > end) return 'completed';
-    return 'upcoming';
+
+    if (now >= start && now <= end) return "ongoing";
+    if (now > end) return "completed";
+    return "upcoming";
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      upcoming: { label: 'À venir', variant: 'secondary' as const, color: 'bg-blue-100 text-blue-800 border-l-blue-500' },
-      ongoing: { label: 'En cours', variant: 'default' as const, color: 'bg-green-100 text-green-800 border-l-green-500' },
-      completed: { label: 'Terminée', variant: 'outline' as const, color: 'border-l-gray-500' },
+  const getStatusConfig = (status: string) => {
+    const config = {
+      upcoming: {
+        label: "À venir",
+        variant: "secondary" as const,
+        color: "border-l-blue-500",
+        bg: "bg-blue-50",
+      },
+      ongoing: {
+        label: "En cours",
+        variant: "default" as const,
+        color: "border-l-green-500",
+        bg: "bg-green-50",
+      },
+      completed: {
+        label: "Terminée",
+        variant: "outline" as const,
+        color: "border-l-gray-500",
+        bg: "bg-gray-50",
+      },
     };
-    
-    return statusConfig[status as keyof typeof statusConfig] || statusConfig.upcoming;
+    return config[status as keyof typeof config] || config.upcoming;
   };
 
-  const status = getEditionStatus();
-  const statusConfig = getStatusBadge(status);
+  const currentStatus = getEditionStatus();
+  const config = getStatusConfig(currentStatus);
+
+  const handleMainAction = () => {
+    if (!isCliquable) return;
+    if (activeAction === "view" && onView) onView(edition);
+    else if (activeAction === "edit" && onEdit) onEdit(edition);
+    else if (activeAction === "delete" && onDelete) onDelete(edition);
+    else if (onView) onView(edition);
+  };
+
+  const hasActions = onEdit || onView || onDelete;
 
   return (
-    <Card className={cn(
-      "hover:shadow-lg transition-all duration-300 cursor-pointer group border-l-4",
-      isListView && "flex",
-      statusConfig.color
-    )}>
-      <div className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}>
-        {/* Icône */}
-        <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
-          <div className={cn(
-            "w-12 h-12 rounded-lg flex items-center justify-center text-white",
-            status === 'ongoing' && "bg-gradient-to-br from-green-500 to-emerald-600",
-            status === 'completed' && "bg-gradient-to-br from-gray-500 to-gray-600",
-            status === 'upcoming' && "bg-gradient-to-br from-blue-500 to-cyan-600",
-          )}>
-            <Calendar className="h-6 w-6" />
+    <Card
+      className={cn(
+        "hover:shadow-md transition-all duration-300 group relative overflow-hidden border-l-4",
+        isListView && "flex items-center",
+        isCliquable && "cursor-pointer active:scale-[0.98]",
+        config.color,
+        className,
+      )}
+      onClick={handleMainAction}
+    >
+      <div
+        className={cn(
+          "p-3 flex w-full gap-3",
+          isListView ? "flex-row items-center" : "flex-col",
+        )}
+      >
+        <div className={cn("flex items-center gap-3", !isListView && "w-full")}>
+          <div
+            className={cn(
+              "w-10 h-10 rounded-lg flex items-center justify-center text-white flex-shrink-0 shadow-sm",
+              currentStatus === "ongoing"
+                ? "bg-green-500"
+                : currentStatus === "completed"
+                  ? "bg-gray-500"
+                  : "bg-blue-500",
+            )}
+          >
+            <Calendar className="h-5 w-5" />
           </div>
-        </div>
 
-        <div className={cn("flex-1", isListView && "flex items-center justify-between")}>
-          <div className={cn(isListView && "flex items-center gap-6 flex-1")}>
-            <div className="flex-1">
-              <CardTitle className="text-lg group-hover:text-primary transition-colors mb-1">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <Typography
+                variant={isCompact ? "body-sm" : "h5"}
+                weight="bold"
+                className="truncate group-hover:text-primary transition-colors"
+              >
                 Édition {edition.edition_number} - {edition.year}
-              </CardTitle>
-              
-              {edition.theme && (
-                <Typography variant="body-sm" theme="muted" className="italic mb-2">
-                  "{edition.theme}"
-                </Typography>
+              </Typography>
+              {!isListView && hasActions && (
+                <div
+                  className="flex-shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <CardActionMenu
+                    onEdit={() => onEdit?.(edition)}
+                    onView={() => onView?.(edition)}
+                    onDelete={() => onDelete?.(edition)}
+                  />
+                </div>
               )}
-
-              <div className="flex items-center gap-2 mb-3">
-                <Badge variant={statusConfig.variant} className={statusConfig.color?.replace('border-l-', 'bg-')}>
-                  {statusConfig.label}
-                </Badge>
-                
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <Users className="h-3 w-3" />
-                  {edition.total_participants} participants
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                {edition.start_date && edition.end_date && (
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Calendar className="h-3 w-3" />
-                    {new Date(edition.start_date).toLocaleDateString()} - {new Date(edition.end_date).toLocaleDateString()}
-                  </div>
-                )}
-                
-                {edition.winner_fighter && (
-                  <div className="flex items-center gap-1 font-semibold text-green-600">
-                    <Award className="h-3 w-3" />
-                    Vainqueur: {edition.winner_fighter.first_name} {edition.winner_fighter.last_name}
-                  </div>
-                )}
-                
-                {edition.fighters && edition.fighters.length > 0 && (
-                  <div className="text-muted-foreground">
-                    {edition.fighters.length} lutteurs inscrits
-                  </div>
-                )}
-                
-                {edition.regions && edition.regions.length > 0 && (
-                  <div className="text-muted-foreground">
-                    {edition.regions.length} régions participantes
-                  </div>
-                )}
-              </div>
             </div>
-
-            {isListView && (
-              <div className="text-right min-w-32">
-                <Typography variant="h4" weight="bold" className="text-primary mb-1">
-                  {edition.total_participants}
-                </Typography>
-                <Typography variant="caption2" theme="muted">
-                  Participants
-                </Typography>
-              </div>
+            {edition.theme && (
+              <Typography
+                variant="caption2"
+                theme="muted"
+                className="italic truncate"
+              >
+                "{edition.theme}"
+              </Typography>
             )}
           </div>
 
-          {/* Actions */}
-          <div className={cn("flex gap-2 mt-3", isListView && "mt-0 ml-4")}>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onView?.(edition);
-              }}
+          {isListView && hasActions && (
+            <div
+              className="flex-shrink-0 ml-auto"
+              onClick={(e) => e.stopPropagation()}
             >
-              Voir
-            </Button>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit?.(edition)}>
-                  Modifier
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => onDelete?.(edition)}
-                  className="text-red-600"
-                >
-                  Supprimer
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              <CardActionMenu
+                onEdit={() => onEdit?.(edition)}
+                onView={() => onView?.(edition)}
+                onDelete={() => onDelete?.(edition)}
+              />
+            </div>
+          )}
         </div>
+
+        {!isCompact && (
+          <div
+            className={cn(
+              "space-y-2",
+              isListView &&
+                "flex-1 px-4 border-l border-r border-border/50 mx-4",
+            )}
+          >
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={config.variant} className="text-[10px] h-5">
+                {config.label}
+              </Badge>
+              <Badge variant="outline" className="text-[10px] h-5">
+                <Users className="h-3 w-3 mr-1" /> {edition.total_participants}{" "}
+                part.
+              </Badge>
+            </div>
+
+            {edition.winner_fighter && (
+              <div className="flex items-center gap-1 text-[11px] font-bold text-green-600 truncate">
+                <Award className="h-3 w-3" /> Vainqueur:{" "}
+                {edition.winner_fighter.first_name}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </Card>
+  );
+}
+
+function CardActionMenu({
+  onEdit,
+  onView,
+  onDelete,
+}: {
+  onEdit?: () => void;
+  onView?: () => void;
+  onDelete?: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-full bg-primary/20 text-primary"
+        >
+          <MoreHorizontal className="h-4 w-4 bg-primary/20 text-primary" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {onView && (
+          <DropdownMenuItem onClick={onView}>
+            <Eye className="h-4 w-4 mr-2" /> Voir
+          </DropdownMenuItem>
+        )}
+        {onEdit && (
+          <DropdownMenuItem onClick={onEdit}>
+            <Pencil className="h-4 w-4 mr-2" /> Modifier
+          </DropdownMenuItem>
+        )}
+        {onDelete && (
+          <DropdownMenuItem onClick={onDelete} className="text-destructive">
+            <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

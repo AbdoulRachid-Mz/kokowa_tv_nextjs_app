@@ -1,51 +1,73 @@
-Je veux corriger mon architecture WebSocket + Next.js pour un déploiement sur Railway.
+Tu es un expert senior en architecture backend, optimisation PostgreSQL et performance frontend (React / Next.js / TanStack Query).
+
 Contexte :
-J’utilise Next.js (App Router)
-J’ai un serveur WebSocket custom avec "ws"
-Actuellement j’ai aussi une API route /api/ws (à supprimer)
-Mon WebSocket fonctionne en local mais pas en production sur Railway
-Railway impose un seul port (process.env.PORT)
-Objectifs :
-Supprimer complètement l’utilisation des API routes pour WebSocket
-Utiliser uniquement un serveur Node custom (http + ws)
-Faire tourner Next.js + WebSocket sur le même serveur et même port
-Assurer compatibilité Railway (PORT dynamique)
-Garder mon système actuel :
-wsManager
-Redis (optionnel)
-auth Firebase
-rooms / subscriptions
-Je veux que tu :
-modifies mon serveur pour intégrer Next.js dedans (custom server)
-ajustes les scripts package.json pour Railway
-proposes un script start unique (production-ready)
-supprimes toute dépendance au port 3001
-garantis que le WebSocket fonctionne via /ws
-vérifies que le client WebSocket (useRealtime) fonctionne sans changement majeur
-Contraintes :
-Node.js 18+ ou 20+
-compatible Railway
-pas de serverless
-code propre, production-ready
-Bonus :
-proposer une version scalable (séparer WS et Next en 2 services Railway)
-vérifier si Redis est correctement utilisé pour multi-instance
-Donne :
-nouveau fichier server.ts complet
-package.json corrigé
-instructions de déploiement Railway
-pièges à éviter ⚡ Petit aperçu de la correction attendue
+Je développe une application complexe de gestion de compétitions sportives avec une base PostgreSQL fortement relationnelle (competitions → editions → phases → groups → subgroups → matches).
 
-Ton package.json devrait ressembler à ça 👇
+Problème actuel :
+Les requêtes sont trop lourdes car elles récupèrent toutes les relations imbriquées avec JSON_AGG, ce qui cause :
 
-{
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "node server.js",
-    "ws:dev": "node --experimental-strip-types server/websocket-server.ts"
-  }
-}
+* des lenteurs SQL importantes
+* un overfetching massif
+* une mauvaise scalabilité
+* une mauvaise UX sur mobile
 
-👉 plus de concurrently en prod
-👉 un seul process
+Objectif :
+analyser d'abord toutes les actions backend et frontend et identifier les problemes et les points a corriger.
+ensuite et surtout et avant tout les besoins des pages admins
+Refactoriser complètement les actions backend pour adopter une architecture performante, scalable et optimisée.
+corection des requetes dans les pages admin et publiques.
+
+Contraintes importantes :
+
+1. Séparation des responsabilités :
+
+* Créer des endpoints distincts pour chaque niveau :
+  editions, phases, groups, subgroups, matches
+* Interdire les requêtes monolithiques avec toutes les relations imbriquées
+
+2. Stratégie de récupération :
+
+* Implémenter un système de "card queries" ultra légères avec uniquement les champs essentiels
+* Charger les relations uniquement à la demande (lazy loading)
+
+3. Optimisation SQL :
+
+* Remplacer tous les IN (SELECT ...) par des JOIN
+* Limiter fortement l'utilisation de JSON_AGG
+* Utiliser des index composites adaptés aux filtres fréquents
+* Optimiser les COUNT avec FILTER
+
+4. Frontend :
+
+* Utiliser TanStack (dans les hooks des entites) Query pour le caching et la gestion des requêtes
+* Découper les appels API par entité
+* Charger dynamiquement les données selon l'interaction utilisateur
+
+5. UI Components :
+
+* Créer un système de cards réutilisables avec :
+
+  * isClickable
+  * defaultAction (onView par défaut)
+  * dropdown pour actions secondaires (edit, delete)
+
+6. Performance :
+
+* Minimiser le payload réseau
+* Éviter toute surcharge inutile
+* Optimiser pour mobile en priorité
+
+Livrables attendus :
+
+* Nouvelle structure des endpoints
+* Exemples de requêtes SQL optimisées
+* Organisation des hooks TanStack Query
+* Stratégie de découpage UI ↔ API
+* Bonnes pratiques pour éviter les requêtes lourdes
+
+Important :
+Chaque décision doit être justifiée par un gain de performance ou de scalabilité.
+
+Après chaque etape on fait un "npx tsc --noEmit" pour verifier les erreur
+
+

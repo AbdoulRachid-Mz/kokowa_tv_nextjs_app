@@ -272,11 +272,10 @@ export default function VideosPage() {
       availableFilters={availableFilters}
       renderCard={(video, viewMode) => (
         <VideoCard
-          video={video}
+          item={video}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={onView}
-          onPlay={handlePlay}
         />
       )}
     />

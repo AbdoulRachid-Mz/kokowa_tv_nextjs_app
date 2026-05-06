@@ -5,12 +5,15 @@ import { useEntityList } from "@/hooks/use-entity-list";
 import { PhaseGroup } from "@/types";
 import { Typography } from "@/components/ui/typography";
 import { Card, CardContent } from "@/components/ui/card";
-import { Folder, Layers, Trophy, Calendar } from "lucide-react";
+import { CardStats } from "@/components/entities/card-stats";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
+import { DynamicActionMenu, MenuItemAction } from "@/components/shared/dynamic-action-menu";
+import { Folder, Layers, Trophy, Calendar, Eye, Pencil, Trash2, MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { CardStats } from "@/components/entities/card-stats";
+import { SubGroupCard } from "@/components/entities/entity-cards";
 
 export default function PhaseGroupsPage() {
   const router = useRouter();
@@ -49,7 +52,7 @@ export default function PhaseGroupsPage() {
     );
     const completedGroups = data.filter((group) => group.is_completed).length;
     const groupsWithMatches = data.filter((group) =>
-      group.sub_groups?.some((sg) => sg?.matches && sg.matches.length > 0)
+      group.sub_groups?.some((sg) => (sg?.matches_count && sg.matches_count > 0) || (sg?.matches && sg.matches.length > 0))
     ).length;
 
     const stats = [
@@ -80,11 +83,11 @@ export default function PhaseGroupsPage() {
     ];
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <StatsCarousel>
         {stats.map((stat, index) => (
           <CardStats key={index} {...stat} />
         ))}
-      </div>
+      </StatsCarousel>
     );
   };
 
@@ -129,149 +132,6 @@ export default function PhaseGroupsPage() {
     router.push(`/ad/phase-groups/${group.id}/matches`);
   };
 
-  const renderGroupCard = (group: PhaseGroup, viewMode: "grid" | "list") => {
-    const isListView = viewMode === "list";
-    const subGroupsCount = group.sub_groups?.length || 0;
-    const totalMatches =
-      group.sub_groups?.reduce(
-        (sum, sg) => sum + (sg.matches?.length || 0),
-        0
-      ) || 0;
-
-    return (
-      <Card
-        className={cn(
-          "hover:shadow-lg transition-all duration-300 cursor-pointer group border-l-4",
-          isListView && "flex",
-          group.is_completed ? "border-l-green-500" : "border-l-orange-500"
-        )}
-      >
-        <div
-          className={cn("p-4", isListView && "flex items-center gap-4 flex-1")}
-        >
-          <div className={cn("flex-shrink-0 mb-3", isListView && "mb-0")}>
-            <div
-              className={cn(
-                "w-12 h-12 rounded-lg flex items-center justify-center text-white",
-                group.is_completed
-                  ? "bg-gradient-to-br from-green-500 to-emerald-600"
-                  : "bg-gradient-to-br from-orange-500 to-red-600"
-              )}
-            >
-              <Folder className="h-6 w-6" />
-            </div>
-          </div>
-
-          <div
-            className={cn(
-              "flex-1",
-              isListView && "flex items-center justify-between"
-            )}
-          >
-            <div className={cn(isListView && "flex items-center gap-6")}>
-              <div>
-                <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                  {group.name}
-                </CardTitle>
-
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant={group.is_completed ? "default" : "secondary"}>
-                    {group.is_completed ? "Terminé" : "En cours"}
-                  </Badge>
-
-                  <Badge variant="outline">
-                    {subGroupsCount} sous-groupe(s)
-                  </Badge>
-
-                  {totalMatches > 0 && (
-                    <Badge variant="outline">{totalMatches} match(s)</Badge>
-                  )}
-                </div>
-
-                <div className="space-y-1 text-sm">
-                  <Typography
-                    variant="body-sm"
-                    className="text-muted-foreground"
-                  >
-                    Phase: {group.phase?.name} • Ordre: {group.group_order}
-                  </Typography>
-
-                  {group.phase?.edition && (
-                    <Typography
-                      variant="body-sm"
-                      className="text-muted-foreground"
-                    >
-                      Édition {group.phase.edition.edition_number} -{" "}
-                      {group.phase.edition.year}
-                    </Typography>
-                  )}
-
-                  {group.description && (
-                    <Typography
-                      variant="body-sm"
-                      className="text-muted-foreground line-clamp-2"
-                    >
-                      {group.description}
-                    </Typography>
-                  )}
-                </div>
-              </div>
-
-              {isListView && (
-                <div className="text-right">
-                  <Typography
-                    variant="h4"
-                    weight="bold"
-                    className="text-primary"
-                  >
-                    {group.group_order}
-                  </Typography>
-                  <Typography variant="caption2" theme="muted">
-                    Ordre
-                  </Typography>
-                </div>
-              )}
-            </div>
-
-            <div
-              className={cn("flex gap-2 mt-3", isListView && "mt-0 flex-col")}
-            >
-              {/* <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleManageMatches(group);
-                }}
-              >
-                Matchs
-              </Button> */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleViewGroup(group);
-                }}
-              >
-                Voir
-              </Button>
-              <Button
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditGroup(group);
-                }}
-              >
-                Modifier
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Card>
-    );
-  };
-
   return (
     <EntityList
       title="Gestion des Groupes"
@@ -295,20 +155,20 @@ export default function PhaseGroupsPage() {
       onViewModeChange={setViewMode}
       renderStats={renderStats}
       availableFilters={availableFilters}
-      renderCard={renderGroupCard}
+      renderCard={(item, viewMode) => {
+        // Adapt PhaseGroup to the shape SubGroupCard expects
+        const adaptedItem = {
+          ...item,
+          group_id: item.phase?.id ?? null,
+          sub_group_order: item.group_order ?? 0,
+        };
+        // Ensure group_id is always a number to match SubGroup type
+        return <SubGroupCard item={{ 
+          ...adaptedItem, group_id: adaptedItem.group_id ?? 0 }} 
+          onView={() => router.push(`/ad/sub_groups/${adaptedItem.id}`)} 
+          onEdit={() => router.push(`/ad/sub_groups/${adaptedItem.id}/edit`)} 
+          viewMode={viewMode} />;
+      }}
     />
   );
 }
-
-// Composant CardTitle manquant
-const CardTitle = ({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <Typography variant="h4" weight="medium" className={className}>
-    {children}
-  </Typography>
-);

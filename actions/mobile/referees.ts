@@ -81,46 +81,26 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
       'r.first_name as "firstName"',
       'r.last_name as "lastName"',
       'r.nickname',
-      'r.region_id as "regionId"',
-      'r.birth_date as "birthDate"',
       'r.profile_image as "profileImage"',
       'r.license_number as "licenseNumber"',
       'r.certification_level as "certificationLevel"',
       'r.experience_years as "experienceYears"',
       'r.is_active as "isActive"',
-      'r.social_links as "socialLinks"',
-      'r.created_at as "createdAt"',
-      'r.updated_at as "updatedAt"'
+      'r.social_links as "socialLinks"'
     ];
 
-    const joins: string[] = [];
-
-    if (filters.withRegion !== false) {
-      selectFields.push(`
-        JSON_BUILD_OBJECT(
-          'id', reg.id,
-          'name', reg.name,
-          'code', reg.code,
-          'flagImage', reg.flag_image,
-          'stadiumName', reg.stadium_name
-        ) as region
-      `);
-      joins.push('LEFT JOIN regions reg ON r.region_id = reg.id');
-    }
-
-    // Requête principale
-    const sortOrder = filters.sortOrder === 'desc' ? 'DESC' : 'ASC';
-    const refereesSql = `
-      SELECT ${selectFields.join(', ')}
+    const sql = `
+      SELECT 
+        ${selectFields.join(', ')}
       FROM referees r
-      ${joins.join(' ')}
       ${whereClause}
-      ORDER BY r.last_name ${sortOrder}, r.first_name ${sortOrder}, r.id ${sortOrder}
+      ORDER BY r.last_name ASC, r.first_name ASC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
     params.push(limit, offset);
-    const referees = await query(refereesSql, params);
+
+    const referees = await query(sql, params);
 
     // Récupérer les compteurs de sous-groupes et de matches si demandé
     if (filters.withSubGroups === true && referees.length > 0) {
@@ -219,40 +199,18 @@ export async function getMobileRefereeById(id: number, options: {
       'r.first_name as "firstName"',
       'r.last_name as "lastName"',
       'r.nickname',
-      'r.region_id as "regionId"',
-      'r.birth_date as "birthDate"',
       'r.profile_image as "profileImage"',
       'r.license_number as "licenseNumber"',
       'r.certification_level as "certificationLevel"',
       'r.experience_years as "experienceYears"',
       'r.is_active as "isActive"',
-      'r.social_links as "socialLinks"',
-      'r.created_at as "createdAt"',
-      'r.updated_at as "updatedAt"'
+      'r.social_links as "socialLinks"'
     ];
-
-    const joins: string[] = [];
-
-    if (withRegion) {
-      selectFields.push(`
-        JSON_BUILD_OBJECT(
-          'id', reg.id,
-          'name', reg.name,
-          'code', reg.code,
-          'flagImage', reg.flag_image,
-          'stadiumName', reg.stadium_name,
-          'stadiumImage', reg.stadium_image,
-          'color', reg.color
-        ) as region
-      `);
-      joins.push('LEFT JOIN regions reg ON r.region_id = reg.id');
-    }
 
     // Requête pour obtenir l'arbitre
     const refereeSql = `
       SELECT ${selectFields.join(', ')}
       FROM referees r
-      ${joins.join(' ')}
       WHERE r.id = $1
     `;
 

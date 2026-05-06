@@ -16,39 +16,46 @@ export interface AuthUser {
 const revokedTokensCache = new Map<string, number>();
 
 export async function verifyFirebaseToken(request: NextRequest) {
-  let authHeader: string | null = null;
-
   try {
-    authHeader = request.headers.get('authorization');
+    let token: string | null = null;
 
-    if (!authHeader?.startsWith('Bearer ')) {
-      return { user: null, error: 'Token manquant' };
+    // 1. Essayer le header Authorization
+    const authHeader = request.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.split('Bearer ')[1];
     }
 
-    const token = authHeader.split('Bearer ')[1];
+    // 2. Sinon essayer le cookie de session
+    if (!token) {
+      const cookieStore = await cookies();
+      token = cookieStore.get('firebase_session')?.value || null;
+    }
+
+    if (!token) {
+      return { user: null, error: 'Token manquant' };
+    }
 
     if (!adminAuth) {
       console.error('Firebase Admin non initialisé');
       return { user: null, error: 'Erreur configuration serveur' };
     }
 
-    // Vérifier si le token est dans le cache des révoqués
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    if (revokedTokensCache.has(tokenHash)) {
-      return { user: null, error: 'Token révoqué' };
+    // Vérifier le token (session cookie ou ID token)
+    let decodedToken;
+    try {
+      // Essayer comme session cookie d'abord
+      decodedToken = await adminAuth.verifySessionCookie(token, true);
+    } catch {
+      // Sinon comme ID token
+      decodedToken = await adminAuth.verifyIdToken(token, true);
     }
-
-    // Vérifier le token avec checkRevoked=true
-    const decodedToken = await adminAuth.verifyIdToken(token, true);
 
     // Vérifier que l'utilisateur n'est pas désactivé
     const userRecord = await adminAuth.getUser(decodedToken.uid);
-
     if (userRecord.disabled) {
       return { user: null, error: 'Compte utilisateur désactivé' };
     }
 
-    // Vérifier les claims personnalisés si nécessaire
     const customClaims = userRecord.customClaims || {};
 
     return {
@@ -62,32 +69,11 @@ export async function verifyFirebaseToken(request: NextRequest) {
         permissions: customClaims.permissions || [],
       },
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erreur vérification token Firebase:', error);
-
-    if (error instanceof Error) {
-      if (error.message.includes('Firebase ID token has expired')) {
-        return { user: null, error: 'Token expiré' };
-      }
-      if (error.message.includes('Firebase ID token has invalid signature')) {
-        return { user: null, error: 'Token invalide' };
-      }
-      if (error.message.includes('Token revoked')) {
-        // Ajouter au cache des révoqués
-        const token = authHeader?.split('Bearer ')[1];
-        if (token) {
-          const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-          revokedTokensCache.set(tokenHash, Date.now());
-
-          // Nettoyer le cache toutes les heures
-          setTimeout(() => {
-            revokedTokensCache.delete(tokenHash);
-          }, 60 * 60 * 1000);
-        }
-        return { user: null, error: 'Token révoqué' };
-      }
-    }
-
+    if (error.message?.includes('expired')) return { user: null, error: 'Token expiré' };
+    if (error.message?.includes('invalid')) return { user: null, error: 'Token invalide' };
+    if (error.message?.includes('revoked')) return { user: null, error: 'Token révoqué' };
     return { user: null, error: 'Token invalide' };
   }
 }
@@ -97,66 +83,37 @@ export async function requireAuth(
   requiredPermissions: string[] = []
 ): Promise<{
   authorized: boolean;
-  user?: any;
-  firebaseUser?: AuthUser;
+  user?: AuthUser;
   error?: string;
   status?: number;
 }> {
   const authResult = await verifyFirebaseToken(request);
-
   if (!authResult.user) {
-    return {
-      authorized: false,
-      error: authResult.error || 'Non autorisé',
-      status: 401
-    };
+    return { authorized: false, error: authResult.error || 'Non autorisé', status: 401 };
   }
 
-  // Vérifier les permissions si demandé
   if (requiredPermissions.length > 0) {
     const { checkUserPermissions } = await import('./auth-utils');
-    const permissionResult = await checkUserPermissions(
-      authResult.user.uid,
-      requiredPermissions
-    );
-
+    const permissionResult = await checkUserPermissions(authResult.user.uid, requiredPermissions);
     if (!permissionResult.hasPermission) {
-      return {
-        authorized: false,
-        error: 'Permissions insuffisantes',
-        status: 403
-      };
+      return { authorized: false, error: 'Permissions insuffisantes', status: 403 };
     }
-
-    return {
-      authorized: true,
-      user: permissionResult.user,
-      firebaseUser: authResult.user
-    };
+    return { authorized: true, user: { ...authResult.user, ...permissionResult.user } };
   }
 
-  return {
-    authorized: true,
-    user: authResult.user
-  };
+  return { authorized: true, user: authResult.user };
 }
 
-// Nouvelle version corrigée pour Next.js 14+
 export function withAuth(
-  handler: (request: NextRequest, user: any) => Promise<Response>,
+  handler: (request: NextRequest, user: AuthUser) => Promise<Response>,
   requiredPermissions: string[] = []
 ) {
-  return async (request: NextRequest, context: { params: Promise<{ [key: string]: string }> }): Promise<Response> => {
+  return async (request: NextRequest, context?: any): Promise<Response> => {
     const authResult = await requireAuth(request, requiredPermissions);
-
     if (!authResult.authorized) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status || 401 }
-      );
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
-
-    return handler(request, authResult.user);
+    return handler(request, authResult.user!);
   };
 }
 

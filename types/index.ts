@@ -99,6 +99,7 @@ export interface Referee extends BaseEntity {
   // Relations
   region?: Region;
   sub_groups?: SubGroup[];
+  total_sub_groups_assigned?: number;
 }
 
 // Ceinture
@@ -144,6 +145,12 @@ export interface CompetitionEdition extends BaseEntity {
   fighters?: EditionFighter[];
   regions?: EditionRegion[];
   phases?: Phase[];
+  
+  // Stats
+  phases_count?: number;
+  fighters_count?: number;
+  regions_count?: number;
+  matches_count?: number;
 }
 
 
@@ -191,6 +198,12 @@ export interface Phase extends BaseEntity {
   // Relations
   edition?: CompetitionEdition;
   groups?: PhaseGroup[];
+
+  // Stats
+  groups_count?: number;
+  groups_completed_count?: number;
+  sub_groups_count?: number;
+  matches_count?: number;
 }
 
 // Groupe de phase
@@ -206,6 +219,11 @@ export interface PhaseGroup extends BaseEntity {
   // Relations
   phase?: Phase;
   sub_groups?: SubGroup[];
+
+  // Stats
+  sub_groups_count?: number;
+  sub_groups_completed_count?: number;
+  matches_count?: number;
 }
 
 // Sous-groupe
@@ -237,6 +255,12 @@ export interface SubGroup extends BaseEntity {
   belt2?: Belt;
   main_referee?: Referee;
   matches?: Match[];
+  
+  // Stats
+  matches_count?: number;
+  matches_completed_count?: number;
+  fighters_count?: number;
+  
   edition_fighters?: Fighter[];
   edition_regions?: Region[];
 }
@@ -631,6 +655,8 @@ export interface SubGroupFilters extends BaseFilters {
   with_regions?: boolean;
   with_belts?: boolean;
   with_referee?: boolean;
+  with_edition_fighters?: boolean;
+  with_edition_regions?: boolean;
 }
 
 export interface MatchFilters extends BaseFilters {

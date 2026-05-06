@@ -101,7 +101,7 @@ export default function CompetitionsPage() {
       renderStats={renderStats}
       renderCard={(competition, viewMode) => (
         <EntityCards.Competition
-          competition={competition}
+          item={competition}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={onView}
