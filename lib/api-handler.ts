@@ -79,7 +79,7 @@ export async function apiHandler(
 
       // Ajouter l'utilisateur au contexte
       context.user = authResult.user;
-      context.firebaseUser = authResult.firebaseUser;
+      context.firebaseUser = authResult.user;
     }
 
     // Exécuter le handler principal
