@@ -1,0 +1,26 @@
+[
+  {
+    "id": 12,
+    "fighter_id": 78,
+    "region_id": 7,
+    "title": "Dance",
+    "edition_id": 13,
+    "year": 2026,
+    "position": "1st",
+    "description": "rtyui",
+    "medal_image": null,
+    "created_at": "2026-02-07T11:10:49.474Z"
+  },
+  {
+    "id": 13,
+    "fighter_id": 54,
+    "region_id": 2,
+    "title": "champion",
+    "edition_id": 25,
+    "year": 2026,
+    "position": "1st",
+    "description": "Kadri Abdou de la région Dosso a obtenu 🥇 1ère Place à Coupe du Président (Édition 1) en 2026.",
+    "medal_image": "/icons/3d-medal.png",
+    "created_at": "2026-05-08T10:47:54.128Z"
+  }
+]

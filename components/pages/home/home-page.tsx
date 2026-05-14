@@ -9,6 +9,7 @@ import { motion } from 'framer-motion'
 import { ImpactSection } from './sections/impact-section'
 import { LiveMatchesSection } from './sections/live-matches-section'
 import { StatsSection } from './sections/stats-section'
+import { TeamSection } from './sections/team-section'
 
 export default function HomePage() {
   return (
@@ -30,6 +31,7 @@ export default function HomePage() {
         <FeaturesSection />
         <ImpactSection />
         <LiveMatchesSection />
+        <TeamSection />
         <FeaturedContentSection />
         <CtaSection />
       </div>

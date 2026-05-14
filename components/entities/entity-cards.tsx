@@ -16,6 +16,7 @@ import {
   Advertisement,
   Phase,
   PhaseGroup,
+  TeamMember,
 } from "@/types";
 import {
   MapPin,
@@ -215,7 +216,7 @@ export function FighterCard({
             className={cn(
               "space-y-2",
               isListView &&
-                "flex-1 px-4 border-l border-r border-border/50 mx-4",
+              "flex-1 px-4 border-l border-r border-border/50 mx-4",
             )}
           >
             <div className="flex flex-wrap gap-2">
@@ -390,13 +391,13 @@ export function SubGroupCard({
                     extraActions={
                       onManageMatches
                         ? [
-                            {
-                              id: "matches",
-                              label: "Matchs",
-                              icon: Swords,
-                              onClick: () => onManageMatches(subGroup),
-                            },
-                          ]
+                          {
+                            id: "matches",
+                            label: "Matchs",
+                            icon: Swords,
+                            onClick: () => onManageMatches(subGroup),
+                          },
+                        ]
                         : []
                     }
                   />
@@ -438,13 +439,13 @@ export function SubGroupCard({
                 extraActions={
                   onManageMatches
                     ? [
-                        {
-                          id: "matches",
-                          label: "Matchs",
-                          icon: Swords,
-                          onClick: () => onManageMatches(subGroup),
-                        },
-                      ]
+                      {
+                        id: "matches",
+                        label: "Matchs",
+                        icon: Swords,
+                        onClick: () => onManageMatches(subGroup),
+                      },
+                    ]
                     : []
                 }
               />
@@ -457,7 +458,7 @@ export function SubGroupCard({
             className={cn(
               "space-y-2",
               isListView &&
-                "flex-1 px-4 border-l border-r border-border/50 mx-4",
+              "flex-1 px-4 border-l border-r border-border/50 mx-4",
             )}
           >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
@@ -597,7 +598,7 @@ export function PhaseGroupCard({
             className={cn(
               "space-y-2",
               isListView &&
-                "flex-1 px-4 border-l border-r border-border/50 mx-4",
+              "flex-1 px-4 border-l border-r border-border/50 mx-4",
             )}
           >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
@@ -740,7 +741,7 @@ export function PhaseCard({
             className={cn(
               "space-y-2",
               isListView &&
-                "flex-1 px-4 border-l border-r border-border/50 mx-4",
+              "flex-1 px-4 border-l border-r border-border/50 mx-4",
             )}
           >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
@@ -881,7 +882,7 @@ export function RegionCard({
             className={cn(
               "grid grid-cols-2 gap-2",
               isListView &&
-                "flex-1 px-4 border-l border-r border-border/50 mx-4",
+              "flex-1 px-4 border-l border-r border-border/50 mx-4",
             )}
           >
             <div className="flex flex-col">
@@ -1023,7 +1024,7 @@ export function CompetitionCard({
             className={cn(
               "space-y-1",
               isListView &&
-                "flex-1 px-4 border-l border-r border-border/50 mx-4",
+              "flex-1 px-4 border-l border-r border-border/50 mx-4",
             )}
           >
             <Typography
@@ -1177,7 +1178,7 @@ export function RefereeCard({
             className={cn(
               "space-y-2",
               isListView &&
-                "flex-1 px-4 border-l border-r border-border/50 mx-4",
+              "flex-1 px-4 border-l border-r border-border/50 mx-4",
             )}
           >
             <div className="flex flex-wrap gap-2">
@@ -1987,165 +1988,409 @@ export const AdvertisementCard: React.FC<{
   onDelete,
   isCliquable = true,
 }) => {
-  const actions: MenuItemAction[] = [];
-  if (onView)
-    actions.push({
-      id: "view",
-      label: "Voir",
-      icon: Eye,
-      onClick: () => onView(advertisement),
-    });
-  if (onEdit)
-    actions.push({
-      id: "edit",
-      label: "Modifier",
-      icon: Pencil,
-      onClick: () => onEdit(advertisement),
-    });
-  if (onDelete)
-    actions.push({
-      id: "delete",
-      label: "Supprimer",
-      icon: Trash2,
-      onClick: () => onDelete(advertisement),
-      className: "text-red-500",
-    });
-  const isActive = advertisement.is_active;
-  const now = new Date();
-  const startDate = advertisement.start_date
-    ? new Date(advertisement.start_date)
-    : null;
-  const endDate = advertisement.end_date
-    ? new Date(advertisement.end_date)
-    : null;
-  const isScheduled = startDate && startDate > now;
-  const isExpired = endDate && endDate < now;
+    const actions: MenuItemAction[] = [];
+    if (onView)
+      actions.push({
+        id: "view",
+        label: "Voir",
+        icon: Eye,
+        onClick: () => onView(advertisement),
+      });
+    if (onEdit)
+      actions.push({
+        id: "edit",
+        label: "Modifier",
+        icon: Pencil,
+        onClick: () => onEdit(advertisement),
+      });
+    if (onDelete)
+      actions.push({
+        id: "delete",
+        label: "Supprimer",
+        icon: Trash2,
+        onClick: () => onDelete(advertisement),
+        className: "text-red-500",
+      });
+    const isActive = advertisement.is_active;
+    const now = new Date();
+    const startDate = advertisement.start_date
+      ? new Date(advertisement.start_date)
+      : null;
+    const endDate = advertisement.end_date
+      ? new Date(advertisement.end_date)
+      : null;
+    const isScheduled = startDate && startDate > now;
+    const isExpired = endDate && endDate < now;
 
-  const getStatusBadge = () => {
-    if (!isActive)
+    const getStatusBadge = () => {
+      if (!isActive)
+        return (
+          <Badge variant="outline" className="bg-gray-100">
+            Inactive
+          </Badge>
+        );
+      if (isExpired)
+        return (
+          <Badge variant="outline" className="bg-red-100 text-red-700">
+            Expirée
+          </Badge>
+        );
+      if (isScheduled)
+        return (
+          <Badge variant="outline" className="bg-blue-100 text-blue-700">
+            Planifiée
+          </Badge>
+        );
       return (
-        <Badge variant="outline" className="bg-gray-100">
-          Inactive
+        <Badge variant="default" className="bg-green-600">
+          Active
         </Badge>
       );
-    if (isExpired)
-      return (
-        <Badge variant="outline" className="bg-red-100 text-red-700">
-          Expirée
-        </Badge>
-      );
-    if (isScheduled)
-      return (
-        <Badge variant="outline" className="bg-blue-100 text-blue-700">
-          Planifiée
-        </Badge>
-      );
-    return (
-      <Badge variant="default" className="bg-green-600">
-        Active
-      </Badge>
-    );
-  };
-
-  const getMediaTypeIcon = () => {
-    switch (advertisement.media_type) {
-      case "image":
-        return <ImageIcon className="h-4 w-4" />;
-      case "video":
-        return <VideoIcon className="h-4 w-4" />;
-      case "html":
-        return <CodeIcon className="h-4 w-4" />;
-      default:
-        return null;
-    }
-  };
-
-  const formatPosition = (position: string) => {
-    const positions: Record<string, string> = {
-      header: "En-tête",
-      sidebar: "Barre latérale",
-      footer: "Pied de page",
-      in_content: "Dans le contenu",
-      popup: "Pop-up",
-      banner_top: "Bannière haut",
-      banner_bottom: "Bannière bas",
-      mobile_sticky: "Mobile collant",
     };
-    return positions[position] || position;
-  };
 
-  const effectiveViewMode = viewMode === "compact" ? "list" : viewMode;
+    const getMediaTypeIcon = () => {
+      switch (advertisement.media_type) {
+        case "image":
+          return <ImageIcon className="h-4 w-4" />;
+        case "video":
+          return <VideoIcon className="h-4 w-4" />;
+        case "html":
+          return <CodeIcon className="h-4 w-4" />;
+        default:
+          return null;
+      }
+    };
 
-  if (effectiveViewMode === "list") {
-    return (
-      <Card
-        className="hover:shadow-md transition-shadow group relative cursor-pointer active:scale-[0.98]"
-        onClick={() => isCliquable && onView?.(advertisement)}
-      >
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4 flex-1">
-              {/* Media preview */}
-              <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden flex items-center justify-center">
-                {advertisement.media && advertisement.media_type === "image" ? (
-                  <div className="w-full h-full relative">
-                    <img
-                      src={advertisement.media}
-                      alt={advertisement.title}
-                      className="w-full h-full absolute object-cover"
-                    />
+    const formatPosition = (position: string) => {
+      const positions: Record<string, string> = {
+        header: "En-tête",
+        sidebar: "Barre latérale",
+        footer: "Pied de page",
+        in_content: "Dans le contenu",
+        popup: "Pop-up",
+        banner_top: "Bannière haut",
+        banner_bottom: "Bannière bas",
+        mobile_sticky: "Mobile collant",
+      };
+      return positions[position] || position;
+    };
+
+    const effectiveViewMode = viewMode === "compact" ? "list" : viewMode;
+
+    if (effectiveViewMode === "list") {
+      return (
+        <Card
+          className="hover:shadow-md transition-shadow group relative cursor-pointer active:scale-[0.98]"
+          onClick={() => isCliquable && onView?.(advertisement)}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 flex-1">
+                {/* Media preview */}
+                <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden flex items-center justify-center">
+                  {advertisement.media && advertisement.media_type === "image" ? (
+                    <div className="w-full h-full relative">
+                      <img
+                        src={advertisement.media}
+                        alt={advertisement.title}
+                        className="w-full h-full absolute object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground">
+                      {getMediaTypeIcon()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Typography variant="body-base" weight="medium">
+                      {advertisement.title}
+                    </Typography>
+                    {getStatusBadge()}
                   </div>
-                ) : (
-                  <div className="text-muted-foreground">
-                    {getMediaTypeIcon()}
+                  {advertisement.cta_text && (
+                    <Typography
+                      variant="body-sm"
+                      theme="muted"
+                      className="mb-3 line-clamp-2"
+                    >
+                      {advertisement.cta_text}
+                    </Typography>
+                  )}
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {formatPosition(advertisement.position)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3" />
+                      Priorité {advertisement.priority}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Eye className="h-3 w-3" />
+                      {advertisement.impression_count} vues
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MousePointer className="h-3 w-3" />
+                      {advertisement.click_count} clics
+                    </span>
                   </div>
-                )}
+                  {advertisement.advertiser_name && (
+                    <Typography variant="body-sm" theme="muted" className="mt-1">
+                      Annonceur: {advertisement.advertiser_name}
+                    </Typography>
+                  )}
+                </div>
               </div>
 
-              {/* Info */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <Typography variant="body-base" weight="medium">
-                    {advertisement.title}
-                  </Typography>
-                  {getStatusBadge()}
-                </div>
-                {advertisement.cta_text && (
-                  <Typography
-                    variant="body-sm"
-                    theme="muted"
-                    className="mb-3 line-clamp-2"
+              {/* Actions */}
+              <div className="relative">
+                {actions.length > 0 && (
+                  <DynamicActionMenu
+                    variant="inline"
+                    actions={actions}
+                    menuTitle="Actions"
                   >
-                    {advertisement.cta_text}
-                  </Typography>
-                )}
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {formatPosition(advertisement.position)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" />
-                    Priorité {advertisement.priority}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    {advertisement.impression_count} vues
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MousePointer className="h-3 w-3" />
-                    {advertisement.click_count} clics
-                  </span>
-                </div>
-                {advertisement.advertiser_name && (
-                  <Typography variant="body-sm" theme="muted" className="mt-1">
-                    Annonceur: {advertisement.advertiser_name}
-                  </Typography>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full bg-primary/20 text-primary hover:bg-muted"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DynamicActionMenu>
                 )}
               </div>
             </div>
+          </CardContent>
+        </Card>
+      );
+    }
 
-            {/* Actions */}
+    // Mode compact
+    if (viewMode === "compact") {
+      return (
+        <Card
+          className="hover:shadow-md transition-shadow group relative cursor-pointer active:scale-[0.98]"
+          onClick={() => isCliquable && onView?.(advertisement)}
+        >
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 flex-1">
+                {/* Media preview */}
+                <div className="w-12 h-12 bg-muted rounded overflow-hidden flex items-center justify-center">
+                  {advertisement.media && advertisement.media_type === "image" ? (
+                    <img
+                      src={advertisement.media}
+                      alt={advertisement.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-muted-foreground">
+                      {getMediaTypeIcon()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Typography
+                      variant="body-sm"
+                      weight="medium"
+                      className="truncate"
+                    >
+                      {advertisement.title}
+                    </Typography>
+                    {getStatusBadge()}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {formatPosition(advertisement.position)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Eye className="h-3 w-3" />
+                      {advertisement.impression_count}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MousePointer className="h-3 w-3" />
+                      {advertisement.click_count}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="relative">
+                {actions.length > 0 && (
+                  <DynamicActionMenu
+                    variant="inline"
+                    actions={actions}
+                    menuTitle="Actions"
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 rounded-full hover:bg-muted"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreHorizontal className="h-3 w-3" />
+                    </Button>
+                  </DynamicActionMenu>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // Mode grille
+    return (
+      <Card
+        className="hover:shadow-lg transition-all duration-300 h-full flex flex-col group relative cursor-pointer active:scale-[0.98]"
+        onClick={() => isCliquable && onView?.(advertisement)}
+      >
+        {/* Media header */}
+        <div className="relative h-40 bg-gradient-to-br from-primary/10 to-primary/5 rounded-t-lg overflow-hidden">
+          {advertisement.media && advertisement.media_type === "image" ? (
+            <div className="w-full h-hull relative">
+              <Image
+                src={advertisement.media}
+                alt={advertisement.title}
+                fill
+                className="w-full h-full absolute object-cover"
+              />
+            </div>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-4xl mb-2 text-primary/30">
+                  {getMediaTypeIcon()}
+                </div>
+                <Typography variant="body-sm" theme="muted">
+                  {advertisement.media_type === "video"
+                    ? "Vidéo"
+                    : advertisement.media_type === "html"
+                      ? "HTML"
+                      : "Image"}
+                </Typography>
+              </div>
+            </div>
+          )}
+
+          {/* Status badge */}
+          <div className="absolute top-2 right-2">{getStatusBadge()}</div>
+
+          {/* Position badge */}
+          <div className="absolute bottom-2 left-2">
+            <Badge
+              variant="secondary"
+              className="bg-black/50 text-white border-0"
+            >
+              <MapPin className="h-3 w-3 mr-1" />
+              {formatPosition(advertisement.position)}
+            </Badge>
+          </div>
+        </div>
+
+        <CardContent className="flex-1 p-4">
+          <div className="flex justify-between items-start mb-2">
+            <Typography
+              variant="body-base"
+              weight="bold"
+              className="line-clamp-1"
+            >
+              {advertisement.title}
+            </Typography>
+            <div className="flex items-center gap-1">
+              <Badge variant="outline" className="text-xs">
+                P{advertisement.priority}
+              </Badge>
+            </div>
+          </div>
+
+          {advertisement.cta_text && (
+            <Typography
+              variant="body-sm"
+              theme="muted"
+              className="mb-3 line-clamp-2"
+            >
+              {advertisement.cta_text}
+            </Typography>
+          )}
+          {advertisement.description && (
+            <Typography
+              variant="body-sm"
+              theme="muted"
+              className="mb-3 line-clamp-2"
+            >
+              {advertisement.description}
+            </Typography>
+          )}
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="text-center p-2 bg-muted/30 rounded">
+              <Typography variant="body-sm" weight="bold">
+                {advertisement.impression_count}
+              </Typography>
+              <Typography variant="body-sm" theme="muted">
+                Vues
+              </Typography>
+            </div>
+            <div className="text-center p-2 bg-muted/30 rounded">
+              <Typography variant="body-sm" weight="bold">
+                {advertisement.click_count}
+              </Typography>
+              <Typography variant="body-sm" theme="muted">
+                Clics
+              </Typography>
+            </div>
+          </div>
+
+          {/* CTR */}
+          <div className="mb-3">
+            <div className="flex justify-between text-xs mb-1">
+              <span>CTR</span>
+              <span className="font-medium">
+                {advertisement.impression_count > 0
+                  ? (
+                    (advertisement.click_count /
+                      advertisement.impression_count) *
+                    100
+                  ).toFixed(2)
+                  : 0}
+                %
+              </span>
+            </div>
+            <Progress
+              value={
+                advertisement.impression_count > 0
+                  ? (advertisement.click_count / advertisement.impression_count) *
+                  100
+                  : 0
+              }
+              className="h-1"
+            />
+          </div>
+
+          {/* Annonceur et Actions */}
+          <div className="flex justify-between items-center mt-auto">
+            {advertisement.advertiser_name && (
+              <Typography
+                variant="body-sm"
+                theme="muted"
+                className="truncate flex-1 mr-2"
+              >
+                {advertisement.advertiser_name}
+              </Typography>
+            )}
             <div className="relative">
               {actions.length > 0 && (
                 <DynamicActionMenu
@@ -2168,261 +2413,179 @@ export const AdvertisementCard: React.FC<{
         </CardContent>
       </Card>
     );
-  }
-
-  // Mode compact
-  if (viewMode === "compact") {
-    return (
-      <Card
-        className="hover:shadow-md transition-shadow group relative cursor-pointer active:scale-[0.98]"
-        onClick={() => isCliquable && onView?.(advertisement)}
-      >
-        <CardContent className="p-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1">
-              {/* Media preview */}
-              <div className="w-12 h-12 bg-muted rounded overflow-hidden flex items-center justify-center">
-                {advertisement.media && advertisement.media_type === "image" ? (
-                  <img
-                    src={advertisement.media}
-                    alt={advertisement.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="text-muted-foreground">
-                    {getMediaTypeIcon()}
-                  </div>
-                )}
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <Typography
-                    variant="body-sm"
-                    weight="medium"
-                    className="truncate"
-                  >
-                    {advertisement.title}
-                  </Typography>
-                  {getStatusBadge()}
-                </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {formatPosition(advertisement.position)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    {advertisement.impression_count}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MousePointer className="h-3 w-3" />
-                    {advertisement.click_count}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="relative">
-              {actions.length > 0 && (
-                <DynamicActionMenu
-                  variant="inline"
-                  actions={actions}
-                  menuTitle="Actions"
-                >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 rounded-full hover:bg-muted"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <MoreHorizontal className="h-3 w-3" />
-                  </Button>
-                </DynamicActionMenu>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Mode grille
-  return (
-    <Card
-      className="hover:shadow-lg transition-all duration-300 h-full flex flex-col group relative cursor-pointer active:scale-[0.98]"
-      onClick={() => isCliquable && onView?.(advertisement)}
-    >
-      {/* Media header */}
-      <div className="relative h-40 bg-gradient-to-br from-primary/10 to-primary/5 rounded-t-lg overflow-hidden">
-        {advertisement.media && advertisement.media_type === "image" ? (
-          <div className="w-full h-hull relative">
-            <Image
-              src={advertisement.media}
-              alt={advertisement.title}
-              fill
-              className="w-full h-full absolute object-cover"
-            />
-          </div>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-4xl mb-2 text-primary/30">
-                {getMediaTypeIcon()}
-              </div>
-              <Typography variant="body-sm" theme="muted">
-                {advertisement.media_type === "video"
-                  ? "Vidéo"
-                  : advertisement.media_type === "html"
-                    ? "HTML"
-                    : "Image"}
-              </Typography>
-            </div>
-          </div>
-        )}
-
-        {/* Status badge */}
-        <div className="absolute top-2 right-2">{getStatusBadge()}</div>
-
-        {/* Position badge */}
-        <div className="absolute bottom-2 left-2">
-          <Badge
-            variant="secondary"
-            className="bg-black/50 text-white border-0"
-          >
-            <MapPin className="h-3 w-3 mr-1" />
-            {formatPosition(advertisement.position)}
-          </Badge>
-        </div>
-      </div>
-
-      <CardContent className="flex-1 p-4">
-        <div className="flex justify-between items-start mb-2">
-          <Typography
-            variant="body-base"
-            weight="bold"
-            className="line-clamp-1"
-          >
-            {advertisement.title}
-          </Typography>
-          <div className="flex items-center gap-1">
-            <Badge variant="outline" className="text-xs">
-              P{advertisement.priority}
-            </Badge>
-          </div>
-        </div>
-
-        {advertisement.cta_text && (
-          <Typography
-            variant="body-sm"
-            theme="muted"
-            className="mb-3 line-clamp-2"
-          >
-            {advertisement.cta_text}
-          </Typography>
-        )}
-        {advertisement.description && (
-          <Typography
-            variant="body-sm"
-            theme="muted"
-            className="mb-3 line-clamp-2"
-          >
-            {advertisement.description}
-          </Typography>
-        )}
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <div className="text-center p-2 bg-muted/30 rounded">
-            <Typography variant="body-sm" weight="bold">
-              {advertisement.impression_count}
-            </Typography>
-            <Typography variant="body-sm" theme="muted">
-              Vues
-            </Typography>
-          </div>
-          <div className="text-center p-2 bg-muted/30 rounded">
-            <Typography variant="body-sm" weight="bold">
-              {advertisement.click_count}
-            </Typography>
-            <Typography variant="body-sm" theme="muted">
-              Clics
-            </Typography>
-          </div>
-        </div>
-
-        {/* CTR */}
-        <div className="mb-3">
-          <div className="flex justify-between text-xs mb-1">
-            <span>CTR</span>
-            <span className="font-medium">
-              {advertisement.impression_count > 0
-                ? (
-                    (advertisement.click_count /
-                      advertisement.impression_count) *
-                    100
-                  ).toFixed(2)
-                : 0}
-              %
-            </span>
-          </div>
-          <Progress
-            value={
-              advertisement.impression_count > 0
-                ? (advertisement.click_count / advertisement.impression_count) *
-                  100
-                : 0
-            }
-            className="h-1"
-          />
-        </div>
-
-        {/* Annonceur et Actions */}
-        <div className="flex justify-between items-center mt-auto">
-          {advertisement.advertiser_name && (
-            <Typography
-              variant="body-sm"
-              theme="muted"
-              className="truncate flex-1 mr-2"
-            >
-              {advertisement.advertiser_name}
-            </Typography>
-          )}
-          <div className="relative">
-            {actions.length > 0 && (
-              <DynamicActionMenu
-                variant="inline"
-                actions={actions}
-                menuTitle="Actions"
-              >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full bg-primary/20 text-primary hover:bg-muted"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DynamicActionMenu>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+  };
 
 // Export des composants de cartes
 export const EntityCards = {
   Fighter: FighterCard,
   Region: RegionCard,
   Competition: CompetitionCard,
-  Referee: RefereeCard, // AJOUT
-  Coach: CoachCard, // AJOUT
-  Transfer: TransferCard, // AJOUT
+  Referee: RefereeCard,
+  Coach: CoachCard,
+  Transfer: TransferCard,
   SubGroup: SubGroupCard,
   User: UserCard,
   Advertisement: AdvertisementCard, // Nouveau
+  TeamMember: TeamMemberCard,
 };
+
+// Carte pour les membres de l'équipe
+export function TeamMemberCard({
+  item: member,
+  viewMode = "grid",
+  status,
+  isCliquable = true,
+  isMini = false,
+  activeAction = "view",
+  onEdit,
+  onView,
+  onDelete,
+  className,
+}: BaseCardProps<TeamMember>) {
+  const isListView = viewMode === "list";
+  const isCompact = viewMode === "compact" || isMini;
+
+  const handleMainAction = () => {
+    if (!isCliquable) return;
+    if (activeAction === "view" && onView) onView(member);
+    else if (activeAction === "edit" && onEdit) onEdit(member);
+    else if (activeAction === "delete" && onDelete) onDelete(member);
+    else if (onView) onView(member);
+  };
+
+  const hasActions = onEdit || onView || onDelete;
+
+  return (
+    <Card
+      className={cn(
+        "hover:shadow-md transition-all duration-300 group relative overflow-hidden",
+        isListView && "flex items-center",
+        isCliquable && "cursor-pointer active:scale-[0.98]",
+        getStatusBorder(status || (member.is_active ? "success" : "default")),
+        className
+      )}
+      onClick={handleMainAction}
+    >
+      <div
+        className={cn(
+          "p-3 flex w-full gap-3",
+          isListView ? "flex-row items-center" : "flex-col"
+        )}
+      >
+        <div className={cn("flex items-center gap-3", !isListView && "w-full")}>
+          <div className="relative flex-shrink-0">
+            {(member.profile_image || member.avatar_url) ? (
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-background shadow-sm relative">
+                <Image
+                  src={member.profile_image || member.avatar_url || ''}
+                  alt={member.full_name}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                {member.full_name[0]}
+              </div>
+            )}
+            {member.is_lead && (
+              <div className="absolute -top-1 -right-1 bg-yellow-500 rounded-full p-1 shadow-sm">
+                <Shield className="h-3 w-3 text-black" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <Typography
+                variant={isCompact ? "body-sm" : "h4"}
+                weight="bold"
+                className="truncate group-hover:text-primary transition-colors"
+              >
+                {member.full_name}
+              </Typography>
+              {!isListView && hasActions && (
+                <div
+                  className="flex-shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <CardActionMenu
+                    onEdit={() => onEdit?.(member)}
+                    onView={() => onView?.(member)}
+                    onDelete={() => onDelete?.(member)}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Typography variant="caption1" theme="muted" className="truncate">
+                {member.role}
+              </Typography>
+              {member.department && (
+                <Badge variant="outline" className="text-[8px] h-3 px-1">
+                  {member.department}
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {isListView && hasActions && (
+            <div
+              className="flex-shrink-0 ml-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <CardActionMenu
+                onEdit={() => onEdit?.(member)}
+                onView={() => onView?.(member)}
+                onDelete={() => onDelete?.(member)}
+              />
+            </div>
+          )}
+        </div>
+
+        {!isCompact && (
+          <div
+            className={cn(
+              "space-y-2",
+              isListView &&
+                "flex-1 px-4 border-l border-r border-border/50 mx-4"
+            )}
+          >
+            <div className="flex flex-wrap gap-2">
+              {member.expertise && Array.isArray(member.expertise) && member.expertise.slice(0, 3).map((exp, idx) => (
+                <Badge key={idx} variant="outline" className="text-[9px] h-4 px-1">
+                  {exp}
+                </Badge>
+              ))}
+            </div>
+            
+            <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+              {member.years_experience !== undefined && (
+                <div className="flex items-center gap-1">
+                  <Star className="h-3 w-3" />
+                  <span>{member.years_experience} ans exp.</span>
+                </div>
+              )}
+              {member.projects_count !== undefined && (
+                <div className="flex items-center gap-1">
+                  <Layers className="h-3 w-3" />
+                  <span>{member.projects_count} projets</span>
+                </div>
+              )}
+            </div>
+
+            {member.bio && (
+              <Typography
+                variant="caption1"
+                theme="muted"
+                className="line-clamp-2 italic"
+              >
+                {member.bio}
+              </Typography>
+            )}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}

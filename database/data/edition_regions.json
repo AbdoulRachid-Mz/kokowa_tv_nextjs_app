@@ -1,0 +1,162 @@
+[
+  {
+    "id": 43,
+    "edition_id": 25,
+    "region_id": 1,
+    "registration_date": "2026-04-10T10:45:44.180Z",
+    "status": "registered",
+    "created_at": "2026-04-10T10:45:44.180Z",
+    "is_eliminated": false,
+    "points": 0
+  },
+  {
+    "id": 42,
+    "edition_id": 25,
+    "region_id": 7,
+    "registration_date": "2026-04-10T10:45:43.848Z",
+    "status": "registered",
+    "created_at": "2026-04-10T10:45:43.848Z",
+    "is_eliminated": false,
+    "points": 0
+  },
+  {
+    "id": 39,
+    "edition_id": 13,
+    "region_id": 8,
+    "registration_date": "2025-12-22T17:53:12.871Z",
+    "status": "registered",
+    "created_at": "2025-12-22T17:53:12.871Z",
+    "is_eliminated": false,
+    "points": 17
+  },
+  {
+    "id": 36,
+    "edition_id": 13,
+    "region_id": 7,
+    "registration_date": "2025-12-22T17:53:12.737Z",
+    "status": "registered",
+    "created_at": "2025-12-22T17:53:12.737Z",
+    "is_eliminated": false,
+    "points": 11
+  },
+  {
+    "id": 48,
+    "edition_id": 25,
+    "region_id": 4,
+    "registration_date": "2026-04-10T10:45:45.688Z",
+    "status": "registered",
+    "created_at": "2026-04-10T10:45:45.688Z",
+    "is_eliminated": false,
+    "points": 0
+  },
+  {
+    "id": 47,
+    "edition_id": 25,
+    "region_id": 8,
+    "registration_date": "2026-04-10T10:45:45.586Z",
+    "status": "registered",
+    "created_at": "2026-04-10T10:45:45.586Z",
+    "is_eliminated": false,
+    "points": 0
+  },
+  {
+    "id": 40,
+    "edition_id": 13,
+    "region_id": 6,
+    "registration_date": "2025-12-22T17:53:12.877Z",
+    "status": "registered",
+    "created_at": "2025-12-22T17:53:12.877Z",
+    "is_eliminated": false,
+    "points": 12
+  },
+  {
+    "id": 45,
+    "edition_id": 25,
+    "region_id": 6,
+    "registration_date": "2026-04-10T10:45:45.511Z",
+    "status": "registered",
+    "created_at": "2026-04-10T10:45:45.511Z",
+    "is_eliminated": false,
+    "points": 0
+  },
+  {
+    "id": 44,
+    "edition_id": 25,
+    "region_id": 5,
+    "registration_date": "2026-04-10T10:45:45.475Z",
+    "status": "registered",
+    "created_at": "2026-04-10T10:45:45.475Z",
+    "is_eliminated": false,
+    "points": 3
+  },
+  {
+    "id": 41,
+    "edition_id": 25,
+    "region_id": 2,
+    "registration_date": "2026-04-10T10:45:43.709Z",
+    "status": "registered",
+    "created_at": "2026-04-10T10:45:43.709Z",
+    "is_eliminated": false,
+    "points": 3
+  },
+  {
+    "id": 46,
+    "edition_id": 25,
+    "region_id": 3,
+    "registration_date": "2026-04-10T10:45:45.557Z",
+    "status": "registered",
+    "created_at": "2026-04-10T10:45:45.557Z",
+    "is_eliminated": false,
+    "points": 0
+  },
+  {
+    "id": 37,
+    "edition_id": 13,
+    "region_id": 1,
+    "registration_date": "2025-12-22T17:53:12.856Z",
+    "status": "registered",
+    "created_at": "2025-12-22T17:53:12.856Z",
+    "is_eliminated": false,
+    "points": 10
+  },
+  {
+    "id": 38,
+    "edition_id": 13,
+    "region_id": 2,
+    "registration_date": "2025-12-22T17:53:12.865Z",
+    "status": "registered",
+    "created_at": "2025-12-22T17:53:12.865Z",
+    "is_eliminated": false,
+    "points": 0
+  },
+  {
+    "id": 35,
+    "edition_id": 13,
+    "region_id": 4,
+    "registration_date": "2025-12-22T17:53:12.712Z",
+    "status": "registered",
+    "created_at": "2025-12-22T17:53:12.712Z",
+    "is_eliminated": false,
+    "points": 3
+  },
+  {
+    "id": 34,
+    "edition_id": 13,
+    "region_id": 5,
+    "registration_date": "2025-12-22T17:53:11.948Z",
+    "status": "registered",
+    "created_at": "2025-12-22T17:53:11.948Z",
+    "is_eliminated": false,
+    "points": 3
+  },
+  {
+    "id": 33,
+    "edition_id": 13,
+    "region_id": 3,
+    "registration_date": "2025-12-22T17:53:11.446Z",
+    "status": "registered",
+    "created_at": "2025-12-22T17:53:11.446Z",
+    "is_eliminated": false,
+    "points": 3
+  }
+]

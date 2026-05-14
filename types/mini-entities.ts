@@ -265,3 +265,13 @@ export interface MiniNotification {
   is_read: boolean;
   priority: 'low' | 'medium' | 'high';
 }
+
+// Mini TeamMember
+export interface MiniTeamMember {
+  id: number;
+  full_name: string;
+  role: string;
+  avatar_url?: string;
+  is_lead: boolean;
+  is_active: boolean;
+}

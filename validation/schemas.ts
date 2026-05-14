@@ -53,7 +53,7 @@ export const fighterAchievementSchema = z.object({
   year: z.number().int().min(1900, 'Année invalide').max(new Date().getFullYear(), 'Année invalide'),
   position: z.enum(['1st', '2nd', '3rd', 'finalist', 'semifinalist', 'quarterfinalist']),
   description: z.string().optional(),
-  medal_image: z.string().url('URL invalide').nullable().optional(),
+  medal_image: z.string().nullable().optional(),
 });
 
 // Schema pour les arbitres
@@ -446,6 +446,48 @@ export const appSettingSchema = z.object({
   is_editable: z.boolean().default(true),
 });
 
+// Schema pour les membres de l'équipe
+export const teamMemberSchema = z.object({
+  full_name: z.string().min(2, "Le nom complet est requis"),
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  nickname: z.string().optional(),
+  email: z.string().email("Email invalide").optional().or(z.literal("")),
+  phone: z.string().optional(),
+  role: z.string().min(2, "Le rôle est requis"),
+  department: z.string().optional(),
+  specialization: z.string().optional(),
+  avatar_url: z.string().url("L'URL de l'avatar est invalide").optional().or(z.literal("")),
+  profile_image: z.string().url("L'URL de l'image de profil est invalide").optional().or(z.literal("")),
+  cover_image: z.string().url("L'URL de l'image de couverture est invalide").optional().or(z.literal("")),
+  bio: z.string().optional(),
+  quote: z.string().optional(),
+  social_links: z.any().optional().default([]),
+  badges: z.any().optional().default([]),
+  expertise: z.any().optional().default([]),
+  languages: z.any().optional().default([]),
+  is_lead: z.boolean().default(false),
+  is_active: z.boolean().default(true),
+  years_experience: z.number().int().nonnegative().optional(),
+  projects_count: z.number().int().nonnegative().optional(),
+  contributions_count: z.number().int().nonnegative().optional(),
+  position_order: z.number().int().default(0),
+  availability: z.string().optional().default("full-time"),
+  joined_date: z.string().optional(),
+  last_active: z.string().optional(),
+});
+
+// Schema pour les accomplissements d'équipe
+export const teamAchievementSchema = z.object({
+  team_member_id: z.number().int().positive('Membre d\'équipe invalide'),
+  title: z.string().min(1, 'Le titre est requis').max(255),
+  description: z.string().optional(),
+  achievement_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)').optional(),
+  category: z.string().max(100).optional(),
+  icon: z.string().max(100).optional(),
+  color: z.string().max(20).optional(),
+});
+
 
 // Schema pour la mise à jour des settings
 export const appSettingUpdateSchema = z.object({
@@ -478,3 +520,5 @@ export type VideoInput = z.infer<typeof videoSchema>;
 export type InteractionInput = z.infer<typeof interactionSchema>;
 export type NotificationInput = z.infer<typeof notificationSchema>;
 export type AppSettingInput = z.infer<typeof appSettingSchema>;
+export type TeamMemberInput = z.infer<typeof teamMemberSchema>;
+export type TeamAchievementInput = z.infer<typeof teamAchievementSchema>;

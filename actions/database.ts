@@ -1,8 +1,10 @@
 // @/actions/database.ts
 'use server';
 
-import { query, queryOne } from '@/lib/db/neon-client';
+import { query, queryOne, QueryValue } from '@/lib/db/neon-client';
 import { revalidatePath } from 'next/cache';
+import fs from 'fs';
+import path from 'path';
 
 // Types
 export interface TableColumn {
@@ -439,5 +441,142 @@ export async function getDatabaseSummary() {
   } catch (error) {
     console.error('Error in getDatabaseSummary:', error);
     throw new Error('Erreur lors de la récupération du résumé de la base de données');
+  }
+}
+
+// === GESTION DES DONNÉES (BACKUP/RESTORE) ===
+
+const BACKUPS_ROOT = path.join(process.cwd(), 'database/backups');
+
+/**
+ * Exporte les données d'une table ou de toutes les tables vers des fichiers JSON
+ * Organise les exports dans des dossiers par date
+ */
+export async function exportTableData(tableName?: string, snapshotName?: string) {
+  try {
+    const dateDir = snapshotName || new Date().toISOString().split('T')[0];
+    const dataDir = path.join(BACKUPS_ROOT, dateDir);
+
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+
+    let tables = [];
+    if (tableName) {
+      tables = [tableName];
+    } else {
+      tables = await getAllTableNames();
+      // Exclure les tables techniques
+      tables = tables.filter(t => !['migrations', '_prisma_migrations'].includes(t));
+    }
+
+    const results = [];
+    for (const table of tables) {
+      const data = await query(`SELECT * FROM ${table}`);
+      const filePath = path.join(dataDir, `${table}.json`);
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+      results.push({ table, count: data.length });
+    }
+
+    // Créer aussi un lien "latest" ou copier vers "latest"
+    const latestDir = path.join(BACKUPS_ROOT, 'latest');
+    if (!fs.existsSync(latestDir)) fs.mkdirSync(latestDir, { recursive: true });
+    results.forEach(res => {
+      const src = path.join(dataDir, `${res.table}.json`);
+      const dest = path.join(latestDir, `${res.table}.json`);
+      fs.copyFileSync(src, dest);
+    });
+
+    return { 
+      success: true, 
+      message: `${results.length} table(s) exportée(s) avec succès`,
+      results 
+    };
+  } catch (error: any) {
+    console.error('Error exporting data:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Récupère la liste des backups disponibles
+ */
+export async function getAvailableBackups() {
+  try {
+    if (!fs.existsSync(BACKUPS_ROOT)) return [];
+    const dirs = fs.readdirSync(BACKUPS_ROOT, { withFileTypes: true })
+      .filter(dirent => dirent.isDirectory() && dirent.name !== 'latest')
+      .map(dirent => dirent.name)
+      .sort((a, b) => b.localeCompare(a)); // Plus récent en premier
+    return dirs;
+  } catch (error) {
+    console.error('Error getting backups:', error);
+    return [];
+  }
+}
+
+/**
+ * Importe les données depuis les fichiers JSON vers la base de données
+ */
+export async function importTableData(tableName?: string, snapshotName: string = 'latest') {
+  try {
+    const dataDir = path.join(BACKUPS_ROOT, snapshotName);
+    
+    if (!fs.existsSync(dataDir)) {
+      throw new Error(`Dossier de données non trouvé: ${snapshotName}`);
+    }
+
+    let files = [];
+    if (tableName) {
+      files = [`${tableName}.json`];
+    } else {
+      files = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
+    }
+
+    const results = [];
+    for (const file of files) {
+      const table = file.replace('.json', '');
+      const filePath = path.join(dataDir, file);
+      
+      if (!fs.existsSync(filePath)) continue;
+      
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (data.length === 0) continue;
+
+      // Désactiver les triggers (nécessite des droits superuser ou session_replication_role)
+      try {
+        await query('SET session_replication_role = replica');
+        
+        for (const row of data) {
+          const keys = Object.keys(row);
+          const values = Object.values(row) as QueryValue[];
+          const placeholders = keys.map((_, i) => `$${i + 1}`).join(", ");
+          const columns = keys.join(", ");
+          
+          const onConflict = keys.includes('id') 
+            ? `ON CONFLICT (id) DO UPDATE SET ${keys.map(k => `${k} = EXCLUDED.${k}`).join(", ")}`
+            : "";
+
+          const sql = `INSERT INTO ${table} (${columns}) VALUES (${placeholders}) ${onConflict}`;
+          await query(sql, values);
+        }
+        
+        await query('SET session_replication_role = DEFAULT');
+        results.push({ table, count: data.length });
+      } catch (err) {
+        console.error(`Error importing table ${table}:`, err);
+        throw err;
+      }
+    }
+
+    revalidatePath('/ad/database');
+    return { 
+      success: true, 
+      message: `${results.length} table(s) restaurée(s) avec succès`,
+      results 
+    };
+  } catch (error: any) {
+    console.error('Error importing data:', error);
+    return { success: false, error: error.message };
   }
 }

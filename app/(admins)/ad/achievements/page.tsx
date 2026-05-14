@@ -48,6 +48,14 @@ export default function ArchivesPage() {
     }
   };
 
+  const handleView = (achievement: ArchiveFighterAchievement) => {
+    router.push(`/ad/achievements/${achievement.id}`);
+  };
+
+  const handleEdit = (achievement: ArchiveFighterAchievement) => {
+    router.push(`/ad/achievements/${achievement.id}/edit`);
+  };
+
   const {
     data,
     total,
@@ -186,8 +194,8 @@ export default function ArchivesPage() {
         <ArchiveAchievementCard
           item={archive}
           viewMode={viewMode}
-          onEdit={() => onEdit(archive)}
-          onView={() => onView(archive)}
+          onEdit={() => handleEdit(archive)}
+          onView={() => handleView(archive)}
           onRestore={() => handleRestore(archive.id.toString())}
         />
       )}

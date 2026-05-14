@@ -247,6 +247,8 @@ async function getSubgroupsWithMatchesForGroup(groupId: number) {
       sg.region2_id as "region2Id",
       r1.name as "region1Name",
       r2.name as "region2Name",
+      r1.flag_image as "region1FlagImage",
+      r2.flag_image as "region2FlagImage",
       b1.color as "beltRegion1Color",
       b2.color as "beltRegion2Color",
       sg.is_completed as "isCompleted",
@@ -330,7 +332,7 @@ async function getMatchesForSubGroup(subGroupId: number) {
       lf.profile_image as "loserProfileImage",
       lf.region_id as "loserRegionId",
       lr.name as "loserRegionName",
-      
+        
       -- Cards count
       (SELECT COUNT(*) FROM fighter_cards fc WHERE fc.match_id = m.id) as total_cards,
       (SELECT COUNT(*) FROM fighter_cards fc WHERE fc.match_id = m.id AND fc.card_type = 'yellow') as yellow_cards,

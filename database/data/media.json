@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "title": "Photo Sabre National",
+    "file_path": "https://pixabay.com/fr/photos/lutter-lutteur-des-sports-3724560/",
+    "file_type": "image",
+    "mime_type": "image/jpeg",
+    "file_size": "512000",
+    "alt_text": "Image du Sabre National",
+    "description": "Photo de l'arène principale",
+    "uploader_id": 1,
+    "is_featured": true,
+    "entity_type": "competition",
+    "entity_id": 1,
+    "created_at": "2025-11-10T15:59:37.443Z"
+  },
+  {
+    "id": 2,
+    "title": "Vidéo Entraînement",
+    "file_path": "https://cdn.pixabay.com/photo/2018/11/04/13/06/wrestle-3793900_1280.jpg",
+    "file_type": "image",
+    "mime_type": "video/mp4",
+    "file_size": "10240000",
+    "alt_text": "Vidéo d'entraînement",
+    "description": "Séance d'entraînement des lutteurs",
+    "uploader_id": 1,
+    "is_featured": false,
+    "entity_type": "article",
+    "entity_id": 1,
+    "created_at": "2025-11-10T15:59:37.443Z"
+  },
+  {
+    "id": 4,
+    "title": "Media d'exemple",
+    "file_path": "https://cdn.pixabay.com/photo/2018/10/04/21/40/wrestle-3724560_1280.jpg",
+    "file_type": "image",
+    "mime_type": null,
+    "file_size": null,
+    "alt_text": null,
+    "description": null,
+    "uploader_id": 1,
+    "is_featured": false,
+    "entity_type": "article",
+    "entity_id": 1,
+    "created_at": "2026-02-04T16:10:48.435Z"
+  }
+]

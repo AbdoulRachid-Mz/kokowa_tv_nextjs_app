@@ -56,7 +56,7 @@ class NeonClient {
 
 export const pool = NeonClient.getInstance();
 
-export type QueryValue = string | number | boolean | Date | null;
+export type QueryValue = string | number | boolean | Date | null | any[];
 
 // Fonction utilitaire avec retry
 async function executeWithRetry<T>(

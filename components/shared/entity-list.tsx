@@ -60,7 +60,8 @@ export interface EntityListProps<T> {
     | "phase-groups"
     | "sub-group"
     | "notification"
-    | "advertisements";
+    | "advertisements"
+    | "teams";
   data: T[];
   total: number;
   loading?: boolean;
@@ -636,6 +637,40 @@ export function EntityList<T>({
               { value: "group_message", label: "Message groupe" },
               { value: "match_commentary", label: "Commentaire match" },
               { value: "system_notification", label: "Notification système" },
+            ],
+          },
+        ];
+
+      case "teams":
+        return [
+          ...baseFilters,
+          {
+            key: "is_active",
+            label: "Statut",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "true", label: "Actifs" },
+              { value: "false", label: "Inactifs" },
+            ],
+          },
+          {
+            key: "is_lead",
+            label: "Lead",
+            options: [
+              { value: "all", label: "Tous" },
+              { value: "true", label: "Leads" },
+              { value: "false", label: "Membres" },
+            ],
+          },
+          {
+            key: "role",
+            label: "Rôle",
+            options: [
+              { value: "all", label: "Tous les rôles" },
+              { value: "Lead Developer", label: "Lead Developer" },
+              { value: "UI/UX Designer", label: "UI/UX Designer" },
+              { value: "Backend Engineer", label: "Backend Engineer" },
+              { value: "Project Manager", label: "Project Manager" },
             ],
           },
         ];

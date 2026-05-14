@@ -1,0 +1,146 @@
+[
+  {
+    "id": 1,
+    "user_id": 6,
+    "entity_type": "article",
+    "entity_id": 1,
+    "interaction_type": "like",
+    "created_at": "2025-11-10T15:59:37.443Z"
+  },
+  {
+    "id": 2,
+    "user_id": 7,
+    "entity_type": "article",
+    "entity_id": 1,
+    "interaction_type": "like",
+    "created_at": "2025-11-10T15:59:37.443Z"
+  },
+  {
+    "id": 3,
+    "user_id": 6,
+    "entity_type": "video",
+    "entity_id": 1,
+    "interaction_type": "view",
+    "created_at": "2025-11-10T15:59:37.443Z"
+  },
+  {
+    "id": 4,
+    "user_id": 7,
+    "entity_type": "video",
+    "entity_id": 1,
+    "interaction_type": "like",
+    "created_at": "2025-11-10T15:59:37.443Z"
+  },
+  {
+    "id": 6,
+    "user_id": 7,
+    "entity_type": "fighter",
+    "entity_id": 2,
+    "interaction_type": "follow",
+    "created_at": "2025-11-10T15:59:37.443Z"
+  },
+  {
+    "id": 7,
+    "user_id": 12,
+    "entity_type": "article",
+    "entity_id": 1,
+    "interaction_type": "like",
+    "created_at": "2025-12-10T18:51:23.634Z"
+  },
+  {
+    "id": 12,
+    "user_id": 12,
+    "entity_type": "video",
+    "entity_id": 1,
+    "interaction_type": "like",
+    "created_at": "2026-02-05T15:51:32.145Z"
+  },
+  {
+    "id": 14,
+    "user_id": 1,
+    "entity_type": "video",
+    "entity_id": 123,
+    "interaction_type": "like",
+    "created_at": "2026-02-06T19:16:52.224Z"
+  },
+  {
+    "id": 16,
+    "user_id": 2,
+    "entity_type": "video",
+    "entity_id": 123,
+    "interaction_type": "like",
+    "created_at": "2026-02-06T19:17:04.470Z"
+  },
+  {
+    "id": 5,
+    "user_id": 33,
+    "entity_type": "fighter",
+    "entity_id": 78,
+    "interaction_type": "like",
+    "created_at": "2025-11-10T15:59:37.443Z"
+  },
+  {
+    "id": 23,
+    "user_id": 34,
+    "entity_type": "video",
+    "entity_id": 1,
+    "interaction_type": "like",
+    "created_at": "2026-02-07T15:20:11.255Z"
+  },
+  {
+    "id": 24,
+    "user_id": 33,
+    "entity_type": "fighter",
+    "entity_id": 91,
+    "interaction_type": "like",
+    "created_at": "2026-02-07T15:52:42.289Z"
+  },
+  {
+    "id": 25,
+    "user_id": 33,
+    "entity_type": "article",
+    "entity_id": 2,
+    "interaction_type": "like",
+    "created_at": "2026-02-07T19:25:09.962Z"
+  },
+  {
+    "id": 27,
+    "user_id": 33,
+    "entity_type": "region",
+    "entity_id": 8,
+    "interaction_type": "like",
+    "created_at": "2026-02-23T08:44:33.310Z"
+  },
+  {
+    "id": 28,
+    "user_id": 33,
+    "entity_type": "fighter",
+    "entity_id": 120,
+    "interaction_type": "like",
+    "created_at": "2026-02-23T08:45:11.706Z"
+  },
+  {
+    "id": 29,
+    "user_id": 33,
+    "entity_type": "article",
+    "entity_id": 1,
+    "interaction_type": "like",
+    "created_at": "2026-02-23T13:07:06.120Z"
+  },
+  {
+    "id": 30,
+    "user_id": 33,
+    "entity_type": "fighter",
+    "entity_id": 80,
+    "interaction_type": "like",
+    "created_at": "2026-03-07T12:46:01.250Z"
+  },
+  {
+    "id": 31,
+    "user_id": 33,
+    "entity_type": "region",
+    "entity_id": 4,
+    "interaction_type": "like",
+    "created_at": "2026-03-09T13:07:01.296Z"
+  }
+]

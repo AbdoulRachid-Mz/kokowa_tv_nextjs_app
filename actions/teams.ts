@@ -1,0 +1,203 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { 
+  TeamMember, 
+  TeamMemberFilters, 
+  TeamAchievement,
+  PaginatedResponse 
+} from "@/types";
+import { teamMemberSchema, teamAchievementSchema, TeamMemberInput, TeamAchievementInput } from "@/validation/schemas";
+import { query, queryOne } from "@/lib/db/neon-client";
+
+// Membres de l'équipe
+
+/**
+ * Récupère la liste des membres de l'équipe avec filtres et pagination
+ */
+export async function getTeamMembers(filters: TeamMemberFilters = {}): Promise<PaginatedResponse<TeamMember>> {
+  const {
+    search,
+    is_active,
+    is_lead,
+    role,
+    page = 1,
+    limit = 10,
+    sortBy = "position_order",
+    sortOrder = "asc",
+    with_achievements = false
+  } = filters;
+
+  const offset = (page - 1) * limit;
+  const queryParams: any[] = [];
+  let whereConditions = [];
+
+  if (search) {
+    queryParams.push(`%${search}%`);
+    whereConditions.push(`full_name ILIKE $${queryParams.length}`);
+  }
+
+  if (is_active !== undefined && is_active !== "all") {
+    const activeBool = is_active === "true" || is_active === true;
+    queryParams.push(activeBool);
+    whereConditions.push(`is_active = $${queryParams.length}`);
+  }
+
+  if (is_lead !== undefined && is_lead !== "all") {
+    const leadBool = is_lead === "true" || is_lead === true;
+    queryParams.push(leadBool);
+    whereConditions.push(`is_lead = $${queryParams.length}`);
+  }
+
+  if (role && role !== "all") {
+    queryParams.push(role);
+    whereConditions.push(`role = $${queryParams.length}`);
+  }
+
+  const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
+
+  // Compte total
+  const countRes = await query(`SELECT COUNT(*) as total FROM team_members ${whereClause}`, queryParams);
+  const total = parseInt(countRes[0]?.total || "0");
+
+  // Données
+  const dataQuery = `
+    SELECT * FROM team_members
+    ${whereClause}
+    ORDER BY ${sortBy} ${sortOrder}
+    LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
+  `;
+  
+  let teamMembers = await query<TeamMember>(dataQuery, [...queryParams, limit, offset]);
+
+  // Charger les accomplissements si demandé
+  if (with_achievements && teamMembers.length > 0) {
+    const memberIds = teamMembers.map(m => m.id);
+    const achievements = await query<TeamAchievement>(
+      `SELECT * FROM team_achievements WHERE team_member_id = ANY($1::bigint[]) ORDER BY achievement_date DESC`,
+      [memberIds]
+    );
+
+    teamMembers = teamMembers.map(member => ({
+      ...member,
+      achievements: achievements.filter(a => a.team_member_id === member.id)
+    }));
+  }
+
+  return {
+    data: teamMembers,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+}
+
+/**
+ * Récupère un membre de l'équipe par son ID
+ */
+export async function getTeamMemberById(id: number, with_achievements = true): Promise<TeamMember | null> {
+  if (isNaN(id)) return null;
+  const member = await queryOne<TeamMember>(`SELECT * FROM team_members WHERE id = $1`, [id]);
+  if (!member) return null;
+
+  if (with_achievements) {
+    const achievements = await query<TeamAchievement>(
+      `SELECT * FROM team_achievements WHERE team_member_id = $1 ORDER BY achievement_date DESC`,
+      [id]
+    );
+    member.achievements = achievements;
+  }
+
+  return member;
+}
+
+/**
+ * Crée un nouveau membre de l'équipe
+ */
+export async function createTeamMember(data: TeamMemberInput) {
+  const validatedData = teamMemberSchema.parse(data);
+  
+  const fields = Object.keys(validatedData);
+  const values = Object.values(validatedData);
+  const placeholders = fields.map((_, i) => `$${i + 1}`).join(", ");
+  
+  const res = await query<TeamMember>(
+    `INSERT INTO team_members (${fields.join(", ")}) VALUES (${placeholders}) RETURNING *`,
+    values
+  );
+
+  revalidatePath("/(admins)/ad/teams", "page");
+  return res[0];
+}
+
+/**
+ * Met à jour un membre de l'équipe
+ */
+export async function updateTeamMember(id: number, data: Partial<TeamMemberInput>) {
+  const fields = Object.keys(data);
+  const values = Object.values(data);
+  const setClause = fields.map((field, i) => `${field} = $${i + 2}`).join(", ");
+
+  const res = await query<TeamMember>(
+    `UPDATE team_members SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
+    [id, ...values]
+  );
+
+  revalidatePath("/(admins)/ad/teams", "page");
+  revalidatePath(`/(admins)/ad/teams/${id}`, "page");
+  return res[0];
+}
+
+/**
+ * Supprime un membre de l'équipe
+ */
+export async function deleteTeamMember(id: number) {
+  await query(`DELETE FROM team_members WHERE id = $1`, [id]);
+  revalidatePath("/(admins)/ad/teams", "page");
+  return { success: true };
+}
+
+// Accomplissements
+
+/**
+ * Récupère les accomplissements pour un membre
+ */
+export async function getTeamAchievements(memberId: number): Promise<TeamAchievement[]> {
+  return await query<TeamAchievement>(
+    `SELECT * FROM team_achievements WHERE team_member_id = $1 ORDER BY achievement_date DESC`,
+    [memberId]
+  );
+}
+
+/**
+ * Ajoute un accomplissement
+ */
+export async function addTeamAchievement(data: TeamAchievementInput) {
+  const validatedData = teamAchievementSchema.parse(data);
+  
+  const fields = Object.keys(validatedData);
+  const values = Object.values(validatedData);
+  const placeholders = fields.map((_, i) => `$${i + 1}`).join(", ");
+  
+  const res = await query<TeamAchievement>(
+    `INSERT INTO team_achievements (${fields.join(", ")}) VALUES (${placeholders}) RETURNING *`,
+    values
+  );
+
+  revalidatePath(`/(admins)/ad/teams/${validatedData.team_member_id}`, "page");
+  return res[0];
+}
+
+/**
+ * Supprime un accomplissement
+ */
+export async function deleteTeamAchievement(id: number) {
+  const res = await query<{ team_member_id: number }>(`DELETE FROM team_achievements WHERE id = $1 RETURNING team_member_id`, [id]);
+  if (res.length > 0) {
+    revalidatePath(`/(admins)/ad/teams/${res[0].team_member_id}`, "page");
+  }
+  return { success: true };
+}

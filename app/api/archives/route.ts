@@ -14,7 +14,6 @@ export async function GET(request: NextRequest) {
       edition_id: searchParams.get('edition_id') ? Number(searchParams.get('edition_id')) : undefined,
       year: searchParams.get('year') ? Number(searchParams.get('year')) : undefined,
       position: searchParams.get('position') ? Number(searchParams.get('position')) : undefined,
-      archive_reason: searchParams.get('archive_reason') || undefined,
       date_from: searchParams.get('date_from') || undefined,
       date_to: searchParams.get('date_to') || undefined,
       with_fighter: searchParams.get('with_fighter') === 'true',

@@ -27,7 +27,9 @@ TRUNCATE TABLE
     videos, 
     interactions, 
     users,
-    belt -- Ajout de la nouvelle table belt
+    belt, -- Ajout de la nouvelle table belt
+    team_achievements,
+    team_members
 RESTART IDENTITY CASCADE;
 
 -- =============================================
@@ -340,3 +342,19 @@ UPDATE competition_editions SET total_participants = (
     SELECT COUNT(*) FROM edition_regions 
     WHERE edition_id = competition_editions.id AND status = 'approved'
 );
+
+-- =============================================
+-- INSERTION DES MEMBRES DE L'ÉQUIPE (TEAM)
+-- =============================================
+INSERT INTO team_members (full_name, role, avatar_url, bio, social_links, badges, expertise, languages, is_lead, is_active, years_experience, projects_count, contributions_count, position_order, joined_date) VALUES
+('Abdoulaye Mamane', 'Lead Developer', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&h=200&auto=format&fit=crop', 'Expert en développement web avec plus de 10 ans d''expérience.', '[{"platform": "GitHub", "url": "https://github.com"}, {"platform": "LinkedIn", "url": "https://linkedin.com"}]', '["MVP 2023", "Lead"]', '["Next.js", "PostgreSQL", "Node.js"]', '["Français", "Anglais", "Haoussa"]', true, true, 10, 25, 1500, 1, '2022-01-10'),
+('Fatima Soumana', 'UI/UX Designer', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&h=200&auto=format&fit=crop', 'Passionnée par le design centré utilisateur et les interfaces modernes.', '[{"platform": "Behance", "url": "https://behance.net"}, {"platform": "Dribbble", "url": "https://dribbble.com"}]', '["Top Designer"]', '["Figma", "Adobe XD", "Tailwind CSS"]', '["Français", "Zarma"]', false, true, 5, 15, 800, 2, '2022-03-15'),
+('Idrissa Oumarou', 'Backend Engineer', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&h=200&auto=format&fit=crop', 'Spécialiste en architectures distribuées et bases de données.', '[{"platform": "GitHub", "url": "https://github.com"}]', '["Cloud Expert"]', '["Go", "Python", "Docker"]', '["Français", "Anglais"]', false, true, 7, 20, 1200, 3, '2022-06-01'),
+('Zainab Moussa', 'Project Manager', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&h=200&auto=format&fit=crop', 'Garantit le respect des délais et la qualité des livrables.', '[{"platform": "LinkedIn", "url": "https://linkedin.com"}]', '["PMP Certified"]', '["Agile", "Scrum", "Jira"]', '["Français", "Anglais"]', false, true, 8, 30, 500, 4, '2022-09-20');
+
+-- achievements
+INSERT INTO team_achievements (team_member_id, title, description, achievement_date, category, icon, color) VALUES
+(1, 'Lancement Kokowa TV', 'Développement de l''architecture principale de la plateforme.', '2023-10-01', 'Projet', 'code', '#3B82F6'),
+(1, 'Optimisation SQL', 'Réduction du temps de réponse des requêtes de 50%.', '2023-12-15', 'Performance', 'database', '#10B981'),
+(2, 'Refonte Design 2.0', 'Nouvelle charte graphique premium pour l''application mobile.', '2024-01-20', 'Design', 'palette', '#EC4899'),
+(4, 'Certification PMP', 'Obtention de la certification Project Management Professional.', '2023-05-10', 'Certification', 'award', '#F59E0B');

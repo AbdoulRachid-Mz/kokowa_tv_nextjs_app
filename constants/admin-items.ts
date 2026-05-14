@@ -222,6 +222,7 @@ export const test = [
 ]
 
 export const systemItems = [
+  { title: "Équipe", url: "/ad/teams", icon: Users, description: "Gestion de l'équipe Kokowa TV" },
   { title: "Base de données", url: "/ad/database", icon: Database, description: "Surveillance de la DB" },
   { title: "Paramètres", url: "/ad/settings", icon: Settings, description: "Configuration système" },
 ]

@@ -39,8 +39,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Typography } from "@/components/ui/typography";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Trophy, Medal, Calendar, MapPin, User } from "lucide-react";
-import Image from "next/image";
 import { AdvancedUpload } from "../ui/advanced-upload";
+import { archiveFighterAchievement, createArchiveFighterAchievement } from "@/actions/archives";
 
 interface AchievementFormProps {
   // Pour la création
@@ -84,9 +84,67 @@ export function AchievementForm({
       year: new Date().getFullYear(),
       position: "1st",
       description: "",
-      medal_image: "",
+      medal_image: "/icons/3d-medal.png",
     },
   });
+
+  // Génère une description dynamique basée sur les données sélectionnées
+  const generateDynamicDescription = (): string => {
+    const fighterId = form.getValues("fighter_id");
+    const regionId = form.getValues("region_id");
+    const editionId = form.getValues("edition_id");
+    const year = form.getValues("year");
+    const position = form.getValues("position");
+
+    const fighter = fighters.find((f) => f.id === fighterId);
+    const region = regions.find((r) => r.id === regionId);
+    const edition = editions.find((e) => e.id === editionId);
+
+    const positionLabel = getPositionLabel(position).label;
+
+    const parts: string[] = [];
+
+    if (fighter) {
+      parts.push(`${fighter.first_name} ${fighter.last_name}`);
+      if (fighter.nickname) parts.push(`(${fighter.nickname})`);
+    }
+
+    if (region) {
+      parts.push(`de la région ${region.name}`);
+    }
+
+    if (edition && edition.competition) {
+      parts.push(`a obtenu ${positionLabel} à ${edition.competition.name}`);
+      if (edition.edition_number) {
+        parts.push(`(Édition ${edition.edition_number})`);
+      }
+    } else {
+      parts.push(`a obtenu ${positionLabel}`);
+    }
+
+    if (year) {
+      parts.push(`en ${year}`);
+    }
+
+    return parts.join(" ") + ".";
+  };
+
+  // Met à jour la description dynamiquement lors des changements
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (
+        name === "fighter_id" ||
+        name === "region_id" ||
+        name === "edition_id" ||
+        name === "year" ||
+        name === "position"
+      ) {
+        const dynamicDesc = generateDynamicDescription();
+        form.setValue("description", dynamicDesc, { shouldDirty: false });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [fighters, regions, editions]);
 
   // Charger les données initiales pour l'édition
   useEffect(() => {
@@ -150,7 +208,14 @@ export function AchievementForm({
       const response = await fetch("/api/fighters?limit=100&is_active=true&with_region=true");
       if (response.ok) {
         const data = await response.json();
-        setFighters(data.data || data);
+        const fightersList = data.data || data;
+        // Sort fighters alphabetically by last name, then first name
+        fightersList.sort((a: Fighter, b: Fighter) => {
+          const nameA = `${a.last_name} ${a.first_name}`.toLowerCase();
+          const nameB = `${b.last_name} ${b.first_name}`.toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+        setFighters(fightersList);
       }
     } catch (error) {
       console.error("Error loading fighters:", error);
@@ -165,7 +230,12 @@ export function AchievementForm({
       const response = await fetch("/api/regions?limit=100");
       if (response.ok) {
         const data = await response.json();
-        setRegions(data.data || data);
+        const regionsList = data.data || data;
+        // Sort regions alphabetically by name
+        regionsList.sort((a: Region, b: Region) => {
+          return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+        });
+        setRegions(regionsList);
       }
     } catch (error) {
       console.error("Error loading regions:", error);
@@ -219,18 +289,27 @@ export function AchievementForm({
   const onSubmit = async (data: FighterAchievementInput) => {
     setLoading(true);
     try {
-      const url = isEditMode ? `/api/achievements/${achievementId}` : "/api/achievements";
-      const method = isEditMode ? "PUT" : "POST";
-      
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+      // Archiver l'ancien palmarès si on est en mode création
+      if (!isEditMode && achievementId) {
+        await archiveFighterAchievement(achievementId);
+      }
 
-      const result = await response.json();
+      if (isEditMode && achievementId) {
+        await archiveFighterAchievement(achievementId);
+      }
 
-      if (response.ok && result.success) {
+      // Créer le nouveau palmarès dans les archives
+      const archiveData = {
+        ...data,
+        archive_reason: isEditMode ? "Modification via formulaire admin" : "Création via formulaire admin",
+        original_id: isEditMode ? achievementId : null,
+      };
+
+      const result = isEditMode
+        ? await createArchiveFighterAchievement(archiveData)
+        : await createArchiveFighterAchievement(archiveData);
+
+      if (result.success) {
         toast.success(
           isEditMode ? "Palmarès modifié avec succès" : "Palmarès créé avec succès"
         );
@@ -238,7 +317,7 @@ export function AchievementForm({
         if (onSuccess) {
           onSuccess();
         } else {
-          router.push("/ad/achievements");
+          router.push("/admin/fighter-achievements-archives");
           router.refresh();
         }
       } else {

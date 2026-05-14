@@ -22,7 +22,8 @@ import {
   FighterTransferFilters,
   ArchiveFighterAchievementFilters,
   InteractionFilters,
-  AdvertisementFilters
+  AdvertisementFilters,
+  TeamMemberFilters,
 } from '@/types';
 
 // Types pour les filtres par entité
@@ -70,6 +71,7 @@ export interface UseEntityListProps<T> {
     | 'sub-groups'
     | 'notifications'
     | 'advertisements'
+    | 'teams'
     | 'users';
   defaultFilters?: EntityFilters;
   defaultLimit?: number;
@@ -213,6 +215,13 @@ export function useEntityList<T>({
         addFilter('end_date_to', advertisementFilters.end_date_to);
         break;
       
+      case 'teams':
+        const teamFilters = stableFilters as TeamMemberFilters;
+        addFilter('is_active', teamFilters.is_active);
+        addFilter('is_lead', teamFilters.is_lead);
+        addFilter('role', teamFilters.role);
+        break;
+
       case 'fighters':
         const fighterFilters = stableFilters as FighterFilters;
         addFilter('region_id', fighterFilters.region_id);

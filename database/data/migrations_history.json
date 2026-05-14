@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "migration_name": "001-ajouter-etat-initial-combattants.sql",
+    "applied_at": "2025-12-26T19:35:00.117Z",
+    "applied_by": "neondb_owner"
+  },
+  {
+    "id": 2,
+    "migration_name": "003-advertisements-table.sql",
+    "applied_at": "2026-02-16T16:46:33.053Z",
+    "applied_by": "neondb_owner"
+  },
+  {
+    "id": 3,
+    "migration_name": "003-advertisements-table.sql",
+    "applied_at": "2026-05-14T15:28:09.775Z",
+    "applied_by": "neondb_owner"
+  },
+  {
+    "id": 4,
+    "migration_name": "004-create-teams.sql",
+    "applied_at": "2026-05-14T15:28:17.682Z",
+    "applied_by": "neondb_owner"
+  }
+]

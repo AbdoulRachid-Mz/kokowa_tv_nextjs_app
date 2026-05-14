@@ -1,5 +1,6 @@
 // import { User } from "./auth";
 
+
 // Types de base avec timestamps
 export interface BaseEntity {
   id: number;
@@ -341,6 +342,54 @@ export interface FighterTransfer {
   created_at: string;
 }
 
+// Membre de l'équipe
+export interface TeamMember extends BaseEntity {
+  full_name: string;
+  first_name?: string;
+  last_name?: string;
+  nickname?: string;
+  email?: string;
+  phone?: string;
+  role: string;
+  department?: string;
+  specialization?: string;
+  avatar_url?: string;
+  profile_image?: string;
+  cover_image?: string;
+  bio?: string;
+  quote?: string;
+  social_links?: any;
+  badges?: any;
+  expertise?: any;
+  languages?: any;
+  is_lead: boolean;
+  is_active: boolean;
+  years_experience?: number;
+  projects_count?: number;
+  contributions_count?: number;
+  position_order: number;
+  availability?: string;
+  joined_date?: string;
+  last_active?: string;
+
+  // Relations
+  achievements?: TeamAchievement[];
+}
+
+// Accomplissement d'équipe
+export interface TeamAchievement extends BaseEntity {
+  team_member_id: number;
+  title: string;
+  description?: string;
+  achievement_date?: string;
+  category?: string;
+  icon?: string;
+  color?: string;
+
+  // Relations
+  team_member?: TeamMember;
+}
+
 // Message
 export interface Message extends BaseEntity {
   content: string;
@@ -472,7 +521,7 @@ export interface Video extends BaseEntity {
   published_at?: string;
 }
 
-export type EntityType = 'article' | 'video' | 'user' | 'region' | 'competition' | 'match' | 'fighter' | 'coach' | 'referee' | 'message' | 'interaction' | 'setting';
+export type EntityType = 'article' | 'video' | 'user' | 'region' | 'competition' | 'match' | 'fighter' | 'coach' | 'referee' | 'message' | 'interaction' | 'setting' | 'team_member';
 export type InteractionType = 'like' | 'view' | 'share' | 'bookmark' | 'follow';
 
 // Interaction
@@ -798,6 +847,22 @@ export interface ArticleFilters extends BaseFilters {
 
 export interface MediaFilters extends BaseFilters {
   file_type?: 'image' | 'video' | 'document' | 'audio';
+  entity_type?: string;
+  entity_id?: number;
+  uploader_id?: number;
+  is_featured?: boolean;
+  with_uploader?: boolean;
+}
+
+export interface TeamMemberFilters extends BaseFilters {
+  is_active?: boolean | string | "all";
+  is_lead?: boolean | string | "all";
+  role?: string;
+  department?: string;
+  with_achievements?: boolean;
+}
+
+export interface MediaFilters {
   uploader_id?: number;
   entity_type?: string;
   entity_id?: number;
