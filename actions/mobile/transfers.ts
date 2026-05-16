@@ -1,15 +1,17 @@
-'use server';
+"use server";
 
-import { query } from '@/lib/db/neon-client';
+import { query } from "@/lib/db/neon-client";
 
-export async function getMobileTransfers(filters: {
-  fighter_id?: number;
-  region_id?: number;
-  status?: string;
-  limit?: number;
-  offset?: number;
-  search?: string;
-} = {}) {
+export async function getMobileTransfers(
+  filters: {
+    fighter_id?: number;
+    region_id?: number;
+    status?: string;
+    limit?: number;
+    offset?: number;
+    search?: string;
+  } = {},
+) {
   try {
     const {
       fighter_id,
@@ -17,18 +19,22 @@ export async function getMobileTransfers(filters: {
       status,
       limit = 50,
       offset = 0,
-      search
+      search,
     } = filters;
 
     // Valider le statut si fourni
-    if (status && !['pending', 'approved', 'rejected', 'completed'].includes(status)) {
+    if (
+      status &&
+      !["pending", "approved", "rejected", "completed"].includes(status)
+    ) {
       return {
         success: false,
         error: {
           code: 400,
-          message: 'Statut invalide. Valeurs acceptées: pending, approved, rejected, completed',
-          timestamp: new Date().toISOString()
-        }
+          message:
+            "Statut invalide. Valeurs acceptées: pending, approved, rejected, completed",
+          timestamp: new Date().toISOString(),
+        },
       };
     }
 
@@ -40,20 +46,25 @@ export async function getMobileTransfers(filters: {
       return await getAllTransfers(status, limit, offset);
     }
   } catch (error) {
-    console.error('Error in getMobileTransfers:', error);
+    console.error("Error in getMobileTransfers:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la récupération des transferts',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la récupération des transferts",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }
 
 // Fonctions auxiliaires
-async function getAllTransfers(status: string | null = null, limit: number = 50, offset: number = 0, search?: string) {
+async function getAllTransfers(
+  status: string | null = null,
+  limit: number = 50,
+  offset: number = 0,
+  search?: string,
+) {
   let sql = `
     SELECT 
       ft.id,
@@ -75,10 +86,12 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
       -- Région d'origine
       ft.from_region_id as "fromRegionId",
       fr.name as "fromRegionName",
+      fr.flag_image as "fromRegionFlagImage",
       
       -- Région de destination
       ft.to_region_id as "toRegionId",
       tr.name as "toRegionName",
+      tr.flag_image as "toRegionFlagImage",
       
       -- Approbateur
       ft.approved_by_user_id as "approvedByUserId",
@@ -95,7 +108,7 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
   `;
 
   const params: any[] = [];
-  
+
   if (status) {
     sql += ` AND ft.status = $${params.length + 1}`;
     params.push(status);
@@ -126,22 +139,26 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
       lastName: t.fighterLastName,
       nickname: t.fighterNickname,
       profileImage: t.fighterProfileImage,
-      currentRegionId: t.currentRegionId
+      currentRegionId: t.currentRegionId,
     },
     fromRegion: {
       id: t.fromRegionId,
-      name: t.fromRegionName
+      name: t.fromRegionName,
+      flagImage: t.fromRegionFlagImage,
     },
     toRegion: {
       id: t.toRegionId,
-      name: t.toRegionName
+      name: t.toRegionName,
+      flagImage: t.toRegionFlagImage,
     },
-    approvedBy: t.approvedByUserId ? {
-      id: t.approvedByUserId,
-      username: t.approvedByUsername,
-      firstName: t.approvedByFirstName,
-      lastName: t.approvedByLastName
-    } : null
+    approvedBy: t.approvedByUserId
+      ? {
+          id: t.approvedByUserId,
+          username: t.approvedByUsername,
+          firstName: t.approvedByFirstName,
+          lastName: t.approvedByLastName,
+        }
+      : null,
   }));
 
   // Compter le total pour la pagination
@@ -152,7 +169,7 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
     countParams.push(status);
   }
   const countResult = await query(countSql, countParams);
-  const total = parseInt(countResult[0]?.total || '0');
+  const total = parseInt(countResult[0]?.total || "0");
 
   return {
     success: true,
@@ -162,29 +179,37 @@ async function getAllTransfers(status: string | null = null, limit: number = 50,
         total,
         limit,
         offset,
-        hasMore: offset + formattedTransfers.length < total
+        hasMore: offset + formattedTransfers.length < total,
       },
       filters: {
-        status
+        status,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     },
-    message: 'Transferts récupérés avec succès'
+    message: "Transferts récupérés avec succès",
   };
 }
 
-async function getTransfersByFighter(fighterId: number, status: string | null = null, limit: number = 50, offset: number = 0, search?: string) {
+async function getTransfersByFighter(
+  fighterId: number,
+  status: string | null = null,
+  limit: number = 50,
+  offset: number = 0,
+  search?: string,
+) {
   // D'abord vérifier que le lutteur existe
-  const fighterExists = await query("SELECT id FROM fighters WHERE id = $1", [fighterId]);
-  
+  const fighterExists = await query("SELECT id FROM fighters WHERE id = $1", [
+    fighterId,
+  ]);
+
   if (fighterExists.length === 0) {
     return {
       success: false,
       error: {
         code: 404,
-        message: 'Lutteur non trouvé',
-        timestamp: new Date().toISOString()
-      }
+        message: "Lutteur non trouvé",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 
@@ -234,7 +259,7 @@ async function getTransfersByFighter(fighterId: number, status: string | null = 
   `;
 
   const params: any[] = [fighterId];
-  
+
   if (status) {
     sql += ` AND ft.status = $${params.length + 1}`;
     params.push(status);
@@ -267,31 +292,39 @@ async function getTransfersByFighter(fighterId: number, status: string | null = 
         total,
         limit,
         offset,
-        hasMore: (offset + transfers.length) < total
+        hasMore: offset + transfers.length < total,
       },
       filters: {
         fighter_id: fighterId,
         status,
-        search
+        search,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     },
-    message: 'Transferts du lutteur récupérés avec succès'
+    message: "Transferts du lutteur récupérés avec succès",
   };
 }
 
-async function getTransfersByRegion(regionId: number, status: string | null = null, limit: number = 50, offset: number = 0, search?: string) {
+async function getTransfersByRegion(
+  regionId: number,
+  status: string | null = null,
+  limit: number = 50,
+  offset: number = 0,
+  search?: string,
+) {
   // D'abord vérifier que la région existe
-  const regionExists = await query("SELECT id FROM regions WHERE id = $1", [regionId]);
-  
+  const regionExists = await query("SELECT id FROM regions WHERE id = $1", [
+    regionId,
+  ]);
+
   if (regionExists.length === 0) {
     return {
       success: false,
       error: {
         code: 404,
-        message: 'Région non trouvée',
-        timestamp: new Date().toISOString()
-      }
+        message: "Région non trouvée",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 
@@ -341,7 +374,7 @@ async function getTransfersByRegion(regionId: number, status: string | null = nu
   `;
 
   const params: any[] = [regionId];
-  
+
   if (status) {
     sql += ` AND ft.status = $${params.length + 1}`;
     params.push(status);
@@ -369,20 +402,20 @@ async function getTransfersByRegion(regionId: number, status: string | null = nu
         total,
         limit,
         offset,
-        hasMore: (offset + transfers.length) < total
+        hasMore: offset + transfers.length < total,
       },
       filters: {
         region_id: regionId,
-        status
+        status,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     },
-    message: 'Transferts de la région récupérés avec succès'
+    message: "Transferts de la région récupérés avec succès",
   };
 }
 
 function formatTransfers(transfers: any[]) {
-  return transfers.map(transfer => ({
+  return transfers.map((transfer) => ({
     id: transfer.id,
     transferDate: transfer.transferDate,
     transferReason: transfer.transferReason,
@@ -390,65 +423,80 @@ function formatTransfers(transfers: any[]) {
     contractDuration: transfer.contractDuration,
     isPermanent: Boolean(transfer.isPermanent),
     status: transfer.status,
-    
+
     fighter: {
       id: transfer.fighterId,
       firstName: transfer.fighterFirstName,
       lastName: transfer.fighterLastName,
       nickname: transfer.fighterNickname,
       profileImage: transfer.fighterProfileImage,
-      currentRegionId: transfer.currentRegionId
+      currentRegionId: transfer.currentRegionId,
     },
-    
+
     fromRegion: {
       id: transfer.fromRegionId,
-      name: transfer.fromRegionName
+      name: transfer.fromRegionName,
+      flagImage: transfer.fromRegionFlagImage,
     },
-    
+
     toRegion: {
       id: transfer.toRegionId,
-      name: transfer.toRegionName
+      name: transfer.toRegionName,
+      flagImage: transfer.toRegionFlagImage,
     },
-    
-    approvedBy: transfer.approvedByUserId ? {
-      id: transfer.approvedByUserId,
-      username: transfer.approvedByUsername,
-      firstName: transfer.approvedByFirstName,
-      lastName: transfer.approvedByLastName
-    } : null
+
+    approvedBy: transfer.approvedByUserId
+      ? {
+          id: transfer.approvedByUserId,
+          username: transfer.approvedByUsername,
+          firstName: transfer.approvedByFirstName,
+          lastName: transfer.approvedByLastName,
+        }
+      : null,
   }));
 }
 
 // Méthodes utilitaires
-async function getTotalTransfersByFighter(fighterId: number, status: string | null = null, search?: string) {
-  let sql = "SELECT COUNT(*) as total FROM fighter_transfers WHERE fighter_id = $1";
+async function getTotalTransfersByFighter(
+  fighterId: number,
+  status: string | null = null,
+  search?: string,
+) {
+  let sql =
+    "SELECT COUNT(*) as total FROM fighter_transfers WHERE fighter_id = $1";
   const params: any[] = [fighterId];
-  
+
   if (status) {
     sql += " AND status = $2";
     params.push(status);
   }
 
   const result = await query<{ total: string }>(sql, params);
-  return parseInt(result[0]?.total ?? '0');
+  return parseInt(result[0]?.total ?? "0");
 }
 
-async function getTotalTransfersByRegion(regionId: number, status: string | null = null, search?: string) {
-  let sql = "SELECT COUNT(*) as total FROM fighter_transfers WHERE from_region_id = $1 OR to_region_id = $1";
+async function getTotalTransfersByRegion(
+  regionId: number,
+  status: string | null = null,
+  search?: string,
+) {
+  let sql =
+    "SELECT COUNT(*) as total FROM fighter_transfers WHERE from_region_id = $1 OR to_region_id = $1";
   const params: any[] = [regionId];
-  
+
   if (status) {
     sql += " AND status = $2";
     params.push(status);
   }
 
   if (search) {
-    sql += " AND (fighter_id = $3 OR from_region_id = $3 OR to_region_id = $3 OR approved_by_user_id = $3)";
+    sql +=
+      " AND (fighter_id = $3 OR from_region_id = $3 OR to_region_id = $3 OR approved_by_user_id = $3)";
     params.push(search);
   }
 
   const result = await query<{ total: string }>(sql, params);
-  return parseInt(result[0]?.total ?? '0');
+  return parseInt(result[0]?.total ?? "0");
 }
 
 async function getFighterInfo(fighterId: number) {
@@ -459,7 +507,7 @@ async function getFighterInfo(fighterId: number) {
     FROM fighters 
     WHERE id = $1
   `;
-  
+
   const result = await query(sql, [fighterId]);
   return result[0];
 }
@@ -467,11 +515,11 @@ async function getFighterInfo(fighterId: number) {
 async function getRegionInfo(regionId: number) {
   const sql = `
     SELECT 
-      id, name
+      id, name, flag_image as "flagImage"
     FROM regions 
     WHERE id = $1
   `;
-  
+
   const result = await query(sql, [regionId]);
   return result[0];
 }

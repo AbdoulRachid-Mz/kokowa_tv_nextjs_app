@@ -164,6 +164,86 @@ export async function getArchiveFighterAchievements(
   }
 }
 
+export async function getArchiveFighterAchievement(
+  id: number,
+  options: {
+    with_fighter?: boolean;
+    with_edition?: boolean;
+    with_region?: boolean;
+  } = {}
+) {
+  try {
+    const { with_fighter = false, with_edition = false, with_region = false } = options;
+    const selectFields = ["faa.*"];
+
+    // Add related entities if requested
+    if (with_fighter) {
+      selectFields.push(`
+        JSON_BUILD_OBJECT(
+          'id', f.id,
+          'first_name', f.first_name,
+          'last_name', f.last_name,
+          'nickname', f.nickname,
+          'profile_image', f.profile_image
+        ) as fighter
+      `);
+    }
+
+    if (with_region) {
+      selectFields.push(`
+        JSON_BUILD_OBJECT(
+          'id', r.id,
+          'name', r.name,
+          'code', r.code,
+          'color', r.color,
+          'flag_image', r.flag_image,
+          'stadium_name', r.stadium_name
+        ) as region
+      `);
+    }
+
+    if (with_edition) {
+      selectFields.push(`
+        JSON_BUILD_OBJECT(
+          'id', ce.id,
+          'competition_id', ce.competition_id,
+          'edition_number', ce.edition_number,
+          'year', ce.year,
+          'theme', ce.theme,
+          'start_date', ce.start_date,
+          'end_date', ce.end_date
+        ) as edition
+      `);
+    }
+
+    // Build joins
+    const joins: string[] = [];
+    if (with_fighter) joins.push("LEFT JOIN fighters f ON faa.fighter_id = f.id");
+    if (with_region) joins.push("LEFT JOIN regions r ON faa.region_id = r.id");
+    if (with_edition) joins.push("LEFT JOIN competition_editions ce ON faa.edition_id = ce.id");
+
+    const sql = `
+      SELECT ${selectFields.join(", ")}
+      FROM fighter_achievements faa
+      ${joins.join("\n      ")}
+      WHERE faa.id = $1
+    `;
+
+    const result = await queryOne<any>(sql, [id]);
+
+    if (!result) {
+      throw new Error("Archive not found");
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Error in getArchiveFighterAchievement:", error);
+    throw new Error(`Error retrieving archive: ${(error as Error).message}`);
+  }
+}
+
+
+
 export async function archiveFighterAchievement(id: number) {
   try {
     const sql = `

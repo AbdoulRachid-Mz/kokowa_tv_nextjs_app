@@ -21,6 +21,7 @@ export async function getTeamMembers(filters: TeamMemberFilters = {}): Promise<P
     is_active,
     is_lead,
     role,
+    department,
     page = 1,
     limit = 10,
     sortBy = "position_order",
@@ -34,17 +35,17 @@ export async function getTeamMembers(filters: TeamMemberFilters = {}): Promise<P
 
   if (search) {
     queryParams.push(`%${search}%`);
-    whereConditions.push(`full_name ILIKE $${queryParams.length}`);
+    whereConditions.push(`(first_name ILIKE $${queryParams.length} OR last_name ILIKE $${queryParams.length} OR nickname ILIKE $${queryParams.length} OR email ILIKE $${queryParams.length})`);
   }
 
   if (is_active !== undefined && is_active !== "all") {
-    const activeBool = is_active === "true" || is_active === true;
+    const activeBool = is_active === "true" || is_active === true ? 1 : 0;
     queryParams.push(activeBool);
     whereConditions.push(`is_active = $${queryParams.length}`);
   }
 
   if (is_lead !== undefined && is_lead !== "all") {
-    const leadBool = is_lead === "true" || is_lead === true;
+    const leadBool = is_lead === "true" || is_lead === true ? 1 : 0;
     queryParams.push(leadBool);
     whereConditions.push(`is_lead = $${queryParams.length}`);
   }
@@ -52,6 +53,11 @@ export async function getTeamMembers(filters: TeamMemberFilters = {}): Promise<P
   if (role && role !== "all") {
     queryParams.push(role);
     whereConditions.push(`role = $${queryParams.length}`);
+  }
+
+  if (department && department !== "all") {
+    queryParams.push(department);
+    whereConditions.push(`department = $${queryParams.length}`);
   }
 
   const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
@@ -70,11 +76,20 @@ export async function getTeamMembers(filters: TeamMemberFilters = {}): Promise<P
   
   let teamMembers = await query<TeamMember>(dataQuery, [...queryParams, limit, offset]);
 
+  // Parse JSON fields from database
+  teamMembers = teamMembers.map(member => ({
+    ...member,
+    expertise: typeof member.expertise === 'string' ? JSON.parse(member.expertise) : member.expertise,
+    languages: typeof member.languages === 'string' ? JSON.parse(member.languages) : member.languages,
+    social_links: typeof member.social_links === 'string' ? JSON.parse(member.social_links) : member.social_links,
+    badges: typeof member.badges === 'string' ? JSON.parse(member.badges) : member.badges
+  }));
+
   // Charger les accomplissements si demandé
   if (with_achievements && teamMembers.length > 0) {
     const memberIds = teamMembers.map(m => m.id);
     const achievements = await query<TeamAchievement>(
-      `SELECT * FROM team_achievements WHERE team_member_id = ANY($1::bigint[]) ORDER BY achievement_date DESC`,
+      `SELECT * FROM team_achievements WHERE team_member_id = ANY($1::int[]) ORDER BY achievement_date DESC`,
       [memberIds]
     );
 
@@ -103,15 +118,24 @@ export async function getTeamMemberById(id: number, with_achievements = true): P
   const member = await queryOne<TeamMember>(`SELECT * FROM team_members WHERE id = $1`, [id]);
   if (!member) return null;
 
+  // Parse JSON fields from database
+  const parsedMember = {
+    ...member,
+    expertise: typeof member.expertise === 'string' ? JSON.parse(member.expertise) : member.expertise,
+    languages: typeof member.languages === 'string' ? JSON.parse(member.languages) : member.languages,
+    social_links: typeof member.social_links === 'string' ? JSON.parse(member.social_links) : member.social_links,
+    badges: typeof member.badges === 'string' ? JSON.parse(member.badges) : member.badges
+  };
+
   if (with_achievements) {
     const achievements = await query<TeamAchievement>(
       `SELECT * FROM team_achievements WHERE team_member_id = $1 ORDER BY achievement_date DESC`,
       [id]
     );
-    member.achievements = achievements;
+    parsedMember.achievements = achievements;
   }
 
-  return member;
+  return parsedMember;
 }
 
 /**
@@ -120,8 +144,19 @@ export async function getTeamMemberById(id: number, with_achievements = true): P
 export async function createTeamMember(data: TeamMemberInput) {
   const validatedData = teamMemberSchema.parse(data);
   
-  const fields = Object.keys(validatedData);
-  const values = Object.values(validatedData);
+  // Stringify JSON fields for database storage
+  const processedData = {
+    ...validatedData,
+    expertise: validatedData.expertise ? JSON.stringify(validatedData.expertise) : null,
+    languages: validatedData.languages ? JSON.stringify(validatedData.languages) : null,
+    social_links: validatedData.social_links ? JSON.stringify(validatedData.social_links) : '{}',
+    badges: validatedData.badges ? JSON.stringify(validatedData.badges) : null,
+    is_lead: validatedData.is_lead ? 1 : 0,
+    is_active: validatedData.is_active ? 1 : 0
+  };
+  
+  const fields = Object.keys(processedData);
+  const values = Object.values(processedData);
   const placeholders = fields.map((_, i) => `$${i + 1}`).join(", ");
   
   const res = await query<TeamMember>(
@@ -137,8 +172,20 @@ export async function createTeamMember(data: TeamMemberInput) {
  * Met à jour un membre de l'équipe
  */
 export async function updateTeamMember(id: number, data: Partial<TeamMemberInput>) {
-  const fields = Object.keys(data);
-  const values = Object.values(data);
+  // Process JSON fields and boolean to tinyint conversion
+  const processedData: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (['expertise', 'languages', 'social_links', 'badges'].includes(key) && value !== null && value !== undefined) {
+      processedData[key] = JSON.stringify(value);
+    } else if (key === 'is_lead' || key === 'is_active') {
+      processedData[key] = value ? 1 : 0;
+    } else {
+      processedData[key] = value;
+    }
+  }
+  
+  const fields = Object.keys(processedData);
+  const values = Object.values(processedData);
   const setClause = fields.map((field, i) => `${field} = $${i + 2}`).join(", ");
 
   const res = await query<TeamMember>(

@@ -344,16 +344,14 @@ export interface FighterTransfer {
 
 // Membre de l'équipe
 export interface TeamMember extends BaseEntity {
-  full_name: string;
-  first_name?: string;
-  last_name?: string;
+  first_name: string;
+  last_name: string;
   nickname?: string;
-  email?: string;
+  email: string;
   phone?: string;
   role: string;
   department?: string;
   specialization?: string;
-  avatar_url?: string;
   profile_image?: string;
   cover_image?: string;
   bio?: string;
@@ -364,12 +362,12 @@ export interface TeamMember extends BaseEntity {
   languages?: any;
   is_lead: boolean;
   is_active: boolean;
-  years_experience?: number;
-  projects_count?: number;
-  contributions_count?: number;
+  years_experience: number;
+  projects_count: number;
+  contributions_count: number;
   position_order: number;
   availability?: string;
-  joined_date?: string;
+  joined_date: string;
   last_active?: string;
 
   // Relations

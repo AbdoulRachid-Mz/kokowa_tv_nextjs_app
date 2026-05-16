@@ -219,7 +219,7 @@ async function getGroupsWithSubgroups(phaseId: number, phaseType: string) {
 
   // For each group, fetch subgroups with matches if phase type is not 'group'
   for (const group of groups) {
-    if (phaseType !== 'group') {
+    if (phaseType !== "group") {
       // Pour les phases knockout, quarterfinal, semifinal, final, qualification
       group.subGroups = await getSubgroupsWithMatchesForGroup(group.id);
     } else {
@@ -267,7 +267,7 @@ async function getSubgroupsWithMatchesForGroup(groupId: number) {
   // Pour chaque sous-groupe, récupérer les matches
   for (const subGroup of subGroups) {
     subGroup.matches = await getMatchesForSubGroup(subGroup.id);
-    
+
     // Format scores
     subGroup.scores = {
       region1: subGroup.scoreRegion1,
@@ -303,6 +303,7 @@ async function getMatchesForSubGroup(subGroupId: number) {
       f1.profile_image as "fighter1ProfileImage",
       m.fighter1_initial_state as "fighter1InitialState",
       r1.name as "fighter1RegionName",
+      r1.flag_image as "fighter1RegionFlagImage",
       
       -- Fighter 2
       m.fighter2_id as "fighter2Id",
@@ -311,6 +312,7 @@ async function getMatchesForSubGroup(subGroupId: number) {
       f2.nickname as "fighter2Nickname",
       f2.profile_image as "fighter2ProfileImage",
       r2.name as "fighter2RegionName",
+      r2.flag_image as "fighter2RegionFlagImage",
       m.fighter2_initial_state as "fighter2InitialState",
       
       -- Winner
@@ -352,7 +354,7 @@ async function getMatchesForSubGroup(subGroupId: number) {
   `;
 
   const matches = await query(sql, [subGroupId]);
-  
+
   // Formater chaque match selon le modèle demandé
   return matches.map((match) => {
     // Structurer les données des fighters
@@ -385,7 +387,7 @@ async function getMatchesForSubGroup(subGroupId: number) {
     // Structurer le résultat
     let winner = null;
     let loser = null;
-    
+
     if (match.winnerFighterId) {
       winner = {
         id: match.winnerFighterId,
@@ -396,10 +398,11 @@ async function getMatchesForSubGroup(subGroupId: number) {
         region: {
           id: match.winnerRegionId,
           name: match.winnerRegionName,
+          flagImage: match.winnerRegionFlagImage,
         },
       };
     }
-    
+
     if (match.loserFighterId) {
       loser = {
         id: match.loserFighterId,
@@ -410,6 +413,7 @@ async function getMatchesForSubGroup(subGroupId: number) {
         region: {
           id: match.loserRegionId,
           name: match.loserRegionName,
+          flagImage: match.loserRegionFlagImage,
         },
       };
     }
@@ -463,6 +467,8 @@ async function getSubgroupsForGroup(groupId: number) {
       sg.region2_id as "region2Id",
       r1.name as "region1Name",
       r2.name as "region2Name",
+      r1.flag_image as "region1FlagImage",
+      r2.flag_image as "region2FlagImage",
       b1.color as "beltRegion1Color",
       b2.color as "beltRegion2Color",
       sg.is_completed as "isCompleted",
@@ -511,6 +517,7 @@ async function getLiveMatchForEdition(editionId: number) {
       f1.nickname as "fighter1Nickname",
       f1.profile_image as "fighter1ProfileImage",
       r1.name as "fighter1RegionName",
+      r1.flag_image as "fighter1RegionFlagImage",
       
       -- Lutteur 2
       m.fighter2_id as "fighter2Id",
@@ -519,6 +526,7 @@ async function getLiveMatchForEdition(editionId: number) {
       f2.nickname as "fighter2Nickname",
       f2.profile_image as "fighter2ProfileImage",
       r2.name as "fighter2RegionName",
+      r2.flag_image as "fighter2RegionFlagImage",
       
       -- Vainqueur
       m.winner_fighter_id as "winnerFighterId",
@@ -551,7 +559,8 @@ async function getLiveMatchForEdition(editionId: number) {
         nickname: liveMatch.fighter1Nickname,
         profileImage: liveMatch.fighter1ProfileImage,
         regionName: liveMatch.fighter1RegionName,
-        initialState: null
+        regionFlagImage: liveMatch.fighter1RegionFlagImage,
+        initialState: null,
       },
       fighter2: {
         id: liveMatch.fighter2Id,
@@ -560,13 +569,14 @@ async function getLiveMatchForEdition(editionId: number) {
         nickname: liveMatch.fighter2Nickname,
         profileImage: liveMatch.fighter2ProfileImage,
         regionName: liveMatch.fighter2RegionName,
-        initialState: null
+        regionFlagImage: liveMatch.fighter2RegionFlagImage,
+        initialState: null,
       },
     };
 
     liveMatch.result = {
       winnerId: liveMatch.winnerFighterId,
-      loserId: liveMatch.loserFighterId
+      loserId: liveMatch.loserFighterId,
     };
 
     // Récupérer les cartons pour le match live
@@ -579,11 +589,24 @@ async function getLiveMatchForEdition(editionId: number) {
 
     // Nettoyer les données redondantes
     const fieldsToDelete = [
-      "fighter1Id", "fighter1FirstName", "fighter1LastName", "fighter1Nickname", "fighter1ProfileImage", "fighter1RegionName",
-      "fighter2Id", "fighter2FirstName", "fighter2LastName", "fighter2Nickname", "fighter2ProfileImage", "fighter2RegionName",
-      "winnerFighterId", "loserFighterId"
+      "fighter1Id",
+      "fighter1FirstName",
+      "fighter1LastName",
+      "fighter1Nickname",
+      "fighter1ProfileImage",
+      "fighter1RegionName",
+      "fighter1RegionFlagImage",
+      "fighter2Id",
+      "fighter2FirstName",
+      "fighter2LastName",
+      "fighter2Nickname",
+      "fighter2ProfileImage",
+      "fighter2RegionName",
+      "fighter2RegionFlagImage",
+      "winnerFighterId",
+      "loserFighterId",
     ];
-    fieldsToDelete.forEach(field => delete liveMatch[field]);
+    fieldsToDelete.forEach((field) => delete liveMatch[field]);
   }
 
   return liveMatch;
@@ -642,6 +665,7 @@ export async function getEditionChampions(editionId: number) {
       f.ranking,
       r.id as "regionId",
       r.name as "regionName",
+      r.flag_image as "regionFlagImage",
       r.color as "regionColor"
     FROM edition_fighters ef
     JOIN fighters f ON ef.fighter_id = f.id
@@ -654,13 +678,15 @@ export async function getEditionChampions(editionId: number) {
   return await query(sql, [editionId]);
 }
 
-
 // Get editions a region or fighter participated in
-export async function getParticipatedEditions(id: number, type: 'region' | 'fighter') {
+export async function getParticipatedEditions(
+  id: number,
+  type: "region" | "fighter",
+) {
   let sql: string;
   const params: any[] = [id];
 
-  if (type === 'region') {
+  if (type === "region") {
     sql = `
       SELECT DISTINCT
         ce.id,
@@ -672,13 +698,15 @@ export async function getParticipatedEditions(id: number, type: 'region' | 'figh
       LEFT JOIN regions r ON er.region_id = r.id
       ORDER BY ce.year DESC, ce.edition_number DESC
     `;
-  } else { // fighter
+  } else {
+    // fighter
     sql = `
  SELECT DISTINCT
       ce.id,
       ce.year,
       ce.edition_number as "editionNumber",
-      r.name as "regionName"
+      r.name as "regionName",
+      r.flag_image as "regionFlagImage"
     FROM competition_editions ce
     JOIN edition_fighters ef ON ef.edition_id = ce.id AND ef.fighter_id = $1
     LEFT JOIN regions r ON ce.region_id = r.id

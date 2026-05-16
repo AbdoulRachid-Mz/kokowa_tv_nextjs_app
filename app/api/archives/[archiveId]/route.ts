@@ -1,4 +1,4 @@
-import { deleteArchiveFighterAchievement, getArchiveFighterAchievements, updateArchiveFighterAchievement } from '@/actions/archives';
+import { deleteArchiveFighterAchievement, getArchiveFighterAchievements,getArchiveFighterAchievement, updateArchiveFighterAchievement } from '@/actions/archives';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface Props {
@@ -16,16 +16,24 @@ export async function GET(
       return NextResponse.json({ error: 'ID invalide' }, { status: 400 });
     }
 
-    const filters = { id: id, limit: 1, page: 1 };
-    const result = await getArchiveFighterAchievements(filters);
+    // Parse query parameters to get include options
+    const searchParams = request.nextUrl.searchParams;
+    const with_fighter = searchParams.get('with_fighter') === 'true';
+    const with_edition = searchParams.get('with_edition') === 'true';
+    const with_region = searchParams.get('with_region') === 'true';
 
-    if (!result.data || result.data.length === 0) {
-      return NextResponse.json({ error: 'Archive non trouvée' }, { status: 404 });
-    }
+    const result = await getArchiveFighterAchievement(id, {
+      with_fighter,
+      with_edition,
+      with_region
+    });
 
-    return NextResponse.json(result.data[0]);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('GET /api/archives/[archiveId] error:', error);
+    if ((error as Error).message === "Archive not found") {
+      return NextResponse.json({ error: 'Archive non trouvée' }, { status: 404 });
+    }
     return NextResponse.json(
       { error: 'Erreur lors de la récupération de l\'archive' },
       { status: 500 }

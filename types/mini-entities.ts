@@ -269,9 +269,11 @@ export interface MiniNotification {
 // Mini TeamMember
 export interface MiniTeamMember {
   id: number;
-  full_name: string;
+  first_name: string;
+  last_name: string;
+  nickname: string;
   role: string;
-  avatar_url?: string;
+  profile_image?: string;
   is_lead: boolean;
   is_active: boolean;
 }

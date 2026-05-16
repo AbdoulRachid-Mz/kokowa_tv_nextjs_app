@@ -13,13 +13,16 @@ import {
   Pencil, 
   Trash2, 
   Mail, 
-  Globe, 
+  Phone,
   Award, 
   Briefcase,
   Calendar,
   Clock,
   Shield,
-  Star
+  Star,
+  MapPin,
+  Globe,
+  Layers
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
@@ -69,6 +72,8 @@ export default function TeamMemberDetailPage() {
     );
   }
 
+  const fullName = `${member.first_name} ${member.last_name}`.trim();
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -82,7 +87,7 @@ export default function TeamMemberDetailPage() {
               Détails du Membre
             </Typography>
             <Typography variant="body-sm" theme="muted">
-              Consultez et gérez les informations de {member.full_name}
+              Consultez et gérez les informations de {fullName}
             </Typography>
           </div>
         </div>
@@ -115,23 +120,23 @@ export default function TeamMemberDetailPage() {
           <CardContent className="pt-6">
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-primary/10 shadow-lg">
-                {member.avatar_url ? (
+                {member.profile_image ? (
                   <Image
-                    src={member.avatar_url}
-                    alt={member.full_name}
+                    src={member.profile_image}
+                    alt={fullName}
                     fill
                     className="object-cover"
                   />
                 ) : (
                   <div className="w-full h-full bg-primary/10 flex items-center justify-center text-primary text-4xl font-bold">
-                    {member.full_name[0]}
+                    {member.first_name?.[0] || member.last_name?.[0] || "?"}
                   </div>
                 )}
               </div>
               <div>
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-2 flex-wrap">
                   <Typography variant="h4" weight="bold">
-                    {member.full_name}
+                    {fullName}
                   </Typography>
                   {member.is_lead && (
                     <Badge variant="default" className="h-5">Lead</Badge>
@@ -140,22 +145,48 @@ export default function TeamMemberDetailPage() {
                 <Typography variant="body-sm" theme="muted">
                   {member.role}
                 </Typography>
+                {member.nickname && (
+                  <Typography variant="body-sm" theme="muted" className="italic">
+                    "{member.nickname}"
+                  </Typography>
+                )}
               </div>
 
               <div className="flex flex-wrap justify-center gap-2">
                 <Badge variant={member.is_active ? "default" : "destructive"}>
                   {member.is_active ? "Actif" : "Inactif"}
                 </Badge>
-                {member.years_experience && (
+                {member.years_experience > 0 && (
                   <Badge variant="outline">{member.years_experience} ans exp.</Badge>
+                )}
+                {member.availability && (
+                  <Badge variant="secondary" className="capitalize">
+                    {member.availability === "full-time" ? "Temps plein" : 
+                     member.availability === "part-time" ? "Temps partiel" :
+                     member.availability === "contract" ? "Contractuel" : "Freelance"}
+                  </Badge>
                 )}
               </div>
 
               <div className="w-full pt-4 space-y-2 border-t text-left">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  <span>Rejoint le {member.joined_date ? new Date(member.joined_date).toLocaleDateString() : 'N/A'}</span>
-                </div>
+                {member.email && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Mail className="h-4 w-4 text-primary" />
+                    <a href={`mailto:${member.email}`} className="hover:underline">{member.email}</a>
+                  </div>
+                )}
+                {member.phone && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Phone className="h-4 w-4 text-primary" />
+                    <a href={`tel:${member.phone}`} className="hover:underline">{member.phone}</a>
+                  </div>
+                )}
+                {member.joined_date && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    <span>Rejoint le {new Date(member.joined_date).toLocaleDateString()}</span>
+                  </div>
+                )}
                 {member.last_active && (
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="h-4 w-4 text-primary" />
@@ -183,6 +214,15 @@ export default function TeamMemberDetailPage() {
                 </div>
               )}
 
+              {member.quote && (
+                <div>
+                  <Typography variant="body-sm" weight="semibold" className="mb-2">Citation</Typography>
+                  <Typography variant="body-sm" theme="muted" className="italic">
+                    "{member.quote}"
+                  </Typography>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Typography variant="body-sm" weight="semibold" className="mb-2">Expertise</Typography>
@@ -202,57 +242,84 @@ export default function TeamMemberDetailPage() {
                 </div>
               </div>
 
+              {member.specialization && (
+                <div>
+                  <Typography variant="body-sm" weight="semibold" className="mb-2">Spécialisation</Typography>
+                  <Typography variant="body-sm" theme="muted">{member.specialization}</Typography>
+                </div>
+              )}
+
+              {member.department && (
+                <div>
+                  <Typography variant="body-sm" weight="semibold" className="mb-2">Département</Typography>
+                  <Typography variant="body-sm" theme="muted">{member.department}</Typography>
+                </div>
+              )}
+
               <div>
                 <Typography variant="body-sm" weight="semibold" className="mb-2">Badges & Distinctions</Typography>
                 <div className="flex flex-wrap gap-2">
                   {member.badges && Array.isArray(member.badges) && member.badges.map((badge, i) => (
-                    <Badge key={i} className="bg-yellow-500 hover:bg-yellow-600">
+                    <Badge key={i} className="bg-yellow-500 hover:bg-yellow-600 text-white">
                       <Star className="h-3 w-3 mr-1 fill-current" /> {badge}
                     </Badge>
                   ))}
                 </div>
               </div>
+
+              <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+                <div className="text-center">
+                  <Typography variant="h4" weight="bold">{member.projects_count || 0}</Typography>
+                  <Typography variant="caption2" theme="muted">Projets</Typography>
+                </div>
+                <div className="text-center">
+                  <Typography variant="h4" weight="bold">{member.contributions_count || 0}</Typography>
+                  <Typography variant="caption2" theme="muted">Contributions</Typography>
+                </div>
+                <div className="text-center">
+                  <Typography variant="h4" weight="bold">{member.years_experience || 0}</Typography>
+                  <Typography variant="caption2" theme="muted">Années exp.</Typography>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
+          {/* Social Links */}
+          {member.social_links && Object.keys(member.social_links).length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Liens sociaux</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-4">
+                  {Object.entries(member.social_links).map(([platform, url]) => (
+                    <a
+                      key={platform}
+                      href={url as string}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm text-primary hover:underline"
+                    >
+                      <Globe className="h-4 w-4" />
+                      {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                    </a>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Achievements (à implémenter si tu as la table team_achievements) */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Accomplissements</CardTitle>
               <Button size="sm">Ajouter</Button>
             </CardHeader>
             <CardContent>
-              {member.achievements && member.achievements.length > 0 ? (
-                <div className="space-y-4">
-                  {member.achievements.map((achievement) => (
-                    <div key={achievement.id} className="flex gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className={cn(
-                        "w-12 h-12 rounded-lg flex items-center justify-center text-white",
-                        achievement.color || "bg-primary"
-                      )}>
-                        <Award className="h-6 w-6" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
-                          <Typography variant="body-lg" weight="bold">{achievement.title}</Typography>
-                          <Typography variant="caption2" theme="muted">
-                            {achievement.achievement_date ? new Date(achievement.achievement_date).toLocaleDateString() : ''}
-                          </Typography>
-                        </div>
-                        <Typography variant="body-sm" theme="muted" className="mt-1">
-                          {achievement.description}
-                        </Typography>
-                        {achievement.category && (
-                          <Badge variant="outline" className="mt-2 text-[10px]">{achievement.category}</Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground italic">
-                  Aucun accomplissement enregistré.
-                </div>
-              )}
+              {/* Ici tu pourras lister les achievements de team_achievements */}
+              <div className="text-center py-8 text-muted-foreground italic">
+                Aucun accomplissement enregistré.
+              </div>
             </CardContent>
           </Card>
         </div>
