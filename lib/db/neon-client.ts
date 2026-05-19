@@ -1,5 +1,8 @@
 // lib/db/neon-client.ts
-import { Pool, PoolConfig } from "pg";
+import { Pool, PoolConfig, types } from "pg";
+
+// Parse INTERVAL (OID 1186) as string to avoid PostgresInterval serialization issues in Next.js
+types.setTypeParser(1186, (val) => val);
 
 const dbConfig: PoolConfig = {
   connectionString: process.env.DATABASE_URL,

@@ -29,6 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSubGroupDialog } from "@/components/phase-groups/create-sub-group-dialog";
 import { CardStats } from "@/components/entities/card-stats";
 import { SubGroupCard } from "@/components/entities/entity-cards";
+import { DeleteButton } from "@/components/shared/delete-button";
 
 export default function PhaseGroupDetailPage() {
   const params = useParams();
@@ -195,6 +196,13 @@ export default function PhaseGroupDetailPage() {
           <Badge variant={statusConfig.variant} className={statusConfig.color}>
             {statusConfig.label}
           </Badge>
+          <DeleteButton
+            entityType="phase-group"
+            entityId={parseInt(groupId)}
+            entityName={group.name}
+            redirectPath={`/ad/phases/${group.phase_id}`}
+            variant="outline"
+          />
           <Button variant="outline" onClick={handleEditGroup}>
             <Edit className="h-4 w-4 mr-2" />
             Modifier

@@ -1,12 +1,11 @@
-// hooks/use-matches.ts - VERSION AMÉLIORÉE
+// hooks/use-matches.ts
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Match, MatchFilters } from '@/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getMatches } from '@/actions/matches';
-import { useRealtime } from './use-realtime';
 
 interface UseMatchesProps {
   initialFilters?: MatchFilters;
@@ -264,12 +263,9 @@ export function useMatches({
 
 interface UseLiveMatchesOptions {
   limit?: number;
-  refetchInterval?: number;
 }
 
-export function useLiveMatches({ limit = 10, refetchInterval = 60000 }: UseLiveMatchesOptions = {}) {
-  const queryClient = useQueryClient();
-
+export function useLiveMatches({ limit = 10 }: UseLiveMatchesOptions = {}) {
   const {
     data,
     isLoading,
@@ -279,34 +275,13 @@ export function useLiveMatches({ limit = 10, refetchInterval = 60000 }: UseLiveM
     queryKey: ['liveMatches', { limit }],
     queryFn: () => getMatches({ status: 'live', limit }),
     refetchInterval: false,
-    staleTime: 30000, // 30s
+    staleTime: 30000,
   });
-
-  // Realtime updates
-  const { isConnected, subscribe } = useRealtime({
-    autoConnect: true,
-    onMessage: (msg) => {
-      if (msg.type === 'update' && msg.data.entityType === 'match') {
-        // Invalidate cache to re-fetch
-        queryClient.invalidateQueries({ queryKey: ['liveMatches'] });
-      }
-    }
-  });
-
-  // Subscribe to current matches when data changes
-  useEffect(() => {
-    if (isConnected && data?.data) {
-      data.data.forEach(match => {
-        if (match.id) subscribe('match', match.id);
-      });
-    }
-  }, [data?.data, isConnected, subscribe]);
 
   return {
     matches: data?.data || [],
     isLoading,
     error,
-    isConnected,
     refetch,
   };
 }

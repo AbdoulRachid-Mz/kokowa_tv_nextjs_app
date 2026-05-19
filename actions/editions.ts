@@ -7,7 +7,7 @@ import {
   editionFighterSchema,
   editionRegionSchema,
 } from "@/validation/schemas";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, cacheTag, updateTag, revalidateTag } from "next/cache";
 import { emitEditionEvent } from "./realtime";
 import {
   CompetitionEdition,
@@ -18,6 +18,8 @@ import {
 } from "@/types";
 
 export async function getEditions(options: EditionFilters = {}) {
+  "use cache";
+  cacheTag("editions");
   try {
     const {
       competition_id,
@@ -360,6 +362,8 @@ export async function getEditionById(
     with_stats?: boolean;
   } = {},
 ) {
+  "use cache";
+  cacheTag('editions', `edition:${id}`);
   try {
     const { 
       with_relations = false, 
@@ -862,8 +866,8 @@ export async function createEdition(formData: FormData) {
 
         inserted = true;
 
-        revalidatePath("/ad/competitions");
-        revalidatePath(`/ad/competitions/${cleanedData.competition_id}`);
+        updateTag("competitions");
+        updateTag(`competition:${cleanedData.competition_id}`);
 
         return {
           success: true,
@@ -885,6 +889,8 @@ export async function createEdition(formData: FormData) {
 }
 
 export async function updateEdition(id: number, formData: FormData) {
+  updateTag("editions");
+  updateTag(`edition:${id}`);
   try {
     const existing = await getEditionById(id, { with_relations: false });
     if (!existing) {
@@ -975,8 +981,11 @@ export async function deleteEdition(id: number) {
     const sql = "DELETE FROM competition_editions WHERE id = $1";
     await query(sql, [id]);
 
-    revalidatePath("/competitions");
-    revalidatePath(`/competitions/${existing.competition_id}`);
+    revalidatePath("/editions");
+    updateTag(`competition:${existing.competition_id}`);
+    updateTag("editions");
+    updateTag(`edition:${id}`);
+    revalidatePath(`/editions/${id}`);
     return {
       success: true,
       message: "Édition supprimée avec succès",

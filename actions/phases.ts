@@ -3,13 +3,16 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { phaseSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { Phase, PaginatedResponse, PhaseFilters } from '@/types';
 
 
 export async function getPhases(
   filters: PhaseFilters = {}
 ): Promise<PaginatedResponse<Phase>> {
+  "use cache";
+  cacheTag("phases");
+
   try {
     const {
       edition_id,
@@ -226,6 +229,9 @@ export async function getPhaseById(id: number, options: {
   is_active?: boolean,
   with_stats?: boolean
 } = {}) {
+  "use cache";
+  cacheTag("phases", `phase:${id}`);
+
   try {
     const { 
       with_relations = false, 
@@ -436,6 +442,8 @@ export async function createPhase(formData: FormData) {
     revalidatePath('/ad/editions');
     revalidatePath(`/ad/editions/${cleanedData.edition_id}`);
     revalidatePath('/ad/phases');
+    updateTag("phases");
+    updateTag("editions");
     
     return { 
       success: true, 
@@ -514,6 +522,8 @@ export async function updatePhase(id: number, formData: FormData) {
     revalidatePath(`/editions/${validatedData.edition_id}`);
     revalidatePath(`/phases/${id}`);
     revalidatePath('/phases');
+    updateTag("phases");
+    updateTag(`phase:${id}`);
     return { 
       success: true, 
       message: 'Phase modifiée avec succès' 
@@ -549,6 +559,8 @@ export async function deletePhase(id: number) {
     revalidatePath('/editions');
     revalidatePath(`/editions/${existing.edition_id}`);
     revalidatePath('/phases');
+    updateTag("phases");
+    updateTag(`phase:${id}`);
     return { 
       success: true, 
       message: 'Phase supprimée avec succès' 
@@ -577,6 +589,8 @@ export async function togglePhaseStatus(id: number, isActive: boolean) {
     revalidatePath('/editions');
     revalidatePath(`/editions/${existing.edition_id}`);
     revalidatePath('/phases');
+    updateTag("phases");
+    updateTag(`phase:${id}`);
     return { 
       success: true, 
       message: `Phase ${isActive ? 'activée' : 'désactivée'} avec succès` 
@@ -588,6 +602,9 @@ export async function togglePhaseStatus(id: number, isActive: boolean) {
 }
 
 export async function getPhasesByEdition(editionId: number) {
+  "use cache";
+  cacheTag("phases");
+
   try {
     const sql = `
       SELECT 

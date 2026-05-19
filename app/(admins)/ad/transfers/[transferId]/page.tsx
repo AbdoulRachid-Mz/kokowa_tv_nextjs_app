@@ -20,6 +20,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Image from "next/image";
+import { DeleteButton } from "@/components/shared/delete-button";
 
 export default function TransferDetailPage() {
   const { transferId } = useParams();
@@ -162,13 +163,23 @@ export default function TransferDetailPage() {
                 </span>
               </Badge>
 
-              <Button
-                onClick={() => router.push(`/ad/transfers/${id}/edit`)}
-                size="sm"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Modifier
-              </Button>
+              <div className="flex gap-2">
+                <DeleteButton
+                  entityType="transfer"
+                  entityId={id}
+                  entityName={`Transfert de ${transfer.fighter?.first_name} ${transfer.fighter?.last_name}`}
+                  redirectPath="/ad/transfers"
+                  size="sm"
+                  iconOnly
+                />
+                <Button
+                  onClick={() => router.push(`/ad/transfers/${id}/edit`)}
+                  size="sm"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Modifier
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>

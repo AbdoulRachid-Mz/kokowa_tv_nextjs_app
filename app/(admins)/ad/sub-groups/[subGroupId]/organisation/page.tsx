@@ -23,7 +23,6 @@ import { MatchCard } from "./matches-card";
 import { BulkMatchCreator } from "./bulk-match-creator";
 import { Spinner } from "@/components/ui/spinner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useRealtime } from "@/hooks/use-realtime";
 import { toast } from "sonner";
 import { SimpleMatchCard } from "@/components/matches/match-card";
 import { getEditionFighters } from "@/actions/editions";
@@ -109,23 +108,7 @@ export default function SubGroupOrganizationPage() {
     return [...subGroup.matches].sort((a, b) => (a.match_number ?? 1) - (b.match_number ?? 1));
   }, [subGroup?.matches]);
 
-  // Realtime integration
-  const { isConnected, subscribe } = useRealtime({
-    autoConnect: true,
-    onConnect: () => {
-      if (!isNaN(id)) {
-        subscribe('subGroup', id);
-      }
-    },
-    onMessage: (msg) => {
-      if (msg.type === 'update' && msg.data.entityType === 'subGroup' && msg.data.entityId == id) {
-        console.log('🔄 SubGroup updated via Realtime');
-        queryClient.invalidateQueries({ queryKey: ["sub-group-org", id] });
-      }
-    }
-  });
 
-  // Charger les lutteurs une seule fois ou quand le sous-groupe change
   useEffect(() => {
     if (subGroup) {
       const fetchFighters = async () => {
@@ -356,15 +339,6 @@ export default function SubGroupOrganizationPage() {
                 <Typography variant="h4" weight="bold">
                   {subGroup.name}
                 </Typography>
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"
-                      }`}
-                  />
-                  <Badge variant={isConnected ? "default" : "outline"}>
-                    {isConnected ? "Temps réel actif" : "Hors ligne"}
-                  </Badge>
-                </div>
               </div>
 
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">

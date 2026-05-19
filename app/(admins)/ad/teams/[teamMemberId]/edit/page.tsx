@@ -73,6 +73,7 @@ export default function EditTeamMemberPage() {
       </div>
     );
   }
+  const full_name = member.first_name + member.last_name;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -83,7 +84,7 @@ export default function EditTeamMemberPage() {
         <div>
           <Typography variant="h2" weight="bold" className="flex items-center gap-2">
             <Users className="h-8 w-8 text-primary" />
-            Modifier {member.full_name}
+            Modifier {full_name}
           </Typography>
           <Typography variant="body-sm" theme="muted">
             Mettez à jour les informations de votre collaborateur

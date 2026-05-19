@@ -3,7 +3,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { beltSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { Belt, PaginatedResponse } from '@/types';
 import z from 'zod';
 
@@ -22,6 +22,8 @@ export interface BeltFilters {
 export async function getBelts(
   filters: BeltFilters = {}
 ): Promise<PaginatedResponse<Belt>> {
+  "use cache";
+  cacheTag("belts"); 
   try {
     const {
       search = '',
@@ -124,6 +126,8 @@ export async function getBelts(
 
 // Récupérer une ceinture par ID
 export async function getBeltById(id: number) {
+  "use cache";
+  cacheTag("belts", `belt:${id}`);
   try {
     const sql = `
       SELECT 
@@ -228,8 +232,9 @@ export async function createBelt(formData: FormData) {
       validatedData.is_active,
     ]);
 
-    revalidatePath('/belts');
-    revalidatePath('/api/belts');
+    updateTag("belts");
+    updateTag(`belt:${result[0].id}`);
+    revalidatePath("/ad/belts");
     
     return { 
       success: true, 
@@ -251,6 +256,8 @@ export async function createBelt(formData: FormData) {
 
 // Mettre à jour une ceinture
 export async function updateBelt(id: number, formData: FormData) {
+  "use cache";
+  cacheTag("belts", `belt:${id}`);
   try {
     const existing = await getBeltById(id);
     if (!existing) {
@@ -295,10 +302,9 @@ export async function updateBelt(id: number, formData: FormData) {
       id,
     ]);
 
-    revalidatePath('/belts');
-    revalidatePath(`/belts/${id}`);
-    revalidatePath('/api/belts');
-    revalidatePath(`/api/belts/${id}`);
+    updateTag("belts");
+    updateTag(`belt:${id}`);
+    revalidatePath(`/ad/belts/${id}`);
     
     return { 
       success: true, 
@@ -319,6 +325,7 @@ export async function updateBelt(id: number, formData: FormData) {
 
 // Supprimer une ceinture
 export async function deleteBelt(id: number) {
+  "use cache";
   try {
     const existing = await getBeltById(id);
     if (!existing) {
@@ -337,8 +344,9 @@ export async function deleteBelt(id: number) {
     const sql = 'DELETE FROM belt WHERE id = $1';
     await query(sql, [id]);
     
-    revalidatePath('/belts');
-    revalidatePath('/api/belts');
+    updateTag("belts");
+    updateTag(`belt:${id}`);
+    revalidatePath(`/ad/belts`);
     
     return { 
       success: true, 
@@ -367,10 +375,9 @@ export async function toggleBeltStatus(id: number, is_active: boolean) {
     
     const result = await query<Belt>(sql, [is_active, id]);
 
-    revalidatePath('/belts');
-    revalidatePath(`/belts/${id}`);
-    revalidatePath('/api/belts');
-    revalidatePath(`/api/belts/${id}`);
+    updateTag("belts");
+    updateTag(`belt:${id}`);
+    revalidatePath(`/ad/belts`);
     
     return { 
       success: true, 
@@ -385,6 +392,8 @@ export async function toggleBeltStatus(id: number, is_active: boolean) {
 
 // Récupérer les statistiques des ceintures
 export async function getBeltStats() {
+  "use cache";
+  cacheTag("belts");
   try {
     const sql = `
       SELECT 
@@ -448,6 +457,8 @@ export async function getBeltStats() {
 
 // Récupérer les ceintures disponibles (actives) pour les sélecteurs
 export async function getActiveBeltsForSelection() {
+  "use cache";
+  cacheTag("belts");
   try {
     const sql = `
       SELECT id, color

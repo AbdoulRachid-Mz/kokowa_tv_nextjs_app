@@ -3,12 +3,14 @@
 
 import { query, queryOne } from "@/lib/db/neon-client";
 import { articleSchema } from "@/validation/schemas";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, cacheTag, updateTag } from "next/cache";
 import { Article, ArticleFilters, PaginatedResponse, ArticleType } from "@/types";
 
 export async function getArticles(
   filters: ArticleFilters = {}
 ): Promise<PaginatedResponse<Article>> {
+  "use cache";
+  cacheTag("articles"); 
   try {
     const {
       author_id,
@@ -267,6 +269,8 @@ export async function getArticleById(
     with_relations?: boolean;
   } = {}
 ) {
+  "use cache";
+  cacheTag("articles", `article:${id}`);
   try {
     const { with_relations = true } = options;
 
@@ -412,6 +416,8 @@ export async function getArticleBySlug(
     with_relations?: boolean;
   } = {}
 ) {
+  "use cache";
+  cacheTag("articles", `article:${slug}`);
   try {
     const { with_relations = true } = options;
 
@@ -576,8 +582,9 @@ export async function createArticle(formData: FormData) {
       publishedAt,
     ]);
 
-    revalidatePath("/articles");
-    revalidatePath("/");
+    updateTag("articles");
+    updateTag(`article:${result[0].id}`);
+    revalidatePath("/ad/articles");
     return {
       success: true,
       id: result[0].id,
@@ -590,6 +597,8 @@ export async function createArticle(formData: FormData) {
 }
 
 export async function updateArticle(id: number, formData: FormData) {
+  "use cache";
+  cacheTag("articles", `article:${id}`);
   try {
     const existing = await getArticleById(id, { with_relations: false });
     if (!existing) {
@@ -662,10 +671,9 @@ export async function updateArticle(id: number, formData: FormData) {
       id,
     ]);
 
-    revalidatePath("/articles");
-    revalidatePath(`/articles/${id}`);
-    revalidatePath(`/articles/${validatedData.slug}`);
-    revalidatePath("/");
+    updateTag("articles");
+    updateTag(`article:${id}`);
+    revalidatePath(`/ad/articles/${id}`);
     return {
       success: true,
       message: "Article modifié avec succès",
@@ -686,8 +694,9 @@ export async function deleteArticle(id: number) {
     const sql = "DELETE FROM articles WHERE id = $1";
     await query(sql, [id]);
 
-    revalidatePath("/articles");
-    revalidatePath("/");
+    updateTag("articles");
+    updateTag(`article:${id}`);
+    revalidatePath("/ad/articles");
     return {
       success: true,
       message: "Article supprimé avec succès",
@@ -716,6 +725,8 @@ export async function incrementArticleViewCount(id: number) {
 }
 
 export async function getPopularArticles(limit: number = 10) {
+  "use cache";
+  cacheTag("articles"); 
   try {
     const sql = `
       SELECT 

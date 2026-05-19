@@ -32,6 +32,7 @@ import Image from "next/image";
 import { CardStats } from "@/components/entities/card-stats";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
+import { DeleteButton } from "@/components/shared/delete-button";
 
 export default function VideoDetailPage() {
   const params = useParams();
@@ -225,28 +226,7 @@ export default function VideoDetailPage() {
     router.push(`/ad/videos/${videoId}/edit`);
   };
 
-  const handleDeleteVideo = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cette vidéo ?")) {
-      return;
-    }
 
-    try {
-      const response = await fetch(`/api/videos/${videoId}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        toast.success("Vidéo supprimée avec succès");
-        router.push("/ad/videos");
-      } else {
-        const error = await response.json();
-        toast.error(error.error || "Erreur lors de la suppression");
-      }
-    } catch (error) {
-      console.error("Erreur:", error);
-      toast.error("Erreur réseau");
-    }
-  };
 
   const handlePlayVideo = () => {
     if (!video?.video_url) return;
@@ -362,9 +342,12 @@ export default function VideoDetailPage() {
             <Edit className="h-4 w-4 mr-2" />
             Modifier
           </Button>
-          <Button variant="destructive" onClick={handleDeleteVideo}>
-            Supprimer
-          </Button>
+          <DeleteButton
+            entityType="video"
+            entityId={parseInt(videoId)}
+            entityName={video.title}
+            redirectPath="/ad/videos"
+          />
         </div>
       </div>
 
@@ -557,13 +540,15 @@ export default function VideoDetailPage() {
                   <Edit className="h-4 w-4 mr-2" />
                   Modifier
                 </Button>
-                <Button
-                  variant="destructive"
-                  className="w-full justify-start"
-                  onClick={handleDeleteVideo}
-                >
-                  Supprimer
-                </Button>
+                <div className="w-full">
+                  <DeleteButton
+                    entityType="video"
+                    entityId={parseInt(videoId)}
+                    entityName={video.title}
+                    redirectPath="/ad/videos"
+                    className="w-full justify-start"
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>

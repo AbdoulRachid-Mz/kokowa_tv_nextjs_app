@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'realtime_provider.dart';
 import 'realtime_client.dart';
 
-// Widget pour écouter les updates d'une entité spécifique
+// Widget for listening to real-time updates for a specific entity from Firestore
 class RealtimeListener<T> extends StatelessWidget {
   final EntityType entityType;
   final dynamic entityId;
@@ -23,7 +23,6 @@ class RealtimeListener<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<RealtimeProvider>(context, listen: true);
-    final key = '${entityType.toString().split('.').last}:$entityId';
     
     var updates = provider.getUpdatesForEntity(
       entityType.toString().split('.').last,
@@ -38,7 +37,7 @@ class RealtimeListener<T> extends StatelessWidget {
   }
 }
 
-// Widget pour afficher le statut de connexion
+// Widget to show the Firestore realtime connection status in Flutter
 class ConnectionStatusWidget extends StatelessWidget {
   final VoidCallback? onReconnect;
 
@@ -57,18 +56,18 @@ class ConnectionStatusWidget extends StatelessWidget {
         switch (status) {
           case ConnectionStatus.connected:
             color = Colors.green;
-            text = 'Connecté';
-            icon = Icons.wifi;
+            text = 'Firestore Actif';
+            icon = Icons.cloud_done;
             break;
           case ConnectionStatus.authenticated:
             color = Colors.green;
-            text = 'Authentifié';
+            text = 'Firestore Sécurisé';
             icon = Icons.verified_user;
             break;
           case ConnectionStatus.connecting:
             color = Colors.orange;
-            text = 'Connexion...';
-            icon = Icons.wifi_find;
+            text = 'Initialisation...';
+            icon = Icons.cloud_sync;
             break;
           case ConnectionStatus.reconnecting:
             color = Colors.orange;
@@ -77,8 +76,8 @@ class ConnectionStatusWidget extends StatelessWidget {
             break;
           case ConnectionStatus.disconnected:
             color = Colors.red;
-            text = 'Déconnecté';
-            icon = Icons.wifi_off;
+            text = 'Firestore Inactif';
+            icon = Icons.cloud_off;
             break;
         }
         
@@ -119,7 +118,7 @@ class ConnectionStatusWidget extends StatelessWidget {
   }
 }
 
-// Extension pour faciliter l'utilisation
+// BuildContext extension for easy access
 extension RealtimeProviderExtension on BuildContext {
   RealtimeProvider get realtime => Provider.of<RealtimeProvider>(this, listen: false);
   

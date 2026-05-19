@@ -2,12 +2,14 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { advertisementSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { Advertisement, AdvertisementFilters, PaginatedResponse, AdvertisementStats } from '@/types';
 
 export async function getAdvertisements(
   filters: AdvertisementFilters = {}
 ): Promise<PaginatedResponse<Advertisement>> {
+  "use cache";
+  cacheTag("advertisements"); 
   try {
     const {
       position,
@@ -155,6 +157,8 @@ export async function getAdvertisements(
 export async function getAdvertisementById(id: number, options: { 
   with_stats?: boolean 
 } = {}) {
+  "use cache";
+  cacheTag("advertisements", `advertisement:${id}`);
   try {
     const { with_stats = true } = options;
     
@@ -263,6 +267,9 @@ export async function createAdvertisement(formData: FormData) {
     revalidatePath("/admin/advertisements");
     revalidatePath("/");
 
+    updateTag("advertisements");
+    updateTag(`advertisement:${result[0].id}`);
+
     return { 
       success: true, 
       id: result[0].id,
@@ -353,6 +360,9 @@ export async function updateAdvertisement(id: number, formData: FormData) {
     revalidatePath(`/admin/advertisements/${id}`);
     revalidatePath('/');
     
+    updateTag("advertisements");
+    updateTag(`advertisement:${id}`);
+    
     return { 
       success: true, 
       message: 'Publicité modifiée avec succès' 
@@ -376,9 +386,10 @@ export async function deleteAdvertisement(id: number) {
     const sql = 'DELETE FROM advertisements WHERE id = $1';
     await query(sql, [id]);
 
-    revalidatePath('/advertisements');
+    updateTag("advertisements");
+    updateTag(`advertisement:${id}`);
     revalidatePath('/ad/advertisements');
-    
+
     return { 
       success: true, 
       message: 'Publicité supprimée avec succès' 
@@ -484,6 +495,8 @@ export async function getAdvertisementStats(): Promise<AdvertisementStats> {
 }
 
 export async function getActiveAdvertisements(position?: string, limit: number = 5) {
+  "use cache";
+  cacheTag("advertisements"); 
   try {
     let sql = `
       SELECT *
@@ -555,6 +568,8 @@ export async function recordAdImpression(id: number) {
 }
 
 export async function getAdvertisementsForSelect() {
+  "use cache";
+  cacheTag("advertisements");
   try {
     const sql = `
       SELECT id, title, position, priority, is_active

@@ -3,12 +3,15 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { videoSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { Video, VideoFilters, PaginatedResponse } from '@/types';
 
 export async function getVideos(
   filters: VideoFilters = {}
 ): Promise<PaginatedResponse<Video>> {
+  "use cache";
+  cacheTag("videos");
+
   try {
     const {
       type,
@@ -108,6 +111,9 @@ export async function getVideos(
 }
 
 export async function getVideoById(id: number) {
+  "use cache";
+  cacheTag("videos", `video:${id}`);
+
   try {
     const sql = 'SELECT * FROM videos WHERE id = $1';
     const result = await queryOne<Video>(sql, [id]);
@@ -124,6 +130,9 @@ export async function getVideoById(id: number) {
 }
 
 export async function getVideoBySlug(slug: string) {
+  "use cache";
+  cacheTag("videos");
+
   try {
     const sql = 'SELECT * FROM videos WHERE slug = $1';
     const result = await queryOne<Video>(sql, [slug]);
@@ -196,6 +205,7 @@ export async function createVideo(formData: FormData) {
 
     revalidatePath('/videos');
     revalidatePath('/');
+    updateTag("videos");
     return { 
       success: true, 
       id: result[0].id,
@@ -276,6 +286,8 @@ export async function updateVideo(id: number, formData: FormData) {
     revalidatePath(`/videos/${id}`);
     revalidatePath(`/videos/${validatedData.slug}`);
     revalidatePath('/');
+    updateTag("videos");
+    updateTag(`video:${id}`);
     return { 
       success: true, 
       message: 'Vidéo modifiée avec succès' 
@@ -298,6 +310,8 @@ export async function deleteVideo(id: number) {
     
     revalidatePath('/videos');
     revalidatePath('/');
+    updateTag("videos");
+    updateTag(`video:${id}`);
     return { 
       success: true, 
       message: 'Vidéo supprimée avec succès' 
@@ -344,6 +358,9 @@ export async function likeVideo(id: number) {
 }
 
 export async function getLiveVideos() {
+  "use cache";
+  cacheTag("videos");
+
   try {
     const sql = `
       SELECT *
@@ -361,6 +378,9 @@ export async function getLiveVideos() {
 }
 
 export async function getFeaturedVideos(limit: number = 10) {
+  "use cache";
+  cacheTag("videos");
+
   try {
     const sql = `
       SELECT *
@@ -383,6 +403,9 @@ export async function getVideosByCategory(category: string, filters: Omit<VideoF
 }
 
 export async function getPopularVideos(limit: number = 10) {
+  "use cache";
+  cacheTag("videos");
+
   try {
     const sql = `
       SELECT *
@@ -401,6 +424,9 @@ export async function getPopularVideos(limit: number = 10) {
 }
 
 export async function getVideoStats() {
+  "use cache";
+  cacheTag("videos");
+
   try {
     const sql = `
       SELECT 

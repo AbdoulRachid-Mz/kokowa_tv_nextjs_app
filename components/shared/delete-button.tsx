@@ -49,6 +49,8 @@ const entityIcons: Record<string, React.ElementType> = {
   'phase-group': Trash2,
   'sub-group': Trash2,
   edition: Trash2,
+  transfer: Trash2,
+  'team-member': Trash2,
 }
 
 export function DeleteButton({

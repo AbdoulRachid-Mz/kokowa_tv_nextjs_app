@@ -17,6 +17,7 @@ import { SimpleMatchCard } from "@/components/matches/match-card";
 import { useEntityList } from "@/hooks/use-entity-list";
 import { CardStats } from "@/components/entities/card-stats";
 import { EntityList } from "@/components/shared/entity-list";
+import { DeleteButton } from "@/components/shared/delete-button";
 
 export default function SubGroupDetailPage() {
   const { subGroupId } = useParams();
@@ -221,6 +222,14 @@ export default function SubGroupDetailPage() {
               </div>
 
               <div className="flex gap-2">
+                <DeleteButton
+                  entityType="sub-group"
+                  entityId={id}
+                  entityName={subGroup.name}
+                  redirectPath={`/ad/phase-groups/${subGroup.group_id}`}
+                  size="sm"
+                  iconOnly
+                />
                 <Button
                   onClick={() => router.push(`/ad/sub-groups/${id}/edit`)}
                   size="sm"

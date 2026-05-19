@@ -3,7 +3,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { refereeSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { Referee, PaginatedResponse } from '@/types';
 
 export interface RefereeFilters {
@@ -21,6 +21,9 @@ export interface RefereeFilters {
 export async function getReferees(
   options: RefereeFilters = {}
 ): Promise<PaginatedResponse<Referee>> {
+  "use cache";
+  cacheTag("referees");
+
   try {
     const {
       search = '',
@@ -187,6 +190,9 @@ export async function getReferees(
 export async function getRefereeById(id: number, options: {
   with_relations?: boolean 
 } = {}) {
+  "use cache";
+  cacheTag("referees", `referee:${id}`);
+
   try {
     const { with_relations = true } = options;
     
@@ -384,6 +390,9 @@ export async function getRefereeById(id: number, options: {
 
 // Fonction alternative simplifiée pour les statistiques
 export async function getRefereeStatistics(id: number) {
+  "use cache";
+  cacheTag("referees", `referee:${id}`);
+
   try {
     const sql = `
       SELECT 
@@ -485,6 +494,9 @@ export async function getRefereeEncounters(refereeId: number, options: {
   limit?: number;
   offset?: number;
 } = {}) {
+  "use cache";
+  cacheTag("referees", `referee:${refereeId}`);
+
   try {
     const { limit = 20, offset = 0 } = options;
     
@@ -642,6 +654,8 @@ export async function createReferee(formData: FormData) {
     ]);
 
     revalidatePath('/ad/referees');
+    updateTag("referees");
+    
     return { 
       success: true, 
       id: result[0].id,
@@ -716,6 +730,9 @@ export async function updateReferee(id: number, formData: FormData) {
     }
 
     revalidatePath('/ad/referees');
+    updateTag("referees");
+    updateTag(`referee:${id}`);
+    
     return {
       success: true,
       id: result[0].id,
@@ -746,6 +763,9 @@ export async function deleteReferee(id: number) {
     }
 
     revalidatePath('/ad/referees');
+    updateTag("referees");
+    updateTag(`referee:${id}`);
+    
     return {
       success: true,
       id: result[0].id,

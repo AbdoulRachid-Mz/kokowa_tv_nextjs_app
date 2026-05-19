@@ -3,12 +3,15 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { fighterTransferSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { FighterTransfer, FighterTransferFilters, PaginatedResponse } from '@/types';
 
 export async function getFighterTransfers(
   filters: FighterTransferFilters = {}
 ): Promise<PaginatedResponse<FighterTransfer>> {
+  "use cache";
+  cacheTag("fighter-transfers");
+
   try {
     const {
       search = '',
@@ -167,6 +170,9 @@ export async function getFighterTransfers(
 export async function getFighterTransferById(id: number, options: { 
   with_relations?: boolean 
 } = {}) {
+  "use cache";
+  cacheTag("fighter-transfers", `fighter-transfer:${id}`);
+
   try {
     const { with_relations = true } = options;
     
@@ -275,6 +281,9 @@ export async function createFighterTransfer(validatedData: any, userId?: number)
     revalidatePath(`/admin/fighters/${validatedData.fighter_id}`);
     revalidatePath(`/admin/regions/${validatedData.from_region_id}`);
     revalidatePath(`/admin/regions/${validatedData.to_region_id}`);
+    updateTag("fighter-transfers");
+    updateTag("fighters");
+    updateTag("regions");
 
     return { 
       success: true, 
@@ -377,6 +386,11 @@ export async function updateFighterTransfer(id: number, formData: FormData, user
       revalidatePath(`/admin/regions/${existing.to_region_id}`);
     }
     
+    updateTag("fighter-transfers");
+    updateTag(`fighter-transfer:${id}`);
+    updateTag("fighters");
+    updateTag("regions");
+    
     return { 
       success: true, 
       message: 'Transfert modifié avec succès' 
@@ -414,6 +428,11 @@ export async function deleteFighterTransfer(id: number) {
     revalidatePath(`/admin/regions/${existing.from_region_id}`);
     revalidatePath(`/admin/regions/${existing.to_region_id}`);
     
+    updateTag("fighter-transfers");
+    updateTag(`fighter-transfer:${id}`);
+    updateTag("fighters");
+    updateTag("regions");
+    
     return { 
       success: true, 
       message: 'Transfert supprimé avec succès' 
@@ -428,6 +447,9 @@ export async function deleteFighterTransfer(id: number) {
 }
 
 export async function getTransferStats() {
+  "use cache";
+  cacheTag("fighter-transfers");
+
   try {
     const sql = `
       SELECT 

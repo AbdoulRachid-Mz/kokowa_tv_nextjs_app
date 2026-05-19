@@ -22,6 +22,8 @@ export type DeleteEntityType =
   | 'phase-group'
   | 'sub-group'
   | 'edition'
+  | 'transfer'
+  | 'team-member'
 
 // Options de suppression
 export interface DeleteOptions {
@@ -80,6 +82,14 @@ const deleteActions: Record<DeleteEntityType, (id: number) => Promise<any>> = {
   edition: async (id) => {
     const { deleteEdition } = await import('@/actions/editions')
     return deleteEdition(id)
+  },
+  transfer: async (id) => {
+    const { deleteFighterTransfer } = await import('@/actions/fighter-transfers')
+    return deleteFighterTransfer(id)
+  },
+  'team-member': async (id) => {
+    const { deleteTeamMember } = await import('@/actions/teams')
+    return deleteTeamMember(id)
   },
 }
 

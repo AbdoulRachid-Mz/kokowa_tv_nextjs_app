@@ -44,7 +44,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['pg', 'pg-hstore'],
   typescript: {
     ignoreBuildErrors: false,
-  }
+  },
+  cacheComponents: true
 };
 
 export default nextConfig;

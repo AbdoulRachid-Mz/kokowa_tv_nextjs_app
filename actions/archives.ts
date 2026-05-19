@@ -3,7 +3,7 @@
 "use server";
 
 import { query, queryOne } from "@/lib/db/neon-client";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, cacheTag, updateTag } from "next/cache";
 import {
   ArchiveFighterAchievementFilters,
   Fighter,
@@ -14,6 +14,8 @@ import {
 export async function getArchiveFighterAchievements(
   filters: ArchiveFighterAchievementFilters = {},
 ): Promise<PaginatedResponse<any>> {
+  "use cache";
+  cacheTag("archives"); 
   try {
     const {
       search = "",
@@ -172,6 +174,8 @@ export async function getArchiveFighterAchievement(
     with_region?: boolean;
   } = {}
 ) {
+  "use cache";
+  cacheTag("archives", `archive:${id}`);
   try {
     const { with_fighter = false, with_edition = false, with_region = false } = options;
     const selectFields = ["faa.*"];
@@ -304,6 +308,8 @@ export async function restoreArchiveFighterAchievement(archiveId: number) {
 
     // Supprimer l’archive
     await query("DELETE FROM fighter_achievements WHERE id = $1", [archiveId]);
+    updateTag("archives");
+    updateTag(`archive:${archiveId}`);
     revalidatePath("/ad/achievements");
     return {
       success: true,
@@ -351,7 +357,9 @@ export async function createArchiveFighterAchievement(validatedData: any) {
     ]);
 
     revalidatePath("/ad/achievements");
-
+    updateTag("archives");
+    updateTag(`archive:${result[0].id}`);
+    
     return {
       success: true,
       id: result[0].id,
@@ -422,6 +430,8 @@ export async function updateArchiveFighterAchievement(
       id,
     ]);
 
+    updateTag("archives");
+    updateTag(`archive:${id}`);
     revalidatePath("/ad/achievements");
     return {
       success: true,
@@ -446,7 +456,8 @@ export async function deleteArchiveFighterAchievement(id: number) {
     }
 
     await query("DELETE FROM fighter_achievements WHERE id = $1", [id]);
-
+    updateTag("archives");
+    updateTag(`archive:${id}`);
     revalidatePath("/ad/achievements");
     return {
       success: true,
@@ -461,6 +472,8 @@ export async function deleteArchiveFighterAchievement(id: number) {
 }
 
 export async function getArchiveFighterAchievementsStats() {
+  "use cache";
+  cacheTag("archives");
   try {
     // Vérifier que la table existe avant d'exécuter la requête
     const tableExists = await queryOne<{ exists: boolean }>(

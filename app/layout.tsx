@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/providers/theme-provider";
 import { MainLayout } from "@/components/layout/main-layout";
 import QueryProvider from "@/providers/query-provider";
 import localFont from 'next/font/local'
+import { Suspense } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
 // const inter = localFont({
@@ -105,9 +106,11 @@ export default function RootLayout({
                 enableSystem
                 disableTransitionOnChange
               >
-                <MainLayout>
-                  {children}
-                </MainLayout>
+                <Suspense fallback={null}>
+                  <MainLayout>
+                    {children}
+                  </MainLayout>
+                </Suspense>
               </ThemeProvider>
             </AppSettingsProvider>
           </AuthProvider>

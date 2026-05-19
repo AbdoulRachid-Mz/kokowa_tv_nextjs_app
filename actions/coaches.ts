@@ -3,12 +3,15 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { coachSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { Coach, CoachFilters, PaginatedResponse } from '@/types';
 
 export async function getCoaches(
   filters: CoachFilters = {}
 ): Promise<PaginatedResponse<Coach>> {
+  "use cache";
+  cacheTag("coaches");
+  
   try {
     const {
       search = '',
@@ -120,6 +123,9 @@ export async function getCoaches(
 export async function getCoachById(id: number, options: { 
   with_relations?: boolean 
 } = {}) {
+  "use cache";
+  cacheTag("coaches", `coach:${id}`);
+
   try {
     const { with_relations = true } = options;
     
@@ -186,6 +192,8 @@ export async function createCoach(validatedData: any) {
     if (validatedData.region_id) {
       revalidatePath(`/admin/regions/${validatedData.region_id}`);
     }
+
+    updateTag("coaches");
 
     return { 
       success: true, 
@@ -272,6 +280,9 @@ export async function updateCoach(id: number, formData: FormData) {
       }
     }
     
+    updateTag("coaches");
+    updateTag(`coach:${id}`);
+
     return { 
       success: true, 
       message: 'Coach modifié avec succès' 
@@ -316,6 +327,9 @@ export async function deleteCoach(id: number) {
       revalidatePath(`/admin/regions/${existing.region_id}`);
     }
     
+    updateTag("coaches");
+    updateTag(`coach:${id}`);
+
     return { 
       success: true, 
       message: 'Coach supprimé avec succès' 

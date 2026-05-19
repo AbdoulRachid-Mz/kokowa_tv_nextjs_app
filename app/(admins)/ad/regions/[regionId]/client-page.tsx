@@ -17,6 +17,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { getRegionById } from "@/actions/regions";
 import { useEntityList } from "@/hooks/use-entity-list";
 import { EntityList } from "@/components/shared/entity-list";
+import { DeleteButton } from "@/components/shared/delete-button";
 
 export default function ClientRegionDetail({ regionId }: { regionId: number }) {
   const router = useRouter();
@@ -154,9 +155,17 @@ export default function ClientRegionDetail({ regionId }: { regionId: number }) {
             )}
           </div>
         </div>
-        <Button onClick={() => router.push(`/ad/regions/${regionId}/edit`)}>
-          Modifier la région
-        </Button>
+        <div className="flex gap-2">
+          <DeleteButton
+            entityType="region"
+            entityId={regionId}
+            entityName={region.name}
+            redirectPath="/ad/regions"
+          />
+          <Button onClick={() => router.push(`/ad/regions/${regionId}/edit`)}>
+            Modifier la région
+          </Button>
+        </div>
       </div>
 
       {/* Drapeau et informations */}

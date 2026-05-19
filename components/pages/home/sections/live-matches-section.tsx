@@ -12,7 +12,8 @@ import { useLiveMatches } from '@/hooks/use-matches'
 
 export function LiveMatchesSection() {
   const [activeMatch, setActiveMatch] = useState(0)
-  const { matches, isLoading, isConnected } = useLiveMatches({ limit: 10 })
+  const { matches, isLoading } = useLiveMatches({ limit: 10 })
+  const isListening = true; // Firestore Realtime acts as constant listen channel
 
   if (isLoading) {
     return (
@@ -42,9 +43,9 @@ export function LiveMatchesSection() {
           className="text-center mb-16"
         >
           <div className="inline-flex items-center gap-2 mb-4">
-            <div className={`h-3 w-3 rounded-full ${isConnected ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`} />
-            <Typography variant="body-base" weight="medium" className={isConnected ? "text-red-600" : "text-gray-500"}>
-              {isConnected ? 'EN DIRECT' : 'HORS LIGNE'}
+            <div className={`h-3 w-3 rounded-full ${isListening ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+            <Typography variant="body-base" weight="medium" className={isListening ? "text-green-600" : "text-gray-500"}>
+              {isListening ? 'FIRESTORE REALTIME' : 'HORS LIGNE'}
             </Typography>
           </div>
           <Typography variant="h2" weight="bold" className="mb-4">
@@ -194,14 +195,14 @@ export function LiveMatchesSection() {
                     Suivi Temps Réel Activé
                   </Typography>
                   <Typography variant="body-lg" theme="muted" className="mb-6">
-                    Notre nouvelle architecture WebSocket vous permet de suivre 
+                    Notre nouvelle architecture Firestore Realtime vous permet de suivre 
                     chaque seconde du combat avec une latence minimale.
                   </Typography>
                   <div className="flex items-center gap-4 mb-6">
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
                       <Typography variant="body-base">
-                        Gateway: {process.env.NEXT_PUBLIC_WS_URL || 'wss://kokowa-tv.up.railway.app'}
+                        Firestore Sync: Actif
                       </Typography>
                     </div>
                   </div>
@@ -218,16 +219,16 @@ export function LiveMatchesSection() {
                   <div className="aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
                     <div className="text-center">
                       <div className="h-24 w-24 mx-auto mb-4 relative">
-                        <div className={`absolute inset-0 rounded-full animate-ping ${isConnected ? 'bg-primary/20' : 'bg-gray-400/20'}`} />
-                        <div className={`relative h-24 w-24 rounded-full flex items-center justify-center ${isConnected ? 'bg-primary' : 'bg-gray-400'}`}>
+                        <div className={`absolute inset-0 rounded-full animate-ping ${isListening ? 'bg-green-500/20' : 'bg-gray-400/20'}`} />
+                        <div className={`relative h-24 w-24 rounded-full flex items-center justify-center ${isListening ? 'bg-green-500' : 'bg-gray-400'}`}>
                           <Play className="h-12 w-12 text-white" fill="white" />
                         </div>
                       </div>
                       <Typography variant="h4" weight="bold">
-                        {isConnected ? 'Connecté au Flux' : 'Déconnecté'}
+                        {isListening ? 'Connecté au Flux Firestore' : 'Déconnecté'}
                       </Typography>
                       <Typography variant="body-sm" theme="muted">
-                        {isConnected ? 'Mise à jour instantanée' : 'Tentative de reconnexion...'}
+                        {isListening ? 'Mise à jour instantanée' : 'Tentative de reconnexion...'}
                       </Typography>
                     </div>
                   </div>

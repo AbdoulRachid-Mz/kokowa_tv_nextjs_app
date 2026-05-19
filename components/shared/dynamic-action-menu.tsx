@@ -14,11 +14,11 @@ import {
   DropdownMenuPortal,
   DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { Plus, LucideIcon } from "lucide-react";
+import { Plus, LucideIcon, AlertTriangle, Check, X } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -82,6 +82,8 @@ export function DynamicActionMenu({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingAction, setPendingAction] = useState<MenuItemAction | null>(null);
 
   useEffect(() => setMounted(true), []);
 
@@ -96,7 +98,7 @@ export function DynamicActionMenu({
     router.push(`${pathname}?${newParams.toString()}`, { scroll: false });
   }, [pathname, searchParams, router]);
 
-  const handleActionClick = (action: MenuItemAction) => {
+  const executeAction = useCallback((action: MenuItemAction) => {
     if (action.href) {
       router.push(action.href);
       return;
@@ -107,6 +109,15 @@ export function DynamicActionMenu({
     if (action.paramKey && action.paramValue) {
       updateUrlParam(action.paramKey, action.paramValue);
     }
+  }, [router, updateUrlParam]);
+
+  const handleActionClick = (action: MenuItemAction) => {
+    if (action.id === "delete" || action.className?.includes("text-red-500") || action.className?.includes("destructive")) {
+      setPendingAction(action);
+      setShowConfirm(true);
+      return;
+    }
+    executeAction(action);
   };
 
   const closeOverlay = (action: MenuItemAction) => {
@@ -230,6 +241,54 @@ export function DynamicActionMenu({
             </div>
           </DrawerContent>
         </Drawer>
+      )}
+
+      {showConfirm && pendingAction && (
+        <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+          <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-5 h-5" />
+                Confirmer la suppression
+              </DialogTitle>
+              <DialogDescription>
+                Êtes-vous sûr de vouloir effectuer cette action de suppression ? Cette action est irréversible et supprimera définitivement cet élément.
+              </DialogDescription>
+            </DialogHeader>
+
+            <DialogFooter className="flex gap-2 sm:gap-0 mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowConfirm(false);
+                  setPendingAction(null);
+                }}
+                className="flex-1"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Annuler
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowConfirm(false);
+                  if (pendingAction) {
+                    executeAction(pendingAction);
+                    setPendingAction(null);
+                  }
+                }}
+                className="flex-1"
+              >
+                <Check className="w-4 h-4 mr-2" />
+                Confirmer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </>
   );

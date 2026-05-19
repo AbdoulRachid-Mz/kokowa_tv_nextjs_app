@@ -35,6 +35,7 @@ import { CardStats } from "@/components/entities/card-stats";
 import { StatsCarousel } from "@/components/shared/stats-carousel";
 import Image from "next/image"
 import { EditionCard } from "@/components/entities/edition-card";
+import { DeleteButton } from "@/components/shared/delete-button";
 
 export default function CompetitionDetailPage() {
   const params = useParams();
@@ -238,6 +239,12 @@ export default function CompetitionDetailPage() {
         </div>
         
         <div className="flex items-center gap-2">
+          <DeleteButton
+            entityType="competition"
+            entityId={parseInt(competitionId)}
+            entityName={competition.name}
+            redirectPath="/ad/competitions"
+          />
           <Button 
             variant="outline"
             onClick={() => router.push(`/ad/competitions/${competitionId}/edit`)}

@@ -333,7 +333,64 @@ export const ROUTE_CONFIG: RouteConfig[] = [
     parentPath: "/ad/**",
     excludeLayout: true,
   },
-  // Plus besoin de définir chaque sous-route individuellement
+  {
+    path: "/ad/teams",
+    name: "Gestion des équipes",
+    description: "Routes de gestion des équipes",
+    parentPath: "/ad/**",
+    excludeLayout: true,
+  },
+  {
+    path: "/ad/teams/[teamMemberId]",
+    name: "Détail Equipe",
+    description: "Routes de détail d'un member",
+    parentPath: "/ad/**",
+    excludeLayout: true,
+  },
+  {
+    path: "/ad/teams/[teamMemberId]/edit",
+    name: "Edition Equipe",
+    description: "Routes de gestion des équipes",
+    parentPath: "/ad/**",
+    excludeLayout: true,
+  },
+
+  // archives
+  {
+    path: "/ad/archivements",
+    name: "Archives",
+    description: "Routes d'archives",
+    parentPath: "/ad/**",
+    excludeLayout: true,
+  },
+  {
+    path: "/ad/archivements/add",
+    name: "Ajouter Archive",
+    description: "Routes d'archives",
+    parentPath: "/ad/**",
+    excludeLayout: true,
+  },
+  {
+    path: "/ad/archivements/[archiveId]",
+    name: "Archives",
+    description: "Routes d'archives",
+    parentPath: "/ad/**",
+    excludeLayout: true,
+  },
+  {
+    path: "/ad/archivements/[archiveId]/**",
+    name: "Archives",
+    description: "Routes d'archives",
+    parentPath: "/ad/**",
+    excludeLayout: true,
+  },
+  {
+    path: "/ad/archivements/[archiveId]/edit",
+    name: " Edition Archive",
+    description: "Routes d'archives",
+    parentPath: "/ad/**",
+    excludeLayout: true,
+  },
 
   // =============================================
   // GROUPE ÉDITEUR
@@ -464,13 +521,13 @@ const parseRoutePattern = (pattern: string): RegExp => {
   let regexPattern = pattern;
 
   // IMPORTANT: gérer /ad et /ad/**
-  regexPattern = regexPattern.replace(/\/\*\*/g, '(.*)?');
+  regexPattern = regexPattern.replace(/\/\*\*/g, "(.*)?");
 
-  regexPattern = regexPattern.replace(/\*/g, '([^/]+)');
-  regexPattern = regexPattern.replace(/\[[^\]]+\]/g, '([^/]+)');
-  regexPattern = regexPattern.replace(/\//g, '\\/');
+  regexPattern = regexPattern.replace(/\*/g, "([^/]+)");
+  regexPattern = regexPattern.replace(/\[[^\]]+\]/g, "([^/]+)");
+  regexPattern = regexPattern.replace(/\//g, "\\/");
 
-  return new RegExp('^' + regexPattern + '$');
+  return new RegExp("^" + regexPattern + "$");
 };
 
 // Fonction pour vérifier si un chemin correspond à un pattern

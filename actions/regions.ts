@@ -4,12 +4,15 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { regionSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { Region, RegionFilters, PaginatedResponse } from '@/types';
 
 export async function getRegions(
   filters: RegionFilters = {}
 ): Promise<PaginatedResponse<Region>> {
+  "use cache";
+  cacheTag("regions");
+
   try {
     const {
       search = '',
@@ -150,6 +153,9 @@ export async function getRegions(
 }
 
 export async function getRegionById(id: number, options: { with_relations?: boolean } = {}) {
+  "use cache";
+  cacheTag("regions", `region:${id}`);
+
   try {
     const { with_relations = true } = options;
     
@@ -231,6 +237,8 @@ export async function createRegion(formData: FormData) {
 
     revalidatePath('/regions');
     revalidatePath('/ad/regions');
+    updateTag("regions");
+    
     return { 
       success: true, 
       id: result[0].id,
@@ -277,11 +285,12 @@ export async function updateRegion(id: number, formData: FormData) {
       id,
     ]);
 
-    // revalidatePath('/regions');
     revalidatePath('/ad/regions');
-    // revalidatePath(`/regions/${id}`);
     revalidatePath(`/ad/regions/${id}`);
     
+    updateTag("regions");
+    updateTag(`region:${id}`);
+
     return { 
       success: true, 
       message: 'Région modifiée avec succès' 
@@ -335,6 +344,9 @@ export async function deleteRegion(id: number) {
     revalidatePath(`/regions/${id}`);
     revalidatePath(`/ad/regions/${id}`);
     
+    updateTag("regions");
+    updateTag(`region:${id}`);
+
     return { 
       success: true, 
       message: 'Région supprimée avec succès' 
@@ -349,6 +361,9 @@ export async function deleteRegion(id: number) {
 }
 
 export async function getRegionsStats() {
+  "use cache";
+  cacheTag("regions");
+
   try {
     const sql = `
       SELECT 
@@ -384,6 +399,9 @@ export async function getRegionsStats() {
 }
 
 export async function getRegionsForSelect() {
+  "use cache";
+  cacheTag("regions");
+
   try {
     const sql = `
       SELECT id, name, code, total_fighters

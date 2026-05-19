@@ -3,12 +3,14 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { fighterCardSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { FighterCard, FighterCardFilters, PaginatedResponse } from '@/types';
 
 export async function getFighterCards(
   filters: FighterCardFilters = {}
 ): Promise<PaginatedResponse<FighterCard>> {
+  "use cache";
+  cacheTag("cards"); 
   try {
     const {
       fighter_id,
@@ -123,6 +125,8 @@ export async function getFighterCards(
 export async function getFighterCardById(id: number, options: { 
   with_relations?: boolean 
 } = {}) {
+  "use cache";
+  cacheTag("cards", `card:${id}`);
   try {
     const { with_relations = true } = options;
     
@@ -264,7 +268,7 @@ export async function updateFighterCard(id: number, formData: FormData) {
   }
 }
 
-export async function deleteFighterCard(id: number) {
+export async function deleteFighterCard(id: number, {revalidate = true}: {revalidate?: boolean} = {}) {
   try {
     const existing = await getFighterCardById(id, { with_relations: false });
     if (!existing) {
@@ -274,8 +278,11 @@ export async function deleteFighterCard(id: number) {
     const sql = 'DELETE FROM fighter_cards WHERE id = $1';
     await query(sql, [id]);
     
-    revalidatePath('/matches');
-    revalidatePath(`/matches/${existing.match_id}`);
+    if(revalidate) {
+      revalidatePath('/matches');
+      revalidatePath(`/matches/${existing.match_id}`);
+      revalidatePath(`/fighter-cards/${id}`);
+    }
     return { 
       success: true, 
       message: 'Carton supprimé avec succès' 
@@ -287,6 +294,8 @@ export async function deleteFighterCard(id: number) {
 }
 
 export async function getMatchCards(matchId: number) {
+  "use cache";
+  cacheTag("cards", `match:${matchId}`);
   try {
     const sql = `
       SELECT 

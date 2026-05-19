@@ -3,11 +3,14 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { competitionSchema, competitionEditionSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { Competition, CompetitionEdition, CompetitionFilters, PaginatedResponse } from '@/types';
 import z from 'zod';
 
 export async function getCompetitions(options: CompetitionFilters) {
+  "use cache";
+  cacheTag("competitions");
+
   const {
     search,
     page = 1,
@@ -199,6 +202,9 @@ if (with_matches) {
 export async function getCompetitionById(id: number, options: { 
   with_relations?: boolean 
 } = {}) {
+  "use cache";
+  cacheTag("competitions", `competition:${id}`);
+
   try {
     const { with_relations = false } = options;
     
@@ -399,6 +405,7 @@ export async function createCompetition(
 
         revalidatePath('/competitions');
         revalidatePath('/ad/competitions');
+        updateTag("competitions");
         
         return { 
           success: true, 
@@ -485,6 +492,7 @@ export async function createCompetition(
 
       revalidatePath('/competitions');
       revalidatePath('/ad/competitions');
+      updateTag("competitions");
       
       return { 
         success: true, 
@@ -608,10 +616,10 @@ export async function updateCompetition(id: number, formData: FormData) {
           throw new Error('Compétition non trouvée lors de la mise à jour');
         }
 
-        revalidatePath('/competitions');
-        revalidatePath(`/competitions/${id}`);
         revalidatePath(`/ad/competitions`);
         revalidatePath(`/ad/competitions/${id}`);
+        updateTag("competitions");
+        updateTag(`competition:${id}`);
         
         return { 
           success: true, 
@@ -657,8 +665,8 @@ export async function updateCompetition(id: number, formData: FormData) {
       throw new Error('Compétition non trouvée lors de la mise à jour');
     }
 
-    revalidatePath('/competitions');
-    revalidatePath(`/competitions/${id}`);
+    updateTag("competitions");
+    updateTag(`competition:${id}`);
     revalidatePath(`/ad/competitions`);
     revalidatePath(`/ad/competitions/${id}`);
     
@@ -681,6 +689,8 @@ export async function updateCompetition(id: number, formData: FormData) {
 
 
 export async function deleteCompetition(id: number) {
+  updateTag("competitions");
+  updateTag(`competition:${id}`);
   try {
     const existing = await getCompetitionById(id, { with_relations: false });
     if (!existing) {
@@ -702,8 +712,11 @@ export async function deleteCompetition(id: number) {
 
     const sql = 'DELETE FROM competitions WHERE id = $1';
     await query(sql, [id]);
+        
+    updateTag("competitions");
+    updateTag(`competition:${id}`);
+    revalidatePath('/ad/competitions');
     
-    revalidatePath('/competitions');
     return { 
       success: true, 
       message: 'Compétition supprimée avec succès' 
@@ -715,6 +728,9 @@ export async function deleteCompetition(id: number) {
 }
 
 export async function getCompetitionStats() {
+  "use cache";
+  cacheTag("competitions");
+
   try {
     const sql = `
       SELECT 
@@ -793,6 +809,12 @@ export async function updateCompetitionStatus(id: number, status: string) {
 
     revalidatePath('/competitions');
     revalidatePath(`/competitions/${id}`);
+    revalidatePath('/ad/competitions');
+    revalidatePath(`/ad/competitions/${id}`);
+    
+    updateTag("competitions");
+    updateTag(`competition:${id}`);
+
     return { 
       success: true, 
       message: `Statut de la compétition mis à jour: ${status}` 

@@ -36,8 +36,8 @@ export function FloatingMatchScore({
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     // Récupérer les scores du sous-groupe
-    const scoreRegion1 = subGroup.score_region1 || 0;
-    const scoreRegion2 = subGroup.score_region2 || 0;
+    const scoreRegion1 = subGroup?.score_region1 || 0;
+    const scoreRegion2 = subGroup?.score_region2 || 0;
     const nulls = subGroup.nulls || 0;
 
     // Version Desktop (toujours visible)

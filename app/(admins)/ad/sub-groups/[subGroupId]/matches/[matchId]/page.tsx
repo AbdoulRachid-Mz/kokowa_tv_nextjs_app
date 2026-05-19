@@ -15,7 +15,6 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { api } from "@/lib/api";
 import { Match, Fighter, SubGroup } from "@/types";
 import {
   ChevronLeft,
@@ -27,8 +26,11 @@ import {
   AlertTriangle,
   CheckCircle,
   Play,
+  Zap,
+  ZapOff,
 } from "lucide-react";
-import { useRealtime } from "@/hooks/use-realtime";
+import { useRealtimeMatch } from "@/hooks/firestore/use-realtime-match";
+import { useRealtimeSubGroup } from "@/hooks/firestore/use-realtime-subgroup";
 import { toast } from "sonner";
 import { MediaManager } from "./media-manager";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -81,81 +83,15 @@ export default function MatchDetailPage() {
     type: "winner",
   });
 
-  // Realtime integration
-  const { isConnected, subscribe, unsubscribe, subscribeToMatch, auth } =
-    useRealtime({
-      autoConnect: true,
-      onMessage: (msg) => {
-        if (msg.type === "update") {
-          const { entityType, entityId, event } = msg.data;
-          console.log(
-            `📨 [WS Client] Realtime event: ${event} for ${entityType}:${entityId}`,
-          );
+  // ─── Firestore Realtime (remplace WebSocket) ──────────────────────────
+  const {
+    isLive: isRealtimeLive,
+    isListening: isConnected,
+  } = useRealtimeMatch(!isNaN(parsedMatchId) ? parsedMatchId : null);
 
-          // ✅ Invalider TOUTES les requêtes du type concerné pour assurer la cohérence
-          if (entityType === "match") {
-            queryClient.invalidateQueries({ queryKey: ["match"] });
-            queryClient.refetchQueries({ queryKey: ["match", parsedMatchId] });
-          }
-
-          if (entityType === "subGroup") {
-            queryClient.invalidateQueries({ queryKey: ["sub-group"] });
-            queryClient.refetchQueries({
-              queryKey: ["sub-group", parsedSubGroupId],
-            });
-          }
-
-          if (entityType === "fighter") {
-            queryClient.invalidateQueries({ queryKey: ["fighter"] });
-          }
-
-          if (entityType === "edition") {
-            queryClient.invalidateQueries({ queryKey: ["edition"] });
-          }
-        }
-      },
-    });
-
-  // ✅ Gestion unique des souscriptions
-  useEffect(() => {
-    if (!isConnected) return;
-
-    console.log("🔄 [WS] Subscribing to match and sub-group...");
-
-    if (!isNaN(parsedMatchId)) {
-      subscribeToMatch(parsedMatchId);
-    }
-    if (!isNaN(parsedSubGroupId)) {
-      subscribe("subGroup", parsedSubGroupId);
-    }
-
-    // Auth automatique si l'utilisateur est connecté
-    if (user?.userDocument?.id) {
-      auth(
-        user.userDocument.id.toString(),
-        user.userDocument.fcm_token || "dummy_token",
-      );
-    }
-
-    return () => {
-      console.log("🔕 [WS] Unsubscribing from match and sub-group...");
-      if (!isNaN(parsedMatchId)) {
-        unsubscribe("match", parsedMatchId);
-      }
-      if (!isNaN(parsedSubGroupId)) {
-        unsubscribe("subGroup", parsedSubGroupId);
-      }
-    };
-  }, [
-    isConnected,
-    parsedMatchId,
-    parsedSubGroupId,
-    subscribeToMatch,
-    subscribe,
-    unsubscribe,
-    user,
-    auth,
-  ]);
+  const {
+    hasLiveMatch,
+  } = useRealtimeSubGroup(!isNaN(parsedSubGroupId) ? parsedSubGroupId : null);
 
   // ==========================
   // CONTROLLER PRINCIPAL
@@ -386,37 +322,6 @@ export default function MatchDetailPage() {
   // EFFECTS
   // ==========================
   useEffect(() => {
-    if (!isConnected) return;
-
-    // Subscribe to current match
-    if (!isNaN(parsedMatchId)) {
-      subscribeToMatch(parsedMatchId);
-    }
-
-    // Subscribe to sub-group
-    if (!isNaN(parsedSubGroupId)) {
-      subscribe("subGroup", parsedSubGroupId);
-    }
-
-    // Cleanup: unsubscribe when component unmounts
-    return () => {
-      if (!isNaN(parsedMatchId)) {
-        unsubscribe("match", parsedMatchId);
-      }
-      if (!isNaN(parsedSubGroupId)) {
-        unsubscribe("subGroup", parsedSubGroupId);
-      }
-    };
-  }, [
-    isConnected,
-    parsedMatchId,
-    parsedSubGroupId,
-    subscribeToMatch,
-    subscribe,
-    unsubscribe,
-  ]);
-
-  useEffect(() => {
     if (subGroup) {
       loadAvailableFighters(subGroup);
     }
@@ -533,11 +438,15 @@ export default function MatchDetailPage() {
           <div className="flex items-center gap-3">
             <div
               className={`w-3 h-3 rounded-full ${
-                isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
+                isConnected ? "bg-green-500 animate-pulse" : "bg-gray-400"
               }`}
             />
-            <Badge variant={isConnected ? "default" : "outline"}>
-              {isConnected ? "Temps réel actif" : "Hors ligne"}
+            <Badge variant={isConnected ? "default" : "outline"} className="gap-1">
+              {isConnected ? (
+                <><Zap className="h-3 w-3" /> Firestore Live</>
+              ) : (
+                <><ZapOff className="h-3 w-3" /> Connexion...</>
+              )}
             </Badge>
           </div>
         </div>
@@ -1045,27 +954,21 @@ export default function MatchDetailPage() {
             size="sm"
             className="bg-background/80 backdrop-blur-sm shadow-lg border-primary/20"
             onClick={() => {
-              console.log("🔍 [DEBUG] WebSocket State:");
-              console.log("  isConnected:", isConnected);
+              console.log("🔍 [DEBUG] Firestore Realtime State:");
+              console.log("  isConnected (Firestore):", isConnected);
+              console.log("  isRealtimeLive:", isRealtimeLive);
+              console.log("  hasLiveMatch (subGroup):", hasLiveMatch);
               console.log("  match status:", match?.status);
               console.log("  match data:", match);
               console.log("  subGroup data:", subGroup);
-              console.log(
-                "  query cache match:",
-                queryClient.getQueryData(["match", parsedMatchId]),
-              );
-              console.log(
-                "  query cache subGroup:",
-                queryClient.getQueryData(["sub-group", parsedSubGroupId]),
-              );
 
               toast.info(
-                `WS: ${isConnected ? "✅ Connecté" : "❌ Déconnecté"} | Match: ${match?.status}`,
+                `Firestore: ${isConnected ? "✅ Live" : "⏳ Connexion"} | Match: ${match?.status}`,
               );
             }}
           >
             <Bug className="h-4 w-4 mr-2 text-primary" />
-            Debug WS
+            Debug RT
           </Button>
         </div>
       )}

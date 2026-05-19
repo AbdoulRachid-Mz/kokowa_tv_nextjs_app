@@ -2,7 +2,7 @@
 'use server';
 
 import { pool, query, queryOne } from '@/lib/db/neon-client';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { sendPushToTopic } from '@/lib/push';
 import { Match } from '@/types/match';
 import { PoolClient } from 'pg';
@@ -12,6 +12,9 @@ import { emitRealtimeEvent, emitMatchEvent, emitSubGroupEvent } from './realtime
 // ========== READ ==========
 
 export async function getMatchesBySubGroup(subGroupId: number): Promise<Match[]> {
+  "use cache";
+  cacheTag("matches", `matches-subgroup:${subGroupId}`);
+
   try {
     const sql = `
       SELECT 
@@ -79,6 +82,9 @@ export async function getMatchesBySubGroup(subGroupId: number): Promise<Match[]>
 }
 
 export async function getMatchById(matchId: number): Promise<Match | null> {
+  "use cache";
+  cacheTag("matches", `match:${matchId}`);
+
   try {
     const sql = `
       SELECT 
@@ -236,6 +242,8 @@ export async function updateMatch(
   // 🔥 Revalider les chemins
   revalidatePath(`/ad/sub-groups/${existingMatch.sub_group_id}/matches`);
   revalidatePath(`/ad/sub-groups/${existingMatch.sub_group_id}/matches/${matchId}`);
+  updateTag("matches");
+  updateTag(`match:${matchId}`);
 
   // 🔥 Relire le match frais
   const freshMatch = await getMatchById(matchId);
@@ -511,6 +519,8 @@ export async function createMatch(
     });
 
     revalidatePath(`/ad/sub-groups/${subGroupId}/matches`);
+    updateTag("matches");
+    updateTag(`matches-subgroup:${subGroupId}`);
 
     return {
       id: matchId,
@@ -560,6 +570,8 @@ export async function addFighterCard(
   });
 
   revalidatePath(`/ad/sub-groups/*/matches/${matchId}`);
+  updateTag("matches");
+  updateTag(`match:${matchId}`);
 
   return result;
 }
@@ -580,6 +592,8 @@ export async function removeFighterCard(cardId: number) {
   await emitMatchEvent(card.match_id, 'card_removed', { cardId });
 
   revalidatePath(`/ad/sub-groups/*/matches/${card.match_id}`);
+  updateTag("matches");
+  updateTag(`match:${card.match_id}`);
 
   return { success: true };
 }
@@ -674,6 +688,8 @@ export async function completeSubGroup(subGroupId: number) {
 
     revalidatePath(`/ad/sub-groups/${subGroupId}`);
     revalidatePath(`/ad/sub-groups/${subGroupId}/matches`);
+    updateTag("sub-groups");
+    updateTag(`sub-group:${subGroupId}`);
     
     // 🔥 Émission WS
     await emitSubGroupEvent(subGroupId, 'subgroup_completed', { id: subGroupId });

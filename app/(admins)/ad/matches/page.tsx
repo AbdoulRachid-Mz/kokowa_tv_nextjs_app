@@ -9,16 +9,10 @@ import { MatchFilters as MatchFiltersComponent } from './match-filters';
 import { Button } from '@/components/ui/button';
 import { Calendar, Trophy, Users, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { MatchCard } from './match-card';
 import { MatchStats } from './match-stats';
-import { useRealtime } from '@/hooks/use-realtime';
-import { useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 
 export default function MatchesPage() {
-  const queryClient = useQueryClient();
   const entities = useEntities<Match, MatchFilters>({
     entityType: 'matches',
     initialFilters: {
@@ -39,27 +33,7 @@ export default function MatchesPage() {
     setSorting,
   } = entities;
 
-  // Realtime Integration
-  const { isConnected, subscribe } = useRealtime({
-    autoConnect: true,
-    onMessage: (msg) => {
-      if (msg.type === 'update' && msg.data.entityType === 'match') {
-        // Invalider les données quand un match change
-        queryClient.invalidateQueries({ queryKey: ['matches'] });
-      }
-    }
-  });
 
-  // S'abonner aux matchs visibles
-  useEffect(() => {
-    if (isConnected && data.length > 0) {
-      data.forEach(match => {
-        if (match.id) subscribe('match', match.id);
-      });
-    }
-  }, [data, isConnected, subscribe]);
-
-  // Statistiques calculées à partir des données
   const stats = {
     total: total,
     scheduled: data.filter(m => m.status === 'scheduled').length,

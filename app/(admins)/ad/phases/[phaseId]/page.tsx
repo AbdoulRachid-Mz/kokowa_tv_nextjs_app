@@ -29,6 +29,7 @@ import { CreateGroupDialog } from "@/components/phases/create-group-dialog";
 import { CardStats } from "@/components/entities/card-stats";
 import { toast } from "sonner";
 import { PhaseGroupCard } from "@/components/entities/entity-cards";
+import { DeleteButton } from "@/components/shared/delete-button";
 
 export default function PhaseDetailPage() {
   const params = useParams();
@@ -209,6 +210,13 @@ export default function PhaseDetailPage() {
           <Badge variant={statusConfig.variant} className={statusConfig.color}>
             {statusConfig.label}
           </Badge>
+          <DeleteButton
+            entityType="phase"
+            entityId={parseInt(phaseId)}
+            entityName={phase.name}
+            redirectPath={`/ad/editions/${phase.edition_id}`}
+            variant="outline"
+          />
           <Button variant="outline" onClick={handleEditPhase}>
             <Edit className="h-4 w-4 mr-2" />
             Modifier

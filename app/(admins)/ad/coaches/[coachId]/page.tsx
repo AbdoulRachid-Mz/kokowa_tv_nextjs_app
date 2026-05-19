@@ -13,6 +13,7 @@ import { Coach } from "@/types";
 import { Edit, MapPin, Award, Calendar, User } from "lucide-react";
 import Image from "next/image";
 import { useScreenSize } from "@/hooks/use-screen";
+import { DeleteButton } from "@/components/shared/delete-button";
 
 export default function CoachDetailPage() {
   const { coachId } = useParams();
@@ -82,13 +83,20 @@ export default function CoachDetailPage() {
                     </Typography>
                   )}
                 </div>
-                <Button 
-                  onClick={() => router.push(`/ad/coaches/${id}/edit`)}
-                  className="mt-4 md:mt-0"
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Modifier le profil
-                </Button>
+                <div className="flex gap-2 mt-4 md:mt-0">
+                  <DeleteButton
+                    entityType="coach"
+                    entityId={id}
+                    entityName={`${coach.first_name} ${coach.last_name}`}
+                    redirectPath="/ad/coaches"
+                  />
+                  <Button 
+                    onClick={() => router.push(`/ad/coaches/${id}/edit`)}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Modifier le profil
+                  </Button>
+                </div>
               </div>
               
               <div className="flex flex-wrap gap-2 mt-4 justify-center md:justify-start">

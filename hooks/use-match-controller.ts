@@ -1,4 +1,4 @@
-// hooks/use-match-controller.ts - Version améliorée avec WebSocket
+// hooks/use-match-controller.ts
 "use client";
 
 import { useEffect, useCallback, useRef, useState } from "react";
@@ -9,7 +9,6 @@ import { getMatchById, updateMatch } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
 import { updateSubGroup } from "@/actions/sub-groups";
 import { sendMatchPush } from "@/actions/matches";
-import { useRealtime } from "./use-realtime";
 
 interface UseMatchControllerProps {
   matchId: number;
@@ -23,56 +22,6 @@ export function useMatchController({
   const queryClient = useQueryClient();
   const isUpdatingRef = useRef(false);
   const [pollingInterval, setPollingInterval] = useState<number | false>(false);
-
-  // ==========================
-  // WEBSOCKET REALTIME
-  // ==========================
-
-  const { isConnected, subscribe } = useRealtime({
-    autoConnect: true,
-    onMessage: (msg) => {
-      if (msg.type === 'update' && msg.data.entityType === 'match' && msg.data.entityId === matchId) {
-        console.log(`📡 [WS] Update reçu pour match ${matchId}:`, msg.data.event);
-        
-        // Invalider le cache pour forcer un refetch
-        queryClient.invalidateQueries({ queryKey: ["match", matchId] });
-        
-        // Gérer les events spécifiques du timer
-        if (msg.data.event === 'timer_sync' && msg.data.data?.duration) {
-          const newDuration = parseDurationToSeconds(msg.data.data.duration);
-          const currentDuration = timer.elapsed;
-          if (Math.abs(currentDuration - newDuration) > 2) {
-            timer.setTime(newDuration);
-          }
-        }
-        
-        if (msg.data.event === 'status_change' && msg.data.data?.status) {
-          const newStatus = msg.data.data.status;
-          // Synchroniser le timer selon le nouveau statut
-          if (newStatus === "live" && !timer.isRunning) {
-            timer.start();
-          } else if ((newStatus === "round_break" || newStatus === "reclamation") && timer.isRunning) {
-            timer.pause();
-          } else if (newStatus === "completed" && timer.isRunning) {
-            timer.stop();
-          } else if (newStatus === "scheduled" && (timer.isRunning || timer.elapsed > 0)) {
-            timer.reset();
-          }
-        }
-      }
-    },
-    onError: (err) => {
-      console.error("❌ [WS] Erreur WebSocket:", err);
-    }
-  });
-
-  // S'abonner au match dès que la connexion WebSocket est prête
-  useEffect(() => {
-    if (isConnected && matchId) {
-      console.log(`🔌 [WS] Abonnement au match ${matchId}`);
-      subscribe("match", matchId);
-    }
-  }, [isConnected, matchId, subscribe]);
 
   // ==========================
   // QUERY
@@ -363,9 +312,6 @@ export function useMatchController({
     match,
     isLoading,
     refetch,
-
-    // WebSocket status
-    wsConnected: isConnected,
 
     // timer
     elapsed: timer.elapsed,

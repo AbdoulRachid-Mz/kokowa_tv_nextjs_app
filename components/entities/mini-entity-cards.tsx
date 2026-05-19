@@ -12,40 +12,115 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Typography } from "@/components/ui/typography";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, MapPin, User, Star, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Trophy, MapPin, User, Star, MoreHorizontal, Eye, Pencil, Trash2, AlertTriangle, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BaseCardProps } from "./entity-cards";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-function CardActionMenu({ onEdit, onView, onDelete }: { onEdit?: () => void, onView?: () => void, onDelete?: () => void }) {
+function CardActionMenu({
+  onEdit,
+  onView,
+  onDelete,
+  entityName = "cet élément",
+}: {
+  onEdit?: () => void;
+  onView?: () => void;
+  onDelete?: () => void;
+  entityName?: string;
+}) {
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   if (!onEdit && !onView && !onDelete) return null;
-  
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full bg-primary/20 text-primary">
-          <MoreHorizontal className="h-3 w-3" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {onView && (
-          <DropdownMenuItem onClick={onView}>
-            <Eye className="h-3 w-3 mr-2" /> Voir
-          </DropdownMenuItem>
-        )}
-        {onEdit && (
-          <DropdownMenuItem onClick={onEdit}>
-            <Pencil className="h-3 w-3 mr-2" /> Modifier
-          </DropdownMenuItem>
-        )}
-        {onDelete && (
-          <DropdownMenuItem onClick={onDelete} className="text-destructive">
-            <Trash2 className="h-3 w-3 mr-2" /> Supprimer
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 rounded-full bg-primary/20 text-primary"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreHorizontal className="h-3 w-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          {onView && (
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(); }}>
+              <Eye className="h-3 w-3 mr-2" /> Voir
+            </DropdownMenuItem>
+          )}
+          {onEdit && (
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+              <Pencil className="h-3 w-3 mr-2" /> Modifier
+            </DropdownMenuItem>
+          )}
+          {onDelete && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsConfirmOpen(true);
+              }}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-3 w-3 mr-2" /> Supprimer
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Confirmer la suppression
+            </DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer {entityName} ? Cette action est irréversible et effacera toutes ses données.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex gap-2 sm:gap-0 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsConfirmOpen(false);
+              }}
+              className="flex-1"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsConfirmOpen(false);
+                onDelete?.();
+              }}
+              className="flex-1"
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Confirmer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -109,7 +184,7 @@ export function MiniFighterCard({
             </Typography>
             {hasActions && (
               <div onClick={e => e.stopPropagation()}>
-                <CardActionMenu onEdit={() => onEdit?.(fighter)} onView={() => onView?.(fighter)} onDelete={() => onDelete?.(fighter)} />
+                <CardActionMenu onEdit={() => onEdit?.(fighter)} onView={() => onView?.(fighter)} onDelete={() => onDelete?.(fighter)} entityName={`le lutteur ${fighter.first_name} ${fighter.last_name}`} />
               </div>
             )}
           </div>
@@ -174,7 +249,7 @@ export function MiniRegionCard({
             </Typography>
             {hasActions && (
               <div onClick={e => e.stopPropagation()}>
-                <CardActionMenu onEdit={() => onEdit?.(region)} onView={() => onView?.(region)} onDelete={() => onDelete?.(region)} />
+                <CardActionMenu onEdit={() => onEdit?.(region)} onView={() => onView?.(region)} onDelete={() => onDelete?.(region)} entityName={`la région ${region.name}`} />
               </div>
             )}
           </div>
@@ -235,7 +310,7 @@ export function MiniCompetitionCard({
             </Typography>
             {hasActions && (
               <div onClick={e => e.stopPropagation()}>
-                <CardActionMenu onEdit={() => onEdit?.(competition)} onView={() => onView?.(competition)} onDelete={() => onDelete?.(competition)} />
+                <CardActionMenu onEdit={() => onEdit?.(competition)} onView={() => onView?.(competition)} onDelete={() => onDelete?.(competition)} entityName={`la compétition ${competition.name}`} />
               </div>
             )}
           </div>
@@ -299,7 +374,7 @@ export function MiniCoachCard({
             </Typography>
             {hasActions && (
               <div onClick={e => e.stopPropagation()}>
-                <CardActionMenu onEdit={() => onEdit?.(coach)} onView={() => onView?.(coach)} onDelete={() => onDelete?.(coach)} />
+                <CardActionMenu onEdit={() => onEdit?.(coach)} onView={() => onView?.(coach)} onDelete={() => onDelete?.(coach)} entityName={`le coach ${coach.first_name} ${coach.last_name}`} />
               </div>
             )}
           </div>
@@ -360,7 +435,7 @@ export function MiniRefereeCard({
             </Typography>
             {hasActions && (
               <div onClick={e => e.stopPropagation()}>
-                <CardActionMenu onEdit={() => onEdit?.(referee)} onView={() => onView?.(referee)} onDelete={() => onDelete?.(referee)} />
+                <CardActionMenu onEdit={() => onEdit?.(referee)} onView={() => onView?.(referee)} onDelete={() => onDelete?.(referee)} entityName={`l'arbitre ${referee.first_name} ${referee.last_name}`} />
               </div>
             )}
           </div>

@@ -22,6 +22,7 @@ import {
   Shield,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DeleteButton } from "@/components/shared/delete-button";
 
 export default function RefereeDetailPage() {
   const params = useParams();
@@ -111,10 +112,18 @@ export default function RefereeDetailPage() {
             </Typography>
           </div>
         </div>
-        <Button onClick={handleEdit} className="gap-2">
-          <Edit className="h-4 w-4" />
-          Modifier
-        </Button>
+        <div className="flex gap-2">
+          <DeleteButton
+            entityType="referee"
+            entityId={parseInt(refereeId)}
+            entityName={`${referee.first_name} ${referee.last_name}`}
+            redirectPath="/ad/referees"
+          />
+          <Button onClick={handleEdit} className="gap-2">
+            <Edit className="h-4 w-4" />
+            Modifier
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

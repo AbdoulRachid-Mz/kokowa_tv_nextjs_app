@@ -3,7 +3,7 @@
 
 import { pool, query, queryOne } from '@/lib/db/neon-client';
 import { matchSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { Match, MatchFilters, PaginatedResponse } from '@/types';
 import { z } from 'zod';
 import { updateMatchAndRecompute } from '@/lib/services/match-update.service';
@@ -15,6 +15,9 @@ import { emitMatchEvent, emitRealtimeEvent } from './realtime';
 export async function getMatches(
   filters: MatchFilters = {}
 ): Promise<PaginatedResponse<Match>> {
+  "use cache";
+  cacheTag("matches");
+
   try {
     const {
       sub_group_id,
@@ -289,6 +292,9 @@ export async function getMatchById(id: number, options: {
   };
   is_active?: boolean;
 } = {}) {
+  "use cache";
+  cacheTag("matches", `match:${id}`);
+
   try {
     const {
       with_relations = true,
@@ -705,6 +711,8 @@ export async function updateMatch(id: number, data: Record<string, any>) {
       revalidatePath(`/ad/sub-groups/${updatedMatch.sub_group_id}`);
       revalidatePath(`/ad/sub-groups/${updatedMatch.sub_group_id}/organisation`);
     }
+    updateTag("matches");
+    updateTag(`match:${id}`);
 
     return {
       success: true,
@@ -1040,9 +1048,14 @@ export async function deleteMatch(id: number) {
     const sql = 'DELETE FROM matches WHERE id = $1';
     await query(sql, [id]);
 
+    // Supprimer du realtime Firestore
+    await emitRealtimeEvent("match", id, "deleted");
+
     revalidatePath('/matches');
     revalidatePath(`/editions/${editionId}`);
     revalidatePath(`/sub-groups/${existing.sub_group_id}`);
+    updateTag("matches");
+    updateTag(`match:${id}`);
 
     return {
       success: true,
@@ -1096,6 +1109,8 @@ export async function updateMatchStatus(id: number, status: string) {
 
     revalidatePath('/matches');
     revalidatePath(`/matches/${id}`);
+    updateTag("matches");
+    updateTag(`match:${id}`);
 
     return {
       success: true,

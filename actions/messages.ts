@@ -5,33 +5,12 @@ import { query, queryOne } from '@/lib/db/neon-client';
 import { messageSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
 import { Message, MessageFilters, PaginatedResponse } from '@/types';
-import { wsManager } from '@/server/ws-connection-manager';
-// import { connectionManager } from '@/lib/realtime/connection-manager';
 
 // Utility function to emit message events
 async function emitMessageEvent(entityType: string, entityId: number, eventType: string, data: any) {
   try {
-    // For match comments
-    if (entityType === 'match') {
-      wsManager.broadcastToEntity({
-        entityType: 'match',
-        entityId,
-        event: eventType,
-        data,
-        timestamp: Date.now()
-      });
-    }
-    // For competition comments
-    else if (entityType === 'competition') {
-      wsManager.broadcastToEntity({
-        entityType: 'edition',
-        entityId,
-        event: eventType,
-        data,
-        timestamp: Date.now()
-      });
-    }
-
+    // Note: message events are not synced to Firestore (chat is not realtime-matched)
+    // Pour les futurs besoins, importer emitRealtimeEvent depuis @/actions/realtime
     console.log(`Event ${eventType} emitted for ${entityType} ${entityId}`);
   } catch (error) {
     console.error('Error emitting message event:', error);

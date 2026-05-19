@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'realtime/realtime_provider.dart';
-import 'realtime/realtime_helpers.dart';
-import 'firebase_options.dart';
+import 'realtime_provider.dart';
+import 'realtime_helpers.dart';
+import 'realtime_client.dart';
+
+// Make sure your firebase options are configured
+// import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+    // options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(const MyApp());
 }
@@ -20,12 +22,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => RealtimeProvider(
-        baseUrl: 'wss://kokowa-tv.up.railway.app', // URL de production
-        // baseUrl: 'ws://localhost:3001', // URL de développement
-      )..initialize(autoConnect: true),
+      create: (_) => RealtimeProvider()
+        ..initialize(autoConnect: true),
       child: MaterialApp(
-        title: 'Kokowa TV',
+        title: 'Kokowa TV - Firestore Realtime',
         theme: ThemeData.dark(),
         home: const HomePage(),
       ),
@@ -45,7 +45,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     
-    // S'abonner aux matchs après connexion
+    // Subscribe to match channels on Firestore
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final realtime = context.realtime;
       if (realtime.isConnected) {
@@ -61,7 +61,7 @@ class _HomePageState extends State<HomePage> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kokowa TV'),
+        title: const Text('Kokowa TV - Firestore Realtime'),
         actions: [
           const ConnectionStatusWidget(),
           const SizedBox(width: 16),
@@ -73,7 +73,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
-                '${realtime.subscriptionCount} abonnements',
+                '${realtime.subscriptionCount} écoutes Firestore',
                 style: const TextStyle(fontSize: 12),
               ),
             ),
@@ -82,7 +82,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Column(
         children: [
-          // Écouter les updates du match 1
+          // Firestore update listener for match 1
           RealtimeListener(
             entityType: EntityType.match,
             entityId: 1,
@@ -91,30 +91,42 @@ class _HomePageState extends State<HomePage> {
                 return const Card(
                   child: ListTile(
                     title: Text('Match #1'),
-                    subtitle: Text('En attente de mise à jour...'),
+                    subtitle: Text('En attente de synchronisation Firestore...'),
                   ),
                 );
               }
               
               final lastUpdate = updates.first;
+              final data = lastUpdate.data as Map<String, dynamic>;
+              
+              // Get direct live status, scores, etc., from the synced document
+              final isLive = data['liveState']?['isLive'] ?? false;
+              final status = data['liveState']?['status'] ?? 'scheduled';
+              final score1 = data['score']?['score_region1'] ?? 0;
+              final score2 = data['score']?['score_region2'] ?? 0;
+
               return Card(
+                color: isLive ? Colors.red.withOpacity(0.1) : null,
                 child: ListTile(
-                  title: Text('Match #1 - ${lastUpdate.event}'),
-                  subtitle: Text('Dernière mise à jour: ${DateTime.fromMillisecondsSinceEpoch(lastUpdate.timestamp)}'),
-                  trailing: const Icon(Icons.sports_mma),
+                  title: Text('Match #1 - Statut: ${status.toUpperCase()}'),
+                  subtitle: Text('Score Live: $score1 - $score2\nDernière sync: ${DateTime.fromMillisecondsSinceEpoch(lastUpdate.timestamp)}'),
+                  trailing: Icon(
+                    isLive ? Icons.live_tv : Icons.sports_mma,
+                    color: isLive ? Colors.red : null,
+                  ),
                 ),
               );
             },
           ),
           
-          // Boutons de contrôle
+          // Action Buttons
           Wrap(
+            spacing: 8,
             children: [
               ElevatedButton(
                 onPressed: () => context.subscribeToMatch(3),
                 child: const Text('S\'abonner au Match 3'),
               ),
-              const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: () => context.subscribeToEdition(5),
                 child: const Text('S\'abonner Édition 5'),
@@ -123,19 +135,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Envoyer un ping
-          context.realtime.client.send('ping', {});
-        },
-        child: const Icon(Icons.ping),
-      ),
     );
-  }
-  
-  @override
-  void dispose() {
-    context.realtime.dispose();
-    super.dispose();
   }
 }

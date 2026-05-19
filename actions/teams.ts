@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, cacheTag, updateTag } from "next/cache";
 import { 
   TeamMember, 
   TeamMemberFilters, 
@@ -16,6 +16,9 @@ import { query, queryOne } from "@/lib/db/neon-client";
  * Récupère la liste des membres de l'équipe avec filtres et pagination
  */
 export async function getTeamMembers(filters: TeamMemberFilters = {}): Promise<PaginatedResponse<TeamMember>> {
+  "use cache";
+  cacheTag("teams");
+
   const {
     search,
     is_active,
@@ -114,6 +117,9 @@ export async function getTeamMembers(filters: TeamMemberFilters = {}): Promise<P
  * Récupère un membre de l'équipe par son ID
  */
 export async function getTeamMemberById(id: number, with_achievements = true): Promise<TeamMember | null> {
+  "use cache";
+  cacheTag("teams", `team:${id}`);
+
   if (isNaN(id)) return null;
   const member = await queryOne<TeamMember>(`SELECT * FROM team_members WHERE id = $1`, [id]);
   if (!member) return null;
@@ -165,6 +171,7 @@ export async function createTeamMember(data: TeamMemberInput) {
   );
 
   revalidatePath("/(admins)/ad/teams", "page");
+  updateTag("teams");
   return res[0];
 }
 
@@ -195,6 +202,8 @@ export async function updateTeamMember(id: number, data: Partial<TeamMemberInput
 
   revalidatePath("/(admins)/ad/teams", "page");
   revalidatePath(`/(admins)/ad/teams/${id}`, "page");
+  updateTag("teams");
+  updateTag(`team:${id}`);
   return res[0];
 }
 
@@ -204,6 +213,8 @@ export async function updateTeamMember(id: number, data: Partial<TeamMemberInput
 export async function deleteTeamMember(id: number) {
   await query(`DELETE FROM team_members WHERE id = $1`, [id]);
   revalidatePath("/(admins)/ad/teams", "page");
+  updateTag("teams");
+  updateTag(`team:${id}`);
   return { success: true };
 }
 
@@ -213,6 +224,9 @@ export async function deleteTeamMember(id: number) {
  * Récupère les accomplissements pour un membre
  */
 export async function getTeamAchievements(memberId: number): Promise<TeamAchievement[]> {
+  "use cache";
+  cacheTag("team-achievements", `team-achievements:${memberId}`);
+
   return await query<TeamAchievement>(
     `SELECT * FROM team_achievements WHERE team_member_id = $1 ORDER BY achievement_date DESC`,
     [memberId]
@@ -235,6 +249,42 @@ export async function addTeamAchievement(data: TeamAchievementInput) {
   );
 
   revalidatePath(`/(admins)/ad/teams/${validatedData.team_member_id}`, "page");
+  updateTag("teams");
+  updateTag(`team:${validatedData.team_member_id}`);
+  updateTag("team-achievements");
+  updateTag(`team-achievements:${validatedData.team_member_id}`);
+  return res[0];
+}
+
+/**
+ * Met à jour un accomplissement d'équipe
+ */
+export async function updateTeamAchievement(id: number, data: Partial<TeamAchievementInput>) {
+  const processedData: Record<string, any> = {};
+  
+  // Ne pas inclure team_member_id dans la mise à jour (optionnel)
+  for (const [key, value] of Object.entries(data)) {
+    if (key !== 'team_member_id') {
+      processedData[key] = value;
+    }
+  }
+  
+  const fields = Object.keys(processedData);
+  const values = Object.values(processedData);
+  const setClause = fields.map((field, i) => `${field} = $${i + 2}`).join(", ");
+  
+  const res = await query<TeamAchievement>(
+    `UPDATE team_achievements SET ${setClause} WHERE id = $1 RETURNING *`,
+    [id, ...values]
+  );
+  
+  if (res.length > 0) {
+    revalidatePath(`/(admins)/ad/teams/${res[0].team_member_id}`, "page");
+    updateTag("teams");
+    updateTag(`team:${res[0].team_member_id}`);
+    updateTag("team-achievements");
+    updateTag(`team-achievements:${res[0].team_member_id}`);
+  }
   return res[0];
 }
 
@@ -245,6 +295,10 @@ export async function deleteTeamAchievement(id: number) {
   const res = await query<{ team_member_id: number }>(`DELETE FROM team_achievements WHERE id = $1 RETURNING team_member_id`, [id]);
   if (res.length > 0) {
     revalidatePath(`/(admins)/ad/teams/${res[0].team_member_id}`, "page");
+    updateTag("teams");
+    updateTag(`team:${res[0].team_member_id}`);
+    updateTag("team-achievements");
+    updateTag(`team-achievements:${res[0].team_member_id}`);
   }
   return { success: true };
 }

@@ -1,7 +1,19 @@
+"use client";
+
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Typography } from "@/components/ui/typography";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AlertTriangle, Check, X } from "lucide-react";
 import { CompetitionEdition } from "@/types";
 import {
   Calendar,
@@ -135,6 +147,7 @@ export function EditionCard({
                     onEdit={() => onEdit?.(edition)}
                     onView={() => onView?.(edition)}
                     onDelete={() => onDelete?.(edition)}
+                    entityName={`l'édition ${edition.edition_number} (${edition.year})`}
                   />
                 </div>
               )}
@@ -159,6 +172,7 @@ export function EditionCard({
                 onEdit={() => onEdit?.(edition)}
                 onView={() => onView?.(edition)}
                 onDelete={() => onDelete?.(edition)}
+                entityName={`l'édition ${edition.edition_number} (${edition.year})`}
               />
             </div>
           )}
@@ -199,39 +213,95 @@ function CardActionMenu({
   onEdit,
   onView,
   onDelete,
+  entityName = "cette édition",
 }: {
   onEdit?: () => void;
   onView?: () => void;
   onDelete?: () => void;
+  entityName?: string;
 }) {
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  if (!onEdit && !onView && !onDelete) return null;
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 rounded-full bg-primary/20 text-primary"
-        >
-          <MoreHorizontal className="h-4 w-4 bg-primary/20 text-primary" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {onView && (
-          <DropdownMenuItem onClick={onView}>
-            <Eye className="h-4 w-4 mr-2" /> Voir
-          </DropdownMenuItem>
-        )}
-        {onEdit && (
-          <DropdownMenuItem onClick={onEdit}>
-            <Pencil className="h-4 w-4 mr-2" /> Modifier
-          </DropdownMenuItem>
-        )}
-        {onDelete && (
-          <DropdownMenuItem onClick={onDelete} className="text-destructive">
-            <Trash2 className="h-4 w-4 mr-2" /> Supprimer
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full bg-primary/20 text-primary"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreHorizontal className="h-4 w-4 bg-primary/20 text-primary" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          {onView && (
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(); }}>
+              <Eye className="h-4 w-4 mr-2" /> Voir
+            </DropdownMenuItem>
+          )}
+          {onEdit && (
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+              <Pencil className="h-4 w-4 mr-2" /> Modifier
+            </DropdownMenuItem>
+          )}
+          {onDelete && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsConfirmOpen(true);
+              }}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Confirmer la suppression
+            </DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer {entityName} ? Cette action est définitive et toutes les données associées seront perdues.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex gap-2 sm:gap-0 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsConfirmOpen(false);
+              }}
+              className="flex-1"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsConfirmOpen(false);
+                onDelete?.();
+              }}
+              className="flex-1"
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Confirmer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -16,15 +16,15 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, RefreshCw, Share2, Bookmark, Bell } from "lucide-react";
+import { ArrowLeft, RefreshCw, Share2, Bookmark, Bell, Zap } from "lucide-react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { MatchDetailHeader } from "@/components/pages/matches/match-detail-header";
 import { MatchParticipants } from "@/components/pages/matches/match-participants";
 import { MatchStatistics } from "@/components/pages/matches/match-statistics";
 import { MatchTimeline } from "@/components/pages/matches/match-timeline";
-// Fetch du match
 import { Match } from "@/types";
+import { useRealtimeMatch } from "@/hooks/firestore/use-realtime-match";
 
 export default function MatchDetailPage() {
   const params = useParams();
@@ -32,8 +32,17 @@ export default function MatchDetailPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const matchId = parseInt(params.matchId as string);
 
+  // ─── Firestore Realtime (mis à jour automatique quand admin modifie) ──
   const {
-    data: match,
+    data: realtimeData,
+    isLive,
+    isListening,
+  } = useRealtimeMatch(matchId);
+
+  // ─── Fallback PostgreSQL via React Query ────────────────────────
+  // Réutilisé pour l'affichage initial et les données non-live
+  const {
+    data: pgMatch,
     isLoading,
     error,
     refetch,
@@ -50,8 +59,13 @@ export default function MatchDetailPage() {
       return data.data;
     },
     staleTime: 30000,
-    refetchInterval: false // Polling pour les matchs en direct
+    refetchInterval: false,
   });
+
+  // ─── Source de vérité UI : Firestore en priorité, PostgreSQL en fallback ──
+  // Si le document Firestore existe et que le match est live → utiliser Firestore
+  // Sinon → utiliser les données PostgreSQL
+  const match = pgMatch as Match | undefined;
 
   // Gestion des erreurs
   if (error) {
@@ -388,6 +402,15 @@ export default function MatchDetailPage() {
                   <CardTitle>Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {/* Indicateur Firestore Realtime */}
+                  {isListening && (
+                    <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <Zap className="h-4 w-4 text-green-600 animate-pulse" />
+                      <span className="text-xs text-green-700 dark:text-green-400 font-medium">
+                        {isLive ? "🔴 Match en direct" : "Temps réel actif"}
+                      </span>
+                    </div>
+                  )}
                   <Button className="w-full gap-2">
                     <Bell className="h-4 w-4" />
                     Suivre ce match

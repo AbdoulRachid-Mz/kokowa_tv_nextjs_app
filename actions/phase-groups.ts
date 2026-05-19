@@ -4,12 +4,15 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { phaseGroupSchema, subGroupSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag } from 'next/cache';
 import { PhaseGroup, SubGroup, PaginatedResponse, PhaseGroupFilters } from '@/types';
 
 export async function getPhaseGroups(
   filters: PhaseGroupFilters = {}
 ): Promise<PaginatedResponse<PhaseGroup>> {
+  "use cache";
+  cacheTag("phase-groups");
+
   try {
     const {
       phase_id,
@@ -234,6 +237,9 @@ export async function getPhaseGroupById(id: number, options: {
   is_active?: boolean;
   with_stats?: boolean;
 } = {}) {
+  "use cache";
+  cacheTag("phase-groups", `phase-group:${id}`);
+
   try {
     const { 
       with_relations = false,
@@ -509,6 +515,8 @@ export async function createPhaseGroup(
       await query('COMMIT');
 
       revalidatePath(`/ad/phases/${validatedData.phase_id}`);
+      updateTag("phase-groups");
+      updateTag("phases");
       
       return { 
         success: true, 
@@ -577,6 +585,8 @@ export async function updatePhaseGroup(id: number, formData: FormData) {
     revalidatePath('/phases');
     revalidatePath(`/phases/${validatedData.phase_id}`);
     revalidatePath(`/phase-groups/${id}`);
+    updateTag("phase-groups");
+    updateTag(`phase-group:${id}`);
     return { 
       success: true, 
       message: 'Groupe de phase modifié avec succès' 
@@ -611,6 +621,8 @@ export async function deletePhaseGroup(id: number) {
     
     revalidatePath('/phases');
     revalidatePath(`/phases/${existing.phase_id}`);
+    updateTag("phase-groups");
+    updateTag(`phase-group:${id}`);
     return { 
       success: true, 
       message: 'Groupe de phase supprimé avec succès' 
@@ -663,6 +675,8 @@ export async function addSubGroupsToPhaseGroup(
 
       revalidatePath('/phase-groups');
       revalidatePath(`/phase-groups/${groupId}`);
+      updateTag("phase-groups");
+      updateTag(`phase-group:${groupId}`);
       return { 
         success: true, 
         message: `${count} sous-groupe(s) ajouté(s) au groupe avec succès`

@@ -4,24 +4,23 @@ import 'realtime_client.dart';
 
 class RealtimeProvider extends ChangeNotifier {
   late RealtimeClient _client;
-  final String baseUrl;
+  final String? baseUrl;
   bool _initialized = false;
   
-  RealtimeProvider({required this.baseUrl});
+  RealtimeProvider({this.baseUrl});
   
   RealtimeClient get client => _client;
   bool get isInitialized => _initialized;
   
-  // État exposé pour l'UI
   ConnectionStatus get connectionStatus => _client.status;
   bool get isConnected => _client.isConnected;
   bool get isAuthenticated => _client.isAuthenticated;
   int get subscriptionCount => _client.subscriptionCount;
   String? get userId => _client.userId;
-  List<String>? get roles => _client.roles;
   
-  // Dernières updates par type
+  // Recent updates map to preserve backward compatibility for UI widgets
   final Map<String, List<RealtimeUpdatePayload>> _recentUpdates = {};
+  
   List<RealtimeUpdatePayload> getUpdatesForEntity(String entityType, dynamic entityId) {
     final key = '$entityType:$entityId';
     return _recentUpdates[key] ?? [];
@@ -31,17 +30,15 @@ class RealtimeProvider extends ChangeNotifier {
     if (_initialized) return;
     
     _client = RealtimeClient(
-      url: baseUrl,
       enableLogging: true,
     );
     
-    // Configurer les callbacks
+    // Wire up callbacks
     _client.onStatusChange = (status) {
       notifyListeners();
     };
     
     _client.onUpdate = (update) {
-      // Stocker les updates récentes
       final key = '${update.entityType.toString().split('.').last}:${update.entityId}';
       _recentUpdates[key] = [
         update,
@@ -55,12 +52,7 @@ class RealtimeProvider extends ChangeNotifier {
     };
     
     _client.onError = (error) {
-      debugPrint('Realtime error: $error');
-      notifyListeners();
-    };
-    
-    _client.onRateLimit = (info) {
-      debugPrint('Rate limit: ${info.message}');
+      debugPrint('Firestore Realtime error: $error');
       notifyListeners();
     };
     
@@ -75,7 +67,7 @@ class RealtimeProvider extends ChangeNotifier {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final token = await user.getIdToken();
-      await _client.authenticate(token);
+      await _client.authenticate(token ?? '');
     } else {
       await _client.connect();
     }

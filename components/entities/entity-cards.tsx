@@ -1,8 +1,20 @@
 // components/entities/entity-cards.tsx
+"use client";
+
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Typography } from "@/components/ui/typography";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AlertTriangle, Check, X } from "lucide-react";
 import {
   Fighter,
   Region,
@@ -184,6 +196,7 @@ export function FighterCard({
                     onEdit={() => onEdit?.(fighter)}
                     onView={() => onView?.(fighter)}
                     onDelete={() => onDelete?.(fighter)}
+                    entityName={`le lutteur ${fighter.first_name} ${fighter.last_name}`}
                   />
                 </div>
               )}
@@ -208,6 +221,7 @@ export function FighterCard({
                 onEdit={() => onEdit?.(fighter)}
                 onView={() => onView?.(fighter)}
                 onDelete={() => onDelete?.(fighter)}
+                entityName={`le lutteur ${fighter.first_name} ${fighter.last_name}`}
               />
             </div>
           )}
@@ -257,15 +271,17 @@ export function FighterCard({
   );
 }
 
-function CardActionMenu({
+export function CardActionMenu({
   onEdit,
   onView,
   onDelete,
   extraActions = [],
+  entityName = "cet élément",
 }: {
   onEdit?: () => void;
   onView?: () => void;
   onDelete?: () => void;
+  entityName?: string;
   extraActions?: {
     id: string;
     label: string;
@@ -274,46 +290,98 @@ function CardActionMenu({
     className?: string;
   }[];
 }) {
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   if (!onEdit && !onView && !onDelete && extraActions.length === 0) return null;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 rounded-full bg-primary/20 text-primary"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {onView && (
-          <DropdownMenuItem onClick={onView}>
-            <Eye className="h-4 w-4 mr-2" /> Voir
-          </DropdownMenuItem>
-        )}
-        {onEdit && (
-          <DropdownMenuItem onClick={onEdit}>
-            <Pencil className="h-4 w-4 mr-2" /> Modifier
-          </DropdownMenuItem>
-        )}
-        {extraActions.map((action) => (
-          <DropdownMenuItem
-            key={action.id}
-            onClick={action.onClick}
-            className={action.className}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full bg-primary/20 text-primary"
+            onClick={(e) => e.stopPropagation()}
           >
-            <action.icon className="h-4 w-4 mr-2" /> {action.label}
-          </DropdownMenuItem>
-        ))}
-        {onDelete && (
-          <DropdownMenuItem onClick={onDelete} className="text-destructive">
-            <Trash2 className="h-4 w-4 mr-2" /> Supprimer
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          {onView && (
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(); }}>
+              <Eye className="h-4 w-4 mr-2" /> Voir
+            </DropdownMenuItem>
+          )}
+          {onEdit && (
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+              <Pencil className="h-4 w-4 mr-2" /> Modifier
+            </DropdownMenuItem>
+          )}
+          {extraActions.map((action) => (
+            <DropdownMenuItem
+              key={action.id}
+              onClick={(e) => { e.stopPropagation(); action.onClick(); }}
+              className={action.className}
+            >
+              <action.icon className="h-4 w-4 mr-2" /> {action.label}
+            </DropdownMenuItem>
+          ))}
+          {onDelete && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsConfirmOpen(true);
+              }}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Confirmer la suppression
+            </DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer {entityName} ? Cette action est irréversible et supprimera définitivement toutes les données associées.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex gap-2 sm:gap-0 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsConfirmOpen(false);
+              }}
+              className="flex-1"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsConfirmOpen(false);
+                onDelete?.();
+              }}
+              className="flex-1"
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Confirmer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -391,6 +459,7 @@ export function SubGroupCard({
                     onEdit={() => onEdit?.(subGroup)}
                     onView={() => onView?.(subGroup)}
                     onDelete={() => onDelete?.(subGroup)}
+                    entityName={`la rencontre ${subGroup.name}`}
                     extraActions={
                       onManageMatches
                         ? [
@@ -439,6 +508,7 @@ export function SubGroupCard({
                 onEdit={() => onEdit?.(subGroup)}
                 onView={() => onView?.(subGroup)}
                 onDelete={() => onDelete?.(subGroup)}
+                entityName={`la rencontre ${subGroup.name}`}
                 extraActions={
                   onManageMatches
                     ? [
@@ -563,6 +633,7 @@ export function PhaseGroupCard({
                     onEdit={() => onEdit?.(group)}
                     onView={() => onView?.(group)}
                     onDelete={() => onDelete?.(group)}
+                    entityName={`le groupe ${group.name}`}
                   />
                 </div>
               )}
@@ -591,6 +662,7 @@ export function PhaseGroupCard({
                 onEdit={() => onEdit?.(group)}
                 onView={() => onView?.(group)}
                 onDelete={() => onDelete?.(group)}
+                entityName={`le groupe ${group.name}`}
               />
             </div>
           )}
@@ -704,6 +776,7 @@ export function PhaseCard({
                     onEdit={() => onEdit?.(phase)}
                     onView={() => onView?.(phase)}
                     onDelete={() => onDelete?.(phase)}
+                    entityName={`la phase ${phase.name}`}
                   />
                 </div>
               )}
@@ -734,6 +807,7 @@ export function PhaseCard({
                 onEdit={() => onEdit?.(phase)}
                 onView={() => onView?.(phase)}
                 onDelete={() => onDelete?.(phase)}
+                entityName={`la phase ${phase.name}`}
               />
             </div>
           )}
@@ -853,6 +927,7 @@ export function RegionCard({
                     onEdit={() => onEdit?.(region)}
                     onView={() => onView?.(region)}
                     onDelete={() => onDelete?.(region)}
+                    entityName={`la région ${region.name}`}
                   />
                 </div>
               )}
@@ -875,6 +950,7 @@ export function RegionCard({
                 onEdit={() => onEdit?.(region)}
                 onView={() => onView?.(region)}
                 onDelete={() => onDelete?.(region)}
+                entityName={`la région ${region.name}`}
               />
             </div>
           )}
@@ -994,6 +1070,7 @@ export function CompetitionCard({
                     onEdit={() => onEdit?.(competition)}
                     onView={() => onView?.(competition)}
                     onDelete={() => onDelete?.(competition)}
+                    entityName={`la compétition ${competition.name}`}
                   />
                 </div>
               )}
@@ -1017,6 +1094,7 @@ export function CompetitionCard({
                 onEdit={() => onEdit?.(competition)}
                 onView={() => onView?.(competition)}
                 onDelete={() => onDelete?.(competition)}
+                entityName={`la compétition ${competition.name}`}
               />
             </div>
           )}
@@ -1137,6 +1215,7 @@ export function RefereeCard({
                     onEdit={() => onEdit?.(referee)}
                     onView={() => onView?.(referee)}
                     onDelete={() => onDelete?.(referee)}
+                    entityName={`l'arbitre ${referee.first_name} ${referee.last_name}`}
                   />
                 </div>
               )}
@@ -1171,6 +1250,7 @@ export function RefereeCard({
                 onEdit={() => onEdit?.(referee)}
                 onView={() => onView?.(referee)}
                 onDelete={() => onDelete?.(referee)}
+                entityName={`l'arbitre ${referee.first_name} ${referee.last_name}`}
               />
             </div>
           )}
@@ -2511,6 +2591,7 @@ export function TeamMemberCard({
                     onEdit={() => onEdit?.(member)}
                     onView={() => onView?.(member)}
                     onDelete={() => onDelete?.(member)}
+                    entityName={`le membre d'équipe ${member.first_name} ${member.last_name}`}
                   />
                 </div>
               )}
@@ -2536,6 +2617,7 @@ export function TeamMemberCard({
                 onEdit={() => onEdit?.(member)}
                 onView={() => onView?.(member)}
                 onDelete={() => onDelete?.(member)}
+                entityName={`le membre d'équipe ${member.first_name} ${member.last_name}`}
               />
             </div>
           )}

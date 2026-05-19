@@ -3,7 +3,7 @@
 
 import { pool, query, queryOne } from "@/lib/db/neon-client";
 import { subGroupSchema } from "@/validation/schemas";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, cacheTag, updateTag } from "next/cache";
 import { emitSubGroupEvent } from "./realtime";
 import {
   SubGroup,
@@ -17,6 +17,9 @@ import { getEditionFighters, getEditionRegions } from "@/actions/editions";
 export async function getSubGroups(
   filters: SubGroupFilters = {},
 ): Promise<PaginatedResponse<SubGroup>> {
+  "use cache";
+  cacheTag("sub-groups");
+
   try {
     const {
       group_id,
@@ -410,6 +413,9 @@ export async function getSubGroupById(
   id: number,
   options: GetSubGroupByIdOptions = {},
 ) {
+  "use cache";
+  cacheTag("sub-groups", `sub-group:${id}`);
+
   try {
     const {
       with_relations = false,
@@ -519,7 +525,7 @@ export async function getSubGroupById(
           }
         ) as group,
         `
-            : `'group', NULL,`
+            : `NULL as group,`
         }
         ${
           with_regions
@@ -568,9 +574,9 @@ export async function getSubGroupById(
           WHERE m.sub_group_id = sg.id ${isActiveCondition.replace("is_active", "m.is_active")}
           ),
           '[]'::json
-        ) as matches
+        ) as matches,
         `
-            : `'matches', '[]'::json`
+            : `'[]'::json as matches,`
         }
         ${
           with_edition_fighters
@@ -618,9 +624,9 @@ export async function getSubGroupById(
           WHERE pg2.id = sg.group_id AND ef.status = 'registered'
           ),
           '[]'::json
-        ) as edition_fighters
+        ) as edition_fighters,
         `
-            : `'edition_fighters', '[]'::json`
+            : `'[]'::json as edition_fighters,`
         }
         ${
           with_edition_regions
@@ -655,7 +661,7 @@ export async function getSubGroupById(
           '[]'::json
         ) as edition_regions
         `
-            : `'edition_regions', '[]'::json`
+            : `'[]'::json as edition_regions`
         }
       FROM sub_groups sg
       LEFT JOIN phase_groups pg ON sg.group_id = pg.id
@@ -748,6 +754,8 @@ export async function createSubGroup(formData: FormData) {
 
     const id = result[0].id;
     revalidatePath(`/ad/phase-groups/${validatedData.group_id}`);
+    updateTag("sub-groups");
+    updateTag("phase-groups");
 
     // Émettre l'événement temps réel
     emitSubGroupEvent(id, "created", { id, ...validatedData });
@@ -830,6 +838,8 @@ export async function updateSubGroup(id: number, formData: FormData) {
 
     revalidatePath(`/ad/sub-groups/${id}`);
     revalidatePath(`/ad/phase-groups/${validatedData.group_id}`);
+    updateTag("sub-groups");
+    updateTag(`sub-group:${id}`);
 
     // Émettre l'événement temps réel
     emitSubGroupEvent(id, "updated", { id, ...validatedData });
@@ -850,9 +860,11 @@ export async function deleteSubGroup(id: number) {
     await query(sql, [id]);
 
     revalidatePath(`/ad/phase-groups/${subGroup.group_id}`);
+    updateTag("sub-groups");
+    updateTag(`sub-group:${id}`);
 
     // Émettre l'événement temps réel
-    emitSubGroupEvent(id, "deleted", { id });
+    await emitSubGroupEvent(id, "deleted", { id });
 
     return { success: true, message: "Sous-groupe supprimé avec succès" };
   } catch (error) {
@@ -872,6 +884,8 @@ export async function completeSubGroup(id: number) {
     if (subGroup?.group_id) {
       revalidatePath(`/ad/phase-groups/${subGroup.group_id}`);
     }
+    updateTag("sub-groups");
+    updateTag(`sub-group:${id}`);
 
     emitSubGroupEvent(id, "updated", {
       id,

@@ -1,18 +1,25 @@
 // @/actions/fighters.ts
-'use server';
+"use server";
 
-import { query, queryOne } from '@/lib/db/neon-client';
-import { fighterSchema } from '@/validation/schemas';
-import { revalidatePath } from 'next/cache';
-import { emitFighterEvent } from './realtime';
-import { ArchiveFighterAchievementFilters, Fighter, FighterFilters, PaginatedResponse } from '@/types';
+import { query, queryOne } from "@/lib/db/neon-client";
+import { fighterSchema } from "@/validation/schemas";
+import { revalidatePath, cacheTag, updateTag, revalidateTag } from "next/cache";
+import { emitFighterEvent } from "./realtime";
+import {
+  ArchiveFighterAchievementFilters,
+  Fighter,
+  FighterFilters,
+  PaginatedResponse,
+} from "@/types";
 
 export async function getFighters(
-  filters: FighterFilters = {}
+  filters: FighterFilters = {},
 ): Promise<PaginatedResponse<Fighter>> {
+  "use cache";
+  cacheTag("fighters");
   try {
     const {
-      search = '',
+      search = "",
       page = 1,
       limit = 20,
       region_id,
@@ -24,9 +31,20 @@ export async function getFighters(
       with_achievements = false,
     } = filters;
 
-    let whereClause = 'WHERE 1=1';
+    let whereClause = "WHERE 1=1";
     const params: any[] = [];
-    const selectFields = ['f.id', 'f.first_name', 'f.last_name', 'f.nickname', 'f.slug', 'f.profile_image', 'f.ranking', 'f.is_active', 'f.is_champion', 'f.region_id'];
+    const selectFields = [
+      "f.id",
+      "f.first_name",
+      "f.last_name",
+      "f.nickname",
+      "f.slug",
+      "f.profile_image",
+      "f.ranking",
+      "f.is_active",
+      "f.is_champion",
+      "f.region_id",
+    ];
 
     // Recherche
     if (search) {
@@ -99,12 +117,12 @@ export async function getFighters(
     const countSql = `
       SELECT COUNT(*) as total
       FROM fighters f
-      ${with_region ? 'LEFT JOIN regions r ON f.region_id = r.id' : ''}
+      ${with_region ? "LEFT JOIN regions r ON f.region_id = r.id" : ""}
       ${whereClause}
     `;
 
     const countResult = await query<{ total: string }>(countSql, params);
-    const total = parseInt(countResult[0]?.total ?? '0');
+    const total = parseInt(countResult[0]?.total ?? "0");
 
     // Pagination
     const validatedPage = Math.max(1, page);
@@ -113,21 +131,22 @@ export async function getFighters(
     const validatedLimit = limit <= 0 ? total : Math.max(1, limit);
 
     const offset = (validatedPage - 1) * validatedLimit;
-    const totalPages = validatedLimit > 0 ? Math.ceil(total / validatedLimit) : 1;
+    const totalPages =
+      validatedLimit > 0 ? Math.ceil(total / validatedLimit) : 1;
 
     // QUERY
     const dataSql = `
-      SELECT ${selectFields.join(', ')}
+      SELECT ${selectFields.join(", ")}
       FROM fighters f
-      ${with_region ? 'LEFT JOIN regions r ON f.region_id = r.id' : ''}
+      ${with_region ? "LEFT JOIN regions r ON f.region_id = r.id" : ""}
       ${whereClause}
       ORDER BY f.ranking ASC, f.last_name ASC, f.first_name ASC
-      ${limit <= 0 ? '' : `LIMIT $${params.length + 1} OFFSET $${params.length + 2}`}
+      ${limit <= 0 ? "" : `LIMIT $${params.length + 1} OFFSET $${params.length + 2}`}
     `;
 
     const data = await query<Fighter>(
       dataSql,
-      limit <= 0 ? params : [...params, validatedLimit, offset]
+      limit <= 0 ? params : [...params, validatedLimit, offset],
     );
 
     return {
@@ -137,21 +156,27 @@ export async function getFighters(
         limit: validatedLimit,
         total,
         totalPages,
-      }
+      },
     };
   } catch (error) {
-    console.error('Error in getFighters:', error);
-    throw new Error('Erreur lors de la récupération des lutteurs');
+    console.error("Error in getFighters:", error);
+    throw new Error("Erreur lors de la récupération des lutteurs");
   }
 }
 
-export async function getFighterById(id: number, options: { 
-  with_relations?: boolean 
-} = {}) {
+export async function getFighterById(
+  id: number,
+  options: {
+    with_relations?: boolean;
+  } = {},
+) {
+  "use cache";
+  cacheTag("fighters", `fighter:${id}`);
+
   try {
     const { with_relations = true } = options;
-    
-    let sql = 'SELECT * FROM fighters WHERE id = $1';
+
+    let sql = "SELECT * FROM fighters WHERE id = $1";
     const params: any[] = [id];
 
     if (with_relations) {
@@ -200,14 +225,14 @@ export async function getFighterById(id: number, options: {
     }
 
     const result = await queryOne<Fighter>(sql, params);
-    
+
     if (!result) {
-      throw new Error('Lutteur non trouvé');
+      throw new Error("Lutteur non trouvé");
     }
-    
+
     return result;
   } catch (error) {
-    console.error('Error in getFighterById:', error);
+    console.error("Error in getFighterById:", error);
     throw error;
   }
 }
@@ -223,7 +248,7 @@ export async function createFighter(validatedData: any) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING id
     `;
-    
+
     const result = await query<{ id: number }>(sql, [
       validatedData.first_name,
       validatedData.last_name,
@@ -248,65 +273,71 @@ export async function createFighter(validatedData: any) {
     if (validatedData.region_id) {
       revalidatePath(`/admin/regions/${validatedData.region_id}`);
     }
-    
-    // 🔥 Émission WS
-    await emitFighterEvent(result[0].id, 'fighter_created', { id: result[0].id, ...validatedData });
 
-    return { 
-      success: true, 
+    updateTag("fighters");
+
+    // Émission WS
+    await emitFighterEvent(result[0].id, "fighter_created", {
+      id: result[0].id,
+      ...validatedData,
+    });
+
+    return {
+      success: true,
       id: result[0].id,
       message: "Lutteur créé avec succès",
     };
   } catch (error) {
     console.error("Error in createFighter:", error);
-    throw new Error(`Erreur lors de la création du lutteur: ${(error as Error).message}`);
+    throw new Error(
+      `Erreur lors de la création du lutteur: ${(error as Error).message}`,
+    );
   }
 }
-
 
 export async function updateFighter(id: number, formData: FormData) {
   try {
     const existing = await getFighterById(id, { with_relations: false });
     if (!existing) {
-      throw new Error('Lutteur non trouvé');
+      throw new Error("Lutteur non trouvé");
     }
 
     const rawData = {
-      first_name: formData.get('first_name'),
-      last_name: formData.get('last_name'),
-      nickname: formData.get('nickname'),
-      birth_date: formData.get('birth_date'),
-      birth_place: formData.get('birth_place'),
-      region_id: formData.get('region_id'),
-      height: formData.get('height'),
-      weight: formData.get('weight'),
-      profile_image: formData.get('profile_image'),
-      cover_image: formData.get('cover_image'),
-      bio: formData.get('bio'),
-      fighting_style: formData.get('fighting_style'),
-      debut_year: formData.get('debut_year'),
-      ranking: formData.get('ranking'),
-      is_active: formData.get('is_active'),
-      is_champion: formData.get('is_champion'),
+      first_name: formData.get("first_name"),
+      last_name: formData.get("last_name"),
+      nickname: formData.get("nickname"),
+      birth_date: formData.get("birth_date"),
+      birth_place: formData.get("birth_place"),
+      region_id: formData.get("region_id"),
+      height: formData.get("height"),
+      weight: formData.get("weight"),
+      profile_image: formData.get("profile_image"),
+      cover_image: formData.get("cover_image"),
+      bio: formData.get("bio"),
+      fighting_style: formData.get("fighting_style"),
+      debut_year: formData.get("debut_year"),
+      ranking: formData.get("ranking"),
+      is_active: formData.get("is_active"),
+      is_champion: formData.get("is_champion"),
     };
 
     const cleanedData = {
       first_name: rawData.first_name as string,
       last_name: rawData.last_name as string,
-      nickname: rawData.nickname as string || undefined,
-      birth_date: rawData.birth_date as string || undefined,
-      birth_place: rawData.birth_place as string || undefined,
+      nickname: (rawData.nickname as string) || undefined,
+      birth_date: (rawData.birth_date as string) || undefined,
+      birth_place: (rawData.birth_place as string) || undefined,
       region_id: rawData.region_id ? Number(rawData.region_id) : undefined,
       height: rawData.height ? Number(rawData.height) : undefined,
       weight: rawData.weight ? Number(rawData.weight) : undefined,
-      profile_image: rawData.profile_image as string || undefined,
-      cover_image: rawData.cover_image as string || undefined,
-      bio: rawData.bio as string || undefined,
-      fighting_style: rawData.fighting_style as string || undefined,
+      profile_image: (rawData.profile_image as string) || undefined,
+      cover_image: (rawData.cover_image as string) || undefined,
+      bio: (rawData.bio as string) || undefined,
+      fighting_style: (rawData.fighting_style as string) || undefined,
       debut_year: rawData.debut_year ? Number(rawData.debut_year) : undefined,
       ranking: rawData.ranking ? Number(rawData.ranking) : existing.ranking,
-      is_active: rawData.is_active === 'true',
-      is_champion: rawData.is_champion === 'true',
+      is_active: rawData.is_active === "true",
+      is_champion: rawData.is_champion === "true",
     };
 
     const validatedData = fighterSchema.parse(cleanedData);
@@ -321,7 +352,7 @@ export async function updateFighter(id: number, formData: FormData) {
         is_active = $15, is_champion = $16, updated_at = CURRENT_TIMESTAMP
       WHERE id = $17
     `;
-    
+
     await query(sql, [
       validatedData.first_name,
       validatedData.last_name,
@@ -344,29 +375,34 @@ export async function updateFighter(id: number, formData: FormData) {
 
     // Le trigger PostgreSQL met à jour automatiquement les compteurs des régions
 
-    revalidatePath('/fighters');
+    revalidatePath("/fighters");
     revalidatePath(`/admin/fighters/${id}`);
     revalidatePath(`/fighters/${id}`);
     if (validatedData.region_id !== existing.region_id) {
       if (existing.region_id) {
-        revalidatePath(`/admin/regions/${existing.region_id}`);
+        updateTag(`region:${existing.region_id}`);
       }
       if (validatedData.region_id) {
-        revalidatePath(`/admin/regions/${validatedData.region_id}`);
+        updateTag(`region:${validatedData.region_id}`);
       }
     }
-    
-    // 🔥 Émission WS
-    await emitFighterEvent(id, 'fighter_updated', { id, ...validatedData });
 
-    return { 
-      success: true, 
-      message: 'Lutteur modifié avec succès' 
+    updateTag("fighters");
+    updateTag(`fighter:${id}`);
+
+    // 🔥 Émission WS
+    await emitFighterEvent(id, "fighter_updated", { id, ...validatedData });
+
+    return {
+      success: true,
+      message: "Lutteur modifié avec succès",
     };
   } catch (error) {
-    console.error('Error in updateFighter:', error);
+    console.error("Error in updateFighter:", error);
     if (error instanceof Error) {
-      throw new Error(`Erreur lors de la modification du lutteur: ${error.message}`);
+      throw new Error(
+        `Erreur lors de la modification du lutteur: ${error.message}`,
+      );
     }
     throw error;
   }
@@ -376,49 +412,61 @@ export async function deleteFighter(id: number) {
   try {
     const existing = await getFighterById(id, { with_relations: false });
     if (!existing) {
-      throw new Error('Lutteur non trouvé');
+      throw new Error("Lutteur non trouvé");
     }
 
     // Vérifier les données liées
-    const relatedData = await query(`
+    const relatedData = await query(
+      `
       SELECT 
         (SELECT COUNT(*) FROM fighter_achievements WHERE fighter_id = $1) as achievement_count,
         (SELECT COUNT(*) FROM fighter_transfers WHERE fighter_id = $1) as transfer_count,
         (SELECT COUNT(*) FROM matches WHERE fighter1_id = $1 OR fighter2_id = $1) as match_count
-    `, [id]);
+    `,
+      [id],
+    );
 
-    const counts = relatedData[0] as { achievement_count: string; transfer_count: string; match_count: string };
-    
+    const counts = relatedData[0] as {
+      achievement_count: string;
+      transfer_count: string;
+      match_count: string;
+    };
+
     if (parseInt(counts.match_count) > 0) {
       throw new Error(
-        `Impossible de supprimer ce lutteur car il est lié à ${counts.match_count} match(s)`
+        `Impossible de supprimer ce lutteur car il est lié à ${counts.match_count} match(s)`,
       );
     }
 
-    const sql = 'DELETE FROM fighters WHERE id = $1';
+    const sql = "DELETE FROM fighters WHERE id = $1";
     await query(sql, [id]);
 
     // Le trigger PostgreSQL met à jour automatiquement le compteur de la région
 
-    revalidatePath('/fighters');
-    revalidatePath('/admin/fighters');
+    updateTag("/fighters");
+    updateTag("/admin/fighters");
     if (existing.region_id) {
-      revalidatePath(`/admin/regions/${existing.region_id}`);
+      updateTag(`region:${existing.region_id}`);
     }
-    
-    // 🔥 Émission WS
-    await emitFighterEvent(id, 'fighter_deleted', { id });
 
-    return { 
-      success: true, 
-      message: 'Lutteur supprimé avec succès' 
+    updateTag("fighters");
+    updateTag(`fighter:${id}`);
+
+    // 🔥 Émission WS
+    await emitFighterEvent(id, "fighter_deleted", { id });
+
+    return {
+      success: true,
+      message: "Lutteur supprimé avec succès",
     };
   } catch (error) {
-    console.error('Error in deleteFighter:', error);
+    console.error("Error in deleteFighter:", error);
     if (error instanceof Error) {
-      throw new Error(`Erreur lors de la suppression du lutteur: ${error.message}`);
+      throw new Error(
+        `Erreur lors de la suppression du lutteur: ${error.message}`,
+      );
     }
-    throw new Error('Erreur lors de la suppression du lutteur');
+    throw new Error("Erreur lors de la suppression du lutteur");
   }
 }
 
@@ -437,7 +485,7 @@ export async function getFighterStats() {
       FROM fighters
       WHERE is_active = true
     `;
-    
+
     const result = await queryOne<{
       total_fighters: string;
       active_fighters: string;
@@ -448,19 +496,19 @@ export async function getFighterStats() {
       oldest_debut: string;
       newest_debut: string;
     }>(sql);
-    
+
     return {
-      total_fighters: parseInt(result?.total_fighters ?? '0'),
-      active_fighters: parseInt(result?.active_fighters ?? '0'),
-      champions: parseInt(result?.champions ?? '0'),
-      avg_ranking: parseFloat(result?.avg_ranking ?? '0'),
-      avg_weight: parseFloat(result?.avg_weight ?? '0'),
-      avg_height: parseFloat(result?.avg_height ?? '0'),
-      oldest_debut: parseInt(result?.oldest_debut ?? '0'),
-      newest_debut: parseInt(result?.newest_debut ?? '0'),
+      total_fighters: parseInt(result?.total_fighters ?? "0"),
+      active_fighters: parseInt(result?.active_fighters ?? "0"),
+      champions: parseInt(result?.champions ?? "0"),
+      avg_ranking: parseFloat(result?.avg_ranking ?? "0"),
+      avg_weight: parseFloat(result?.avg_weight ?? "0"),
+      avg_height: parseFloat(result?.avg_height ?? "0"),
+      oldest_debut: parseInt(result?.oldest_debut ?? "0"),
+      newest_debut: parseInt(result?.newest_debut ?? "0"),
     };
   } catch (error) {
-    console.error('Error in getFighterStats:', error);
+    console.error("Error in getFighterStats:", error);
     return {
       total_fighters: 0,
       active_fighters: 0,
@@ -482,17 +530,17 @@ export async function getFightersForSelect() {
       WHERE is_active = true
       ORDER BY ranking ASC, last_name ASC, first_name ASC
     `;
-    
-    return await query<{ 
-      id: number; 
-      first_name: string; 
-      last_name: string; 
-      nickname?: string; 
+
+    return await query<{
+      id: number;
+      first_name: string;
+      last_name: string;
+      nickname?: string;
       ranking: number;
       is_active: boolean;
     }>(sql);
   } catch (error) {
-    console.error('Error in getFightersForSelect:', error);
+    console.error("Error in getFightersForSelect:", error);
     return [];
   }
 }

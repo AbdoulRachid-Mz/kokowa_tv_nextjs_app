@@ -89,8 +89,8 @@ export function TeamSection() {
                   {/* Image Container */}
                   <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl group-hover:shadow-primary/20 transition-all duration-500">
                     <Image
-                      src={member.profile_image || member.avatar_url || "https://res.cloudinary.com/dwgbrbcf7/image/upload/v1715421523/default-avatar_uuxv9q.png"}
-                      alt={member.full_name}
+                      src={member.profile_image || "/icons/avatar/3dboy.png"}
+                      alt={member.first_name || member.last_name}
                       fill
                       className="object-cover transition-transform duration-700 group-hover:scale-110"
                     />
@@ -123,7 +123,7 @@ export function TeamSection() {
                   {/* Info */}
                   <div className="text-center md:text-left px-2">
                     <Typography variant="h4" weight="bold" className="group-hover:text-primary transition-colors">
-                      {member.full_name}
+                      {member.first_name || member.last_name}
                     </Typography>
                     <Typography variant="caption1" theme="muted" className="uppercase tracking-widest font-semibold text-[10px]">
                       {member.role}

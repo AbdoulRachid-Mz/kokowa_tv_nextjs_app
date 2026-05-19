@@ -25,6 +25,7 @@ import {
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { getFighterById } from "@/actions/fighters";
+import { DeleteButton } from "@/components/shared/delete-button";
 
 export default function ClientFighterDetailPage({
   fighterId,
@@ -170,9 +171,15 @@ export default function ClientFighterDetailPage({
               </Typography>
             )}
           </div>
-          <div className="">
+          <div className="flex gap-2">
+            <DeleteButton
+              entityType="fighter"
+              entityId={id}
+              entityName={`${fighter.first_name} ${fighter.last_name}`}
+              redirectPath="/ad/fighters"
+            />
             <Button onClick={() => router.push(`/ad/fighters/${id}/edit`)}>
-              <Pin /> Modifier le profil
+              <Pin className="mr-2 h-4 w-4" /> Modifier le profil
             </Button>
           </div>
         </div>
