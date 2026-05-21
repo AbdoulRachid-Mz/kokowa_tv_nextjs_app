@@ -45,6 +45,7 @@ if (!getApps().length) {
     ) {
       initializeApp({
         credential: cert(firebaseConfig as any),
+        databaseURL: process.env.FIREBASE_DATABASE_URL || process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
       });
       logger.info("✅ Firebase Admin initialized");
     } else {

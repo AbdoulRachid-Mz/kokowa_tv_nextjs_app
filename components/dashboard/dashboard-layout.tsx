@@ -61,6 +61,7 @@ interface DashboardLayoutProps {
     status?: "online" | "offline" | "busy";
     level?: string;
   };
+  headerBehavior?: "fixed" | "default" | "hideOnScroll" | "sticky";
 }
 
 export function DashboardLayout({
@@ -78,6 +79,7 @@ export function DashboardLayout({
   sidebarBgType = "default",
   togglePosition = "edge",
   user,
+  headerBehavior = "hideOnScroll",
 }: DashboardLayoutProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -87,6 +89,11 @@ export function DashboardLayout({
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState(defaultTab);
   const router = useRouter();
+
+  // Variables d'état pour le comportement du header
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const [isScrollingUp, setIsScrollingUp] = useState(true);
+  const [isAtTop, setIsAtTop] = useState(true);
 
   // If the URL contains a `tab` query param and it matches a provided tab id, use it
   useEffect(() => {
@@ -544,9 +551,21 @@ export function DashboardLayout({
       </AnimatePresence>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Header */}
-        <header className="border-b p-4 sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header 
+          className={cn(
+            "p-4 z-10 transition-all duration-300 ease-in-out border-b backdrop-blur supports-[backdrop-filter]:bg-background/60",
+            headerBehavior === "default" ? "relative bg-background" : "",
+            headerBehavior === "fixed" ? "sticky top-0 bg-background/95 shadow-sm" : "",
+            headerBehavior === "sticky" ? cn("sticky top-0 bg-background/95", !isAtTop && "shadow-md") : "",
+            headerBehavior === "hideOnScroll" ? cn(
+              "sticky bg-background/95 shadow-sm",
+              isAtTop ? "top-0 mt-0 mx-0 rounded-none w-full border-b" : 
+              isScrollingUp ? "top-4 mt-4 mx-4 rounded-2xl border w-[calc(100%-2rem)] shadow-lg" : "-top-full"
+            ) : ""
+          )}
+        >
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               {!isMobile && (
@@ -578,7 +597,15 @@ export function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <ScrollArea className="flex-1 overflow-auto">
+        <div 
+          className="flex-1 overflow-auto"
+          onScroll={(e) => {
+            const currentScrollY = e.currentTarget.scrollTop;
+            setIsScrollingUp(currentScrollY < lastScrollY || currentScrollY <= 0);
+            setIsAtTop(currentScrollY < 20);
+            setLastScrollY(currentScrollY);
+          }}
+        >
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -587,7 +614,7 @@ export function DashboardLayout({
           >
             {currentContent}
           </motion.div>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );

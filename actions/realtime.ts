@@ -10,10 +10,10 @@
 import {
   syncMatchRealtime,
   syncSubGroupRealtime,
-  getFirestoreRealtimeStats,
+  getRealtimeDBStats,
   deleteRealtimeMatchDocument,
   deleteRealtimeSubGroupDocument,
-} from "@/lib/firestore/realtime-sync";
+} from "@/lib/realtime/rtdb-sync";
 import type { EntityType, RealtimeSyncPayload } from "@/types/realtime";
 
 /**
@@ -33,7 +33,7 @@ export async function emitRealtimeEvent(
     const id = Number(entityId);
 
     if (event === "deleted") {
-      await emitRealtimeDelete(entityType, id);
+      await emitRealtimeDelete(entityType, id, data);
       return { success: true };
     }
 
@@ -50,13 +50,12 @@ export async function emitRealtimeEvent(
       case "region":
       case "edition":
       case "admin":
-        // Extensible : pour l'instant ces entités ne nécessitent pas de doc Firestore dédié
-        // On pourrait appeler syncEditionRealtime() ici si besoin
-        console.log(`[Firestore Realtime] ${entityType}:${entityId} → ${event}`);
+        // Extensible
+        console.log(`[RTDB] ${entityType}:${entityId} → ${event}`);
         break;
 
       default:
-        console.warn(`[Firestore Realtime] Unknown entityType: ${entityType}`);
+        console.warn(`[RTDB] Unknown entityType: ${entityType}`);
     }
 
     return { success: true };
@@ -138,7 +137,7 @@ export async function emitRegionEvent(
  * Remplace l'ancien wsManager.getStats() (qui retournait les stats WebSocket).
  */
 export async function getRealtimeStats() {
-  return getFirestoreRealtimeStats();
+  return getRealtimeDBStats();
 }
 
 /**
@@ -172,14 +171,19 @@ export async function forceSyncSubGroup(subGroupId: number): Promise<{ success: 
  */
 export async function emitRealtimeDelete(
   entityType: EntityType,
-  entityId: number | string
+  entityId: number | string,
+  data?: any
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const id = Number(entityId);
 
     switch (entityType) {
       case "match":
-        await deleteRealtimeMatchDocument(id);
+        if (data?.subGroupId || data?.sub_group_id) {
+           await deleteRealtimeMatchDocument(id, data.subGroupId || data.sub_group_id);
+        } else {
+           console.warn(`[RTDB] Impossible de supprimer le match ${id} sans subGroupId dans les data.`);
+        }
         break;
 
       case "subGroup":
@@ -187,7 +191,7 @@ export async function emitRealtimeDelete(
         break;
 
       default:
-        console.log(`[Firestore Realtime] Deletion of ${entityType}:${entityId} ignored/not implemented`);
+        console.log(`[RTDB] Deletion of ${entityType}:${entityId} ignored/not implemented`);
     }
 
     return { success: true };

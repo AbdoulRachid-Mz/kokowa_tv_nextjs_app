@@ -2,17 +2,17 @@
 // Composant temps réel migré vers Firestore
 'use client';
 
-import { useRealtimeMatch } from '@/hooks/firestore/use-realtime-match';
-import { Match } from '@/types';
+import { useRealtimeMatch } from '@/hooks/realtime/use-realtime-match';
+import { RealtimeMatchDocument } from '@/types/realtime';
 import { useAuthContext } from '@/contexts/auth-context';
 
 interface LiveMatchTrackerProps {
   matchId: number;
-  editionId: number;
+  subGroupId: number;
 }
 
-export function LiveMatchTracker({ matchId, editionId }: LiveMatchTrackerProps) {
-  const { data: realtimeMatch, isLive, isListening } = useRealtimeMatch(matchId);
+export function LiveMatchTracker({ matchId, subGroupId }: LiveMatchTrackerProps) {
+  const { data: realtimeMatch, isLoading: isListening } = useRealtimeMatch(subGroupId, matchId);
   const { user, signOut } = useAuthContext();
 
   return (
@@ -39,11 +39,11 @@ export function LiveMatchTracker({ matchId, editionId }: LiveMatchTrackerProps) 
         <div className="space-y-2">
           <div className="flex justify-between">
             <span>Statut:</span>
-            <span className="font-medium">{realtimeMatch.liveState.status}</span>
+            <span className="font-medium">{realtimeMatch.status}</span>
           </div>
           <div className="flex justify-between">
-            <span>Score:</span>
-            <span>{realtimeMatch.score.score_region1} - {realtimeMatch.score.score_region2}</span>
+            <span>Résultat:</span>
+            <span>{realtimeMatch.matchResult || 'Non défini'}</span>
           </div>
         </div>
       )}

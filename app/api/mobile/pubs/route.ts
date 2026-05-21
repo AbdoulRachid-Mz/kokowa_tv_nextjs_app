@@ -1,6 +1,7 @@
 import { getMobileAdvertisements } from "@/actions/mobile/advertisements";
 import { AdvertisementMediaType, AdvertisementPosition } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
+
 // GET /api/mobile/pubs
 export async function GET(req: NextRequest) {
   try {

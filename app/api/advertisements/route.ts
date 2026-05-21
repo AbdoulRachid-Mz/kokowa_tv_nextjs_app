@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+
 import { getAdvertisements } from '@/actions/advertisements';
 import { AdvertisementFilters, AdvertisementMediaType, AdvertisementPosition } from '@/types';
 

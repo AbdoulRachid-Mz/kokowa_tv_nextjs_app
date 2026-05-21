@@ -1,7 +1,7 @@
 // components/shared/enhanced-dashboard.tsx
 "use client"
 
-import React from "react"
+import React, { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import {
   SidebarProvider,
@@ -548,6 +548,7 @@ interface DashboardHeaderProps {
   actions?: React.ReactNode
   showSidebarTrigger?: boolean
   className?: string
+  headerBehavior?: "fixed" | "default" | "hideOnScroll" | "sticky"
 }
 
 export function DashboardHeader({ 
@@ -555,11 +556,43 @@ export function DashboardHeader({
   description, 
   actions, 
   showSidebarTrigger = true,
-  className 
+  className,
+  headerBehavior = "hideOnScroll"
 }: DashboardHeaderProps) {
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const [isScrollingUp, setIsScrollingUp] = useState(true);
+  const [isAtTop, setIsAtTop] = useState(true);
+
+  useEffect(() => {
+    // Dans Shadcn Sidebar, le scrolling peut se faire sur une div interne ou sur window.
+    // On attache à window et à tout élément scrollable qui pourrait être le parent.
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement | Document;
+      const currentScrollY = target === document ? window.scrollY : (target as HTMLElement).scrollTop;
+      
+      // Ignore horizontal scrolling or tiny changes
+      if (Math.abs(currentScrollY - lastScrollY) < 5 && currentScrollY > 20) return;
+      
+      setIsScrollingUp(currentScrollY < lastScrollY || currentScrollY <= 0);
+      setIsAtTop(currentScrollY < 20);
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true, capture: true });
+    return () => window.removeEventListener("scroll", handleScroll, { capture: true });
+  }, [lastScrollY]);
+
   return (
     <header className={cn(
-      "flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6",
+      "flex h-16 items-center justify-between z-10 transition-all duration-300 ease-in-out border-b backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6",
+      headerBehavior === "default" ? "relative bg-background" : "",
+      headerBehavior === "fixed" ? "sticky top-0 bg-background/95 shadow-sm" : "",
+      headerBehavior === "sticky" ? cn("sticky top-0 bg-background/95", !isAtTop && "shadow-md") : "",
+      headerBehavior === "hideOnScroll" ? cn(
+        "sticky bg-background/95 shadow-sm",
+        isAtTop ? "top-0 mt-0 mx-0 rounded-none w-full border-b" : 
+        isScrollingUp ? "top-4 mt-4 mx-4 rounded-2xl border w-[calc(100%-2rem)] shadow-lg" : "-top-full"
+      ) : "",
       className
     )}>
       <div className="flex items-center gap-4">

@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+
 import { getMobileCompetitions } from '@/actions/mobile/competitions';
 import { publicHandler } from '@/lib/api-handler';
 

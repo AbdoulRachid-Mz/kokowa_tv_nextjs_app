@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+
 import { withAuth } from '@/lib/server/auth-middleware';
 import { getFighters } from '@/actions/fighters';
 

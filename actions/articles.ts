@@ -437,7 +437,7 @@ export async function getArticleBySlug(
           ) as author,
           COALESCE(
             JSON_AGG(
-              DISTINCT CASE WHEN m.file_type = 'image' THEN
+              CASE WHEN m.file_type = 'image' THEN
                 JSON_BUILD_OBJECT(
                   'id', m.id,
                   'title', m.title,
@@ -454,7 +454,7 @@ export async function getArticleBySlug(
           ) as images,
           COALESCE(
             JSON_AGG(
-              DISTINCT CASE WHEN m.file_type = 'video' THEN
+              CASE WHEN m.file_type = 'video' THEN
                 JSON_BUILD_OBJECT(
                   'id', m.id,
                   'title', m.title,
@@ -471,7 +471,7 @@ export async function getArticleBySlug(
           ) as videos,
           COALESCE(
             JSON_AGG(
-              DISTINCT CASE WHEN m.file_type = 'document' THEN
+              CASE WHEN m.file_type = 'document' THEN
                 JSON_BUILD_OBJECT(
                   'id', m.id,
                   'title', m.title,
@@ -488,7 +488,7 @@ export async function getArticleBySlug(
           ) as documents,
           COALESCE(
             JSON_AGG(
-              DISTINCT CASE WHEN m.file_type = 'audio' THEN
+              CASE WHEN m.file_type = 'audio' THEN
                 JSON_BUILD_OBJECT(
                   'id', m.id,
                   'title', m.title,

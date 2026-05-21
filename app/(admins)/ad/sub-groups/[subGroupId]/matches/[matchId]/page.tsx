@@ -29,8 +29,8 @@ import {
   Zap,
   ZapOff,
 } from "lucide-react";
-import { useRealtimeMatch } from "@/hooks/firestore/use-realtime-match";
-import { useRealtimeSubGroup } from "@/hooks/firestore/use-realtime-subgroup";
+import { useRealtimeMatch } from "@/hooks/realtime/use-realtime-match";
+import { useRealtimeSubGroup } from "@/hooks/realtime/use-realtime-subgroup";
 import { toast } from "sonner";
 import { MediaManager } from "./media-manager";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -83,11 +83,16 @@ export default function MatchDetailPage() {
     type: "winner",
   });
 
-  // ─── Firestore Realtime (remplace WebSocket) ──────────────────────────
+  // ─── RTDB Realtime ──────────────────────────────────────────────────────
   const {
-    isLive: isRealtimeLive,
-    isListening: isConnected,
-  } = useRealtimeMatch(!isNaN(parsedMatchId) ? parsedMatchId : null);
+    data: realtimeMatchData,
+    isLoading: isMatchListening,
+  } = useRealtimeMatch(
+    !isNaN(parsedSubGroupId) ? parsedSubGroupId : null,
+    !isNaN(parsedMatchId) ? parsedMatchId : null
+  );
+  const isRealtimeLive = realtimeMatchData?.isLive ?? false;
+  const isConnected = !isMatchListening;
 
   const {
     hasLiveMatch,

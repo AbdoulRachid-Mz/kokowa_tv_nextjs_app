@@ -44,20 +44,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export async function generateStaticParams() {
-  try {
-    const articles = await getArticles({ 
-      status: 'published', 
-      limit: 100 
-    });
+// export async function generateStaticParams() {
+//   try {
+//     const articles = await getArticles({ 
+//       status: 'published', 
+//       limit: 100 
+//     });
     
-    return articles.data.map((article) => ({
-      slug: article.slug,
-    }));
-  } catch (error) {
-    return [];
-  }
-}
+//     return articles.data.map((article) => ({
+//       slug: article.slug,
+//     }));
+//   } catch (error) {
+//     return [];
+//   }
+// }
 
 export default async function ArticleDetailPage({ params }: Props) {
   const { slug } = await params;

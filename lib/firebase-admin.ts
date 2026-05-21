@@ -17,12 +17,15 @@ function initializeFirebaseAdmin() {
       throw new Error('Variables Firebase manquantes');
     }
 
+    const databaseURL = process.env.FIREBASE_DATABASE_URL || process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
+
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId,
         clientEmail,
         privateKey: privateKey.replace(/\\n/g, '\n'),
       }),
+      ...(databaseURL && { databaseURL }),
     });
 
     console.log('✅ Firebase Admin initialisé correctement');

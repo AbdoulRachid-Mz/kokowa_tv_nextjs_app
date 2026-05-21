@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "213035950291",
+    "firebase_url": "https://kokowa-tv-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "kokowa-tv",
+    "storage_bucket": "kokowa-tv.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:213035950291:android:688d2349ef8bc56c0bf426",
+        "android_client_info": {
+          "package_name": "com.example.kokowa_tv"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "213035950291-ibegfkh8rpt4n0336pr0kaeit835dbo8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.kokowa_tv",
+            "certificate_hash": "1ad41da6105069be91b9d16191bbfefe22b17c59"
+          }
+        },
+        {
+          "client_id": "213035950291-rittrdhgkdshog59boil7t082rlku0hp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCpN6l9AhHGyPjkeUZe-YRftkYMtgYkPho"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "213035950291-rittrdhgkdshog59boil7t082rlku0hp.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "213035950291-uqh9ualf6htbr0d3u5uigois4qe4862i.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.kokowaTv"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -24,7 +24,7 @@ import { MatchParticipants } from "@/components/pages/matches/match-participants
 import { MatchStatistics } from "@/components/pages/matches/match-statistics";
 import { MatchTimeline } from "@/components/pages/matches/match-timeline";
 import { Match } from "@/types";
-import { useRealtimeMatch } from "@/hooks/firestore/use-realtime-match";
+import { useRealtimeMatch } from "@/hooks/realtime/use-realtime-match";
 
 export default function MatchDetailPage() {
   const params = useParams();
@@ -32,15 +32,7 @@ export default function MatchDetailPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const matchId = parseInt(params.matchId as string);
 
-  // ─── Firestore Realtime (mis à jour automatique quand admin modifie) ──
-  const {
-    data: realtimeData,
-    isLive,
-    isListening,
-  } = useRealtimeMatch(matchId);
-
   // ─── Fallback PostgreSQL via React Query ────────────────────────
-  // Réutilisé pour l'affichage initial et les données non-live
   const {
     data: pgMatch,
     isLoading,
@@ -62,10 +54,19 @@ export default function MatchDetailPage() {
     refetchInterval: false,
   });
 
-  // ─── Source de vérité UI : Firestore en priorité, PostgreSQL en fallback ──
-  // Si le document Firestore existe et que le match est live → utiliser Firestore
-  // Sinon → utiliser les données PostgreSQL
   const match = pgMatch as Match | undefined;
+
+  // ─── RTDB Realtime (mis à jour automatique quand admin modifie) ──
+  // subGroupId est déduit du match une fois chargé
+  const subGroupId = (match as any)?.sub_group_id ?? null;
+  const {
+    data: realtimeData,
+    isLoading: isListening,
+  } = useRealtimeMatch(
+    subGroupId ? Number(subGroupId) : null,
+    !isNaN(matchId) ? matchId : null
+  );
+  const isLive = realtimeData?.isLive ?? false;
 
   // Gestion des erreurs
   if (error) {

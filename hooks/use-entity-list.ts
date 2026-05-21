@@ -420,9 +420,7 @@ export function useEntityList<T>({
     
     if (!isMounted.current) return;
     
-    if (isInitial) {
-      setLoading(true);
-    }
+    setLoading(true);
     
     setError(null);
 
