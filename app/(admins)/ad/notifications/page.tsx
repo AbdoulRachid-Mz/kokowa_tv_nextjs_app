@@ -290,11 +290,12 @@ export default function NotificationsPage() {
         availableFilters={availableFilters}
         renderCard={(notification, viewMode) => (
           <NotificationCard
-            item={notification}
+            notification={notification}
             viewMode={viewMode}
             onView={onView}
-            onEdit={handleMarkAsRead}
+            onMarkAsRead={handleMarkAsRead}
             onDelete={handleDelete}
+            onAction={handleAction}
           />
         )}
       />

@@ -3,7 +3,7 @@
 
 import { pool, query, queryOne } from '@/lib/db/neon-client';
 import { matchSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
 import { Match, MatchFilters, PaginatedResponse } from '@/types';
 import { z } from 'zod';
 import { updateMatchAndRecompute } from '@/lib/services/match-update.service';
@@ -15,8 +15,13 @@ import { emitMatchEvent, emitRealtimeEvent } from './realtime';
 export async function getMatches(
   filters: MatchFilters = {}
 ): Promise<PaginatedResponse<Match>> {
-  "use cache";
-  cacheTag("matches");
+  // "use cache";
+  // // cacheTag("matches");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })
 
   try {
     const {
@@ -292,8 +297,8 @@ export async function getMatchById(id: number, options: {
   };
   is_active?: boolean;
 } = {}) {
-  "use cache";
-  cacheTag("matches", `match:${id}`);
+  // "use cache";
+  // cacheTag("matches", `match:${id}`);
 
   try {
     const {

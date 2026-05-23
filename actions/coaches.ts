@@ -3,15 +3,19 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { coachSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
 import { Coach, CoachFilters, PaginatedResponse } from '@/types';
 
 export async function getCoaches(
   filters: CoachFilters = {}
 ): Promise<PaginatedResponse<Coach>> {
-  "use cache";
-  cacheTag("coaches");
-  
+  // "use cache";
+  // // cacheTag("coaches");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const {
       search = '',
@@ -123,8 +127,13 @@ export async function getCoaches(
 export async function getCoachById(id: number, options: { 
   with_relations?: boolean 
 } = {}) {
-  "use cache";
-  cacheTag("coaches", `coach:${id}`);
+  // "use cache";
+  // // cacheTag("coaches", `coach:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const { with_relations = true } = options;

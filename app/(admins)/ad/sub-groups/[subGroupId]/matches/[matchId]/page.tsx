@@ -29,7 +29,7 @@ import {
   Zap,
   ZapOff,
 } from "lucide-react";
-import { useRealtimeMatch } from "@/hooks/realtime/use-realtime-match";
+// Existing imports remain unchanged
 import { useRealtimeSubGroup } from "@/hooks/realtime/use-realtime-subgroup";
 import { toast } from "sonner";
 import { MediaManager } from "./media-manager";
@@ -49,6 +49,9 @@ import { MatchUpdate } from "@/lib/services/match-update.service";
 import { FloatingMatchScore } from "./floating-match-score";
 import { useAuthContext } from "@/contexts/auth-context";
 import { Bug } from "lucide-react";
+import { useRealtimeMatch } from "@/hooks/realtime/use-realtime-match";
+import { forceSyncMatch } from "@/actions/realtime";
+// import { syncMatchRealtime } from "@/lib/realtime/rtdb-sync";
 
 export default function MatchDetailPage() {
   const { subGroupId, matchId } = useParams();
@@ -83,22 +86,25 @@ export default function MatchDetailPage() {
     type: "winner",
   });
 
-  // ─── RTDB Realtime ──────────────────────────────────────────────────────
-  const {
+    const {
     data: realtimeMatchData,
     isLoading: isMatchListening,
   } = useRealtimeMatch(
     !isNaN(parsedSubGroupId) ? parsedSubGroupId : null,
     !isNaN(parsedMatchId) ? parsedMatchId : null
   );
-  const isRealtimeLive = realtimeMatchData?.isLive ?? false;
-  const isConnected = !isMatchListening;
 
-  const {
-    hasLiveMatch,
-  } = useRealtimeSubGroup(!isNaN(parsedSubGroupId) ? parsedSubGroupId : null);
+  // Ensure realtime document exists for match
+  useEffect(() => {
+    if (!realtimeMatchData && !isMatchListening && subGroupId && matchId) {
+      // Initialize realtime match document if missing
+      // syncMatchRealtime(parsedMatchId).catch((e) => console.error('RTDB init error', e));
+       forceSyncMatch(parsedMatchId).catch((e) => console.error('RTDB init error', e));
+    }
+  }, [realtimeMatchData, isMatchListening, subGroupId, matchId]);
 
-  // ==========================
+
+   // ==========================
   // CONTROLLER PRINCIPAL
   // ==========================
   const {
@@ -127,13 +133,22 @@ export default function MatchDetailPage() {
     subGroupId: parsedSubGroupId,
   });
 
+  const realtimeMatch = realtimeMatchData || null;
+  const mergedMatch = realtimeMatchData ? { ...match, ...realtimeMatchData } : match;
+  const isConnected = !isMatchListening;
+
+  const {
+    hasLiveMatch,
+  } = useRealtimeSubGroup(!isNaN(parsedSubGroupId) ? parsedSubGroupId : null);
+
+
   // ==========================
   // QUERIES
   // ==========================
   const { data: subGroup, isLoading: isLoadingSubGroup } = useQuery({
     queryKey: ["sub-group", subGroupId],
     queryFn: async () => {
-      return await getSubGroupById(parseInt(subGroupId as string), {
+      return await getSubGroupById(parsedSubGroupId, {
         with_relations: true,
         relations: {
           with_group: true,
@@ -433,10 +448,10 @@ export default function MatchDetailPage() {
               <span>{subGroup.name}</span>
               <span className="max-md:hidden">-</span>
               <span>
-                {match.match_date
-                  ? new Date(match.match_date).toLocaleDateString("fr-FR")
+                {mergedMatch?.match_date
+                  ? new Date(mergedMatch.match_date).toLocaleDateString("fr-FR")
                   : "Date non définie"}
-                {match.start_time && ` à ${match.start_time.slice(0, 5)}`}
+                {mergedMatch?.start_time && ` à ${mergedMatch.start_time.slice(0, 5)}`}
               </span>
             </Typography>
           )}
@@ -517,16 +532,16 @@ export default function MatchDetailPage() {
           </Button>
           <div className="text-center">
             <Typography variant="h3" weight="bold">
-              Match #{match.match_number || "N/A"}
+              Match #{mergedMatch?.match_number || "N/A"}
             </Typography>
             <div className="flex items-center gap-2 justify-center mt-1">
               <Badge variant="outline" className="text-xs">
                 {currentIndex + 1}/{totalMatches}
               </Badge>
               <Badge
-                variant={match.status === "live" ? "destructive" : "secondary"}
+                variant={mergedMatch?.status === "live" ? "destructive" : "secondary"}
               >
-                {match.status === "live" ? "🔴 EN DIRECT" : match.status}
+                {mergedMatch?.status === "live" ? "🔴 EN DIRECT" : mergedMatch?.status}
               </Badge>
             </div>
           </div>
@@ -607,9 +622,9 @@ export default function MatchDetailPage() {
           {/* Fighters */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
             <FighterControl
-              fighter={match.fighter1}
+              fighter={mergedMatch?.fighter1}
               fighterType="fighter1"
-              match={match as Match}
+              match={mergedMatch as Match}
               onUpdateMatch={(updates) => {
                 updateMatchMutation.mutate(updates);
               }}
@@ -617,23 +632,23 @@ export default function MatchDetailPage() {
               availableFighters={availableFighters.region1}
               currentTime={elapsed}
               yellowCardCount={
-                match.cards?.filter(
+                mergedMatch?.cards?.filter(
                   (c) =>
-                    c.fighter_id === match.fighter1_id &&
+                    c.fighter_id === mergedMatch?.fighter1_id &&
                     c.card_type === "yellow",
                 ).length || 0
               }
               isSubGroupCompleted={subGroup?.is_completed || false}
-              matchStatus={match.status}
+              matchStatus={mergedMatch?.status ?? ''}
               canSetWinner={canSetWinner}
               canSetDraw={canSetDraw}
               onCompleteWithWinner={() => {
-                if (!match.fighter1) return;
+                if (!mergedMatch?.fighter1) return;
                 setConfirmDialog({
                   isOpen: true,
                   type: "winner",
-                  fighterId: match.fighter1_id ?? undefined,
-                  opponentId: match.fighter2_id ?? undefined,
+                  fighterId: mergedMatch?.fighter1_id ?? undefined,
+                  opponentId: mergedMatch?.fighter2_id ?? undefined,
                 });
               }}
               onSetDraw={() => setConfirmDialog({ isOpen: true, type: "draw" })}
@@ -664,9 +679,9 @@ export default function MatchDetailPage() {
             </div>
 
             <FighterControl
-              fighter={match.fighter2}
+              fighter={mergedMatch?.fighter2}
               fighterType="fighter2"
-              match={match as Match}
+              match={mergedMatch as Match}
               onUpdateMatch={(updates) => {
                 updateMatchMutation.mutate(updates);
               }}
@@ -674,23 +689,23 @@ export default function MatchDetailPage() {
               availableFighters={availableFighters.region2}
               currentTime={elapsed}
               yellowCardCount={
-                match.cards?.filter(
+                mergedMatch?.cards?.filter(
                   (c) =>
-                    c.fighter_id === match.fighter2_id &&
+                    c.fighter_id === mergedMatch?.fighter2_id &&
                     c.card_type === "yellow",
                 ).length || 0
               }
               isSubGroupCompleted={subGroup?.is_completed || false}
-              matchStatus={match.status}
+              matchStatus={mergedMatch?.status ?? ''}
               canSetWinner={canSetWinner}
               canSetDraw={canSetDraw}
               onCompleteWithWinner={() => {
-                if (!match.fighter2 || !match.fighter1) return;
+                if (!mergedMatch?.fighter2 || !mergedMatch?.fighter1) return;
                 setConfirmDialog({
                   isOpen: true,
                   type: "winner",
-                  fighterId: match.fighter2_id ?? undefined,
-                  opponentId: match.fighter1_id ?? undefined,
+                  fighterId: mergedMatch?.fighter2_id ?? undefined,
+                  opponentId: mergedMatch?.fighter1_id ?? undefined,
                 });
               }}
               onSetDraw={() => setConfirmDialog({ isOpen: true, type: "draw" })}
@@ -715,7 +730,7 @@ export default function MatchDetailPage() {
 
           {/* Contrôles */}
           <MatchControls
-            match={match as Match}
+            match={mergedMatch as Match}
             onUpdateMatch={(updates) => {
               updateMatchMutation.mutate(updates);
             }}
@@ -775,14 +790,14 @@ export default function MatchDetailPage() {
         {/* Colonne de droite (1/3) */}
         <div className="space-y-6">
           <MatchTimer
-            matchId={match.id}
+            matchId={mergedMatch?.id ?? 0}
             formattedTime={formattedTime}
             breakCount={breakCount}
             isRunning={isRunning}
-            matchStatus={match.status}
+            matchStatus={mergedMatch?.status ?? ''}
             isSubGroupCompleted={subGroup?.is_completed || false}
             areBothFightersAssigned={
-              !!(match?.fighter1_id && match?.fighter2_id)
+              !!(mergedMatch?.fighter1_id && mergedMatch?.fighter2_id)
             }
             onStart={startMatch}
             onPause={pauseMatch}
@@ -793,10 +808,10 @@ export default function MatchDetailPage() {
           />
 
           <MediaManager
-            matchId={match.id}
+            matchId={mergedMatch?.id ?? 0}
             subGroupId={parsedSubGroupId}
             videoUrl={subGroup?.video_url}
-            liveStreamUrl={match.video_url ?? undefined}
+            liveStreamUrl={mergedMatch?.video_url ?? undefined}
             onUpdateMatch={(updates: { video_url?: string }) => {
               updateMatchMutation.mutate(updates);
             }}
@@ -810,14 +825,14 @@ export default function MatchDetailPage() {
         <div className="max-w-7xl mx-auto mb-6 hidden md:block">
           <FloatingMatchScore
             subGroup={subGroup!}
-            match={match as Match}
+            match={mergedMatch as Match}
             region1={subGroup?.region1}
             region2={subGroup?.region2}
           />
           <div className="md:hidden">
             <FloatingMatchScore
               subGroup={subGroup!}
-              match={match as Match}
+              match={mergedMatch as Match}
               region1={subGroup?.region1}
               region2={subGroup?.region2}
             />
@@ -961,7 +976,7 @@ export default function MatchDetailPage() {
             onClick={() => {
               console.log("🔍 [DEBUG] Firestore Realtime State:");
               console.log("  isConnected (Firestore):", isConnected);
-              console.log("  isRealtimeLive:", isRealtimeLive);
+              // console.log("  isRealtimeLive:", isRealtimeLive);
               console.log("  hasLiveMatch (subGroup):", hasLiveMatch);
               console.log("  match status:", match?.status);
               console.log("  match data:", match);

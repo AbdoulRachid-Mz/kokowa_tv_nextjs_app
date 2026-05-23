@@ -2,7 +2,7 @@
 'use server';
 
 import { pool, query, queryOne } from '@/lib/db/neon-client';
-import { revalidatePath, cacheTag, updateTag } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
 import { sendPushToTopic } from '@/lib/push';
 import { Match } from '@/types/match';
 import { PoolClient } from 'pg';
@@ -12,8 +12,13 @@ import { emitRealtimeEvent, emitMatchEvent, emitSubGroupEvent } from './realtime
 // ========== READ ==========
 
 export async function getMatchesBySubGroup(subGroupId: number): Promise<Match[]> {
-  "use cache";
-  cacheTag("matches", `matches-subgroup:${subGroupId}`);
+  // "use cache";
+  // // cacheTag("matches", `matches-subgroup:${subGroupId}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const sql = `
@@ -82,8 +87,13 @@ export async function getMatchesBySubGroup(subGroupId: number): Promise<Match[]>
 }
 
 export async function getMatchById(matchId: number): Promise<Match | null> {
-  "use cache";
-  cacheTag("matches", `match:${matchId}`);
+  // "use cache";
+  // // cacheTag("matches", `match:${matchId}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const sql = `

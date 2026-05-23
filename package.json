@@ -7,8 +7,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "tsx server.ts",
-    "dev:next": "next dev",
+    "dev:server": "tsx server.ts",
+    "dev": "next dev",
     "build": "next build",
     "start": "tsx server.ts",
     "start:dev": "next start",
@@ -67,6 +67,7 @@
     "axios": "^1.13.2",
     "browser-image-compression": "^2.0.2",
     "canvas-confetti": "^1.9.4",
+    "child_process": "^1.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

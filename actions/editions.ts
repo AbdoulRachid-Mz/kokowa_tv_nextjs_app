@@ -7,7 +7,7 @@ import {
   editionFighterSchema,
   editionRegionSchema,
 } from "@/validation/schemas";
-import { revalidatePath, cacheTag, updateTag, revalidateTag } from "next/cache";
+import { revalidatePath, cacheTag, updateTag, revalidateTag, cacheLife } from "next/cache";
 import { emitEditionEvent } from "./realtime";
 import {
   CompetitionEdition,
@@ -17,9 +17,14 @@ import {
   PaginatedResponse,
 } from "@/types";
 
+
 export async function getEditions(options: EditionFilters = {}) {
-  "use cache";
-  cacheTag("editions");
+//  'use cache'
+// cacheLife({
+//   stale: 3600, // 1 hour until considered stale
+//   revalidate: 7200, // 2 hours until revalidated
+//   expire: 86400, // 1 day until expired
+// })
   try {
     const {
       competition_id,
@@ -362,8 +367,12 @@ export async function getEditionById(
     with_stats?: boolean;
   } = {},
 ) {
-  "use cache";
-  cacheTag('editions', `edition:${id}`);
+  // "use cache";
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })
   try {
     const { 
       with_relations = false, 
@@ -1013,6 +1022,12 @@ export async function getEditionFighters(
   editionId: number,
   options: EditionParticipantsFilters = {},
 ): Promise<PaginatedResponse<any>> {
+  // "use cache";
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })
   try {
     const {
       search = "",
@@ -1152,6 +1167,12 @@ export async function getEditionRegions(
   editionId: number,
   options: EditionParticipantsFilters = {},
 ): Promise<PaginatedResponse<any>> {
+  // "use cache";
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })
   try {
     const {
       search = "",

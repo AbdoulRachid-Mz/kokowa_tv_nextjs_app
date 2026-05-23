@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, cacheTag, updateTag } from "next/cache";
+import { revalidatePath, cacheTag, updateTag, cacheLife } from "next/cache";
 import { 
   TeamMember, 
   TeamMemberFilters, 
@@ -16,9 +16,13 @@ import { query, queryOne } from "@/lib/db/neon-client";
  * Récupère la liste des membres de l'équipe avec filtres et pagination
  */
 export async function getTeamMembers(filters: TeamMemberFilters = {}): Promise<PaginatedResponse<TeamMember>> {
-  "use cache";
-  cacheTag("teams");
-
+  // "use cache";
+  // // cacheTag("teams");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   const {
     search,
     is_active,
@@ -117,8 +121,13 @@ export async function getTeamMembers(filters: TeamMemberFilters = {}): Promise<P
  * Récupère un membre de l'équipe par son ID
  */
 export async function getTeamMemberById(id: number, with_achievements = true): Promise<TeamMember | null> {
-  "use cache";
-  cacheTag("teams", `team:${id}`);
+  // "use cache";
+  // // cacheTag("teams", `team:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   if (isNaN(id)) return null;
   const member = await queryOne<TeamMember>(`SELECT * FROM team_members WHERE id = $1`, [id]);
@@ -224,8 +233,13 @@ export async function deleteTeamMember(id: number) {
  * Récupère les accomplissements pour un membre
  */
 export async function getTeamAchievements(memberId: number): Promise<TeamAchievement[]> {
-  "use cache";
-  cacheTag("team-achievements", `team-achievements:${memberId}`);
+  // "use cache";
+  // // cacheTag("team-achievements", `team-achievements:${memberId}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   return await query<TeamAchievement>(
     `SELECT * FROM team_achievements WHERE team_member_id = $1 ORDER BY achievement_date DESC`,

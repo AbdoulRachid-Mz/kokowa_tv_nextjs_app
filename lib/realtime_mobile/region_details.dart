@@ -68,13 +68,13 @@ class _RegionPageState extends State<RegionPage>
     super.dispose();
   }
 
-  void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(Duration(seconds: 30), (timer) {
-      if (mounted) {
-        _loadRegionData(silent: true);
-      }
-    });
-  }
+ void _startAutoRefresh() {
+  _refreshTimer = Timer.periodic(Duration(minutes: 3), (timer) {
+    if (mounted) {
+      _loadRegionData(silent: true);
+    }
+  });
+}
 
   Future<void> _loadRegionData({bool silent = false}) async {
     if (!silent && mounted) {

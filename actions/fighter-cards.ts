@@ -3,14 +3,19 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { fighterCardSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
 import { FighterCard, FighterCardFilters, PaginatedResponse } from '@/types';
 
 export async function getFighterCards(
   filters: FighterCardFilters = {}
 ): Promise<PaginatedResponse<FighterCard>> {
-  "use cache";
-  cacheTag("cards"); 
+  // "use cache";
+  // // cacheTag("cards"); 
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const {
       fighter_id,
@@ -125,8 +130,13 @@ export async function getFighterCards(
 export async function getFighterCardById(id: number, options: { 
   with_relations?: boolean 
 } = {}) {
-  "use cache";
-  cacheTag("cards", `card:${id}`);
+  // "use cache";
+  // // cacheTag("cards", `card:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const { with_relations = true } = options;
     
@@ -294,8 +304,13 @@ export async function deleteFighterCard(id: number, {revalidate = true}: {revali
 }
 
 export async function getMatchCards(matchId: number) {
-  "use cache";
-  cacheTag("cards", `match:${matchId}`);
+  // "use cache";
+  // // cacheTag("cards", `match:${matchId}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const sql = `
       SELECT 

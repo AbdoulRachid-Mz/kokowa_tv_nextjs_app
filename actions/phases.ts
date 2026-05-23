@@ -3,15 +3,20 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { phaseSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
 import { Phase, PaginatedResponse, PhaseFilters } from '@/types';
 
 
 export async function getPhases(
   filters: PhaseFilters = {}
 ): Promise<PaginatedResponse<Phase>> {
-  "use cache";
-  cacheTag("phases");
+  // "use cache";
+  // // cacheTag("phases");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const {
@@ -229,8 +234,13 @@ export async function getPhaseById(id: number, options: {
   is_active?: boolean,
   with_stats?: boolean
 } = {}) {
-  "use cache";
-  cacheTag("phases", `phase:${id}`);
+  // "use cache";
+  // // cacheTag("phases", `phase:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const { 
@@ -602,8 +612,13 @@ export async function togglePhaseStatus(id: number, isActive: boolean) {
 }
 
 export async function getPhasesByEdition(editionId: number) {
-  "use cache";
-  cacheTag("phases");
+  // "use cache";
+  // // cacheTag("phases");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const sql = `

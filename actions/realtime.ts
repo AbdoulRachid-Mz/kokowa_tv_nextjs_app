@@ -15,6 +15,7 @@ import {
   deleteRealtimeSubGroupDocument,
 } from "@/lib/realtime/rtdb-sync";
 import type { EntityType, RealtimeSyncPayload } from "@/types/realtime";
+// import { invalidateEntityCache } from "./cache-utils";
 
 /**
  * Émet un événement temps réel via Firestore.
@@ -79,10 +80,12 @@ export async function emitMatchEvent(
 ): Promise<{ success: boolean }> {
   // Sync Firestore du match
   await syncMatchRealtime(matchId, event);
+  // invalidateEntityCache("match", matchId);
 
   // Sync Firestore du sous-groupe si fourni
   if (subGroupId) {
     await syncSubGroupRealtime(subGroupId, event);
+    // invalidateEntityCache("subGroup", subGroupId);
   }
 
   return { success: true };
@@ -96,7 +99,9 @@ export async function emitSubGroupEvent(
   event: string,
   data?: any
 ): Promise<{ success: boolean }> {
-  return emitRealtimeEvent("subGroup", subGroupId, event, data);
+  const result = await emitRealtimeEvent("subGroup", subGroupId, event, data);
+  // invalidateEntityCache("subGroup", subGroupId);
+  return result;
 }
 
 /**
@@ -107,7 +112,9 @@ export async function emitEditionEvent(
   event: string,
   data?: any
 ): Promise<{ success: boolean }> {
-  return emitRealtimeEvent("edition", editionId, event, data);
+  const result = await emitRealtimeEvent("edition", editionId, event, data);
+  // invalidateEntityCache("edition", editionId);
+  return result;
 }
 
 /**
@@ -118,7 +125,9 @@ export async function emitFighterEvent(
   event: string,
   data?: any
 ): Promise<{ success: boolean }> {
-  return emitRealtimeEvent("fighter", fighterId, event, data);
+  const result = await emitRealtimeEvent("fighter", fighterId, event, data);
+  // invalidateEntityCache("fighter", fighterId);
+  return result;
 }
 
 /**
@@ -129,7 +138,9 @@ export async function emitRegionEvent(
   event: string,
   data?: any
 ): Promise<{ success: boolean }> {
-  return emitRealtimeEvent("region", regionId, event, data);
+  const result = await emitRealtimeEvent("region", regionId, event, data);
+  // invalidateEntityCache("region", regionId);  
+  return result;
 }
 
 /**
@@ -184,14 +195,17 @@ export async function emitRealtimeDelete(
         } else {
            console.warn(`[RTDB] Impossible de supprimer le match ${id} sans subGroupId dans les data.`);
         }
+        // invalidateEntityCache("match", id);
         break;
 
       case "subGroup":
         await deleteRealtimeSubGroupDocument(id);
+        // invalidateEntityCache("subGroup", id);
         break;
 
       default:
         console.log(`[RTDB] Deletion of ${entityType}:${entityId} ignored/not implemented`);
+        // invalidateEntityCache(entityType, id);
     }
 
     return { success: true };

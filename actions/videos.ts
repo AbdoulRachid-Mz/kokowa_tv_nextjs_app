@@ -9,8 +9,8 @@ import { Video, VideoFilters, PaginatedResponse } from '@/types';
 export async function getVideos(
   filters: VideoFilters = {}
 ): Promise<PaginatedResponse<Video>> {
-  "use cache";
-  cacheTag("videos");
+  // "use cache";
+  // cacheTag("videos");
 
   try {
     const {
@@ -111,8 +111,8 @@ export async function getVideos(
 }
 
 export async function getVideoById(id: number) {
-  "use cache";
-  cacheTag("videos", `video:${id}`);
+  // "use cache";
+  // cacheTag("videos", `video:${id}`);
 
   try {
     const sql = 'SELECT * FROM videos WHERE id = $1';
@@ -130,8 +130,8 @@ export async function getVideoById(id: number) {
 }
 
 export async function getVideoBySlug(slug: string) {
-  "use cache";
-  cacheTag("videos");
+  // "use cache";
+  // cacheTag("videos");
 
   try {
     const sql = 'SELECT * FROM videos WHERE slug = $1';
@@ -358,8 +358,8 @@ export async function likeVideo(id: number) {
 }
 
 export async function getLiveVideos() {
-  "use cache";
-  cacheTag("videos");
+  // "use cache";
+  // cacheTag("videos");
 
   try {
     const sql = `
@@ -378,8 +378,8 @@ export async function getLiveVideos() {
 }
 
 export async function getFeaturedVideos(limit: number = 10) {
-  "use cache";
-  cacheTag("videos");
+  // "use cache";
+  // cacheTag("videos");
 
   try {
     const sql = `
@@ -403,8 +403,8 @@ export async function getVideosByCategory(category: string, filters: Omit<VideoF
 }
 
 export async function getPopularVideos(limit: number = 10) {
-  "use cache";
-  cacheTag("videos");
+  // "use cache";
+  // cacheTag("videos");
 
   try {
     const sql = `
@@ -424,8 +424,8 @@ export async function getPopularVideos(limit: number = 10) {
 }
 
 export async function getVideoStats() {
-  "use cache";
-  cacheTag("videos");
+  // "use cache";
+  // cacheTag("videos");
 
   try {
     const sql = `

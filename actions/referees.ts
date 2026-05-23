@@ -3,7 +3,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { refereeSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
 import { Referee, PaginatedResponse } from '@/types';
 
 export interface RefereeFilters {
@@ -21,8 +21,13 @@ export interface RefereeFilters {
 export async function getReferees(
   options: RefereeFilters = {}
 ): Promise<PaginatedResponse<Referee>> {
-  "use cache";
-  cacheTag("referees");
+  // "use cache";
+  // // cacheTag("referees");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const {
@@ -190,8 +195,13 @@ export async function getReferees(
 export async function getRefereeById(id: number, options: {
   with_relations?: boolean 
 } = {}) {
-  "use cache";
-  cacheTag("referees", `referee:${id}`);
+  // "use cache";
+  // // cacheTag("referees", `referee:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const { with_relations = true } = options;
@@ -390,8 +400,13 @@ export async function getRefereeById(id: number, options: {
 
 // Fonction alternative simplifiée pour les statistiques
 export async function getRefereeStatistics(id: number) {
-  "use cache";
-  cacheTag("referees", `referee:${id}`);
+  // "use cache";
+  // // cacheTag("referees", `referee:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const sql = `
@@ -494,8 +509,13 @@ export async function getRefereeEncounters(refereeId: number, options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  "use cache";
-  cacheTag("referees", `referee:${refereeId}`);
+  // "use cache";
+  // // cacheTag("referees", `referee:${refereeId}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const { limit = 20, offset = 0 } = options;

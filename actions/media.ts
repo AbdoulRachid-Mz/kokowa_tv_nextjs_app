@@ -3,14 +3,19 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { mediaSchema } from '@/validation/schemas';
-import { cacheTag, revalidatePath, updateTag } from 'next/cache';
+import { cacheTag, revalidatePath, updateTag, cacheLife } from 'next/cache';
 import { Media, MediaFilters, PaginatedResponse } from '@/types';
 
 export async function getMedia(
   filters: MediaFilters = {}
 ): Promise<PaginatedResponse<Media>> {
-  "use cache";
-  cacheTag("media");
+  // "use cache";
+  // // cacheTag("media");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const {
       file_type,
@@ -127,8 +132,13 @@ export async function getMedia(
 export async function getMediaById(id: number, options: { 
   with_relations?: boolean 
 } = {}) {
-  "use cache";
-  cacheTag("media", `media:${id}`);
+  // "use cache";
+  // // cacheTag("media", `media:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const { with_relations = true } = options;
     
@@ -353,8 +363,13 @@ export async function getFeaturedMedia(limit: number = 10) {
 }
 
 export async function getMediaStats() {
-  "use cache";
-  cacheTag("media", "stats");
+  // "use cache";
+  // // cacheTag("media", "stats");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const sql = `
       SELECT 

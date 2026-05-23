@@ -4,14 +4,19 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { phaseGroupSchema, subGroupSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
 import { PhaseGroup, SubGroup, PaginatedResponse, PhaseGroupFilters } from '@/types';
 
 export async function getPhaseGroups(
   filters: PhaseGroupFilters = {}
 ): Promise<PaginatedResponse<PhaseGroup>> {
-  "use cache";
-  cacheTag("phase-groups");
+  // "use cache";
+  // // cacheTag("phase-groups");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const {
@@ -237,8 +242,13 @@ export async function getPhaseGroupById(id: number, options: {
   is_active?: boolean;
   with_stats?: boolean;
 } = {}) {
-  "use cache";
-  cacheTag("phase-groups", `phase-group:${id}`);
+  // "use cache";
+  // // cacheTag("phase-groups", `phase-group:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const { 

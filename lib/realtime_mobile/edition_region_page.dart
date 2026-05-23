@@ -55,7 +55,7 @@ class _EditionRegionsPageState extends State<EditionRegionsPage> {
   }
 
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(minutes: 2), (timer) {
       if (mounted) {
         _loadEditionData(silent: true);
       }

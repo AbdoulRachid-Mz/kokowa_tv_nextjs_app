@@ -8,8 +8,8 @@ import { Competition, CompetitionEdition, CompetitionFilters, PaginatedResponse 
 import z from 'zod';
 
 export async function getCompetitions(options: CompetitionFilters) {
-  "use cache";
-  cacheTag("competitions");
+  // "use cache";
+  // cacheTag("competitions");
 
   const {
     search,
@@ -202,8 +202,8 @@ if (with_matches) {
 export async function getCompetitionById(id: number, options: { 
   with_relations?: boolean 
 } = {}) {
-  "use cache";
-  cacheTag("competitions", `competition:${id}`);
+  // "use cache";
+  // cacheTag("competitions", `competition:${id}`);
 
   try {
     const { with_relations = false } = options;
@@ -728,8 +728,8 @@ export async function deleteCompetition(id: number) {
 }
 
 export async function getCompetitionStats() {
-  "use cache";
-  cacheTag("competitions");
+  // "use cache";
+  // cacheTag("competitions");
 
   try {
     const sql = `

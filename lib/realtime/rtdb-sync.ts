@@ -1,6 +1,5 @@
 // lib/realtime/rtdb-sync.ts
 // Service principal de synchronisation Firebase RTDB
-// SERVER-SIDE ONLY
 
 import { getAdminRTDB } from "./rtdb-admin";
 import { buildRealtimeMatchPayload } from "./builders/match-builder";

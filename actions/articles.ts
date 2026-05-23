@@ -3,14 +3,19 @@
 
 import { query, queryOne } from "@/lib/db/neon-client";
 import { articleSchema } from "@/validation/schemas";
-import { revalidatePath, cacheTag, updateTag } from "next/cache";
+import { revalidatePath, cacheTag, updateTag, cacheLife } from "next/cache";
 import { Article, ArticleFilters, PaginatedResponse, ArticleType } from "@/types";
 
 export async function getArticles(
   filters: ArticleFilters = {}
 ): Promise<PaginatedResponse<Article>> {
-  "use cache";
-  cacheTag("articles"); 
+  // "use cache";
+  // // cacheTag("articles");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const {
       author_id,
@@ -269,8 +274,8 @@ export async function getArticleById(
     with_relations?: boolean;
   } = {}
 ) {
-  "use cache";
-  cacheTag("articles", `article:${id}`);
+  // "use cache";
+  // cacheTag("articles", `article:${id}`);
   try {
     const { with_relations = true } = options;
 
@@ -416,8 +421,8 @@ export async function getArticleBySlug(
     with_relations?: boolean;
   } = {}
 ) {
-  "use cache";
-  cacheTag("articles", `article:${slug}`);
+  // "use cache";
+  // cacheTag("articles", `article:${slug}`);
   try {
     const { with_relations = true } = options;
 
@@ -597,8 +602,8 @@ export async function createArticle(formData: FormData) {
 }
 
 export async function updateArticle(id: number, formData: FormData) {
-  "use cache";
-  cacheTag("articles", `article:${id}`);
+  // "use cache";
+  // cacheTag("articles", `article:${id}`);
   try {
     const existing = await getArticleById(id, { with_relations: false });
     if (!existing) {
@@ -725,8 +730,8 @@ export async function incrementArticleViewCount(id: number) {
 }
 
 export async function getPopularArticles(limit: number = 10) {
-  "use cache";
-  cacheTag("articles"); 
+  // "use cache";
+  // cacheTag("articles"); 
   try {
     const sql = `
       SELECT 

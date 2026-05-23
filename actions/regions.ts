@@ -4,14 +4,19 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { regionSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
 import { Region, RegionFilters, PaginatedResponse } from '@/types';
 
 export async function getRegions(
   filters: RegionFilters = {}
 ): Promise<PaginatedResponse<Region>> {
-  "use cache";
-  cacheTag("regions");
+  // "use cache";
+  // // cacheTag("regions");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })
 
   try {
     const {
@@ -153,8 +158,13 @@ export async function getRegions(
 }
 
 export async function getRegionById(id: number, options: { with_relations?: boolean } = {}) {
-  "use cache";
-  cacheTag("regions", `region:${id}`);
+  // "use cache";
+  // // cacheTag("regions", `region:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })
 
   try {
     const { with_relations = true } = options;
@@ -361,8 +371,13 @@ export async function deleteRegion(id: number) {
 }
 
 export async function getRegionsStats() {
-  "use cache";
-  cacheTag("regions");
+  // "use cache";
+  // // cacheTag("regions");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })
 
   try {
     const sql = `
@@ -399,8 +414,13 @@ export async function getRegionsStats() {
 }
 
 export async function getRegionsForSelect() {
-  "use cache";
-  cacheTag("regions");
+  // "use cache";
+  // // cacheTag("regions");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })
 
   try {
     const sql = `

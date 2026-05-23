@@ -10,8 +10,8 @@ export interface MaintenanceModeProps {
 }
 
 export const MaintenanceMode: React.FC<MaintenanceModeProps> = ({
-  title = 'We’ll be back soon!',
-  message = 'Our site is currently undergoing scheduled maintenance. We’re working hard to improve your experience.',
+  title = 'Nous serons bientôt de retour !',
+  message = 'Notre site subit actuellement une maintenance planifiée. Nous travaillons dur pour améliorer votre expérience.',
   eta,
   supportEmail,
   className = '',
@@ -56,7 +56,7 @@ export const MaintenanceMode: React.FC<MaintenanceModeProps> = ({
           <div className="mb-4 flex items-center justify-center gap-2 text-slate-600">
             <Clock className="h-5 w-5" />
             <span className="text-sm">
-              Estimated completion: <strong>{eta}</strong>
+              Fin estimée : <strong>{eta}</strong>
             </span>
           </div>
         )}
@@ -65,12 +65,12 @@ export const MaintenanceMode: React.FC<MaintenanceModeProps> = ({
           <div className="flex items-center justify-center gap-2 text-slate-600">
             <AlertTriangle className="h-5 w-5" />
             <span className="text-sm">
-              Need help?{' '}
+              Besoin d'aide ?{' '}
               <a
                 href={`mailto:${supportEmail}`}
                 className="font-medium text-amber-600 hover:underline"
               >
-                Contact support
+                Contacter le support
               </a>
             </span>
           </div>

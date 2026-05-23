@@ -3,7 +3,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { beltSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
 import { Belt, PaginatedResponse } from '@/types';
 import z from 'zod';
 
@@ -22,8 +22,13 @@ export interface BeltFilters {
 export async function getBelts(
   filters: BeltFilters = {}
 ): Promise<PaginatedResponse<Belt>> {
-  "use cache";
-  cacheTag("belts"); 
+  // "use cache";
+  // // cacheTag("belts");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const {
       search = '',
@@ -126,8 +131,13 @@ export async function getBelts(
 
 // Récupérer une ceinture par ID
 export async function getBeltById(id: number) {
-  "use cache";
-  cacheTag("belts", `belt:${id}`);
+  // "use cache";
+  // // cacheTag("belts", `belt:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const sql = `
       SELECT 
@@ -256,8 +266,13 @@ export async function createBelt(formData: FormData) {
 
 // Mettre à jour une ceinture
 export async function updateBelt(id: number, formData: FormData) {
-  "use cache";
-  cacheTag("belts", `belt:${id}`);
+  // "use cache";
+  // // cacheTag("belts", `belt:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const existing = await getBeltById(id);
     if (!existing) {
@@ -325,7 +340,7 @@ export async function updateBelt(id: number, formData: FormData) {
 
 // Supprimer une ceinture
 export async function deleteBelt(id: number) {
-  "use cache";
+  // "use cache";
   try {
     const existing = await getBeltById(id);
     if (!existing) {
@@ -392,8 +407,13 @@ export async function toggleBeltStatus(id: number, is_active: boolean) {
 
 // Récupérer les statistiques des ceintures
 export async function getBeltStats() {
-  "use cache";
-  cacheTag("belts");
+  // "use cache";
+  // // cacheTag("belts");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const sql = `
       SELECT 
@@ -457,8 +477,13 @@ export async function getBeltStats() {
 
 // Récupérer les ceintures disponibles (actives) pour les sélecteurs
 export async function getActiveBeltsForSelection() {
-  "use cache";
-  cacheTag("belts");
+  // "use cache";
+  // // cacheTag("belts");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const sql = `
       SELECT id, color

@@ -3,7 +3,7 @@
 
 import { query, queryOne } from "@/lib/db/neon-client";
 import { fighterSchema } from "@/validation/schemas";
-import { revalidatePath, cacheTag, updateTag, revalidateTag } from "next/cache";
+import { revalidatePath, cacheTag, updateTag, cacheLife } from "next/cache";
 import { emitFighterEvent } from "./realtime";
 import {
   ArchiveFighterAchievementFilters,
@@ -15,8 +15,13 @@ import {
 export async function getFighters(
   filters: FighterFilters = {},
 ): Promise<PaginatedResponse<Fighter>> {
-  "use cache";
-  cacheTag("fighters");
+  // "use cache";
+  // // cacheTag("fighters");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const {
       search = "",
@@ -170,8 +175,13 @@ export async function getFighterById(
     with_relations?: boolean;
   } = {},
 ) {
-  "use cache";
-  cacheTag("fighters", `fighter:${id}`);
+  // "use cache";
+  // // cacheTag("fighters", `fighter:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const { with_relations = true } = options;

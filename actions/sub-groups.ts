@@ -3,7 +3,7 @@
 
 import { pool, query, queryOne } from "@/lib/db/neon-client";
 import { subGroupSchema } from "@/validation/schemas";
-import { revalidatePath, cacheTag, updateTag } from "next/cache";
+import { revalidatePath, cacheTag, updateTag, cacheLife } from "next/cache";
 import { emitSubGroupEvent } from "./realtime";
 import {
   SubGroup,
@@ -17,8 +17,12 @@ import { getEditionFighters, getEditionRegions } from "@/actions/editions";
 export async function getSubGroups(
   filters: SubGroupFilters = {},
 ): Promise<PaginatedResponse<SubGroup>> {
-  "use cache";
-  cacheTag("sub-groups");
+  // "use cache";
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })
 
   try {
     const {
@@ -413,8 +417,12 @@ export async function getSubGroupById(
   id: number,
   options: GetSubGroupByIdOptions = {},
 ) {
-  "use cache";
-  cacheTag("sub-groups", `sub-group:${id}`);
+  // "use cache";
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })
 
   try {
     const {

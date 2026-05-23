@@ -120,8 +120,14 @@ class _SousGroupePageState extends State<SousGroupePage> {
         }
       }
 
-      // Mettre à jour le live match si c'est celui-ci
-      if (_liveMatch != null && _liveMatch!['id'] == matchId) {
+      // Detect if the updated match becomes live/round_break
+      final status = data['status'] as String?;
+      if (status == 'live' || status == 'round_break') {
+        // Get full match data and set as active live match
+        final updatedMatch = _allMatches.firstWhere((m) => m['id'] == matchId);
+        _liveMatch = updatedMatch;
+      } else if (_liveMatch != null && _liveMatch!['id'] == matchId) {
+        // Update existing live match with new data
         _liveMatch = {..._liveMatch!, ...data};
       }
     });

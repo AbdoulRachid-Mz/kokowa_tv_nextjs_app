@@ -3,7 +3,7 @@
 "use server";
 
 import { query, queryOne } from "@/lib/db/neon-client";
-import { revalidatePath, cacheTag, updateTag } from "next/cache";
+import { revalidatePath, cacheTag, updateTag, cacheLife } from "next/cache";
 import {
   ArchiveFighterAchievementFilters,
   Fighter,
@@ -14,8 +14,13 @@ import {
 export async function getArchiveFighterAchievements(
   filters: ArchiveFighterAchievementFilters = {},
 ): Promise<PaginatedResponse<any>> {
-  "use cache";
-  cacheTag("archives"); 
+  // "use cache";
+  // // cacheTag("archives");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const {
       search = "",
@@ -174,8 +179,13 @@ export async function getArchiveFighterAchievement(
     with_region?: boolean;
   } = {}
 ) {
-  "use cache";
-  cacheTag("archives", `archive:${id}`);
+  // "use cache";
+  // // cacheTag("archives", `archive:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const { with_fighter = false, with_edition = false, with_region = false } = options;
     const selectFields = ["faa.*"];
@@ -472,8 +482,13 @@ export async function deleteArchiveFighterAchievement(id: number) {
 }
 
 export async function getArchiveFighterAchievementsStats() {
-  "use cache";
-  cacheTag("archives");
+  // "use cache";
+  // // cacheTag("archives");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     // Vérifier que la table existe avant d'exécuter la requête
     const tableExists = await queryOne<{ exists: boolean }>(

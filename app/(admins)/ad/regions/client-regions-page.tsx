@@ -135,7 +135,7 @@ export default function ClientRegionsPage() {
       availableFilters={availableFilters}
       renderCard={(region, viewMode) => (
         <EntityCards.Region
-          item={region}
+          region={region}
           viewMode={viewMode}
           onEdit={onEdit}
           onView={onView}

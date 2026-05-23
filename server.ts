@@ -104,7 +104,7 @@ app
    - Environment: ${process.env.NODE_ENV || "development"}
    - Next.js: ${protocol}://${HOST}:${PORT}
    - Health Check: ${protocol}://${HOST}:${PORT}/health
-   - Realtime: Firestore (no WebSocket)
+   - Realtime: Realtime (no WebSocket)
       `);
     });
 

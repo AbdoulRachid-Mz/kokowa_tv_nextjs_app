@@ -3,15 +3,19 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { fighterTransferSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
 import { FighterTransfer, FighterTransferFilters, PaginatedResponse } from '@/types';
 
 export async function getFighterTransfers(
   filters: FighterTransferFilters = {}
 ): Promise<PaginatedResponse<FighterTransfer>> {
-  "use cache";
-  cacheTag("fighter-transfers");
-
+  // "use cache";
+  // // cacheTag("fighter-transfers");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
   try {
     const {
       search = '',
@@ -170,8 +174,13 @@ export async function getFighterTransfers(
 export async function getFighterTransferById(id: number, options: { 
   with_relations?: boolean 
 } = {}) {
-  "use cache";
-  cacheTag("fighter-transfers", `fighter-transfer:${id}`);
+  // "use cache";
+  // // cacheTag("fighter-transfers", `fighter-transfer:${id}`);
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const { with_relations = true } = options;
@@ -447,8 +456,13 @@ export async function deleteFighterTransfer(id: number) {
 }
 
 export async function getTransferStats() {
-  "use cache";
-  cacheTag("fighter-transfers");
+  // "use cache";
+  // // cacheTag("fighter-transfers");
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })  
 
   try {
     const sql = `

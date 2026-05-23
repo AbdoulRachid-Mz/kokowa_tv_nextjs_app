@@ -2,14 +2,18 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { advertisementSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag } from 'next/cache';
+import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
 import { Advertisement, AdvertisementFilters, PaginatedResponse, AdvertisementStats } from '@/types';
 
 export async function getAdvertisements(
   filters: AdvertisementFilters = {}
 ): Promise<PaginatedResponse<Advertisement>> {
-  "use cache";
-  cacheTag("advertisements"); 
+  // "use cache";
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })
   try {
     const {
       position,
@@ -157,8 +161,12 @@ export async function getAdvertisements(
 export async function getAdvertisementById(id: number, options: { 
   with_stats?: boolean 
 } = {}) {
-  "use cache";
-  cacheTag("advertisements", `advertisement:${id}`);
+  // "use cache";
+  // cacheLife({
+  //   stale: 3600, // 1 hour until considered stale
+  //   revalidate: 7200, // 2 hours until revalidated
+  //   expire: 86400, // 1 day until expired
+  // })
   try {
     const { with_stats = true } = options;
     
@@ -495,8 +503,8 @@ export async function getAdvertisementStats(): Promise<AdvertisementStats> {
 }
 
 export async function getActiveAdvertisements(position?: string, limit: number = 5) {
-  "use cache";
-  cacheTag("advertisements"); 
+  // "use cache";
+  // cacheTag("advertisements"); 
   try {
     let sql = `
       SELECT *
@@ -568,8 +576,8 @@ export async function recordAdImpression(id: number) {
 }
 
 export async function getAdvertisementsForSelect() {
-  "use cache";
-  cacheTag("advertisements");
+  // "use cache";
+  // cacheTag("advertisements");
   try {
     const sql = `
       SELECT id, title, position, priority, is_active
