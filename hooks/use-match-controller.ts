@@ -67,10 +67,16 @@ export function useMatchController({
     const currentDuration = timer.elapsed;
     const durationDiff = Math.abs(currentDuration - durationInSeconds);
 
-    // Si la différence est significative (> 2s), on synchronise
-    if (durationDiff > 2) {
+    // Only sync time if timer is not running OR difference is extreme (>10s)
+    // Avoid jumps during active play to prevent disruption from minor clock differences
+    if (!timer.isRunning && durationDiff > 2) {
       console.log(
-        `🔄 [Sync] Synchronisation du timer: ${currentDuration}s -> ${durationInSeconds}s`,
+        `🔄 [Sync] Synchronisation du timer (paused): ${currentDuration}s -> ${durationInSeconds}s`,
+      );
+      timer.setTime(durationInSeconds);
+    } else if (timer.isRunning && durationDiff > 10) {
+      console.log(
+        `🔄 [Sync] Synchronisation du timer (live, large gap): ${currentDuration}s -> ${durationInSeconds}s`,
       );
       timer.setTime(durationInSeconds);
     }

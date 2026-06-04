@@ -76,7 +76,7 @@ export async function getMobileLatestEdition() {
       JOIN competitions c ON ce.competition_id = c.id
       LEFT JOIN regions r ON ce.region_id = r.id
       WHERE ce.is_active = TRUE
-      ORDER BY ce.year DESC, ce.edition_number DESC
+      ORDER BY ce.created_at DESC
       LIMIT 1
     `;
 
@@ -503,7 +503,7 @@ async function getLiveMatchForEdition(editionId: number) {
       m.id,
       m.match_number as "matchNumber",
       m.status,
-      m.start_time as "startTime",
+      m.start_time2 as "startTime",
       m.total_duration as "totalDuration",
       m.break_count as "breakCount",
       m.audience_count as "audienceCount",
@@ -542,7 +542,7 @@ async function getLiveMatchForEdition(editionId: number) {
     JOIN regions r2 ON f2.region_id = r2.id
     WHERE p.edition_id = $1 
     AND m.status IN ('live', 'round_break', 'reclamation')
-    ORDER BY m.match_date DESC, m.start_time DESC, m.start_time2 DESC
+    ORDER BY m.match_date DESC, m.start_time2 DESC
     LIMIT 1
   `;
 

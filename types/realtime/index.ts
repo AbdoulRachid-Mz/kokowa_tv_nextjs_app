@@ -41,8 +41,15 @@ export interface RealtimeScore {
 
 // ─── Match RTDB Cible ────────────────────────────────────────────────────────
 
+export interface RealtimeCard {
+  id: number;
+  fighterId: number;
+  cardType: "yellow" | "red";
+  minuteGiven: string;    // au format "MM:SS"
+}
+
 /**
- * Représente un match stocké sous `subGroups/{subGroupId}/matches/{matchId}`
+ * Représente un match stocké sous `editions/{editionId}/subGroups/{subGroupId}/matches/{matchId}`
  */
 export interface RealtimeMatchDocument {
   status: MatchStatus;
@@ -51,8 +58,8 @@ export interface RealtimeMatchDocument {
   fighter1Id: number | null;
   fighter2Id: number | null;
 
-  winnerFighterId: number | null;
-  loserFighterId: number | null;
+  winnerId: number | null;
+  loserId: number | null;
 
   matchResult: string | null;
 
@@ -62,13 +69,15 @@ export interface RealtimeMatchDocument {
   videoUrl: string | null;
   liveStreamUrl: string | null;
 
+   cards?: RealtimeCard[]; 
+
   updatedAt: number;
 }
 
 // ─── Sous-groupe RTDB Cible ──────────────────────────────────────────────────
 
 /**
- * Représente un sous-groupe stocké sous `subGroups/{subGroupId}`
+ * Représente un sous-groupe stocké sous `editions/{editionId}/subGroups/{subGroupId}`
  */
 export interface RealtimeSubGroupDocument {
   status: string;
@@ -100,11 +109,14 @@ export interface RealtimeEditionDocument {
     matchId: number | null;
   } | null;
   updatedAt: number;
+  /** 
+   * Collection de sous-groupes indexée par leur ID PostgreSQL 
+   */
+  subGroups?: Record<string, RealtimeSubGroupDocument>;
 }
 
 // ─── Nœuds RTDB Cibles ───────────────────────────────────────────────────────
 
 export const REALTIME_NODES = {
   EDITIONS: "editions",
-  SUBGROUPS: "subGroups",
 } as const;

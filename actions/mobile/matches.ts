@@ -187,12 +187,13 @@ async function getAllMatchesForSubGroup(subGroupId: number) {
       m.id,
       m.match_number as "matchNumber",
       m.status,
-      m.start_time as "startTime",
+      m.start_time2 as "startTime",
       m.total_duration as "totalDuration",
       m.break_count as "breakCount",
       m.audience_count as "audienceCount",
       m.video_url as "videoUrl",
       m.notes,
+      m.sub_group_id as "subGroupId",
       
       -- Lutteur 1
       m.fighter1_id as "fighter1Id",
@@ -233,7 +234,7 @@ async function getAllMatchesForSubGroup(subGroupId: number) {
 
 // Dans matches.ts, fonction enrichMatchData()
 
-async function enrichMatchData(match: any) {
+async function enrichMatchData(match: any,) {
   // Récupérer les cartons pour ce match
   const cards = await getCardsForMatch(match.id);
 
@@ -362,6 +363,9 @@ async function enrichMatchData(match: any) {
     audienceCount: match.audienceCount,
     videoUrl: match.videoUrl,
     notes: match.notes,
+    ...(match.status === "live" && {
+      subGroupId: match.subGroupId,
+    }),
 
     fighters: {
       fighter1,
@@ -374,9 +378,7 @@ async function enrichMatchData(match: any) {
     },
 
     allCards: cards.map((card: any) => ({
-      id: card.id,
       fighterId: card.fighterId,
-      cardType: card.cardType,
       minuteGiven: card.minuteGiven
     }))
   };
@@ -392,8 +394,6 @@ async function getCardsForMatch(matchId: number) {
       f.first_name as "fighterFirstName",
       f.last_name as "fighterLastName",
       f.nickname as "fighterNickname",
-      fc.card_type as "cardType",
-      fc.card_reason as "cardReason",
       fc.minute_given as "minuteGiven",
       fc.is_cancelled as "isCancelled",
       fc.created_at as "createdAt"

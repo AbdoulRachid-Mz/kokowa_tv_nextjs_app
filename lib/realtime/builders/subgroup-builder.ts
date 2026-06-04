@@ -1,20 +1,21 @@
 // lib/realtime/builders/subgroup-builder.ts
-// Construit le payload minimal d'un sous-groupe pour Firebase RTDB
-// SERVER-SIDE ONLY
-
 import { query } from "@/lib/db/neon-client";
 import type { RealtimeSubGroupDocument } from "@/types/realtime";
 
 export async function buildRealtimeSubGroupPayload(
   subGroupId: number
-): Promise<Omit<RealtimeSubGroupDocument, 'matches'>> {
+): Promise<{ payload: Omit<RealtimeSubGroupDocument, 'matches'>; editionId: number }> {
   const sgRows = await query<any>(
     `SELECT 
        sg.status,
        sg.score_region1,
        sg.score_region2,
-       sg.nulls
+       sg.nulls,
+       ce.id AS edition_id
      FROM sub_groups sg
+     JOIN phase_groups pg ON pg.id = sg.group_id
+     JOIN phases p ON p.id = pg.phase_id
+     JOIN competition_editions ce ON ce.id = p.edition_id
      WHERE sg.id = $1`,
     [subGroupId]
   );
@@ -25,7 +26,6 @@ export async function buildRealtimeSubGroupPayload(
 
   const row = sgRows[0];
 
-  // Compter les matchs
   const summaryRows = await query<any>(
     `SELECT 
        COUNT(*) as total,
@@ -53,5 +53,5 @@ export async function buildRealtimeSubGroupPayload(
     updatedAt: Date.now(),
   };
 
-  return payload;
+  return { payload, editionId: row.edition_id };
 }

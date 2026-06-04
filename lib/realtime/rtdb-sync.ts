@@ -1,6 +1,4 @@
 // lib/realtime/rtdb-sync.ts
-// Service principal de synchronisation Firebase RTDB
-
 import { getAdminRTDB } from "./rtdb-admin";
 import { buildRealtimeMatchPayload } from "./builders/match-builder";
 import { buildRealtimeSubGroupPayload } from "./builders/subgroup-builder";
@@ -8,22 +6,23 @@ import { REALTIME_NODES } from "@/types/realtime";
 
 /**
  * Met à jour un match dans RTDB.
- * Il est stocké sous subGroups/{subGroupId}/matches/{matchId}
+ * Chemin : editions/{editionId}/subGroups/{subGroupId}/matches/{matchId}
  */
 export async function syncMatchRealtime(
   matchId: number,
   event?: string
 ): Promise<void> {
   try {
-    const { payload, subGroupId } = await buildRealtimeMatchPayload(matchId);
+    const { payload, editionId, subGroupId } = await buildRealtimeMatchPayload(matchId);
     
     const db = getAdminRTDB();
-    const ref = db.ref(`${REALTIME_NODES.SUBGROUPS}/${subGroupId}/matches/${matchId}`);
+    const ref = db.ref(
+      `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}/matches/${matchId}`
+    );
     
-    // .update() ne remplace que les clés fournies
     await ref.update(payload);
 
-    console.log(`✅ RTDB sync: match ${matchId} dans subGroup ${subGroupId} | event: ${event ?? "none"} | live: ${payload.isLive}`);
+    console.log(`✅ RTDB sync: match ${matchId} (edition ${editionId}, subGroup ${subGroupId}) | event: ${event ?? "none"} | live: ${payload.isLive}`);
   } catch (error) {
     console.error(`❌ RTDB sync failed for match ${matchId}:`, error);
   }
@@ -31,31 +30,34 @@ export async function syncMatchRealtime(
 
 /**
  * Met à jour un sous-groupe dans RTDB.
- * Ne touche pas à la sous-collection `matches` grâce à .update().
+ * Chemin : editions/{editionId}/subGroups/{subGroupId}
  */
 export async function syncSubGroupRealtime(
   subGroupId: number,
   event?: string
 ): Promise<void> {
   try {
-    const payload = await buildRealtimeSubGroupPayload(subGroupId);
+    const { payload, editionId } = await buildRealtimeSubGroupPayload(subGroupId);
     
     const db = getAdminRTDB();
-    const ref = db.ref(`${REALTIME_NODES.SUBGROUPS}/${subGroupId}`);
+    const ref = db.ref(
+      `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}`
+    );
     
     await ref.update(payload);
 
-    console.log(`✅ RTDB sync: subGroup ${subGroupId} | event: ${event ?? "none"}`);
+    console.log(`✅ RTDB sync: subGroup ${subGroupId} (edition ${editionId}) | event: ${event ?? "none"}`);
   } catch (error) {
     console.error(`❌ RTDB sync failed for subGroup ${subGroupId}:`, error);
   }
 }
 
 /**
- * Met à jour uniquement le statut live d'un match pour optimiser les coûts.
+ * Met à jour uniquement le statut live d'un match
  */
 export async function updateMatchLiveState(
   matchId: number,
+  editionId: number,
   subGroupId: number,
   isLive: boolean,
   status: string,
@@ -63,7 +65,9 @@ export async function updateMatchLiveState(
 ): Promise<void> {
   try {
     const db = getAdminRTDB();
-    const ref = db.ref(`${REALTIME_NODES.SUBGROUPS}/${subGroupId}/matches/${matchId}`);
+    const ref = db.ref(
+      `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}/matches/${matchId}`
+    );
     
     await ref.update({
       isLive,
@@ -88,7 +92,7 @@ export async function syncEditionLiveMatch(
     const ref = db.ref(`${REALTIME_NODES.EDITIONS}/${editionId}`);
     
     await ref.update({
-      status: "ongoing", // Ou fetch depuis DB si besoin
+      status: "ongoing",
       liveMatch: subGroupId && matchId ? { subGroupId, matchId } : null,
       updatedAt: Date.now()
     });
@@ -102,13 +106,16 @@ export async function syncEditionLiveMatch(
  */
 export async function deleteRealtimeMatchDocument(
   matchId: number,
+  editionId: number,
   subGroupId: number
 ): Promise<void> {
   try {
     const db = getAdminRTDB();
-    const ref = db.ref(`${REALTIME_NODES.SUBGROUPS}/${subGroupId}/matches/${matchId}`);
+    const ref = db.ref(
+      `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}/matches/${matchId}`
+    );
     await ref.remove();
-    console.log(`🗑️ RTDB: match ${matchId} supprimé du subGroup ${subGroupId}`);
+    console.log(`🗑️ RTDB: match ${matchId} supprimé (edition ${editionId}, subGroup ${subGroupId})`);
   } catch (error) {
     console.error(`❌ RTDB delete failed for match ${matchId}:`, error);
   }
@@ -118,25 +125,19 @@ export async function deleteRealtimeMatchDocument(
  * Supprime un sous-groupe (y compris ses matchs imbriqués)
  */
 export async function deleteRealtimeSubGroupDocument(
-  subGroupId: number
+  subGroupId: number,
+  editionId: number
 ): Promise<void> {
   try {
     const db = getAdminRTDB();
-    const ref = db.ref(`${REALTIME_NODES.SUBGROUPS}/${subGroupId}`);
+    const ref = db.ref(`${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}`);
     await ref.remove();
-    console.log(`🗑️ RTDB: subGroup ${subGroupId} supprimé`);
+    console.log(`🗑️ RTDB: subGroup ${subGroupId} supprimé (edition ${editionId})`);
   } catch (error) {
     console.error(`❌ RTDB delete failed for subGroup ${subGroupId}:`, error);
   }
 }
 
-/**
- * Récupère les stats basiques de RTDB.
- */
-export async function getRealtimeDBStats(): Promise<{
-  firestoreConnected: boolean;
-}> {
-  return {
-    firestoreConnected: true,
-  };
+export async function getRealtimeDBStats(): Promise<{ firestoreConnected: boolean }> {
+  return { firestoreConnected: true };
 }

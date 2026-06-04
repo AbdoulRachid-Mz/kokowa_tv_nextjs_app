@@ -5,31 +5,23 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Match, Fighter, SubGroup } from "@/types";
 import {
   ChevronLeft,
   ChevronRight,
-  Clock,
-  Trophy,
   RefreshCw,
-  Users,
-  AlertTriangle,
-  CheckCircle,
-  Play,
   Zap,
   ZapOff,
+  Bug,
 } from "lucide-react";
-// Existing imports remain unchanged
 import { useRealtimeSubGroup } from "@/hooks/realtime/use-realtime-subgroup";
 import { toast } from "sonner";
 import { MediaManager } from "./media-manager";
@@ -47,11 +39,8 @@ import { MatchTimer } from "./match-timer";
 import { addFighterCard, updateMatch } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
 import { FloatingMatchScore } from "./floating-match-score";
-import { useAuthContext } from "@/contexts/auth-context";
-import { Bug } from "lucide-react";
 import { useRealtimeMatch } from "@/hooks/realtime/use-realtime-match";
 import { forceSyncMatch } from "@/actions/realtime";
-// import { syncMatchRealtime } from "@/lib/realtime/rtdb-sync";
 
 export default function MatchDetailPage() {
   const { subGroupId, matchId } = useParams();
@@ -59,13 +48,13 @@ export default function MatchDetailPage() {
   const queryClient = useQueryClient();
   const parsedMatchId = parseInt(matchId as string);
   const parsedSubGroupId = parseInt(subGroupId as string);
-  const { user } = useAuthContext();
   const [isDialogLoading, setIsDialogLoading] = useState(false);
 
   const [availableFighters, setAvailableFighters] = useState<{
     region1: Fighter[];
     region2: Fighter[];
   }>({ region1: [], region2: [] });
+
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     type:
@@ -86,64 +75,8 @@ export default function MatchDetailPage() {
     type: "winner",
   });
 
-    const {
-    data: realtimeMatchData,
-    isLoading: isMatchListening,
-  } = useRealtimeMatch(
-    !isNaN(parsedSubGroupId) ? parsedSubGroupId : null,
-    !isNaN(parsedMatchId) ? parsedMatchId : null
-  );
-
-  // Ensure realtime document exists for match
-  useEffect(() => {
-    if (!realtimeMatchData && !isMatchListening && subGroupId && matchId) {
-      // Initialize realtime match document if missing
-      // syncMatchRealtime(parsedMatchId).catch((e) => console.error('RTDB init error', e));
-       forceSyncMatch(parsedMatchId).catch((e) => console.error('RTDB init error', e));
-    }
-  }, [realtimeMatchData, isMatchListening, subGroupId, matchId]);
-
-
-   // ==========================
-  // CONTROLLER PRINCIPAL
   // ==========================
-  const {
-    match,
-    elapsed,
-    formattedTime,
-    isRunning,
-    breakCount,
-    startMatch,
-    pauseMatch,
-    resumeMatch,
-    completeMatch,
-    setDraw,
-    resetMatch,
-    canStart,
-    canPause,
-    canResume,
-    reclamation,
-    canComplete,
-    canSetWinner,
-    canSetDraw,
-    isUpdating,
-    updateSubGroupMutation,
-  } = useMatchController({
-    matchId: parsedMatchId,
-    subGroupId: parsedSubGroupId,
-  });
-
-  const realtimeMatch = realtimeMatchData || null;
-  const mergedMatch = realtimeMatchData ? { ...match, ...realtimeMatchData } : match;
-  const isConnected = !isMatchListening;
-
-  const {
-    hasLiveMatch,
-  } = useRealtimeSubGroup(!isNaN(parsedSubGroupId) ? parsedSubGroupId : null);
-
-
-  // ==========================
-  // QUERIES
+  // 1. Charger les données du sous-groupe (avec editionId)
   // ==========================
   const { data: subGroup, isLoading: isLoadingSubGroup } = useQuery({
     queryKey: ["sub-group", subGroupId],
@@ -167,8 +100,70 @@ export default function MatchDetailPage() {
     enabled: !!subGroupId,
   });
 
+  const editionId = subGroup?.group?.phase?.edition?.id ?? null;
+
   // ==========================
-  // MUTATIONS
+  // 2. Écouter les données temps réel (match et sous-groupe)
+  // ==========================
+  const {
+    data: realtimeMatchData,
+    isLoading: isMatchListening,
+  } = useRealtimeMatch(
+    editionId,
+    parsedSubGroupId,
+    parsedMatchId
+  );
+
+  const { hasLiveMatch } = useRealtimeSubGroup(
+    editionId,
+    parsedSubGroupId
+  );
+
+  // Forcer la création du document RTDB si inexistant
+  useEffect(() => {
+    if (!realtimeMatchData && !isMatchListening && subGroupId && matchId) {
+      forceSyncMatch(parsedMatchId).catch((e) =>
+        console.error("RTDB init error", e)
+      );
+    }
+  }, [realtimeMatchData, isMatchListening, subGroupId, matchId, parsedMatchId]);
+
+  // ==========================
+  // 3. Contrôleur du match (gère timer, victoire, statut)
+  // ==========================
+  const {
+    match,
+    elapsed,
+    formattedTime,
+    isRunning,
+    breakCount,
+    startMatch,
+    pauseMatch,
+    resumeMatch,
+    completeMatch,
+    setDraw,
+    resetMatch,
+    canStart,
+    canPause,
+    canResume,
+    reclamation,
+    canSetWinner,
+    canSetDraw,
+    isUpdating,
+    updateSubGroupMutation,
+  } = useMatchController({
+    matchId: parsedMatchId,
+    subGroupId: parsedSubGroupId,
+  });
+
+  // Fusion des données locales et temps réel
+  const mergedMatch = realtimeMatchData
+    ? ({ ...match, ...realtimeMatchData } as Match)
+    : match;
+  const isConnected = !isMatchListening;
+
+  // ==========================
+  // 4. Mutations diverses
   // ==========================
   const addCardMutation = useMutation({
     mutationFn: async ({ fighterId }: { fighterId: number }) => {
@@ -177,7 +172,7 @@ export default function MatchDetailPage() {
         fighterId,
         "yellow",
         formatTimeForCard(elapsed),
-        "Carton jaune",
+        "Carton jaune"
       );
       return response;
     },
@@ -236,7 +231,9 @@ export default function MatchDetailPage() {
     },
   });
 
-  //handle removeFighterId on match
+  // ==========================
+  // 5. Gestion des remplacements / retraits de lutteurs
+  // ==========================
   const handleRemoveFighterId = (fighterId: number) => {
     setIsDialogLoading(true);
     const updates: MatchUpdate = {};
@@ -263,40 +260,24 @@ export default function MatchDetailPage() {
     });
   };
 
-  //handleReplaceFigherRoute
-  const handleReplaceFigherRoute = (fighterId: number, regionId: number) => {
+  const handleReplaceFighterRoute = (fighterId: number, regionId: number) => {
     setIsDialogLoading(true);
     router.push(
-      `/ad/editions/${subGroup?.group?.phase?.edition?.id}/fighters/replace?fighterId=${fighterId}&regionId=${regionId}`,
+      `/ad/editions/${subGroup?.group?.phase?.edition?.id}/fighters/replace?fighterId=${fighterId}&regionId=${regionId}`
     );
     setIsDialogLoading(false);
   };
 
-  // const updateSubGroupMutation = useMutation({
-  //   mutationFn: async (updates: { video_url?: string }) => {
-  //     const formData = new FormData();
-  //     if (updates.video_url !== undefined) {
-  //       formData.append("video_url", updates.video_url || "");
-  //     }
-  //     const response = await updateSubGroup(parsedSubGroupId, formData);
-  //     return response;
-  //   },
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({ queryKey: ["sub-group", subGroupId] });
-  //   },
-  // });
-
   // ==========================
-  // LOAD AVAILABLE FIGHTERS
+  // 6. Chargement des lutteurs disponibles
   // ==========================
-  // Dans page.tsx - fonction loadAvailableFighters
   const loadAvailableFighters = useCallback(async (sg: SubGroup) => {
     try {
       const editionId = sg.group?.phase?.edition?.id;
       if (!editionId) return;
 
       const loadRegionFighters = async (
-        regionId?: number,
+        regionId?: number
       ): Promise<Fighter[]> => {
         if (!regionId) return [];
         try {
@@ -306,12 +287,8 @@ export default function MatchDetailPage() {
             limit: 100,
             with_fighter: true,
           });
-
-          // Extraire les fighters et les trier par nom
           const fighters =
             response.data?.map((e: { fighter: Fighter }) => e.fighter) || [];
-
-          // ✅ Tri alphabétique (A à Z) par prénom + nom
           return fighters.sort((a: Fighter, b: Fighter) => {
             const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
             const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
@@ -338,9 +315,6 @@ export default function MatchDetailPage() {
     }
   }, []);
 
-  // ==========================
-  // EFFECTS
-  // ==========================
   useEffect(() => {
     if (subGroup) {
       loadAvailableFighters(subGroup);
@@ -348,37 +322,26 @@ export default function MatchDetailPage() {
   }, [subGroup, loadAvailableFighters]);
 
   // ==========================
-  // UTILS
+  // 7. Utilitaires
   // ==========================
   const formatTimeForCard = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${minutes.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
-  // ==========================
-  // COMPUTED
-  // ==========================
-  const matches = subGroup?.matches as Match[] || [];
+  const matches = (subGroup?.matches as Match[]) || [];
   const totalMatches = matches.length;
-  const completedMatches = matches.filter(
-    (m) => m.status === "completed",
-  ).length;
-  const allMatchesCompleted =
-    totalMatches > 0 && totalMatches === completedMatches;
+  const completedMatches = matches.filter((m) => m.status === "completed").length;
   const currentIndex = matches.findIndex((m) => m.id === parsedMatchId);
   const isLastMatch = currentIndex === totalMatches - 1;
-
-  const canFinalize =
-    isLastMatch && allMatchesCompleted && !subGroup?.is_completed;
-  const canStartSubGroup =
-    subGroup?.status === "upcoming" && currentIndex === 0;
 
   const handleAddCard = (fighterId: number) => {
     addCardMutation.mutate({ fighterId });
   };
 
-  // Utilisez directement les props du controller
   const handleCompleteMatch = (winnerId: number, loserId: number | undefined) => {
     completeMatch(winnerId, loserId);
     setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
@@ -414,12 +377,13 @@ export default function MatchDetailPage() {
   const navigateToMatch = (direction: "prev" | "next") => {
     const newIndex = direction === "prev" ? currentIndex - 1 : currentIndex + 1;
     if (newIndex >= 0 && newIndex < totalMatches) {
-      router.push(
-        `/ad/sub-groups/${subGroupId}/matches/${matches[newIndex].id}`,
-      );
+      router.push(`/ad/sub-groups/${subGroupId}/matches/${matches[newIndex].id}`);
     }
   };
 
+  // ==========================
+  // 8. Rendu
+  // ==========================
   if (!match || isLoadingSubGroup) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -434,7 +398,7 @@ export default function MatchDetailPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 p-3 md:p-4">
       <div className="max-w-7xl mx-auto mb-6">
-        {/* Header */}
+        {/* En‑tête avec retour et indicateur de connexion */}
         <div className="flex justify-between items-center mb-4">
           <Button
             variant="ghost"
@@ -451,7 +415,8 @@ export default function MatchDetailPage() {
                 {mergedMatch?.match_date
                   ? new Date(mergedMatch.match_date).toLocaleDateString("fr-FR")
                   : "Date non définie"}
-                {mergedMatch?.start_time && ` à ${mergedMatch.start_time.slice(0, 5)}`}
+                {mergedMatch?.start_time &&
+                  ` à ${mergedMatch.start_time.slice(0, 5)}`}
               </span>
             </Typography>
           )}
@@ -463,64 +428,19 @@ export default function MatchDetailPage() {
             />
             <Badge variant={isConnected ? "default" : "outline"} className="gap-1">
               {isConnected ? (
-                <><Zap className="h-3 w-3" /> Firestore Live</>
+                <>
+                  <Zap className="h-3 w-3" /> Live
+                </>
               ) : (
-                <><ZapOff className="h-3 w-3" /> Connexion...</>
+                <>
+                  <ZapOff className="h-3 w-3" /> Connexion...
+                </>
               )}
             </Badge>
           </div>
         </div>
 
-        {/* Démarrage sous-groupe */}
-        {/* {canStartSubGroup && (
-          <Card className="mb-6 border-blue-500 bg-blue-50/50">
-            <CardContent className="py-4">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <Play className="h-6 w-6 text-blue-600" />
-                  <div>
-                    <Typography variant="h6" weight="bold" className="text-blue-700">
-                      Premier match du sous-groupe
-                    </Typography>
-                    <Typography variant="body-sm" className="text-blue-600">
-                      Démarrez le sous-groupe pour commencer
-                    </Typography>
-                  </div>
-                </div>
-                <Dialog
-                  open={confirmDialog.isOpen && confirmDialog.type === "startSubGroup"}
-                  onOpenChange={(open) =>
-                    setConfirmDialog(open ? { isOpen: true, type: "startSubGroup" } : { ...confirmDialog, isOpen: false })
-                  }
-                >
-                  <DialogTrigger asChild>
-                    <Button className="bg-blue-600 hover:bg-blue-700">
-                      <Play className="h-4 w-4 mr-2" />
-                      Démarrer le sous-groupe
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Démarrer le sous-groupe</DialogTitle>
-                    </DialogHeader>
-                    <p>Êtes-vous sûr de vouloir démarrer ce sous-groupe ?</p>
-                    <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
-                      >
-                        Annuler
-                      </Button>
-                      <Button onClick={handleStartSubGroup}>Confirmer</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardContent>
-          </Card>
-        )} */}
-
-        {/* Navigation entre matchs */}
+        {/* Navigation entre les matchs du sous‑groupe */}
         <div className="flex justify-between items-center bg-card p-4 rounded-lg border">
           <Button
             variant="outline"
@@ -539,9 +459,13 @@ export default function MatchDetailPage() {
                 {currentIndex + 1}/{totalMatches}
               </Badge>
               <Badge
-                variant={mergedMatch?.status === "live" ? "destructive" : "secondary"}
+                variant={
+                  mergedMatch?.status === "live" ? "destructive" : "secondary"
+                }
               >
-                {mergedMatch?.status === "live" ? "🔴 EN DIRECT" : mergedMatch?.status}
+                {mergedMatch?.status === "live"
+                  ? "🔴 EN DIRECT"
+                  : mergedMatch?.status}
               </Badge>
             </div>
           </div>
@@ -556,78 +480,17 @@ export default function MatchDetailPage() {
         </div>
       </div>
 
-      {/* Bannière de finalisation */}
-      {/* {canFinalize && (
-        <div className="max-w-7xl mx-auto mb-6">
-          <Card className="border-green-500 bg-green-50/50">
-            <CardContent className="py-6">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                  <div>
-                    <Typography variant="h5" weight="bold" className="text-green-700">
-                      Tous les matchs sont terminés !
-                    </Typography>
-                    <Typography variant="body-sm" className="text-green-600">
-                      {completedMatches}/{totalMatches} matchs
-                    </Typography>
-                  </div>
-                </div>
-                <Dialog
-                  open={confirmDialog.isOpen && confirmDialog.type === "complete"}
-                  onOpenChange={(open) =>
-                    setConfirmDialog(open ? { isOpen: true, type: "complete" } : { ...confirmDialog, isOpen: false })
-                  }
-                >
-                  <DialogTrigger asChild>
-                    <Button className="bg-green-600 hover:bg-green-700">
-                      <Trophy className="h-4 w-4 mr-2" />
-                      Finaliser le sous-groupe
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Finaliser le sous-groupe</DialogTitle>
-                    </DialogHeader>
-                    <p>
-                      Êtes-vous sûr de vouloir finaliser ce sous-groupe ? Cette action est
-                      irréversible.
-                    </p>
-                    <DialogFooter>
-                      <Button
-                        variant="outline"
-                        onClick={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
-                      >
-                        Annuler
-                      </Button>
-                      <Button
-                        onClick={handleCompleteSubGroup}
-                        disabled={completeSubGroupMutation.isPending}
-                      >
-                        Confirmer
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )} */}
-
-      {/* Contenu principal */}
+      {/* Grille principale */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Colonne de gauche (2/3) */}
+        {/* Colonne de gauche : les deux lutteurs + contrôles avancés */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Fighters */}
+          {/* Cartes des lutteurs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
             <FighterControl
               fighter={mergedMatch?.fighter1}
               fighterType="fighter1"
-              match={mergedMatch as Match}
-              onUpdateMatch={(updates) => {
-                updateMatchMutation.mutate(updates);
-              }}
+              match={mergedMatch as Match | undefined}
+              onUpdateMatch={(updates) => updateMatchMutation.mutate(updates)}
               onAddCard={handleAddCard}
               availableFighters={availableFighters.region1}
               currentTime={elapsed}
@@ -635,11 +498,11 @@ export default function MatchDetailPage() {
                 mergedMatch?.cards?.filter(
                   (c) =>
                     c.fighter_id === mergedMatch?.fighter1_id &&
-                    c.card_type === "yellow",
+                    c.card_type === "yellow"
                 ).length || 0
               }
               isSubGroupCompleted={subGroup?.is_completed || false}
-              matchStatus={mergedMatch?.status ?? ''}
+              matchStatus={mergedMatch?.status ?? ""}
               canSetWinner={canSetWinner}
               canSetDraw={canSetDraw}
               onCompleteWithWinner={() => {
@@ -652,24 +515,21 @@ export default function MatchDetailPage() {
                 });
               }}
               onSetDraw={() => setConfirmDialog({ isOpen: true, type: "draw" })}
-              onReplaceFighter={handleReplaceFigherRoute}
-              onAskRemoveFighter={(fighterId) => {
-                setConfirmDialog({
-                  isOpen: true,
-                  type: "removeFighter",
-                  fighterId,
-                });
-              }}
-              onAskReplaceFighter={(fighterId) => {
+              onReplaceFighter={handleReplaceFighterRoute}
+              onAskRemoveFighter={(fighterId) =>
+                setConfirmDialog({ isOpen: true, type: "removeFighter", fighterId })
+              }
+              onAskReplaceFighter={(fighterId) =>
                 setConfirmDialog({
                   isOpen: true,
                   type: "replaceFighter",
                   fighterId,
                   regionId: subGroup?.region1_id,
-                });
-              }}
+                })
+              }
             />
 
+            {/* Badge VS au centre (visible desktop) */}
             <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 hidden md:block">
               <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-4 border-background">
                 <Typography variant="body-lg" weight="bold">
@@ -681,10 +541,8 @@ export default function MatchDetailPage() {
             <FighterControl
               fighter={mergedMatch?.fighter2}
               fighterType="fighter2"
-              match={mergedMatch as Match}
-              onUpdateMatch={(updates) => {
-                updateMatchMutation.mutate(updates);
-              }}
+              match={mergedMatch as Match | undefined}
+              onUpdateMatch={(updates) => updateMatchMutation.mutate(updates)}
               onAddCard={handleAddCard}
               availableFighters={availableFighters.region2}
               currentTime={elapsed}
@@ -692,11 +550,11 @@ export default function MatchDetailPage() {
                 mergedMatch?.cards?.filter(
                   (c) =>
                     c.fighter_id === mergedMatch?.fighter2_id &&
-                    c.card_type === "yellow",
+                    c.card_type === "yellow"
                 ).length || 0
               }
               isSubGroupCompleted={subGroup?.is_completed || false}
-              matchStatus={mergedMatch?.status ?? ''}
+              matchStatus={mergedMatch?.status ?? ""}
               canSetWinner={canSetWinner}
               canSetDraw={canSetDraw}
               onCompleteWithWinner={() => {
@@ -709,36 +567,28 @@ export default function MatchDetailPage() {
                 });
               }}
               onSetDraw={() => setConfirmDialog({ isOpen: true, type: "draw" })}
-              onReplaceFighter={handleReplaceFigherRoute}
-              onAskRemoveFighter={(fighterId) => {
-                setConfirmDialog({
-                  isOpen: true,
-                  type: "removeFighter",
-                  fighterId,
-                });
-              }}
-              onAskReplaceFighter={(fighterId) => {
+              onReplaceFighter={handleReplaceFighterRoute}
+              onAskRemoveFighter={(fighterId) =>
+                setConfirmDialog({ isOpen: true, type: "removeFighter", fighterId })
+              }
+              onAskReplaceFighter={(fighterId) =>
                 setConfirmDialog({
                   isOpen: true,
                   type: "replaceFighter",
                   fighterId,
                   regionId: subGroup?.region2_id,
-                });
-              }}
+                })
+              }
             />
           </div>
 
-          {/* Contrôles */}
+          {/* Panneau de contrôle (notes, réclamation, etc.) */}
           <MatchControls
             match={mergedMatch as Match}
-            onUpdateMatch={(updates) => {
-              updateMatchMutation.mutate(updates);
-            }}
+            onUpdateMatch={(updates) => updateMatchMutation.mutate(updates)}
             isSaving={isUpdating}
             isSubGroupCompleted={subGroup?.is_completed || false}
-            onResetMatch={() =>
-              setConfirmDialog({ isOpen: true, type: "reset" })
-            }
+            onResetMatch={() => setConfirmDialog({ isOpen: true, type: "reset" })}
             onReclamation={() =>
               setConfirmDialog({ isOpen: true, type: "reclamation" })
             }
@@ -746,55 +596,16 @@ export default function MatchDetailPage() {
               setConfirmDialog({ isOpen: true, type: "cancel" })
             }
           />
-
-          {/* Informations supplémentaires */}
-          {/* <Card>
-            <CardContent className="space-y-4 pt-6">
-              <div>
-                <Typography variant="body-sm" weight="medium" theme="muted">
-                  Rencontre
-                </Typography>
-                <Typography>{subGroup?.name}</Typography>
-              </div>
-              <div>
-                <Typography variant="body-sm" weight="medium" theme="muted">
-                  Date et heure
-                </Typography>
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <Typography>
-                    {match.match_date
-                      ? new Date(match.match_date).toLocaleDateString("fr-FR")
-                      : "Date non définie"}
-                    {match.start_time && ` à ${match.start_time.slice(0, 5)}`}
-                  </Typography>
-                </div>
-              </div>
-              {match.notes && (
-                <div>
-                  <Typography variant="body-sm" weight="medium" theme="muted">
-                    Notes
-                  </Typography>
-                  <Typography
-                    variant="body-sm"
-                    className="italic bg-muted/30 p-3 rounded"
-                  >
-                    {match.notes}
-                  </Typography>
-                </div>
-              )}
-            </CardContent>
-          </Card> */}
         </div>
 
-        {/* Colonne de droite (1/3) */}
+        {/* Colonne de droite : timer, médias, scores flottants */}
         <div className="space-y-6">
           <MatchTimer
             matchId={mergedMatch?.id ?? 0}
             formattedTime={formattedTime}
             breakCount={breakCount}
             isRunning={isRunning}
-            matchStatus={mergedMatch?.status ?? ''}
+            matchStatus={mergedMatch?.status ?? ""}
             isSubGroupCompleted={subGroup?.is_completed || false}
             areBothFightersAssigned={
               !!(mergedMatch?.fighter1_id && mergedMatch?.fighter2_id)
@@ -812,35 +623,21 @@ export default function MatchDetailPage() {
             subGroupId={parsedSubGroupId}
             videoUrl={subGroup?.video_url}
             liveStreamUrl={mergedMatch?.video_url ?? undefined}
-            onUpdateMatch={(updates: { video_url?: string }) => {
-              updateMatchMutation.mutate(updates);
-            }}
-            onUpdateSubGroup={(updates: { video_url?: string }) => {
-              updateSubGroupMutation.mutate(updates);
-            }}
+            onUpdateMatch={(updates) => updateMatchMutation.mutate(updates)}
+            onUpdateSubGroup={(updates) => updateSubGroupMutation.mutate(updates)}
             isSaving={isUpdating || updateSubGroupMutation.isPending}
           />
-        </div>
 
-        <div className="max-w-7xl mx-auto mb-6 hidden md:block">
           <FloatingMatchScore
             subGroup={subGroup!}
             match={mergedMatch as Match}
             region1={subGroup?.region1}
             region2={subGroup?.region2}
           />
-          <div className="md:hidden">
-            <FloatingMatchScore
-              subGroup={subGroup!}
-              match={mergedMatch as Match}
-              region1={subGroup?.region1}
-              region2={subGroup?.region2}
-            />
-          </div>
         </div>
       </div>
 
-      {/* Dialog de confirmation générique */}
+      {/* Dialogue de confirmation générique */}
       <Dialog
         open={
           confirmDialog.isOpen &&
@@ -866,7 +663,6 @@ export default function MatchDetailPage() {
                 "Confirmer la suppression"}
             </DialogTitle>
           </DialogHeader>
-
           <p>
             {confirmDialog.type === "winner" &&
               "Êtes-vous sûr de vouloir désigner ce lutteur vainqueur ?"}
@@ -883,13 +679,10 @@ export default function MatchDetailPage() {
             {confirmDialog.type === "removeFighter" &&
               "Êtes-vous sûr de vouloir retirer ce lutteur du match ? Cette action peut être annulée en réassignant un lutteur."}
           </p>
-
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() =>
-                setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
-              }
+              onClick={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
             >
               Annuler
             </Button>
@@ -898,22 +691,15 @@ export default function MatchDetailPage() {
                 switch (confirmDialog.type) {
                   case "winner":
                     if (confirmDialog.fighterId) {
-                      // Vérifier si l'adversaire existe
                       const otherFighterId =
                         confirmDialog.fighterId === match?.fighter1_id
                           ? match?.fighter2_id
                           : match?.fighter1_id;
-
                       if (!otherFighterId) {
-                        // ✅ Victoire par forfait - passer undefined/null au lieu de -1
                         toast.info("Victoire par forfait - Repos obtenu");
                         handleCompleteMatch(confirmDialog.fighterId, undefined);
                       } else {
-                        // Victoire normale
-                        handleCompleteMatch(
-                          confirmDialog.fighterId,
-                          otherFighterId
-                        );
+                        handleCompleteMatch(confirmDialog.fighterId, otherFighterId);
                       }
                     }
                     break;
@@ -943,17 +729,16 @@ export default function MatchDetailPage() {
                     toast.success("Match annulé");
                     break;
                   case "replaceFighter":
-                    if (confirmDialog.fighterId && confirmDialog.regionId!) {
-                      handleReplaceFigherRoute?.(
+                    if (confirmDialog.fighterId && confirmDialog.regionId) {
+                      handleReplaceFighterRoute(
                         confirmDialog.fighterId,
-                        confirmDialog.regionId!,
+                        confirmDialog.regionId
                       );
                     }
                     break;
                   case "removeFighter":
                     if (confirmDialog.fighterId) {
                       handleRemoveFighterId(confirmDialog.fighterId);
-                      // setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
                     }
                     break;
                 }
@@ -966,7 +751,7 @@ export default function MatchDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ✅ Composant de debug flottant (uniquement en dev) */}
+      {/* Bouton debug (uniquement en développement) */}
       {process.env.NODE_ENV === "development" && (
         <div className="fixed bottom-4 right-4 z-50">
           <Button
@@ -974,21 +759,19 @@ export default function MatchDetailPage() {
             size="sm"
             className="bg-background/80 backdrop-blur-sm shadow-lg border-primary/20"
             onClick={() => {
-              console.log("🔍 [DEBUG] Firestore Realtime State:");
-              console.log("  isConnected (Firestore):", isConnected);
-              // console.log("  isRealtimeLive:", isRealtimeLive);
+              console.log("🔍 [DEBUG] Realtime State:");
+              console.log("  isConnected (RTDB):", isConnected);
               console.log("  hasLiveMatch (subGroup):", hasLiveMatch);
               console.log("  match status:", match?.status);
-              console.log("  match data:", match);
-              console.log("  subGroup data:", subGroup);
-
+              console.log("  realtimeMatchData:", realtimeMatchData);
+              console.log("  subGroup:", subGroup);
               toast.info(
-                `Firestore: ${isConnected ? "✅ Live" : "⏳ Connexion"} | Match: ${match?.status}`,
+                `RTDB: ${isConnected ? "✅ Connecté" : "⏳ En attente"} | Match: ${match?.status}`
               );
             }}
           >
             <Bug className="h-4 w-4 mr-2 text-primary" />
-            Debug RT
+            Debug
           </Button>
         </div>
       )}

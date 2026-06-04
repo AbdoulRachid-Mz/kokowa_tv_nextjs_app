@@ -133,8 +133,6 @@ const pause = useCallback((): number => {
     };
   }, []);
 
- 
-
   return {
     elapsed,
     isRunning,
@@ -145,8 +143,16 @@ const pause = useCallback((): number => {
     reset,
     getDuration,
     setTime: (seconds: number) => {
+      if (isRunning) {
+        // Stop current ticking to reset timestamp with new value
+        stopTicking();
+        accumulatedRef.current = seconds;
+        startTimestampRef.current = Date.now();
+        startTicking();
+      } else {
+        accumulatedRef.current = seconds;
+      }
       setElapsed(seconds);
-      accumulatedRef.current = seconds;
     }
   };
 }

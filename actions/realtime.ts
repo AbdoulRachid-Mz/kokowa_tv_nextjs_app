@@ -190,22 +190,23 @@ export async function emitRealtimeDelete(
 
     switch (entityType) {
       case "match":
-        if (data?.subGroupId || data?.sub_group_id) {
-           await deleteRealtimeMatchDocument(id, data.subGroupId || data.sub_group_id);
+        if (data?.editionId && data?.subGroupId) {
+          await deleteRealtimeMatchDocument(id, data.editionId, data.subGroupId);
         } else {
-           console.warn(`[RTDB] Impossible de supprimer le match ${id} sans subGroupId dans les data.`);
+          console.warn(`[RTDB] Impossible de supprimer le match ${id} sans editionId/subGroupId dans les data.`);
         }
-        // invalidateEntityCache("match", id);
         break;
 
       case "subGroup":
-        await deleteRealtimeSubGroupDocument(id);
-        // invalidateEntityCache("subGroup", id);
+        if (data?.editionId) {
+          await deleteRealtimeSubGroupDocument(id, data.editionId);
+        } else {
+          console.warn(`[RTDB] Impossible de supprimer le subGroup ${id} sans editionId dans les data.`);
+        }
         break;
 
       default:
         console.log(`[RTDB] Deletion of ${entityType}:${entityId} ignored/not implemented`);
-        // invalidateEntityCache(entityType, id);
     }
 
     return { success: true };

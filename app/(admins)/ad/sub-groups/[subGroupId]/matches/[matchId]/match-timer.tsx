@@ -13,7 +13,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Play, Pause, Timer, AlertCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 interface MatchTimerProps {
   matchId: number;
@@ -32,9 +32,9 @@ interface MatchTimerProps {
 }
 
 export function MatchTimer({
-  formattedTime,
+  formattedTime: externalFormattedTime,
   breakCount,
-  isRunning,
+  isRunning: externalIsRunning,
   matchStatus,
   isSubGroupCompleted,
   areBothFightersAssigned,
@@ -46,25 +46,42 @@ export function MatchTimer({
   canResume,
 }: MatchTimerProps) {
   const [showStartDialog, setShowStartDialog] = useState(false);
+  // État local pour éviter les à-coups d’affichage
+  const [displayTime, setDisplayTime] = useState(externalFormattedTime);
+  const prevStatusRef = useRef(matchStatus);
 
-  //   //initialStatus
-  //   let initialStatus = matchStatus;
+  // Synchroniser l’affichage avec la prop externe (venant du controller)
+  useEffect(() => {
+    setDisplayTime(externalFormattedTime);
+  }, [externalFormattedTime]);
 
-
-  //   useEffect(() => {
-  //   if (initialStatus === 'live') {
-  //     onStart();
-  //   } else {
-  //     onPause();
-  //   }
-  // }, [initialStatus]);
+  // Détecter les changements de statut pour forcer un arrêt local si nécessaire
+  useEffect(() => {
+    if (prevStatusRef.current !== matchStatus) {
+      // Si le statut devient "completed" ou "scheduled" alors que le timer tournait,
+      // le controller devrait déjà avoir arrêté, mais on peut émettre un avertissement
+      if (
+        (matchStatus === "completed" || matchStatus === "scheduled") &&
+        externalIsRunning
+      ) {
+        console.warn("Timer running but match status is", matchStatus);
+        onPause(); // sécurité
+      }
+      prevStatusRef.current = matchStatus;
+    }
+  }, [matchStatus, externalIsRunning, onPause]);
 
   const handleStartClick = () => {
-    if (formattedTime === "00:00:00") {
+    if (displayTime === "00:00:00") {
       setShowStartDialog(true);
     } else {
       onStart();
     }
+  };
+
+  const handleConfirmStart = () => {
+    onStart();
+    setShowStartDialog(false);
   };
 
   return (
@@ -80,8 +97,11 @@ export function MatchTimer({
         <CardContent className="space-y-4">
           {/* Affichage du temps */}
           <div className="text-center">
-            <Typography variant="h2" className="font-mono tracking-wider text-3xl font-bold">
-              {formattedTime}
+            <Typography
+              variant="h2"
+              className="font-mono tracking-wider text-3xl font-bold"
+            >
+              {displayTime}
             </Typography>
             <Typography variant="body-sm" theme="muted" className="mt-1">
               Durée du match
@@ -159,7 +179,7 @@ export function MatchTimer({
               </Badge>
             )}
             {matchStatus === "reclamation" && (
-              <Badge variant="destructive">⏸️ EN reclamation</Badge>
+              <Badge variant="destructive">⏸️ EN RÉCLAMATION</Badge>
             )}
             {matchStatus === "round_break" && (
               <Badge variant="default">⏸️ PAUSE</Badge>
@@ -173,7 +193,6 @@ export function MatchTimer({
         </CardContent>
       </Card>
 
-      {/* Dialog de confirmation pour le démarrage */}
       <Dialog open={showStartDialog} onOpenChange={setShowStartDialog}>
         <DialogContent>
           <DialogHeader>
@@ -184,14 +203,7 @@ export function MatchTimer({
             <Button variant="outline" onClick={() => setShowStartDialog(false)}>
               Annuler
             </Button>
-            <Button
-              onClick={() => {
-                onStart();
-                setShowStartDialog(false);
-              }}
-            >
-              Confirmer
-            </Button>
+            <Button onClick={handleConfirmStart}>Confirmer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
