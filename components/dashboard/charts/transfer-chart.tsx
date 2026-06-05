@@ -74,7 +74,7 @@ export function TransferChart({ data, loading = false, title = "Statistiques des
     {
       name: "Frais moyens",
       value: data.avg_fee || 0,
-      unit: "€",
+      unit: "FCFA",
       color: "#3b82f6",
     },
     {
@@ -86,13 +86,13 @@ export function TransferChart({ data, loading = false, title = "Statistiques des
     {
       name: "Frais max",
       value: data.max_fee || 0,
-      unit: "€",
+      unit: "FCFA",
       color: "#ef4444",
     },
     {
       name: "Frais min",
       value: data.min_fee || 0,
-      unit: "€",
+      unit: "FCFA",
       color: "#10b981",
     },
   ];

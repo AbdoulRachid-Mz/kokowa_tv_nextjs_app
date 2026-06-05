@@ -363,7 +363,7 @@ async function enrichMatchData(match: any,) {
     audienceCount: match.audienceCount,
     videoUrl: match.videoUrl,
     notes: match.notes,
-    ...(match.status === "live" && {
+    ...((match.status === "live" || match.status === "round_break" || match.status === "reclamation") && {
       subGroupId: match.subGroupId,
     }),
 
