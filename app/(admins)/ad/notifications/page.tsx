@@ -10,7 +10,7 @@ import {
   BellRing,
   BellOff,
   CheckCircle,
-  AlertTriangle,
+AlertTriangle,
   Users,
   Clock,
 } from "lucide-react";
@@ -290,12 +290,11 @@ export default function NotificationsPage() {
         availableFilters={availableFilters}
         renderCard={(notification, viewMode) => (
           <NotificationCard
-            notification={notification}
+            item={notification}
             viewMode={viewMode}
             onView={onView}
-            onMarkAsRead={handleMarkAsRead}
+            onEdit={handleMarkAsRead}
             onDelete={handleDelete}
-            onAction={handleAction}
           />
         )}
       />

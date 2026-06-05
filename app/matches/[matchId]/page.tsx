@@ -16,7 +16,14 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, RefreshCw, Share2, Bookmark, Bell, Zap } from "lucide-react";
+import {
+  ArrowLeft,
+  RefreshCw,
+  Share2,
+  Bookmark,
+  Bell,
+  Zap,
+} from "lucide-react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { MatchDetailHeader } from "@/components/pages/matches/match-detail-header";
@@ -42,7 +49,7 @@ export default function MatchDetailPage() {
     queryKey: ["match", matchId],
     queryFn: async () => {
       const response = await fetch(
-        `/api/matches/${matchId}?with_relations=true`
+        `/api/matches/${matchId}?with_relations=true`,
       );
       if (!response.ok) {
         throw new Error("Match non trouvé");
@@ -59,12 +66,13 @@ export default function MatchDetailPage() {
   // ─── RTDB Realtime (mis à jour automatique quand admin modifie) ──
   // subGroupId est déduit du match une fois chargé
   const subGroupId = (match as any)?.sub_group_id ?? null;
-  const {
-    data: realtimeData,
-    isLoading: isListening,
-  } = useRealtimeMatch(
+  // Extract editionId from match context (edition ID associated with the match)
+  const editionId =
+    (match as any)?.sub_group?.group?.phase?.edition?.id ?? null;
+  const { data: realtimeData, isLoading: isListening } = useRealtimeMatch(
+    editionId ? Number(editionId) : null,
     subGroupId ? Number(subGroupId) : null,
-    !isNaN(matchId) ? matchId : null
+    !isNaN(matchId) ? matchId : null,
   );
   const isLive = realtimeData?.isLive ?? false;
 
@@ -194,7 +202,7 @@ export default function MatchDetailPage() {
                               year: "numeric",
                               month: "long",
                               day: "numeric",
-                            }
+                            },
                           )}
                           {match.start_time &&
                             ` à ${match.start_time.substring(0, 5)}`}

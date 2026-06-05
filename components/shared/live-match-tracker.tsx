@@ -12,7 +12,10 @@ interface LiveMatchTrackerProps {
 }
 
 export function LiveMatchTracker({ matchId, subGroupId }: LiveMatchTrackerProps) {
-  const { data: realtimeMatch, isLoading: isListening } = useRealtimeMatch(subGroupId, matchId);
+  const { data: realtimeMatch, isLoading: isListening } = useRealtimeMatch(
+    null,
+    subGroupId, matchId
+  );
   const { user, signOut } = useAuthContext();
 
   return (
