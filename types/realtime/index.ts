@@ -80,6 +80,7 @@ export interface RealtimeLiveMatchInfo {
   status: MatchStatus; // "live" | "round_break" | "reclamation"
   fighter1Id: number | null;
   fighter2Id: number | null;
+  editionId: number;
 }
 
 // ─── Sous-groupe RTDB Cible ──────────────────────────────────────────────────

@@ -543,6 +543,7 @@ export async function updateMatchAndRecompute(
         status: newStatus,
         fighter1Id: updatedMatch.fighter1_id,
         fighter2Id: updatedMatch.fighter2_id,
+        editionId,
       };
     } else if (newStatus === 'completed' || newStatus === 'cancelled') {
       liveMatchInfo = null;
