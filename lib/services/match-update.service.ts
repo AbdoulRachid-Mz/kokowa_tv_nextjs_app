@@ -5,6 +5,8 @@ import { pool, query } from "../db/neon-client";
 import type { PoolClient } from "pg";
 import { emitMatchEvent } from "@/actions/realtime";
 import { getMatchById } from "@/actions/matches-2";
+import { syncEditionLiveMatch } from "../realtime/rtdb-sync";
+import { RealtimeLiveMatchInfo } from "@/types/realtime";
 
 export interface MatchUpdate {
   sub_group_id?: number;
@@ -529,6 +531,26 @@ export async function updateMatchAndRecompute(
     await checkAndUpdateGroupStatus(client, oldMatch.sub_group_id);
 
     await client.query("COMMIT");
+
+    // Mettre à jour le liveMatch dans l'édition
+    const editionId = oldMatch.edition_id;
+    let liveMatchInfo: RealtimeLiveMatchInfo | null = null;
+    const newStatus = updatedMatch.status;
+    if (newStatus === 'live' || newStatus === 'round_break' || newStatus === 'reclamation') {
+      liveMatchInfo = {
+        subGroupId: updatedMatch.sub_group_id,
+        matchId: updatedMatch.id,
+        status: newStatus,
+        fighter1Id: updatedMatch.fighter1_id,
+        fighter2Id: updatedMatch.fighter2_id,
+      };
+    } else if (newStatus === 'completed' || newStatus === 'cancelled') {
+      liveMatchInfo = null;
+    }
+    // Ne pas attendre la synchronisation pour ne pas ralentir la réponse
+    syncEditionLiveMatch(editionId, liveMatchInfo).catch(err =>
+      console.error('syncEditionLiveMatch error:', err)
+    );
 
     // Émettre l'événement temps réel (au match et au sous-groupe)
     await emitMatchEvent(

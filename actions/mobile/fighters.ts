@@ -1,19 +1,19 @@
-'use server';
+"use server";
 
-import { query } from '@/lib/db/neon-client';
-import { getParticipatedEditions } from './editions';
-import { formatDateTime, formatDuration } from '@/utils/duration';
+import { query } from "@/lib/db/neon-client";
+import { getParticipatedEditions } from "./editions";
+import { formatDateTime, formatDuration } from "@/utils/duration";
 
 export async function getMobileFighters(filters?: {
   page?: number;
   limit?: number;
   userId?: number; // Pour vérifier les favoris
   search?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
   regionId?: number;
   isChampion?: boolean;
   isActive?: boolean;
-  achievementFilter?: 'champion' | 'finalist' | 'medalist' | 'all';
+  achievementFilter?: "champion" | "finalist" | "medalist" | "all";
 }) {
   try {
     const page = filters?.page || 1;
@@ -21,7 +21,7 @@ export async function getMobileFighters(filters?: {
     const offset = (page - 1) * limit;
     const userId = filters?.userId;
     const search = filters?.search;
-    const sortOrder = filters?.sortOrder || 'asc';
+    const sortOrder = filters?.sortOrder || "asc";
     const regionId = filters?.regionId;
     const isChampion = filters?.isChampion;
     const isActive = filters?.isActive ?? true; // default true
@@ -44,10 +44,10 @@ export async function getMobileFighters(filters?: {
     // Search filter
     if (search) {
       whereConditions.push(
-        `(f.first_name ILIKE $${paramIndex} OR f.last_name ILIKE $${paramIndex} OR f.nickname ILIKE $${paramIndex})`
+        `(f.first_name ILIKE $${paramIndex} OR f.last_name ILIKE $${paramIndex} OR f.nickname ILIKE $${paramIndex})`,
       );
       countWhereConditions.push(
-        `(f.first_name ILIKE $${paramIndex} OR f.last_name ILIKE $${paramIndex} OR f.nickname ILIKE $${paramIndex})`
+        `(f.first_name ILIKE $${paramIndex} OR f.last_name ILIKE $${paramIndex} OR f.nickname ILIKE $${paramIndex})`,
       );
       params.push(`%${search}%`);
       paramIndex++;
@@ -70,19 +70,19 @@ export async function getMobileFighters(filters?: {
     }
 
     // Achievement filter
-    if (achievementFilter && achievementFilter !== 'all') {
-      let achievementCondition = '';
-      if (achievementFilter === 'champion') {
+    if (achievementFilter && achievementFilter !== "all") {
+      let achievementCondition = "";
+      if (achievementFilter === "champion") {
         achievementCondition = `EXISTS (
           SELECT 1 FROM fighter_achievements fa
           WHERE fa.fighter_id = f.id AND fa.position = '1st'
         )`;
-      } else if (achievementFilter === 'finalist') {
+      } else if (achievementFilter === "finalist") {
         achievementCondition = `EXISTS (
           SELECT 1 FROM fighter_achievements fa
           WHERE fa.fighter_id = f.id AND fa.position IN ('1st', '2nd')
         )`;
-      } else if (achievementFilter === 'medalist') {
+      } else if (achievementFilter === "medalist") {
         achievementCondition = `EXISTS (
           SELECT 1 FROM fighter_achievements fa
           WHERE fa.fighter_id = f.id AND fa.position IN ('1st', '2nd', '3rd')
@@ -92,8 +92,14 @@ export async function getMobileFighters(filters?: {
       countWhereConditions.push(achievementCondition);
     }
 
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-    const countWhereClause = countWhereConditions.length > 0 ? `WHERE ${countWhereConditions.join(' AND ')}` : '';
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(" AND ")}`
+        : "";
+    const countWhereClause =
+      countWhereConditions.length > 0
+        ? `WHERE ${countWhereConditions.join(" AND ")}`
+        : "";
 
     // Count total
     const countSql = `
@@ -103,14 +109,14 @@ export async function getMobileFighters(filters?: {
     `;
 
     const countResult = await query(countSql, params.slice(0, paramIndex - 1));
-    const total = parseInt(countResult[0]?.total || '0');
+    const total = parseInt(countResult[0]?.total || "0");
 
     // Determine ORDER BY
-    let orderBy = '';
-    if (sortOrder === 'asc') {
-      orderBy = 'f.ranking ASC, f.last_name ASC, f.first_name ASC';
+    let orderBy = "";
+    if (sortOrder === "asc") {
+      orderBy = "f.ranking ASC, f.last_name ASC, f.first_name ASC";
     } else {
-      orderBy = 'f.ranking DESC, f.last_name DESC, f.first_name DESC';
+      orderBy = "f.ranking DESC, f.last_name DESC, f.first_name DESC";
     }
 
     // Main query with likes and favorites
@@ -148,10 +154,12 @@ export async function getMobileFighters(filters?: {
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
-    const queryParams = userId ? [...params, userId, limit, offset] : [...params, limit, offset];
+    const queryParams = userId
+      ? [...params, userId, limit, offset]
+      : [...params, limit, offset];
     const fighters = await query(sql, queryParams);
 
-    const fightersWithDecodedSocialLinks = fighters.map(fighter => ({
+    const fightersWithDecodedSocialLinks = fighters.map((fighter) => ({
       ...fighter,
     }));
 
@@ -172,28 +180,28 @@ export async function getMobileFighters(filters?: {
           hasNext: page < totalPages,
           hasPrev: page > 1,
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
-      message: 'Lutteurs récupérés avec succès'
+      message: "Lutteurs récupérés avec succès",
     };
   } catch (error) {
-    console.error('Error in getMobileFighters:', error);
+    console.error("Error in getMobileFighters:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la récupération des lutteurs',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la récupération des lutteurs",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }
 
-
 export async function getMobileFighterById(fighterId: number, userId?: number) {
   try {
     // Vérifier que le lutteur existe
-    const existsSql = "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
+    const existsSql =
+      "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
     const existsResult = await query(existsSql, [fighterId]);
 
     if (existsResult.length === 0) {
@@ -201,9 +209,9 @@ export async function getMobileFighterById(fighterId: number, userId?: number) {
         success: false,
         error: {
           code: 404,
-          message: 'Lutteur non trouvé',
-          timestamp: new Date().toISOString()
-        }
+          message: "Lutteur non trouvé",
+          timestamp: new Date().toISOString(),
+        },
       };
     }
 
@@ -229,20 +237,20 @@ export async function getMobileFighterById(fighterId: number, userId?: number) {
           achievements: achievements,
           transfers: transfers,
           cards: cards,
-          editions: editions
+          editions: editions,
         },
       },
-      message: 'Détails du lutteur récupérés avec succès'
+      message: "Détails du lutteur récupérés avec succès",
     };
   } catch (error) {
-    console.error('Error in getMobileFighterById:', error);
+    console.error("Error in getMobileFighterById:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la récupération des détails du lutteur',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la récupération des détails du lutteur",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }
@@ -287,7 +295,6 @@ async function getFighterInfo(fighterId: number, userId?: number) {
 
   return fighter;
 }
-
 
 // Les autres fonctions restent inchangées...
 async function getFighterRegion(regionId: number) {
@@ -410,7 +417,8 @@ async function getFighterCards(fighterId: number) {
 
 // Remplacer la fonction getAllMatchesForFighter
 async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
-  let whereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1) AND m.status = 'completed'";
+  let whereClause =
+    "(m.fighter1_id = $1 OR m.fighter2_id = $1) AND m.status = 'completed'";
   const params: any[] = [fighterId];
   let paramIndex = 2;
 
@@ -426,19 +434,17 @@ async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
       m.id,
       m.match_number as "matchNumber",
       m.match_date as "matchDate",
-      m.start_time as "startTime",
-      m.start_time2 as "startTime2",
-      m.end_time as "endTime",
+      m.start_time2 as "startTime",
       m.status,
       m.match_result as "matchResult",
       m.total_duration as "totalDuration",
       m.break_count as "breakCount",
-      m.audience_count as "audienceCount",
       m.video_url as "videoUrl",
       m.live_stream_url as "liveStreamUrl",
       m.notes,
       m.created_at as "createdAt",
       m.updated_at as "updatedAt",
+      m.sub_group_id as "subGroupId",
 
       -- Lutteur 1
       m.fighter1_id as "fighter1Id",
@@ -446,11 +452,6 @@ async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
       f1.last_name as "fighter1LastName",
       f1.nickname as "fighter1Nickname",
       f1.profile_image as "fighter1ProfileImage",
-      f1.birth_date as "fighter1BirthDate",
-      f1.height as "fighter1Height",
-      f1.weight as "fighter1Weight",
-      f1.fighting_style as "fighter1Style",
-      f1.ranking as "fighter1Ranking",
       f1.region_id as "fighter1RegionId",
       r1.name as "fighter1RegionName",
       r1.color as "fighter1RegionColor",
@@ -463,15 +464,11 @@ async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
       f2.last_name as "fighter2LastName",
       f2.nickname as "fighter2Nickname",
       f2.profile_image as "fighter2ProfileImage",
-      f2.birth_date as "fighter2BirthDate",
-      f2.height as "fighter2Height",
-      f2.weight as "fighter2Weight",
-      f2.fighting_style as "fighter2Style",
-      f2.ranking as "fighter2Ranking",
       f2.region_id as "fighter2RegionId",
       r2.name as "fighter2RegionName",
       r2.color as "fighter2RegionColor",
       r2.code as "fighter2RegionCode",
+
       m.fighter2_initial_state as "fighter2InitialState",
       
       -- Résultats
@@ -514,14 +511,13 @@ async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
         ELSE 3
       END,
       m.match_date DESC,
-      m.start_time DESC,
       m.start_time2 DESC
     LIMIT 50
   `;
 
   console.log("SQL Query:", sql);
   console.log("Params:", params);
-  
+
   const matches = await query(sql, params);
   console.log("Matches found:", matches.length);
 
@@ -531,7 +527,7 @@ async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
     const enriched = await enrichMatchData(match);
     enrichedMatches.push(enriched);
   }
-  
+
   return enrichedMatches;
 }
 
@@ -542,7 +538,7 @@ async function enrichMatchData(match: any) {
   // Formater les durées et heures
   const formattedDuration = formatDuration(match.totalDuration);
   const formattedStartTime = formatDateTime(match.matchDate, match.startTime);
-  const formattedEndTime = formatDateTime(match.matchDate, match.endTime);
+  // const formattedEndTime = formatDateTime(match.matchDate, match.endTime);
 
   // Formater les données des lutteurs
   const fighter1 = {
@@ -551,17 +547,7 @@ async function enrichMatchData(match: any) {
     lastName: match.fighter1LastName,
     nickname: match.fighter1Nickname,
     profileImage: match.fighter1ProfileImage,
-    birthDate: match.fighter1BirthDate,
-    height: match.fighter1Height,
-    weight: match.fighter1Weight,
-    fightingStyle: match.fighter1Style,
-    ranking: match.fighter1Ranking,
-    region: {
-      id: match.fighter1RegionId,
-      name: match.fighter1RegionName,
-      color: match.fighter1RegionColor,
-      code: match.fighter1RegionCode,
-    },
+    regionName: match.fighter1RegionName,
     initialState: match.fighter1InitialState,
     cards: cards.filter((card: any) => card.fighterId === match.fighter1Id),
   };
@@ -571,18 +557,8 @@ async function enrichMatchData(match: any) {
     firstName: match.fighter2FirstName,
     lastName: match.fighter2LastName,
     nickname: match.fighter2Nickname,
+    regionName: match.fighter2RegionName,
     profileImage: match.fighter2ProfileImage,
-    birthDate: match.fighter2BirthDate,
-    height: match.fighter2Height,
-    weight: match.fighter2Weight,
-    fightingStyle: match.fighter2Style,
-    ranking: match.fighter2Ranking,
-    region: {
-      id: match.fighter2RegionId,
-      name: match.fighter2RegionName,
-      color: match.fighter2RegionColor,
-      code: match.fighter2RegionCode,
-    },
     initialState: match.fighter2InitialState,
     cards: cards.filter((card: any) => card.fighterId === match.fighter2Id),
   };
@@ -604,28 +580,27 @@ async function enrichMatchData(match: any) {
     matchDate: match.matchDate,
     startTime: formattedStartTime,
     startTime2: match.startTime2,
-    endTime: match.endTime,
     status: match.status,
     matchResult: resultType,
     totalDuration: formattedDuration,
     breakCount: match.breakCount,
-    audienceCount: match.audienceCount,
     videoUrl: match.videoUrl,
     liveStreamUrl: match.liveStreamUrl,
     notes: match.notes,
-    createdAt: match.createdAt,
-    updatedAt: match.updatedAt,
+    subGroupId: match.subGroupId,
 
     fighters: {
       fighter1,
       fighter2,
     },
 
-    result: winner ? {
-      winner,
-      loser,
-      resultType,
-    } : null,
+    result: winner
+      ? {
+          winner,
+          loser,
+          resultType,
+        }
+      : null,
 
     context: {
       subGroup: {
@@ -649,7 +624,7 @@ async function enrichMatchData(match: any) {
       competition: {
         id: match.competitionId,
         name: match.competitionName,
-      }
+      },
     },
 
     allCards: cards,
@@ -657,7 +632,6 @@ async function enrichMatchData(match: any) {
 
   return enrichedMatch;
 }
-
 
 async function getCardsForMatch(matchId: number) {
   const sql = `
@@ -713,42 +687,49 @@ async function calculateFighterStats(fighterId: number) {
   `;
 
   const timeResult = await query(timeSql, [fighterId]);
-  const totalSeconds = parseInt(timeResult[0]?.totalSeconds || '0');
+  const totalSeconds = parseInt(timeResult[0]?.totalSeconds || "0");
 
   const totalMinutes = Math.floor(totalSeconds / 60);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
 
   // Calculer le ratio de victoires
-  const totalMatches = parseInt(matchStats.totalMatches || '0');
-  const wins = parseInt(matchStats.wins || '0');
-  const winRate = totalMatches > 0 ? (wins / totalMatches * 100) : 0;
+  const totalMatches = parseInt(matchStats.totalMatches || "0");
+  const wins = parseInt(matchStats.wins || "0");
+  const winRate = totalMatches > 0 ? (wins / totalMatches) * 100 : 0;
 
   return {
     totalMatches: totalMatches,
     wins: wins,
-    losses: parseInt(matchStats.losses || '0'),
+    losses: parseInt(matchStats.losses || "0"),
     winRate: Math.round(winRate * 10) / 10,
-    yellowCards: parseInt(cardStats.yellowCards || '0'),
-    redCards: parseInt(cardStats.redCards || '0'),
-    totalCards: parseInt(cardStats.totalCards || '0'),
+    yellowCards: parseInt(cardStats.yellowCards || "0"),
+    redCards: parseInt(cardStats.redCards || "0"),
+    totalCards: parseInt(cardStats.totalCards || "0"),
     totalFightTime: {
       hours: hours,
       minutes: minutes,
       totalMinutes: totalMinutes,
-      formatted: hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+      formatted: hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`,
     },
-    averageFightTime: totalMatches > 0 ? {
-      minutes: Math.round(totalMinutes / totalMatches),
-      formatted: `${Math.round(totalMinutes / totalMatches)}m`
-    } : { minutes: 0, formatted: '0m' }
+    averageFightTime:
+      totalMatches > 0
+        ? {
+            minutes: Math.round(totalMinutes / totalMatches),
+            formatted: `${Math.round(totalMinutes / totalMatches)}m`,
+          }
+        : { minutes: 0, formatted: "0m" },
   };
 }
 
-export async function getMobileFighterMatches(fighterId: number, editionId?: number) {
+export async function getMobileFighterMatches(
+  fighterId: number,
+  editionId?: number,
+) {
   try {
     // Vérifier que le lutteur existe
-    const existsSql = "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
+    const existsSql =
+      "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
     const existsResult = await query(existsSql, [fighterId]);
 
     if (existsResult.length === 0) {
@@ -756,9 +737,9 @@ export async function getMobileFighterMatches(fighterId: number, editionId?: num
         success: false,
         error: {
           code: 404,
-          message: 'Lutteur non trouvé',
-          timestamp: new Date().toISOString()
-        }
+          message: "Lutteur non trouvé",
+          timestamp: new Date().toISOString(),
+        },
       };
     }
 
@@ -766,19 +747,21 @@ export async function getMobileFighterMatches(fighterId: number, editionId?: num
     const matches = await getAllMatchesForFighter(fighterId, editionId);
 
     // Grouper par statut
-    const liveMatches = matches.filter(m => ['live', 'round_break'].includes(m.status));
-    const scheduledMatches = matches.filter(m => m.status === 'scheduled');
-    const completedMatches = matches.filter(m => m.status === 'completed');
-    const otherMatches = matches.filter(m => !['live'].includes(m.status));
+    const liveMatches = matches.filter((m) =>
+      ["live", "round_break"].includes(m.status),
+    );
+    const scheduledMatches = matches.filter((m) => m.status === "scheduled");
+    const completedMatches = matches.filter((m) => m.status === "completed");
+    const otherMatches = matches.filter((m) => !["live"].includes(m.status));
 
     // Grouper par année d'édition
     const matchesByEdition: Record<string, any> = {};
-    matches.forEach(match => {
+    matches.forEach((match) => {
       const editionKey = `${match.context.edition.year} - ${match.context.edition.theme}`;
       if (!matchesByEdition[editionKey]) {
         matchesByEdition[editionKey] = {
           edition: match.context.edition,
-          matches: []
+          matches: [],
         };
       }
       matchesByEdition[editionKey].matches.push(match);
@@ -794,8 +777,8 @@ export async function getMobileFighterMatches(fighterId: number, editionId?: num
             // scheduled: scheduledMatches,
             // completed: completedMatches,
             ...otherMatches,
-            byEdition: Object.values(matchesByEdition)
-          }
+            byEdition: Object.values(matchesByEdition),
+          },
         },
         summary: {
           total: matches.length,
@@ -803,21 +786,23 @@ export async function getMobileFighterMatches(fighterId: number, editionId?: num
           scheduled: scheduledMatches.length,
           completed: completedMatches.length,
           other: otherMatches.length,
-          wins: matches.filter(m => m.result?.winner?.id === fighterId).length,
-          losses: matches.filter(m => m.result?.loser?.id === fighterId).length
-        }
+          wins: matches.filter((m) => m.result?.winner?.id === fighterId)
+            .length,
+          losses: matches.filter((m) => m.result?.loser?.id === fighterId)
+            .length,
+        },
       },
-      message: 'Matchs du lutteur récupérés avec succès'
+      message: "Matchs du lutteur récupérés avec succès",
     };
   } catch (error) {
-    console.error('Error in getMobileFighterMatches:', error);
+    console.error("Error in getMobileFighterMatches:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la récupération des matchs du lutteur',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la récupération des matchs du lutteur",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }

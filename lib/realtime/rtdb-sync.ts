@@ -2,7 +2,7 @@
 import { getAdminRTDB } from "./rtdb-admin";
 import { buildRealtimeMatchPayload } from "./builders/match-builder";
 import { buildRealtimeSubGroupPayload } from "./builders/subgroup-builder";
-import { REALTIME_NODES } from "@/types/realtime";
+import { REALTIME_NODES, RealtimeLiveMatchInfo } from "@/types/realtime";
 
 /**
  * Met à jour un match dans RTDB.
@@ -84,18 +84,21 @@ export async function updateMatchLiveState(
  */
 export async function syncEditionLiveMatch(
   editionId: number,
-  subGroupId: number | null,
-  matchId: number | null
+  liveMatchInfo: RealtimeLiveMatchInfo | null
 ): Promise<void> {
   try {
     const db = getAdminRTDB();
     const ref = db.ref(`${REALTIME_NODES.EDITIONS}/${editionId}`);
-    
-    await ref.update({
-      status: "ongoing",
-      liveMatch: subGroupId && matchId ? { subGroupId, matchId } : null,
+    const update: any = {
       updatedAt: Date.now()
-    });
+    };
+    if (liveMatchInfo === null) {
+      update.liveMatch = null;
+    } else {
+      update.liveMatch = liveMatchInfo;
+    }
+    await ref.update(update);
+    console.log(`✅ RTDB liveMatch sync for edition ${editionId}: ${liveMatchInfo ? `match ${liveMatchInfo.matchId}` : 'cleared'}`);
   } catch (error) {
     console.error(`❌ RTDB syncEditionLiveMatch failed for edition ${editionId}:`, error);
   }

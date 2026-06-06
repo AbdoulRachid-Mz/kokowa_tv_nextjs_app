@@ -1,9 +1,9 @@
-'use server';
+"use server";
 
-import { query } from '@/lib/db/neon-client';
-import { Region } from '@/types';
-import { getParticipatedEditions } from './editions';
-import { formatDateTime, formatDuration } from '@/utils/duration';
+import { query } from "@/lib/db/neon-client";
+import { Region } from "@/types";
+import { getParticipatedEditions } from "./editions";
+import { formatDateTime, formatDuration } from "@/utils/duration";
 
 export async function getMobileRegions(filters?: {
   page?: number;
@@ -23,7 +23,7 @@ export async function getMobileRegions(filters?: {
     `;
 
     const countResult = await query<{ total: string }>(countSql);
-    const total = parseInt(countResult[0]?.total || '0');
+    const total = parseInt(countResult[0]?.total || "0");
 
     const sql = `
       SELECT 
@@ -57,25 +57,29 @@ export async function getMobileRegions(filters?: {
           hasNext: page < totalPages,
           hasPrev: page > 1,
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
-      message: 'Régions récupérées avec succès'
+      message: "Régions récupérées avec succès",
     };
   } catch (error) {
-    console.error('Error in getMobileRegions:', error);
+    console.error("Error in getMobileRegions:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la récupération des régions',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la récupération des régions",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }
 
 // Mettre à jour la fonction getMobileRegionById pour accepter editionId
-export async function getMobileRegionById(regionId: number, userId?: number, editionId?: number) {
+export async function getMobileRegionById(
+  regionId: number,
+  userId?: number,
+  editionId?: number,
+) {
   try {
     // Récupérer les informations de la région avec likes et favoris
     const regionInfo = await getRegionInfo(regionId, userId);
@@ -84,9 +88,9 @@ export async function getMobileRegionById(regionId: number, userId?: number, edi
         success: false,
         error: {
           code: 404,
-          message: 'Région non trouvée',
-          timestamp: new Date().toISOString()
-        }
+          message: "Région non trouvée",
+          timestamp: new Date().toISOString(),
+        },
       };
     }
 
@@ -95,7 +99,11 @@ export async function getMobileRegionById(regionId: number, userId?: number, edi
     const matches = await getRegionMatches(regionId, editionId);
     const transfers = await getRegionTransfers(regionId);
     const achievements = await getRegionAchievements(regionId);
-    const stats = calculateRegionStats(fighters, matches?.data?.matches?.all || [], achievements);
+    const stats = calculateRegionStats(
+      fighters,
+      matches?.data?.matches?.all || [],
+      achievements,
+    );
 
     return {
       success: true,
@@ -113,26 +121,30 @@ export async function getMobileRegionById(regionId: number, userId?: number, edi
           totalAchievements: achievements.length,
           liveMatches: matches?.data?.matches?.grouped?.live?.length || 0,
           wins: matches?.data?.matches?.grouped?.byEdition?.[0]?.wins || 0,
-          losses: matches?.data?.matches?.grouped?.byEdition?.[0]?.losses || 0
+          losses: matches?.data?.matches?.grouped?.byEdition?.[0]?.losses || 0,
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
-      message: 'Données de la région récupérées avec succès'
+      message: "Données de la région récupérées avec succès",
     };
   } catch (error) {
-    console.error('Error in getMobileRegionById:', error);
+    console.error("Error in getMobileRegionById:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la récupération des données de la région',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la récupération des données de la région",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }
 // Mettre à jour la fonction getMobileRegionById pour accepter editionId
-export async function getMobileRegionById2(regionId: number, userId?: number, editionId?: number) {
+export async function getMobileRegionById2(
+  regionId: number,
+  userId?: number,
+  editionId?: number,
+) {
   try {
     // Récupérer les informations de la région avec likes et favoris
     const regionInfo = await getRegionInfo(regionId, userId);
@@ -141,9 +153,9 @@ export async function getMobileRegionById2(regionId: number, userId?: number, ed
         success: false,
         error: {
           code: 404,
-          message: 'Région non trouvée',
-          timestamp: new Date().toISOString()
-        }
+          message: "Région non trouvée",
+          timestamp: new Date().toISOString(),
+        },
       };
     }
 
@@ -171,22 +183,22 @@ export async function getMobileRegionById2(regionId: number, userId?: number, ed
             totalAchievements: achievements.length,
             liveMatches: 0,
             wins: 0,
-            losses: 0
+            losses: 0,
           },
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
-      message: 'Données de la région récupérées avec succès'
+      message: "Données de la région récupérées avec succès",
     };
   } catch (error) {
-    console.error('Error in getMobileRegionById:', error);
+    console.error("Error in getMobileRegionById:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la récupération des données de la région',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la récupération des données de la région",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }
@@ -209,10 +221,9 @@ async function getCardsForMatch(matchId: number) {
   return await query(sql, [matchId]);
 }
 
-
 // async function getRegionInfo(regionId: number, userId?: number) {
 //   const sql = `
-//     SELECT 
+//     SELECT
 //       r.id,
 //       r.name,
 //       r.code,
@@ -278,7 +289,9 @@ async function getRegionInfo(regionId: number, userId?: number) {
       ), 0) as "likes",
       
       -- Vérifier si l'utilisateur a liké cette région
-      ${userId ? `
+      ${
+        userId
+          ? `
       EXISTS(
         SELECT 1
         FROM interactions i
@@ -287,7 +300,9 @@ async function getRegionInfo(regionId: number, userId?: number) {
           AND i.interaction_type = 'like'
           AND i.user_id = $2
       ) as "isMyFavorite"
-      ` : 'FALSE as "isMyFavorite"'},
+      `
+          : 'FALSE as "isMyFavorite"'
+      },
       
       -- Infos du coach
       c.id as "coachId",
@@ -304,7 +319,6 @@ async function getRegionInfo(regionId: number, userId?: number) {
   const result = await query(sql, params);
   return result[0] || null;
 }
-
 
 async function getRegionFighters(regionId: number) {
   const sql = `
@@ -328,19 +342,23 @@ export async function getRegionMatches(regionId: number, editionId?: number) {
     const matches = await getAllMatchesForRegion(regionId, editionId);
 
     // Grouper par statut
-    const liveMatches = matches.filter(m => ['live', 'round_break'].includes(m.status));
-    const scheduledMatches = matches.filter(m => m.status === 'scheduled');
-    const completedMatches = matches.filter(m => m.status === 'completed');
-    const otherMatches = matches.filter(m => !['live', 'round_break'].includes(m.status));
+    const liveMatches = matches.filter((m) =>
+      ["live", "round_break"].includes(m.status),
+    );
+    const scheduledMatches = matches.filter((m) => m.status === "scheduled");
+    const completedMatches = matches.filter((m) => m.status === "completed");
+    const otherMatches = matches.filter(
+      (m) => !["live", "round_break"].includes(m.status),
+    );
 
     // Grouper par année d'édition
     const matchesByEdition: Record<string, any> = {};
-    matches.forEach(match => {
+    matches.forEach((match) => {
       const editionKey = `${match.context.edition.year} - ${match.context.edition.theme}`;
       if (!matchesByEdition[editionKey]) {
         matchesByEdition[editionKey] = {
           edition: match.context.edition,
-          matches: []
+          matches: [],
         };
       }
       matchesByEdition[editionKey].matches.push(match);
@@ -356,8 +374,8 @@ export async function getRegionMatches(regionId: number, editionId?: number) {
             // scheduled: scheduledMatches,
             // completed: completedMatches,
             otherMatches,
-            byEdition: Object.values(matchesByEdition)
-          }
+            byEdition: Object.values(matchesByEdition),
+          },
         },
         summary: {
           total: matches.length,
@@ -365,28 +383,34 @@ export async function getRegionMatches(regionId: number, editionId?: number) {
           scheduled: scheduledMatches.length,
           completed: completedMatches.length,
           other: otherMatches.length,
-          wins: matches.filter(m => m.regionContext.isWinner).length,
-          losses: matches.filter(m => m.regionContext.isInvolved && !m.regionContext.isWinner && m.result).length
-        }
+          wins: matches.filter((m) => m.regionContext.isWinner).length,
+          losses: matches.filter(
+            (m) =>
+              m.regionContext.isInvolved &&
+              !m.regionContext.isWinner &&
+              m.result,
+          ).length,
+        },
       },
-      message: 'Matchs de la région récupérés avec succès'
+      message: "Matchs de la région récupérés avec succès",
     };
   } catch (error) {
-    console.error('Error in getRegionMatches:', error);
+    console.error("Error in getRegionMatches:", error);
     return {
       success: false,
       error: {
         code: 500,
-        message: 'Erreur lors de la récupération des matchs de la région',
-        timestamp: new Date().toISOString()
-      }
+        message: "Erreur lors de la récupération des matchs de la région",
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 }
 
 // Remplacer la fonction getAllMatchesForRegion
 async function getAllMatchesForRegion(regionId: number, editionId?: number) {
-  let whereClause = "(f1.region_id = $1 OR f2.region_id = $1) AND m.status = 'completed'";
+  let whereClause =
+    "(f1.region_id = $1 OR f2.region_id = $1) AND m.status = 'completed'";
   const params: any[] = [regionId];
   let paramIndex = 2;
 
@@ -402,9 +426,7 @@ async function getAllMatchesForRegion(regionId: number, editionId?: number) {
       m.id,
       m.match_number as "matchNumber",
       m.match_date as "matchDate",
-      m.start_time as "startTime",
-      m.start_time2 as "startTime2",
-      m.end_time as "endTime",
+      m.start_time2 as "startTime",
       m.status,
       m.match_result as "matchResult",
       m.total_duration as "totalDuration",
@@ -414,6 +436,8 @@ async function getAllMatchesForRegion(regionId: number, editionId?: number) {
       m.notes,
       m.winner_fighter_id as "winnerFighterId",
       m.loser_fighter_id as "loserFighterId",
+      m.sub_group_id as "subGroupId",
+
       
       -- Lutteur 1
       m.fighter1_id as "fighter1Id",
@@ -421,16 +445,8 @@ async function getAllMatchesForRegion(regionId: number, editionId?: number) {
       f1.last_name as "fighter1LastName",
       f1.nickname as "fighter1Nickname",
       f1.profile_image as "fighter1ProfileImage",
-      f1.birth_date as "fighter1BirthDate",
-      f1.height as "fighter1Height",
-      f1.weight as "fighter1Weight",
-      f1.fighting_style as "fighter1Style",
-      f1.ranking as "fighter1Ranking",
-      f1.region_id as "fighter1RegionId",
       r1.name as "fighter1RegionName",
-      r1.color as "fighter1RegionColor",
-      r1.code as "fighter1RegionCode",
-      m.fighter1_initial_state as "fighter1InitialState",
+
       
       -- Lutteur 2
       m.fighter2_id as "fighter2Id",
@@ -438,15 +454,8 @@ async function getAllMatchesForRegion(regionId: number, editionId?: number) {
       f2.last_name as "fighter2LastName",
       f2.nickname as "fighter2Nickname",
       f2.profile_image as "fighter2ProfileImage",
-      f2.birth_date as "fighter2BirthDate",
-      f2.height as "fighter2Height",
-      f2.weight as "fighter2Weight",
-      f2.fighting_style as "fighter2Style",
-      f2.ranking as "fighter2Ranking",
       f2.region_id as "fighter2RegionId",
       r2.name as "fighter2RegionName",
-      r2.color as "fighter2RegionColor",
-      r2.code as "fighter2RegionCode",
       m.fighter2_initial_state as "fighter2InitialState",
       
       -- Contexte
@@ -485,13 +494,13 @@ async function getAllMatchesForRegion(regionId: number, editionId?: number) {
         ELSE 3
       END,
       m.match_date DESC,
-      m.start_time DESC
+      m.start_time2 DESC
     LIMIT 50
   `;
 
   console.log("SQL Query:", sql);
   console.log("Params:", params);
-  
+
   const matches = await query(sql, params);
   console.log("Matches found for region:", matches.length);
 
@@ -501,7 +510,7 @@ async function getAllMatchesForRegion(regionId: number, editionId?: number) {
     const enriched = await enrichRegionMatchData(match, regionId);
     enrichedMatches.push(enriched);
   }
-  
+
   return enrichedMatches;
 }
 
@@ -512,7 +521,7 @@ async function enrichRegionMatchData(match: any, regionId: number) {
   // Formater les durées et heures
   const formattedDuration = formatDuration(match.totalDuration);
   const formattedStartTime = formatDateTime(match.matchDate, match.startTime);
-  const formattedEndTime = formatDateTime(match.matchDate, match.endTime);
+  // const formattedEndTime = formatDateTime(match.matchDate, match.endTime);
 
   // Formater les données des lutteurs
   const fighter1 = {
@@ -521,17 +530,7 @@ async function enrichRegionMatchData(match: any, regionId: number) {
     lastName: match.fighter1LastName,
     nickname: match.fighter1Nickname,
     profileImage: match.fighter1ProfileImage,
-    birthDate: match.fighter1BirthDate,
-    height: match.fighter1Height,
-    weight: match.fighter1Weight,
-    fightingStyle: match.fighter1Style,
-    ranking: match.fighter1Ranking,
-    region: {
-      id: match.fighter1RegionId,
-      name: match.fighter1RegionName,
-      color: match.fighter1RegionColor,
-      code: match.fighter1RegionCode,
-    },
+    regionName: match.fighter1RegionName,
     initialState: match.fighter1InitialState,
     cards: cards.filter((card: any) => card.fighterId === match.fighter1Id),
   };
@@ -542,27 +541,20 @@ async function enrichRegionMatchData(match: any, regionId: number) {
     lastName: match.fighter2LastName,
     nickname: match.fighter2Nickname,
     profileImage: match.fighter2ProfileImage,
-    birthDate: match.fighter2BirthDate,
-    height: match.fighter2Height,
-    weight: match.fighter2Weight,
-    fightingStyle: match.fighter2Style,
-    ranking: match.fighter2Ranking,
-    region: {
-      id: match.fighter2RegionId,
-      name: match.fighter2RegionName,
-      color: match.fighter2RegionColor,
-      code: match.fighter2RegionCode,
-    },
+    regionName: match.fighter2RegionName,
     initialState: match.fighter2InitialState,
     cards: cards.filter((card: any) => card.fighterId === match.fighter2Id),
   };
 
   // Déterminer si la région est impliquée et si elle a gagné
-  const isRegionInvolved = match.fighter1RegionId === regionId || match.fighter2RegionId === regionId;
-  const isRegionWinner = match.winnerFighterId && (
-    (match.fighter1RegionId === regionId && match.winnerFighterId === match.fighter1Id) ||
-    (match.fighter2RegionId === regionId && match.winnerFighterId === match.fighter2Id)
-  );
+  const isRegionInvolved =
+    match.fighter1RegionId === regionId || match.fighter2RegionId === regionId;
+  const isRegionWinner =
+    match.winnerFighterId &&
+    ((match.fighter1RegionId === regionId &&
+      match.winnerFighterId === match.fighter1Id) ||
+      (match.fighter2RegionId === regionId &&
+        match.winnerFighterId === match.fighter2Id));
 
   // Déterminer le vainqueur et le perdant
   let winner = null;
@@ -580,35 +572,38 @@ async function enrichRegionMatchData(match: any, regionId: number) {
     matchNumber: match.matchNumber,
     matchDate: match.matchDate,
     startTime: formattedStartTime,
-    startTime2: match.startTime2,
-    endTime: formattedEndTime,
     status: match.status,
     matchResult: resultType,
     totalDuration: formattedDuration,
     breakCount: match.breakCount,
-    audienceCount: match.audienceCount,
+
     videoUrl: match.videoUrl,
     liveStreamUrl: match.liveStreamUrl,
     notes: match.notes,
-    createdAt: match.createdAt,
-    updatedAt: match.updatedAt,
+    subGroupId: match.subGroupId,
 
     fighters: {
       fighter1,
       fighter2,
     },
 
-    result: winner ? {
-      winner,
-      loser,
-      resultType,
-    } : null,
+    result: winner
+      ? {
+          winner,
+          loser,
+          resultType,
+        }
+      : null,
 
     regionContext: {
       isInvolved: isRegionInvolved,
       isWinner: isRegionWinner,
-      regionRole: match.fighter1RegionId === regionId ? 'fighter1' :
-        match.fighter2RegionId === regionId ? 'fighter2' : 'none'
+      regionRole:
+        match.fighter1RegionId === regionId
+          ? "fighter1"
+          : match.fighter2RegionId === regionId
+            ? "fighter2"
+            : "none",
     },
 
     context: {
@@ -633,7 +628,7 @@ async function enrichRegionMatchData(match: any, regionId: number) {
       competition: {
         id: match.competitionId,
         name: match.competitionName,
-      }
+      },
     },
 
     allCards: cards,
@@ -641,7 +636,6 @@ async function enrichRegionMatchData(match: any, regionId: number) {
 
   return enrichedMatch;
 }
-
 
 async function getRegionTransfers(regionId: number) {
   const sql = `
@@ -707,18 +701,20 @@ async function getRegionAchievements(regionId: number) {
 }
 
 function organizeMatches(matches: any[]) {
-  const liveMatches = matches.filter(m => ['live', 'round_break'].includes(m.status));
-  const scheduledMatches = matches.filter(m => m.status === 'scheduled');
-  const completedMatches = matches.filter(m => m.status === 'completed');
+  const liveMatches = matches.filter((m) =>
+    ["live", "round_break"].includes(m.status),
+  );
+  const scheduledMatches = matches.filter((m) => m.status === "scheduled");
+  const completedMatches = matches.filter((m) => m.status === "completed");
 
   // Grouper par édition
   const matchesByEdition: Record<string, any> = {};
-  matches.forEach(match => {
+  matches.forEach((match) => {
     const editionKey = `${match.context.edition.year} - ${match.context.edition.theme}`;
     if (!matchesByEdition[editionKey]) {
       matchesByEdition[editionKey] = {
         edition: match.context.edition,
-        matches: []
+        matches: [],
       };
     }
     matchesByEdition[editionKey].matches.push(match);
@@ -728,22 +724,22 @@ function organizeMatches(matches: any[]) {
     live: liveMatches,
     scheduled: scheduledMatches,
     completed: completedMatches,
-    byEdition: Object.values(matchesByEdition)
+    byEdition: Object.values(matchesByEdition),
   };
 }
 
 function organizeAchievements(achievements: any[]) {
   // Grouper par compétition/édition
   const byCompetition: Record<string, any> = {};
-  achievements.forEach(achievement => {
+  achievements.forEach((achievement) => {
     const key = `${achievement.editionTheme} ${achievement.editionYear}`;
     if (!byCompetition[key]) {
       byCompetition[key] = {
         edition: {
           theme: achievement.editionTheme,
-          year: achievement.editionYear
+          year: achievement.editionYear,
         },
-        achievements: []
+        achievements: [],
       };
     }
     byCompetition[key].achievements.push(achievement);
@@ -751,21 +747,26 @@ function organizeAchievements(achievements: any[]) {
 
   return {
     all: achievements,
-    byCompetition: Object.values(byCompetition)
+    byCompetition: Object.values(byCompetition),
   };
 }
 
-function calculateRegionStats(fighters: any[], matches: any[], achievements: any[]) {
+function calculateRegionStats(
+  fighters: any[],
+  matches: any[],
+  achievements: any[],
+) {
   const totalMatches = matches.length;
-  const wins = matches.filter(match => {
+  const wins = matches.filter((match) => {
     // Correction: utiliser le résultat du match
     if (!match.result) return false;
     // Vérifier si le vainqueur est de cette région
-    return fighters.some(fighter => fighter.id === match.result?.winner?.id);
+    return fighters.some((fighter) => fighter.id === match.result?.winner?.id);
   }).length;
 
   const losses = totalMatches - wins;
-  const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100 * 10) / 10 : 0;
+  const winRate =
+    totalMatches > 0 ? Math.round((wins / totalMatches) * 100 * 10) / 10 : 0;
 
   return {
     totalMatches,
@@ -773,7 +774,7 @@ function calculateRegionStats(fighters: any[], matches: any[], achievements: any
     losses,
     winRate,
     totalFighters: fighters.length,
-    champions: fighters.filter(f => f.isChampion).length,
-    totalAchievements: achievements.length
+    champions: fighters.filter((f) => f.isChampion).length,
+    totalAchievements: achievements.length,
   };
 }

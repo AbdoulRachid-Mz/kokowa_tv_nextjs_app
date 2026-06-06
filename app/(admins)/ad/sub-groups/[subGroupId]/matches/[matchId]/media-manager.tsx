@@ -20,18 +20,20 @@ interface MediaManagerProps {
   isSaving: boolean;
 }
 
-export function MediaManager({ 
+export function MediaManager({
   matchId,
   subGroupId,
-  videoUrl, 
-  liveStreamUrl, 
+  videoUrl,
+  liveStreamUrl,
   onUpdateMatch,
   onUpdateSubGroup,
-  isSaving 
+  isSaving,
 }: MediaManagerProps) {
   const [localVideoUrl, setLocalVideoUrl] = useState(videoUrl || "");
-  const [localLiveStreamUrl, setLocalLiveStreamUrl] = useState(liveStreamUrl || "");
-  
+  const [localLiveStreamUrl, setLocalLiveStreamUrl] = useState(
+    liveStreamUrl || "",
+  );
+
   // Synchroniser quand les props changent
   useEffect(() => {
     setLocalVideoUrl(videoUrl || "");
@@ -40,29 +42,29 @@ export function MediaManager({
   useEffect(() => {
     setLocalLiveStreamUrl(liveStreamUrl || "");
   }, [liveStreamUrl]);
-  
+
   const saveVideoUrl = () => {
     onUpdateSubGroup({ video_url: localVideoUrl || undefined });
-    toast.success("URL vidéo du rencontre sauvegardée");
+    toast.success("URL live de la vidéo du rencontre sauvegardée");
   };
-  
+
   const saveLiveStreamUrl = () => {
     onUpdateMatch({ video_url: localLiveStreamUrl || undefined });
-    toast.success("URL live du match sauvegardée");
+    toast.success("URL de la vidéo du match sauvegardée");
   };
-  
+
   const clearVideoUrl = () => {
     setLocalVideoUrl("");
     onUpdateSubGroup({ video_url: undefined });
-    toast.success("URL vidéo supprimée");
+    toast.success("URL de la vidéo supprimée");
   };
-  
+
   const clearLiveStreamUrl = () => {
     setLocalLiveStreamUrl("");
     onUpdateMatch({ video_url: undefined });
-    toast.success("URL live supprimée");
+    toast.success("URL de la vidéo supprimée");
   };
-  
+
   return (
     <Card>
       <CardHeader>
@@ -75,9 +77,9 @@ export function MediaManager({
         <div className="space-y-3">
           <Label className="flex items-center gap-2">
             <FileVideo className="h-4 w-4" />
-            URL de la vidéo (Rencontre)
+            URL live de la Rencontre
           </Label>
-          
+
           <div className="flex gap-2">
             <Input
               value={localVideoUrl}
@@ -89,7 +91,9 @@ export function MediaManager({
             <Button
               onClick={saveVideoUrl}
               size="icon"
-              disabled={isSaving || !localVideoUrl || localVideoUrl === videoUrl}
+              disabled={
+                isSaving || !localVideoUrl || localVideoUrl === videoUrl
+              }
               title="Sauvegarder"
             >
               <Save className="h-4 w-4" />
@@ -110,13 +114,13 @@ export function MediaManager({
             Cette vidéo sera disponible pour toute la Rencontre
           </Typography>
         </div>
-        
+
         <div className="space-y-3">
           <Label className="flex items-center gap-2">
             <Globe className="h-4 w-4" />
-            Stream en direct (Match)
+            URL de la vidéo (Match)
           </Label>
-          
+
           <div className="flex gap-2">
             <Input
               value={localLiveStreamUrl}
@@ -128,7 +132,11 @@ export function MediaManager({
             <Button
               onClick={saveLiveStreamUrl}
               size="icon"
-              disabled={isSaving || !localLiveStreamUrl || localLiveStreamUrl === liveStreamUrl}
+              disabled={
+                isSaving ||
+                !localLiveStreamUrl ||
+                localLiveStreamUrl === liveStreamUrl
+              }
               title="Sauvegarder"
             >
               <Save className="h-4 w-4" />

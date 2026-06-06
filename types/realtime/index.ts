@@ -74,6 +74,14 @@ export interface RealtimeMatchDocument {
   updatedAt: number;
 }
 
+export interface RealtimeLiveMatchInfo {
+  subGroupId: number;
+  matchId: number;
+  status: MatchStatus; // "live" | "round_break" | "reclamation"
+  fighter1Id: number | null;
+  fighter2Id: number | null;
+}
+
 // ─── Sous-groupe RTDB Cible ──────────────────────────────────────────────────
 
 /**
@@ -104,11 +112,9 @@ export interface RealtimeSubGroupDocument {
  */
 export interface RealtimeEditionDocument {
   status: string;
-  liveMatch: {
-    subGroupId: number | null;
-    matchId: number | null;
-  } | null;
+  liveMatch: RealtimeLiveMatchInfo | null;
   updatedAt: number;
+  
   /** 
    * Collection de sous-groupes indexée par leur ID PostgreSQL 
    */
