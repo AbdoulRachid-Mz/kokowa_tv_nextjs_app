@@ -429,6 +429,7 @@ async function getMatchesForSubGroup(subGroupId: number) {
       breakCount: match.breakCount,
       videoUrl: match.videoUrl,
       liveStreamUrl: match.liveStreamUrl,
+      subGroupId: match.subGroupId,
       notes: match.notes,
       fighters: {
         fighter1,
@@ -496,7 +497,6 @@ async function getSubgroupsForGroup(groupId: number) {
   }));
 }
 
-//Add startTime2 field to the SQL query to fetch live match data
 async function getLiveMatchForEdition(editionId: number) {
   const sql = `
     SELECT 
@@ -509,6 +509,7 @@ async function getLiveMatchForEdition(editionId: number) {
       m.audience_count as "audienceCount",
       m.video_url as "videoUrl",
       m.notes,
+      m.sub_group_id as "subGroupId",
       
       -- Lutteur 1
       m.fighter1_id as "fighter1Id",
@@ -609,7 +610,7 @@ async function getLiveMatchForEdition(editionId: number) {
     fieldsToDelete.forEach((field) => delete liveMatch[field]);
   }
 
-  return liveMatch;
+  return {editionId, ...liveMatch};
 }
 
 export async function getEditionStats(editionId: number) {

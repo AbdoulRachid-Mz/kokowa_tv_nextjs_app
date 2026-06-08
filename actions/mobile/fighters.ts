@@ -387,9 +387,7 @@ async function getFighterCards(fighterId: number) {
       fc.id,
       fc.match_id as "matchId",
       fc.card_type as "cardType",
-      fc.card_reason as "cardReason",
       fc.minute_given as "minuteGiven",
-      fc.is_cancelled as "isCancelled",
       fc.created_at as "createdAt",
       
       m.match_number as "matchNumber",
@@ -408,7 +406,7 @@ async function getFighterCards(fighterId: number) {
     JOIN matches m ON fc.match_id = m.id
     JOIN fighters f1 ON m.fighter1_id = f1.id
     JOIN fighters f2 ON m.fighter2_id = f2.id
-    WHERE fc.fighter_id = $1 AND fc.is_cancelled = FALSE
+    WHERE fc.fighter_id = $1
     ORDER BY m.match_date DESC, fc.minute_given
   `;
 
@@ -588,6 +586,7 @@ async function enrichMatchData(match: any) {
     liveStreamUrl: match.liveStreamUrl,
     notes: match.notes,
     subGroupId: match.subGroupId,
+    editionId:  match.editionId,
 
     fighters: {
       fighter1,
@@ -638,12 +637,10 @@ async function getCardsForMatch(matchId: number) {
     SELECT 
       fc.id,
       fc.fighter_id as "fighterId",
-      fc.card_type as "cardType",
-      fc.card_reason as "cardReason",
-      fc.minute_given as "minuteGiven",
-      fc.is_cancelled as "isCancelled"
+        fc.card_type as "cardType",
+      fc.minute_given as "minuteGiven"
     FROM fighter_cards fc
-    WHERE fc.match_id = $1 AND fc.is_cancelled = FALSE
+    WHERE fc.match_id = $1
     ORDER BY fc.minute_given
   `;
 
@@ -704,7 +701,6 @@ async function calculateFighterStats(fighterId: number) {
     losses: parseInt(matchStats.losses || "0"),
     winRate: Math.round(winRate * 10) / 10,
     yellowCards: parseInt(cardStats.yellowCards || "0"),
-    redCards: parseInt(cardStats.redCards || "0"),
     totalCards: parseInt(cardStats.totalCards || "0"),
     totalFightTime: {
       hours: hours,

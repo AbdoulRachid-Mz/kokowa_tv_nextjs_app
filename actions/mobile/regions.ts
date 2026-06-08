@@ -210,11 +210,9 @@ async function getCardsForMatch(matchId: number) {
       fc.id,
       fc.fighter_id as "fighterId",
       fc.card_type as "cardType",
-      fc.card_reason as "cardReason",
       fc.minute_given as "minuteGiven",
-      fc.is_cancelled as "isCancelled"
     FROM fighter_cards fc
-    WHERE fc.match_id = $1 AND fc.is_cancelled = FALSE
+    WHERE fc.match_id = $1
     ORDER BY fc.minute_given
   `;
 
@@ -581,6 +579,7 @@ async function enrichRegionMatchData(match: any, regionId: number) {
     liveStreamUrl: match.liveStreamUrl,
     notes: match.notes,
     subGroupId: match.subGroupId,
+    editionId:  match.editionId,
 
     fighters: {
       fighter1,

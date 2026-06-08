@@ -18,7 +18,8 @@ export async function buildRealtimeMatchPayload(
        m.video_url,
        m.live_stream_url,
        m.sub_group_id,
-       ce.id AS edition_id
+       ce.id AS edition_id,
+       m.start_time2
      FROM matches m
      JOIN sub_groups sg ON sg.id = m.sub_group_id
      JOIN phase_groups pg ON pg.id = sg.group_id
@@ -64,6 +65,7 @@ export async function buildRealtimeMatchPayload(
     videoUrl: row.video_url,
     liveStreamUrl: row.live_stream_url,
     updatedAt: Date.now(),
+    startTime: row.start_time2 || null,
     cards,
   };
 
