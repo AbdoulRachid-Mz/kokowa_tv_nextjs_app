@@ -415,10 +415,10 @@ async function getFighterCards(fighterId: number) {
 
 // Remplacer la fonction getAllMatchesForFighter
 async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
-let whereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";  const params: any[] = [fighterId];
+  let whereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";
+  const params: any[] = [fighterId];
   let paramIndex = 2;
 
-  // Ajouter le filtre par édition si fourni
   if (editionId) {
     whereClause += " AND p.edition_id = $" + paramIndex;
     params.push(editionId);
@@ -464,29 +464,18 @@ let whereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";  const params: a
       r2.name as "fighter2RegionName",
       r2.color as "fighter2RegionColor",
       r2.code as "fighter2RegionCode",
-
       m.fighter2_initial_state as "fighter2InitialState",
       
       -- Résultats
       m.winner_fighter_id as "winnerFighterId",
       m.loser_fighter_id as "loserFighterId",
       
-      -- Contexte du match
+      -- Contexte (uniquement les IDs nécessaires, plus d'objet context)
       sg.id as "subGroupId",
       sg.name as "subGroupName",
-      
-      pg.id as "groupId",
-      pg.name as "groupName",
-      
-      p.id as "phaseId",
-      p.name as "phaseName",
-      p.phase_type as "phaseType",
-      
       ce.id as "editionId",
       ce.theme as "editionTheme",
-      ce.year as "editionYear",
-      ce.competition_id as "competitionId",
-      c.name as "competitionName"
+      ce.year as "editionYear"
 
     FROM matches m
     JOIN fighters f1 ON m.fighter1_id = f1.id
@@ -497,7 +486,6 @@ let whereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";  const params: a
     JOIN phase_groups pg ON sg.group_id = pg.id
     JOIN phases p ON pg.phase_id = p.id
     JOIN competition_editions ce ON p.edition_id = ce.id
-    JOIN competitions c ON ce.competition_id = c.id
     WHERE ${whereClause}
     ORDER BY 
       CASE 
@@ -511,32 +499,20 @@ let whereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";  const params: a
     LIMIT 50
   `;
 
-  console.log("SQL Query:", sql);
-  console.log("Params:", params);
-
   const matches = await query(sql, params);
-  console.log("Matches found:", matches.length);
-
-  // Enrichir les données des matchs
   const enrichedMatches = [];
   for (const match of matches) {
     const enriched = await enrichMatchData(match);
     enrichedMatches.push(enriched);
   }
-
   return enrichedMatches;
 }
 
 async function enrichMatchData(match: any) {
-  // Récupérer les cartons pour ce match
   const cards = await getCardsForMatch(match.id);
-
-  // Formater les durées et heures
   const formattedDuration = formatDuration(match.totalDuration);
   const formattedStartTime = formatDateTime(match.matchDate, match.startTime);
-  // const formattedEndTime = formatDateTime(match.matchDate, match.endTime);
 
-  // Formater les données des lutteurs
   const fighter1 = {
     id: match.fighter1Id,
     firstName: match.fighter1FirstName,
@@ -559,7 +535,6 @@ async function enrichMatchData(match: any) {
     cards: cards.filter((card: any) => card.fighterId === match.fighter2Id),
   };
 
-  // Déterminer le vainqueur et le perdant
   let winner = null;
   let loser = null;
   let resultType = match.matchResult;
@@ -569,7 +544,7 @@ async function enrichMatchData(match: any) {
     loser = match.winnerFighterId === match.fighter1Id ? fighter2 : fighter1;
   }
 
-  // Formater la réponse
+  // ✅ Retour simplifié – plus d'objet "context"
   const enrichedMatch = {
     id: match.id,
     matchNumber: match.matchNumber,
@@ -584,45 +559,14 @@ async function enrichMatchData(match: any) {
     liveStreamUrl: match.liveStreamUrl,
     notes: match.notes,
     subGroupId: match.subGroupId,
-    editionId:  match.editionId,
+    editionId: match.editionId,
 
-    fighters: {
-      fighter1,
-      fighter2,
-    },
+    editionYear: match.editionYear,
+    editionTheme: match.editionTheme,
 
-    result: winner
-      ? {
-          winner,
-          loser,
-          resultType,
-        }
-      : null,
+    fighters: { fighter1, fighter2 },
 
-    context: {
-      subGroup: {
-        id: match.subGroupId,
-        name: match.subGroupName,
-      },
-      group: {
-        id: match.groupId,
-        name: match.groupName,
-      },
-      phase: {
-        id: match.phaseId,
-        name: match.phaseName,
-        type: match.phaseType,
-      },
-      edition: {
-        id: match.editionId,
-        theme: match.editionTheme,
-        year: match.editionYear,
-      },
-      competition: {
-        id: match.competitionId,
-        name: match.competitionName,
-      },
-    },
+    result: winner ? { winner, loser, resultType } : null,
 
     allCards: cards,
   };
@@ -742,19 +686,25 @@ export async function getMobileFighterMatches(
 
     // Grouper par statut
     const liveMatches = matches.filter((m) =>
-      ["live", "round_break"].includes(m.status),
+      ["live", "round_break", "reclamation"].includes(m.status),
     );
     const scheduledMatches = matches.filter((m) => m.status === "scheduled");
     const completedMatches = matches.filter((m) => m.status === "completed");
-    const otherMatches = matches.filter((m) => !["live"].includes(m.status));
+    const otherMatches = matches.filter(
+      (m) => !["live", "round_break", "reclamation"].includes(m.status));
 
-    // Grouper par année d'édition
+    // Grouper par année d'édition (utilisation des champs directs)
     const matchesByEdition: Record<string, any> = {};
     matches.forEach((match) => {
-      const editionKey = `${match.context.edition.year} - ${match.context.edition.theme}`;
+      // ✅ Correction : plus de match.context, on utilise match.editionYear et match.editionTheme
+      const editionKey = `${match.editionYear} - ${match.editionTheme}`;
       if (!matchesByEdition[editionKey]) {
         matchesByEdition[editionKey] = {
-          edition: match.context.edition,
+          edition: {
+            id: match.editionId,
+            year: match.editionYear,
+            theme: match.editionTheme,
+          },
           matches: [],
         };
       }

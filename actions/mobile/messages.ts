@@ -219,15 +219,6 @@ export async function createMobileMessage(input: CreateMobileMessageInput) {
         created_at as "createdAt"
     `;
 
-    // Debug final (pour être sûr à 200 %)
-    console.log("🧪 Message INSERT params:", {
-      content,
-      normalizedEntityType,
-      entityId,
-      authorId,
-      parentMessageId,
-    });
-
     const result = await query(insertSql, [
       content,
       normalizedEntityType,

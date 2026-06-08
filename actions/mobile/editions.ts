@@ -610,7 +610,7 @@ async function getLiveMatchForEdition(editionId: number) {
     fieldsToDelete.forEach((field) => delete liveMatch[field]);
   }
 
-  return {editionId, ...liveMatch};
+  return { editionId, ...liveMatch };
 }
 
 export async function getEditionStats(editionId: number) {
@@ -693,8 +693,10 @@ export async function getParticipatedEditions(
         ce.id,
         ce.year,
         ce.edition_number as "editionNumber",
+        c.name as "competitionName",
         r.name as "regionName"
       FROM competition_editions ce
+      JOIN competitions c ON ce.competition_id = c.id
       JOIN edition_regions er ON er.edition_id = ce.id AND er.region_id = $1
       LEFT JOIN regions r ON er.region_id = r.id
       ORDER BY ce.year DESC, ce.edition_number DESC
@@ -706,9 +708,11 @@ export async function getParticipatedEditions(
       ce.id,
       ce.year,
       ce.edition_number as "editionNumber",
+      c.name as "competitionName",
       r.name as "regionName",
       r.flag_image as "regionFlagImage"
     FROM competition_editions ce
+    JOIN competitions c ON ce.competition_id = c.id
     JOIN edition_fighters ef ON ef.edition_id = ce.id AND ef.fighter_id = $1
     LEFT JOIN regions r ON ce.region_id = r.id
     ORDER BY ce.year DESC, ce.edition_number DESC

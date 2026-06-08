@@ -341,21 +341,26 @@ export async function getRegionMatches(regionId: number, editionId?: number) {
 
     // Grouper par statut
     const liveMatches = matches.filter((m) =>
-      ["live", "round_break"].includes(m.status),
+      ["live", "round_break", "reclamation"].includes(m.status),
     );
     const scheduledMatches = matches.filter((m) => m.status === "scheduled");
     const completedMatches = matches.filter((m) => m.status === "completed");
     const otherMatches = matches.filter(
-      (m) => !["live", "round_break"].includes(m.status),
+      (m) => !["live", "round_break", "reclamation"].includes(m.status),
     );
 
-    // Grouper par année d'édition
+    // Grouper par année d'édition (utilisation des champs directs)
     const matchesByEdition: Record<string, any> = {};
     matches.forEach((match) => {
-      const editionKey = `${match.context.edition.year} - ${match.context.edition.theme}`;
+      // ✅ Correction : plus de match.context, on utilise match.editionYear et match.editionTheme
+      const editionKey = `${match.editionYear} - ${match.editionTheme}`;
       if (!matchesByEdition[editionKey]) {
         matchesByEdition[editionKey] = {
-          edition: match.context.edition,
+          edition: {
+            id: match.editionId,
+            year: match.editionYear,
+            theme: match.editionTheme,
+          },
           matches: [],
         };
       }
@@ -369,8 +374,6 @@ export async function getRegionMatches(regionId: number, editionId?: number) {
           all: matches,
           grouped: {
             live: liveMatches,
-            // scheduled: scheduledMatches,
-            // completed: completedMatches,
             otherMatches,
             byEdition: Object.values(matchesByEdition),
           },
@@ -405,14 +408,11 @@ export async function getRegionMatches(regionId: number, editionId?: number) {
   }
 }
 
-// Remplacer la fonction getAllMatchesForRegion
 async function getAllMatchesForRegion(regionId: number, editionId?: number) {
-  let whereClause =
-    "(f1.region_id = $1 OR f2.region_id = $1)";
+  let whereClause = "(f1.region_id = $1 OR f2.region_id = $1)";
   const params: any[] = [regionId];
   let paramIndex = 2;
 
-  // Ajouter le filtre par édition si fourni
   if (editionId) {
     whereClause += " AND p.edition_id = $" + paramIndex;
     params.push(editionId);
@@ -436,7 +436,6 @@ async function getAllMatchesForRegion(regionId: number, editionId?: number) {
       m.loser_fighter_id as "loserFighterId",
       m.sub_group_id as "subGroupId",
 
-      
       -- Lutteur 1
       m.fighter1_id as "fighter1Id",
       f1.first_name as "fighter1FirstName",
@@ -445,7 +444,6 @@ async function getAllMatchesForRegion(regionId: number, editionId?: number) {
       f1.profile_image as "fighter1ProfileImage",
       r1.name as "fighter1RegionName",
 
-      
       -- Lutteur 2
       m.fighter2_id as "fighter2Id",
       f2.first_name as "fighter2FirstName",
@@ -456,22 +454,12 @@ async function getAllMatchesForRegion(regionId: number, editionId?: number) {
       r2.name as "fighter2RegionName",
       m.fighter2_initial_state as "fighter2InitialState",
       
-      -- Contexte
+      -- Contexte (uniquement les IDs nécessaires)
       sg.id as "subGroupId",
       sg.name as "subGroupName",
-      
-      pg.id as "groupId",
-      pg.name as "groupName",
-      
-      p.id as "phaseId",
-      p.name as "phaseName",
-      p.phase_type as "phaseType",
-      
       ce.id as "editionId",
       ce.theme as "editionTheme",
-      ce.year as "editionYear",
-      ce.competition_id as "competitionId",
-      c.name as "competitionName"
+      ce.year as "editionYear"
 
     FROM matches m
     JOIN fighters f1 ON m.fighter1_id = f1.id
@@ -482,7 +470,6 @@ async function getAllMatchesForRegion(regionId: number, editionId?: number) {
     JOIN phase_groups pg ON sg.group_id = pg.id
     JOIN phases p ON pg.phase_id = p.id
     JOIN competition_editions ce ON p.edition_id = ce.id
-    JOIN competitions c ON ce.competition_id = c.id
     WHERE ${whereClause}
     ORDER BY 
       CASE 
@@ -496,32 +483,20 @@ async function getAllMatchesForRegion(regionId: number, editionId?: number) {
     LIMIT 50
   `;
 
-  console.log("SQL Query:", sql);
-  console.log("Params:", params);
-
   const matches = await query(sql, params);
-  console.log("Matches found for region:", matches.length);
-
-  // Enrichir les données des matchs
   const enrichedMatches = [];
   for (const match of matches) {
     const enriched = await enrichRegionMatchData(match, regionId);
     enrichedMatches.push(enriched);
   }
-
   return enrichedMatches;
 }
 
 async function enrichRegionMatchData(match: any, regionId: number) {
-  // Récupérer les cartons pour ce match
   const cards = await getCardsForMatch(match.id);
-
-  // Formater les durées et heures
   const formattedDuration = formatDuration(match.totalDuration);
   const formattedStartTime = formatDateTime(match.matchDate, match.startTime);
-  // const formattedEndTime = formatDateTime(match.matchDate, match.endTime);
 
-  // Formater les données des lutteurs
   const fighter1 = {
     id: match.fighter1Id,
     firstName: match.fighter1FirstName,
@@ -544,7 +519,6 @@ async function enrichRegionMatchData(match: any, regionId: number) {
     cards: cards.filter((card: any) => card.fighterId === match.fighter2Id),
   };
 
-  // Déterminer si la région est impliquée et si elle a gagné
   const isRegionInvolved =
     match.fighter1RegionId === regionId || match.fighter2RegionId === regionId;
   const isRegionWinner =
@@ -554,7 +528,6 @@ async function enrichRegionMatchData(match: any, regionId: number) {
       (match.fighter2RegionId === regionId &&
         match.winnerFighterId === match.fighter2Id));
 
-  // Déterminer le vainqueur et le perdant
   let winner = null;
   let loser = null;
   let resultType = match.matchResult;
@@ -564,7 +537,7 @@ async function enrichRegionMatchData(match: any, regionId: number) {
     loser = match.winnerFighterId === match.fighter1Id ? fighter2 : fighter1;
   }
 
-  // Formater la réponse
+  // ✅ Retour simplifié – plus d'objet "context"
   const enrichedMatch = {
     id: match.id,
     matchNumber: match.matchNumber,
@@ -574,25 +547,17 @@ async function enrichRegionMatchData(match: any, regionId: number) {
     matchResult: resultType,
     totalDuration: formattedDuration,
     breakCount: match.breakCount,
-
     videoUrl: match.videoUrl,
     liveStreamUrl: match.liveStreamUrl,
     notes: match.notes,
     subGroupId: match.subGroupId,
-    editionId:  match.editionId,
+    editionId: match.editionId,
+    editionTheme: match.editionTheme,
+    editionYear: match.editionYear,
 
-    fighters: {
-      fighter1,
-      fighter2,
-    },
+    fighters: { fighter1, fighter2 },
 
-    result: winner
-      ? {
-          winner,
-          loser,
-          resultType,
-        }
-      : null,
+    result: winner ? { winner, loser, resultType } : null,
 
     regionContext: {
       isInvolved: isRegionInvolved,
@@ -603,31 +568,6 @@ async function enrichRegionMatchData(match: any, regionId: number) {
           : match.fighter2RegionId === regionId
             ? "fighter2"
             : "none",
-    },
-
-    context: {
-      subGroup: {
-        id: match.subGroupId,
-        name: match.subGroupName,
-      },
-      group: {
-        id: match.groupId,
-        name: match.groupName,
-      },
-      phase: {
-        id: match.phaseId,
-        name: match.phaseName,
-        type: match.phaseType,
-      },
-      edition: {
-        id: match.editionId,
-        theme: match.editionTheme,
-        year: match.editionYear,
-      },
-      competition: {
-        id: match.competitionId,
-        name: match.competitionName,
-      },
     },
 
     allCards: cards,
@@ -701,18 +641,23 @@ async function getRegionAchievements(regionId: number) {
 
 function organizeMatches(matches: any[]) {
   const liveMatches = matches.filter((m) =>
-    ["live", "round_break"].includes(m.status),
+    ["live", "round_break", "reclamation"].includes(m.status),
   );
   const scheduledMatches = matches.filter((m) => m.status === "scheduled");
   const completedMatches = matches.filter((m) => m.status === "completed");
 
-  // Grouper par édition
+  // Grouper par édition (en utilisant les champs directs)
   const matchesByEdition: Record<string, any> = {};
   matches.forEach((match) => {
-    const editionKey = `${match.context.edition.year} - ${match.context.edition.theme}`;
+    // ✅ Utiliser match.editionYear et match.editionTheme au lieu de match.context
+    const editionKey = `${match.editionYear} - ${match.editionTheme}`;
     if (!matchesByEdition[editionKey]) {
       matchesByEdition[editionKey] = {
-        edition: match.context.edition,
+        edition: {
+          id: match.editionId,
+          year: match.editionYear,
+          theme: match.editionTheme,
+        },
         matches: [],
       };
     }
