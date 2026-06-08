@@ -210,7 +210,7 @@ async function getCardsForMatch(matchId: number) {
       fc.id,
       fc.fighter_id as "fighterId",
       fc.card_type as "cardType",
-      fc.minute_given as "minuteGiven",
+      fc.minute_given as "minuteGiven"
     FROM fighter_cards fc
     WHERE fc.match_id = $1
     ORDER BY fc.minute_given
@@ -408,7 +408,7 @@ export async function getRegionMatches(regionId: number, editionId?: number) {
 // Remplacer la fonction getAllMatchesForRegion
 async function getAllMatchesForRegion(regionId: number, editionId?: number) {
   let whereClause =
-    "(f1.region_id = $1 OR f2.region_id = $1) AND m.status = 'completed'";
+    "(f1.region_id = $1 OR f2.region_id = $1)";
   const params: any[] = [regionId];
   let paramIndex = 2;
 

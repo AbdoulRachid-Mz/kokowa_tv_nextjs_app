@@ -415,9 +415,7 @@ async function getFighterCards(fighterId: number) {
 
 // Remplacer la fonction getAllMatchesForFighter
 async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
-  let whereClause =
-    "(m.fighter1_id = $1 OR m.fighter2_id = $1) AND m.status = 'completed'";
-  const params: any[] = [fighterId];
+let whereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";  const params: any[] = [fighterId];
   let paramIndex = 2;
 
   // Ajouter le filtre par édition si fourni
