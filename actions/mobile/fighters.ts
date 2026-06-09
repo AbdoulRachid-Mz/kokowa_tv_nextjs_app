@@ -566,7 +566,9 @@ async function enrichMatchData(match: any) {
 
     fighters: { fighter1, fighter2 },
 
-    result: winner ? { winner, loser, resultType } : null,
+    result: winner
+      ? { winnerId: match.winnerFighterId, loserId: match.loserFighterId }
+      : null,
 
     allCards: cards,
   };
@@ -691,7 +693,8 @@ export async function getMobileFighterMatches(
     const scheduledMatches = matches.filter((m) => m.status === "scheduled");
     const completedMatches = matches.filter((m) => m.status === "completed");
     const otherMatches = matches.filter(
-      (m) => !["live", "round_break", "reclamation"].includes(m.status));
+      (m) => !["live", "round_break", "reclamation"].includes(m.status),
+    );
 
     // Grouper par année d'édition (utilisation des champs directs)
     const matchesByEdition: Record<string, any> = {};
@@ -716,13 +719,6 @@ export async function getMobileFighterMatches(
       data: {
         matches: {
           all: matches,
-          grouped: {
-            live: liveMatches,
-            // scheduled: scheduledMatches,
-            // completed: completedMatches,
-            ...otherMatches,
-            byEdition: Object.values(matchesByEdition),
-          },
         },
         summary: {
           total: matches.length,
@@ -730,10 +726,8 @@ export async function getMobileFighterMatches(
           scheduled: scheduledMatches.length,
           completed: completedMatches.length,
           other: otherMatches.length,
-          wins: matches.filter((m) => m.result?.winner?.id === fighterId)
-            .length,
-          losses: matches.filter((m) => m.result?.loser?.id === fighterId)
-            .length,
+          wins: matches.filter((m) => m.result?.winnerId === fighterId).length,
+          losses: matches.filter((m) => m.result?.loserId === fighterId).length,
         },
       },
       message: "Matchs du lutteur récupérés avec succès",

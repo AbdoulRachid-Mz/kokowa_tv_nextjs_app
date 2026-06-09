@@ -52,26 +52,7 @@ export async function getMobileMatchesBySubGroup(subGroupId: number) {
         subGroup: subGroupInfo,
         liveMatch: liveMatch ? await enrichMatchData(liveMatch) : null,
         matches: {
-          all: await Promise.all(
-            otherMatches.map((match) => enrichMatchData(match))
-          ),
-          grouped: {
-            scheduled: await Promise.all(
-              groupedMatches.scheduled.map((match) => enrichMatchData(match))
-            ),
-            completed: await Promise.all(
-              groupedMatches.completed.map((match) => enrichMatchData(match))
-            ),
-            cancelled: await Promise.all(
-              groupedMatches.cancelled.map((match) => enrichMatchData(match))
-            ),
-            postponed: await Promise.all(
-              groupedMatches.postponed.map((match) => enrichMatchData(match))
-            ),
-            reclamation: await Promise.all(
-              groupedMatches.reclamation.map((match) => enrichMatchData(match))
-            ), // NOUVEAU
-          },
+          all: groupedMatches,
         },
         summary: {
           total: matches.length,
@@ -98,6 +79,162 @@ export async function getMobileMatchesBySubGroup(subGroupId: number) {
       },
     };
   }
+}
+
+export async function getMobileMatchById(matchId: number) {
+  try {
+    // Vérifier que le match existe
+    const existsSql =
+      "SELECT id FROM matches WHERE id = $1 AND is_active = true";
+    const existsResult = await query(existsSql, [matchId]);
+
+    if (existsResult.length === 0) {
+      return {
+        success: false,
+        error: {
+          code: 404,
+          message: "Match non trouvé",
+          timestamp: new Date().toISOString(),
+        },
+      };
+    }
+
+    // Récupérer les détails du match
+    const match = await getMatchDetails(matchId);
+
+    if (!match) {
+      return {
+        success: false,
+        error: {
+          code: 404,
+          message: "Match non trouvé",
+          timestamp: new Date().toISOString(),
+        },
+      };
+    }
+
+    // Enrichir les données du match
+    const enrichedMatch = await enrichMatchData(match);
+
+    return {
+      success: true,
+      data: {
+        match: enrichedMatch,
+        timestamp: new Date().toISOString(),
+      },
+      message: "Match récupéré avec succès",
+    };
+  } catch (error: any) {
+    console.error("Error in getMobileMatchById:", error);
+    return {
+      success: false,
+      error: {
+        code: 500,
+        message: error.message || "Erreur lors de la récupération du match",
+        timestamp: new Date().toISOString(),
+      },
+    };
+  }
+}
+
+// Récupérer les détails d'un match spécifique
+async function getMatchDetails(matchId: number) {
+  const sql = `
+    SELECT 
+      m.id,
+      m.match_number as "matchNumber",
+      m.match_date as "matchDate",
+      m.start_time2 as "startTime",
+      m.end_time as "endTime",
+      m.status,
+      m.match_result as "matchResult",
+      m.total_duration as "totalDuration",
+      m.break_count as "breakCount",
+      m.video_url as "videoUrl",
+      m.live_stream_url as "liveStreamUrl",
+      m.notes,
+      m.sub_group_id as "subGroupId",
+      m.winner_fighter_id as "winnerFighterId",
+      m.loser_fighter_id as "loserFighterId",
+      
+      -- Sous-groupe
+      sg.name as "subGroupName",
+      sg.period as "subGroupPeriod",
+      sg.status as "subGroupStatus",
+      sg.is_completed as "subGroupIsCompleted",
+      sg.score_region1 as "subGroupScoreRegion1",
+      sg.score_region2 as "subGroupScoreRegion2",
+      sg.nulls as "subGroupNulls",
+      
+      -- Région 1 (du sous-groupe)
+      sg.region1_id as "region1Id",
+      r1.name as "region1Name",
+      r1.flag_image as "region1FlagImage",
+      r1.color as "region1Color",
+      
+      -- Région 2 (du sous-groupe)
+      sg.region2_id as "region2Id",
+      r2.name as "region2Name",
+      r2.flag_image as "region2FlagImage",
+      r2.color as "region2Color",
+      
+      -- Ceintures
+      b1.color as "belt1Color",
+      b2.color as "belt2Color",
+      
+      -- Arbitre
+      ref.id as "refereeId",
+      ref.first_name as "refereeFirstName",
+      ref.last_name as "refereeLastName",
+      ref.profile_image as "refereeProfileImage",
+      
+      -- Lutteur 1
+      m.fighter1_id as "fighter1Id",
+      f1.first_name as "fighter1FirstName",
+      f1.last_name as "fighter1LastName",
+      f1.nickname as "fighter1Nickname",
+      f1.profile_image as "fighter1ProfileImage",
+      f1r.name as "fighter1RegionName",
+      f1r.flag_image as "fighter1RegionFlagImage",
+      
+      -- Lutteur 2
+      m.fighter2_id as "fighter2Id",
+      f2.first_name as "fighter2FirstName",
+      f2.last_name as "fighter2LastName",
+      f2.nickname as "fighter2Nickname",
+      f2.profile_image as "fighter2ProfileImage",
+      f2r.name as "fighter2RegionName",
+      f2r.flag_image as "fighter2RegionFlagImage",
+      
+      -- Contexte de l'édition
+      ce.id as "editionId",
+      ce.theme as "editionTheme",
+      ce.year as "editionYear",
+      ce.edition_number as "editionNumber",
+      c.name as "competitionName"
+
+    FROM matches m
+    LEFT JOIN sub_groups sg ON m.sub_group_id = sg.id
+    LEFT JOIN regions r1 ON sg.region1_id = r1.id
+    LEFT JOIN regions r2 ON sg.region2_id = r2.id
+    LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
+    LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
+    LEFT JOIN referees ref ON sg.main_referee_id = ref.id
+    LEFT JOIN fighters f1 ON m.fighter1_id = f1.id
+    LEFT JOIN fighters f2 ON m.fighter2_id = f2.id
+    LEFT JOIN regions f1r ON f1.region_id = f1r.id
+    LEFT JOIN regions f2r ON f2.region_id = f2r.id
+    LEFT JOIN fighters wf ON m.winner_fighter_id = wf.id
+    LEFT JOIN fighters lf ON m.loser_fighter_id = lf.id
+    LEFT JOIN phase_groups pg ON sg.group_id = pg.id
+    LEFT JOIN phases p ON pg.phase_id = p.id
+    LEFT JOIN competition_editions ce ON p.edition_id = ce.id
+    LEFT JOIN competitions c ON ce.competition_id = c.id
+    WHERE m.id = $1
+  `;
+
+  const result = await query(sql, [matchId]);
+  return result[0] || null;
 }
 
 // Fonctions auxiliaires
@@ -150,31 +287,38 @@ async function getSubGroupInfo(subGroupId: number) {
     subGroup.belts = {
       region1: subGroup.beltRegion1Id
         ? {
-          id: subGroup.beltRegion1Id,
-          color: subGroup.beltRegion1Color,
-        }
+            id: subGroup.beltRegion1Id,
+            color: subGroup.beltRegion1Color,
+          }
         : null,
       region2: subGroup.beltRegion2Id
         ? {
-          id: subGroup.beltRegion2Id,
-          color: subGroup.beltRegion2Color,
-        }
+            id: subGroup.beltRegion2Id,
+            color: subGroup.beltRegion2Color,
+          }
         : null,
     };
 
     subGroup.referee = subGroup.mainRefereeId
       ? {
-        id: subGroup.mainRefereeId,
-        firstName: subGroup.refereeFirstName,
-        lastName: subGroup.refereeLastName,
-      }
+          id: subGroup.mainRefereeId,
+          firstName: subGroup.refereeFirstName,
+          lastName: subGroup.refereeLastName,
+        }
       : null;
 
     // Nettoyer les données redondantes
     const fieldsToDelete = [
-      "scoreRegion1", "scoreRegion2", "nulls",
-      "beltRegion1Id", "beltRegion2Id", "beltRegion1Color", "beltRegion2Color",
-      "mainRefereeId", "refereeFirstName", "refereeLastName"
+      "scoreRegion1",
+      "scoreRegion2",
+      "nulls",
+      "beltRegion1Id",
+      "beltRegion2Id",
+      "beltRegion1Color",
+      "beltRegion2Color",
+      "mainRefereeId",
+      "refereeFirstName",
+      "refereeLastName",
     ];
 
     fieldsToDelete.forEach((field) => delete subGroup[field]);
@@ -235,7 +379,7 @@ async function getAllMatchesForSubGroup(subGroupId: number) {
 
 // Dans matches.ts, fonction enrichMatchData()
 
-async function enrichMatchData(match: any,) {
+async function enrichMatchData(match: any) {
   // Récupérer les cartons pour ce match
   const cards = await getCardsForMatch(match.id);
 
@@ -243,17 +387,17 @@ async function enrichMatchData(match: any,) {
   const stats = await getMatchStats(match.id);
 
   // Formater totalDuration (INTERVAL -> HH:MM:SS)
-  let formattedDuration = '00:00:00';
+  let formattedDuration = "00:00:00";
   if (match.totalDuration) {
     // Si c'est un objet PostgreSQL
-    if (typeof match.totalDuration === 'object') {
-      const hours = String(match.totalDuration.hours || 0).padStart(2, '0');
-      const minutes = String(match.totalDuration.minutes || 0).padStart(2, '0');
-      const seconds = String(match.totalDuration.seconds || 0).padStart(2, '0');
+    if (typeof match.totalDuration === "object") {
+      const hours = String(match.totalDuration.hours || 0).padStart(2, "0");
+      const minutes = String(match.totalDuration.minutes || 0).padStart(2, "0");
+      const seconds = String(match.totalDuration.seconds || 0).padStart(2, "0");
       formattedDuration = `${hours}:${minutes}:${seconds}`;
     }
     // Si c'est une chaîne
-    else if (typeof match.totalDuration === 'string') {
+    else if (typeof match.totalDuration === "string") {
       const match_interval = match.totalDuration.match(/(\d+):(\d+):(\d+)/);
       if (match_interval) {
         formattedDuration = match_interval[0];
@@ -262,11 +406,11 @@ async function enrichMatchData(match: any,) {
       }
     }
     // Si c'est un nombre (secondes)
-    else if (typeof match.totalDuration === 'number') {
+    else if (typeof match.totalDuration === "number") {
       const hours = Math.floor(match.totalDuration / 3600);
       const minutes = Math.floor((match.totalDuration % 3600) / 60);
       const seconds = match.totalDuration % 60;
-      formattedDuration = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      formattedDuration = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
     }
   }
 
@@ -276,30 +420,30 @@ async function enrichMatchData(match: any,) {
 
   // Fonction utilitaire pour extraire la date sous forme de chaîne YYYY-MM-DD
   const getDateString = (date: any): string => {
-    if (!date) return '';
+    if (!date) return "";
 
     // Si c'est un objet Date
     if (date instanceof Date) {
-      return date.toISOString().split('T')[0];
+      return date.toISOString().split("T")[0];
     }
     // Si c'est une chaîne
-    else if (typeof date === 'string') {
-      return date.split('T')[0];
+    else if (typeof date === "string") {
+      return date.split("T")[0];
     }
     // Si c'est un timestamp
-    else if (typeof date === 'number') {
-      return new Date(date).toISOString().split('T')[0];
+    else if (typeof date === "number") {
+      return new Date(date).toISOString().split("T")[0];
     }
-    return '';
+    return "";
   };
 
   const dateStr = getDateString(match.matchDate);
 
   if (dateStr && match.startTime) {
     // Si startTime est une chaîne HH:MM:SS
-    if (typeof match.startTime === 'string') {
-      const timeStr = match.startTime.includes('T')
-        ? match.startTime.split('T')[1]
+    if (typeof match.startTime === "string") {
+      const timeStr = match.startTime.includes("T")
+        ? match.startTime.split("T")[1]
         : match.startTime;
 
       const dateTimeStr = `${dateStr}T${timeStr}`;
@@ -316,9 +460,9 @@ async function enrichMatchData(match: any,) {
 
   // Même chose pour endTime
   if (dateStr && match.endTime) {
-    if (typeof match.endTime === 'string') {
-      const timeStr = match.endTime.includes('T')
-        ? match.endTime.split('T')[1]
+    if (typeof match.endTime === "string") {
+      const timeStr = match.endTime.includes("T")
+        ? match.endTime.split("T")[1]
         : match.endTime;
 
       const dateTimeStr = `${dateStr}T${timeStr}`;
@@ -326,8 +470,7 @@ async function enrichMatchData(match: any,) {
       if (!isNaN(timestamp.getTime())) {
         formattedEndTime = timestamp.toISOString();
       }
-    }
-    else if (match.endTime instanceof Date) {
+    } else if (match.endTime instanceof Date) {
       formattedEndTime = match.endTime.toISOString();
     }
   }
@@ -340,7 +483,7 @@ async function enrichMatchData(match: any,) {
     nickname: match.fighter1Nickname,
     profileImage: match.fighter1ProfileImage,
     regionName: match.fighter1RegionName,
-    initialState: null
+    initialState: null,
   };
 
   const fighter2 = {
@@ -350,7 +493,7 @@ async function enrichMatchData(match: any,) {
     nickname: match.fighter2Nickname,
     profileImage: match.fighter2ProfileImage,
     regionName: match.fighter2RegionName,
-    initialState: null
+    initialState: null,
   };
 
   // Formater la réponse avec les champs formatés
@@ -360,10 +503,11 @@ async function enrichMatchData(match: any,) {
     status: match.status,
     startTime: match.startTime,
     totalDuration: formattedDuration,
-    audienceCount: match.audienceCount,
     videoUrl: match.videoUrl,
     notes: match.notes,
-    ...((match.status === "live" || match.status === "round_break" || match.status === "reclamation") && {
+    ...((match.status === "live" ||
+      match.status === "round_break" ||
+      match.status === "reclamation") && {
       subGroupId: match.subGroupId,
     }),
 
@@ -374,13 +518,13 @@ async function enrichMatchData(match: any,) {
 
     result: {
       winnerId: match.winnerFighterId,
-      loserId: match.loserFighterId
+      loserId: match.loserFighterId,
     },
 
     allCards: cards.map((card: any) => ({
       fighterId: card.fighterId,
-      minuteGiven: card.minuteGiven
-    }))
+      minuteGiven: card.minuteGiven,
+    })),
   };
 
   return enrichedMatch;
@@ -446,5 +590,3 @@ async function getBreakCount(matchId: number) {
   const result = await query(sql, [matchId]);
   return result[0]?.breakCount || 0;
 }
-
-

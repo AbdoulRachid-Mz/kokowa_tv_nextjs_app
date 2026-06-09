@@ -119,9 +119,21 @@ export async function getMobileRegionById(
           totalMatches: matches.data?.matches?.all?.length || 0,
           totalTransfers: transfers.length,
           totalAchievements: achievements.length,
-          liveMatches: matches?.data?.matches?.grouped?.live?.length || 0,
-          wins: matches?.data?.matches?.grouped?.byEdition?.[0]?.wins || 0,
-          losses: matches?.data?.matches?.grouped?.byEdition?.[0]?.losses || 0,
+          liveMatches:
+            matches?.data?.matches.all.filter(
+              (m) =>
+                m.status === "live" ||
+                m.status === "round_break" ||
+                m.status === "reclamation",
+            ).length || 0,
+          wins:
+            matches?.data?.matches?.all.filter(
+              (m) => m.result?.winnerId === regionId,
+            ).length || 0,
+          losses:
+            matches?.data?.matches?.all.filter(
+              (m) => m.result?.loserId === regionId,
+            ).length || 0,
         },
         timestamp: new Date().toISOString(),
       },
@@ -372,11 +384,6 @@ export async function getRegionMatches(regionId: number, editionId?: number) {
       data: {
         matches: {
           all: matches,
-          grouped: {
-            live: liveMatches,
-            otherMatches,
-            byEdition: Object.values(matchesByEdition),
-          },
         },
         summary: {
           total: matches.length,
@@ -384,13 +391,8 @@ export async function getRegionMatches(regionId: number, editionId?: number) {
           scheduled: scheduledMatches.length,
           completed: completedMatches.length,
           other: otherMatches.length,
-          wins: matches.filter((m) => m.regionContext.isWinner).length,
-          losses: matches.filter(
-            (m) =>
-              m.regionContext.isInvolved &&
-              !m.regionContext.isWinner &&
-              m.result,
-          ).length,
+          wins: matches.filter((m) => m.result?.winnerId === regionId).length,
+          losses: matches.filter((m) => m.result?.loserId === regionId).length,
         },
       },
       message: "Matchs de la région récupérés avec succès",
@@ -557,18 +559,9 @@ async function enrichRegionMatchData(match: any, regionId: number) {
 
     fighters: { fighter1, fighter2 },
 
-    result: winner ? { winner, loser, resultType } : null,
-
-    regionContext: {
-      isInvolved: isRegionInvolved,
-      isWinner: isRegionWinner,
-      regionRole:
-        match.fighter1RegionId === regionId
-          ? "fighter1"
-          : match.fighter2RegionId === regionId
-            ? "fighter2"
-            : "none",
-    },
+    result: winner
+      ? { loserId: match.loserFighterId, winnerId: match.winnerFighterId }
+      : null,
 
     allCards: cards,
   };
