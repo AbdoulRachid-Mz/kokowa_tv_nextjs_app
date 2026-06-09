@@ -15,8 +15,6 @@ import { FighterTransfers } from './profile/fighter-transfers'
 import { FighterTimeline } from './profile/fighter-timeline'
 import { ErrorState } from '@/components/ui/error-state'
 
-
-
 interface FighterProfilePageProps {
   fighterId: number
 }
@@ -93,10 +91,14 @@ export default function FighterProfilePage({ fighterId }: FighterProfilePageProp
               <FighterBio fighter={fighter} />
               <FighterAchievements achievements={achievements || []} />
               <FighterMatches
-                matches={matchesData?.matches}
+                matches={matchesData?.matches?.all || []}
                 loading={matchesLoading}
+                fighterId={fighterId}
               />
-              <FighterTimeline matches={matchesData?.matches?.all || []} />
+              <FighterTimeline 
+                matches={matchesData?.matches?.all || []} 
+                fighterId={fighterId}
+              />
             </div>
           </div>
         </div>

@@ -18,9 +18,10 @@ import { Badge } from '@/components/ui/badge'
 
 interface FighterTimelineProps {
   matches: any[]
+  fighterId: number
 }
 
-export function FighterTimeline({ matches }: FighterTimelineProps) {
+export function FighterTimeline({ matches, fighterId }: FighterTimelineProps) {
   if (!matches || matches.length === 0) return null
 
   // Créer une timeline combinant matchs, transferts, etc.
@@ -28,16 +29,21 @@ export function FighterTimeline({ matches }: FighterTimelineProps) {
     const timelineItems: any[] = []
 
     matches.forEach(match => {
+      const isFighter1 = match.fighters?.fighter1?.id === fighterId
+      const opponent = isFighter1 ? match.fighters?.fighter2 : match.fighters?.fighter1
+      const isWinner = match.result?.winnerId === fighterId
+      const isLoser = match.result?.loserId === fighterId
+
       timelineItems.push({
         id: `match-${match.id}`,
         type: 'match',
-        date: match.matchDate,
+        date: match.matchDate || match.startTime,
         title: match.status === 'completed' ? 'Match terminé' : 'Match programmé',
-        description: `Contre ${match.opponent?.nickname || match.opponent?.firstName}`,
-        result: match.result?.isWinner ? 'victoire' : 'défaite',
+        description: `Contre ${opponent?.nickname || opponent?.firstName || '?' }`,
+        result: isWinner ? 'victoire' : (isLoser ? 'défaite' : 'en cours'),
         icon: Swords,
         color: match.status === 'completed' ? 
-          (match.result?.isWinner ? 'text-emerald-600' : 'text-red-600') : 'text-blue-600'
+          (isWinner ? 'text-emerald-600' : (isLoser ? 'text-red-600' : 'text-yellow-600')) : 'text-blue-600'
       })
     })
 

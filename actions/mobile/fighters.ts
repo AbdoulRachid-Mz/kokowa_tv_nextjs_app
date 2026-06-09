@@ -414,7 +414,12 @@ async function getFighterCards(fighterId: number) {
 }
 
 // Remplacer la fonction getAllMatchesForFighter
-async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
+async function getAllMatchesForFighter(
+  fighterId: number,
+  editionId?: number,
+  limit: number = 20,
+  offset: number = 0,
+) {
   let whereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";
   const params: any[] = [fighterId];
   let paramIndex = 2;
@@ -470,9 +475,7 @@ async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
       m.winner_fighter_id as "winnerFighterId",
       m.loser_fighter_id as "loserFighterId",
       
-      -- Contexte (uniquement les IDs nécessaires, plus d'objet context)
-      sg.id as "subGroupId",
-      sg.name as "subGroupName",
+      -- Contexte
       ce.id as "editionId",
       ce.theme as "editionTheme",
       ce.year as "editionYear"
@@ -496,9 +499,10 @@ async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
       END,
       m.match_date DESC,
       m.start_time2 DESC
-    LIMIT 50
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
   `;
 
+  params.push(limit, offset);
   const matches = await query(sql, params);
   const enrichedMatches = [];
   for (const match of matches) {
@@ -510,70 +514,87 @@ async function getAllMatchesForFighter(fighterId: number, editionId?: number) {
 
 async function enrichMatchData(match: any) {
   const cards = await getCardsForMatch(match.id);
-  const formattedDuration = formatDuration(match.totalDuration);
-  const formattedStartTime = formatDateTime(match.matchDate, match.startTime);
+
+  // Formater totalDuration (INTERVAL -> HH:MM:SS)
+  let formattedDuration = "00:00:00";
+  if (match.totalDuration) {
+    if (typeof match.totalDuration === "object") {
+      const hours = String(match.totalDuration.hours || 0).padStart(2, "0");
+      const minutes = String(match.totalDuration.minutes || 0).padStart(2, "0");
+      const seconds = String(match.totalDuration.seconds || 0).padStart(2, "0");
+      formattedDuration = `${hours}:${minutes}:${seconds}`;
+    } else if (typeof match.totalDuration === "string") {
+      const match_interval = match.totalDuration.match(/(\d+):(\d+):(\d+)/);
+      if (match_interval) {
+        formattedDuration = match_interval[0];
+      } else {
+        formattedDuration = match.totalDuration;
+      }
+    } else if (typeof match.totalDuration === "number") {
+      const hours = Math.floor(match.totalDuration / 3600);
+      const minutes = Math.floor((match.totalDuration % 3600) / 60);
+      const seconds = match.totalDuration % 60;
+      formattedDuration = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+  }
+
+  // Formater startTime en timestamp ISO complet
+  let formattedStartTime = match.startTime || match.start_time2;
+  const dateStr = match.matchDate || match.match_date
+    ? new Date(match.matchDate || match.match_date).toISOString().split("T")[0]
+    : null;
+
+  if (dateStr && match.startTime && typeof match.startTime === "string" && !match.startTime.includes("T")) {
+    formattedStartTime = new Date(`${dateStr}T${match.startTime}`).toISOString();
+  } else if (match.startTime instanceof Date) {
+    formattedStartTime = match.startTime.toISOString();
+  } else if (typeof match.startTime === "string" && match.startTime.includes("T")) {
+    formattedStartTime = match.startTime;
+  }
 
   const fighter1 = {
     id: match.fighter1Id,
     firstName: match.fighter1FirstName,
     lastName: match.fighter1LastName,
-    nickname: match.fighter1Nickname,
+    nickname: match.fighter1Nickname || "",
     profileImage: match.fighter1ProfileImage,
     regionName: match.fighter1RegionName,
-    initialState: match.fighter1InitialState,
-    cards: cards.filter((card: any) => card.fighterId === match.fighter1Id),
+    initialState: match.fighter1InitialState || null,
   };
 
   const fighter2 = {
     id: match.fighter2Id,
     firstName: match.fighter2FirstName,
     lastName: match.fighter2LastName,
-    nickname: match.fighter2Nickname,
+    nickname: match.fighter2Nickname || "",
     regionName: match.fighter2RegionName,
     profileImage: match.fighter2ProfileImage,
-    initialState: match.fighter2InitialState,
-    cards: cards.filter((card: any) => card.fighterId === match.fighter2Id),
+    initialState: match.fighter2InitialState || null,
   };
 
-  let winner = null;
-  let loser = null;
-  let resultType = match.matchResult;
-
-  if (match.winnerFighterId) {
-    winner = match.winnerFighterId === match.fighter1Id ? fighter1 : fighter2;
-    loser = match.winnerFighterId === match.fighter1Id ? fighter2 : fighter1;
-  }
-
-  // ✅ Retour simplifié – plus d'objet "context"
-  const enrichedMatch = {
+  // ✅ Retour aligné sur error-to-fix.md
+  return {
     id: match.id,
     matchNumber: match.matchNumber,
-    matchDate: match.matchDate,
-    startTime: formattedStartTime,
-    startTime2: match.startTime2,
     status: match.status,
-    matchResult: resultType,
+    startTime: formattedStartTime,
     totalDuration: formattedDuration,
-    breakCount: match.breakCount,
-    videoUrl: match.videoUrl,
-    liveStreamUrl: match.liveStreamUrl,
-    notes: match.notes,
+    videoUrl: match.videoUrl || null,
+    notes: match.notes || null,
     subGroupId: match.subGroupId,
     editionId: match.editionId,
 
-    editionYear: match.editionYear,
-    editionTheme: match.editionTheme,
-
     fighters: { fighter1, fighter2 },
 
-    result: winner
+    result: match.winnerFighterId
       ? { winnerId: match.winnerFighterId, loserId: match.loserFighterId }
-      : null,
+      : { winnerId: null, loserId: null },
 
-    allCards: cards,
+    allCards: cards.map((card: any) => ({
+      fighterId: card.fighterId,
+      minuteGiven: card.minuteGiven,
+    })),
   };
-
-  return enrichedMatch;
 }
 
 async function getCardsForMatch(matchId: number) {
@@ -665,8 +686,13 @@ async function calculateFighterStats(fighterId: number) {
 export async function getMobileFighterMatches(
   fighterId: number,
   editionId?: number,
+  filters?: { page?: number; limit?: number },
 ) {
   try {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 20;
+    const offset = (page - 1) * limit;
+
     // Vérifier que le lutteur existe
     const existsSql =
       "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
@@ -683,36 +709,53 @@ export async function getMobileFighterMatches(
       };
     }
 
-    // Récupérer tous les matchs du lutteur
-    const matches = await getAllMatchesForFighter(fighterId, editionId);
+    // Compter le total des matchs
+    let countWhereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";
+    const countParams: any[] = [fighterId];
+    if (editionId) {
+      countWhereClause += " AND p.edition_id = $2";
+      countParams.push(editionId);
+    }
 
-    // Grouper par statut
-    const liveMatches = matches.filter((m) =>
-      ["live", "round_break", "reclamation"].includes(m.status),
-    );
-    const scheduledMatches = matches.filter((m) => m.status === "scheduled");
-    const completedMatches = matches.filter((m) => m.status === "completed");
-    const otherMatches = matches.filter(
-      (m) => !["live", "round_break", "reclamation"].includes(m.status),
+    const countSql = `
+      SELECT COUNT(*) as total 
+      FROM matches m
+      JOIN sub_groups sg ON m.sub_group_id = sg.id
+      JOIN phase_groups pg ON sg.group_id = pg.id
+      JOIN phases p ON pg.phase_id = p.id
+      WHERE ${countWhereClause}
+    `;
+    const countResult = await query<{ total: string }>(countSql, countParams);
+    const total = parseInt(countResult[0]?.total || "0");
+
+    // Récupérer les matchs paginés
+    const matches = await getAllMatchesForFighter(
+      fighterId,
+      editionId,
+      limit,
+      offset,
     );
 
-    // Grouper par année d'édition (utilisation des champs directs)
-    const matchesByEdition: Record<string, any> = {};
-    matches.forEach((match) => {
-      // ✅ Correction : plus de match.context, on utilise match.editionYear et match.editionTheme
-      const editionKey = `${match.editionYear} - ${match.editionTheme}`;
-      if (!matchesByEdition[editionKey]) {
-        matchesByEdition[editionKey] = {
-          edition: {
-            id: match.editionId,
-            year: match.editionYear,
-            theme: match.editionTheme,
-          },
-          matches: [],
-        };
-      }
-      matchesByEdition[editionKey].matches.push(match);
+    // Grouper par statut pour le résumé
+    const statsSql = `
+      SELECT m.status, COUNT(*) as count 
+      FROM matches m
+      JOIN sub_groups sg ON m.sub_group_id = sg.id
+      JOIN phase_groups pg ON sg.group_id = pg.id
+      JOIN phases p ON pg.phase_id = p.id
+      WHERE ${countWhereClause}
+      GROUP BY m.status
+    `;
+    const statsResult = await query<{ status: string; count: string }>(
+      statsSql,
+      countParams,
+    );
+    const stats: Record<string, number> = {};
+    statsResult.forEach((row) => {
+      stats[row.status] = parseInt(row.count);
     });
+
+    const totalPages = Math.ceil(total / limit);
 
     return {
       success: true,
@@ -720,14 +763,24 @@ export async function getMobileFighterMatches(
         matches: {
           all: matches,
         },
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        },
         summary: {
-          total: matches.length,
-          live: liveMatches.length,
-          scheduled: scheduledMatches.length,
-          completed: completedMatches.length,
-          other: otherMatches.length,
-          wins: matches.filter((m) => m.result?.winnerId === fighterId).length,
-          losses: matches.filter((m) => m.result?.loserId === fighterId).length,
+          total: total,
+          live: (stats["live"] || 0) + (stats["round_break"] || 0) + (stats["reclamation"] || 0),
+          scheduled: stats["scheduled"] || 0,
+          completed: stats["completed"] || 0,
+          cancelled: stats["cancelled"] || 0,
+          postponed: stats["postponed"] || 0,
+          reclamation: stats["reclamation"] || 0,
+          wins: matches.filter((m: any) => m.result?.winnerId === fighterId).length,
+          losses: matches.filter((m: any) => m.result?.loserId === fighterId).length,
         },
       },
       message: "Matchs du lutteur récupérés avec succès",

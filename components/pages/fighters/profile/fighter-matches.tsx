@@ -1,73 +1,86 @@
 // components/fighters/profile/fighter-matches.tsx
-'use client'
+"use client";
 
-import { motion } from 'framer-motion'
-import { Typography } from '@/components/ui/typography'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { 
-  Swords, 
-  Calendar, 
-  Target, 
+import { motion } from "framer-motion";
+import { Typography } from "@/components/ui/typography";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Swords,
+  Calendar,
+  Target,
   Trophy,
   Clock,
   Users,
   AlertCircle,
-  TrendingUp
-} from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Skeleton } from '@/components/ui/skeleton'
+  TrendingUp,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface FighterMatchesProps {
-  matches: any
-  loading: boolean
+  matches: any[];
+  loading: boolean;
+  fighterId: number;
 }
 
-export function FighterMatches({ matches, loading }: FighterMatchesProps) {
-  const groupedMatches = matches?.grouped || {}
-  const allMatches = matches?.all || []
+export function FighterMatches({
+  matches,
+  loading,
+  fighterId,
+}: FighterMatchesProps) {
+  const allMatches = matches || [];
 
-  const getMatchResultBadge = (match: any, fighterId: number) => {
-    if (match.status !== 'completed') {
+  const groupedMatches: { [key: string]: any[] } = {
+    scheduled: allMatches.filter((m) => m.status === "scheduled"),
+    completed: allMatches.filter((m) => m.status === "completed"),
+    live: allMatches.filter((m) =>
+      ["live", "round_break", "reclamation"].includes(m.status),
+    ),
+  };
+
+  const getMatchResultBadge = (match: any, currentFighterId: number) => {
+    if (match.status !== "completed") {
       return (
         <Badge variant="outline" className="capitalize">
           {match.status}
         </Badge>
-      )
+      );
     }
 
-    const isWinner = match.result?.isWinner
-    if (isWinner === true) {
+    const winnerId = match.result?.winnerId;
+    const loserId = match.result?.loserId;
+
+    if (winnerId === currentFighterId) {
       return (
         <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
           <Trophy className="h-3 w-3 mr-1" />
           Victoire
         </Badge>
-      )
-    } else if (isWinner === false) {
+      );
+    } else if (loserId === currentFighterId) {
       return (
-        <Badge variant="destructive" className="bg-red-500/20 text-red-600 border-red-500/30">
+        <Badge
+          variant="destructive"
+          className="bg-red-500/20 text-red-600 border-red-500/30"
+        >
           Défaite
         </Badge>
-      )
+      );
     } else {
-      return (
-        <Badge variant="outline">
-          Nul
-        </Badge>
-      )
+      return <Badge variant="outline">Nul</Badge>;
     }
-  }
+  };
 
   const formatMatchDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    })
-  }
+    const date = new Date(dateString);
+    return date.toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
 
   if (loading) {
     return (
@@ -83,7 +96,7 @@ export function FighterMatches({ matches, loading }: FighterMatchesProps) {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (!allMatches || allMatches.length === 0) {
@@ -104,7 +117,7 @@ export function FighterMatches({ matches, loading }: FighterMatchesProps) {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -129,9 +142,7 @@ export function FighterMatches({ matches, loading }: FighterMatchesProps) {
         <CardContent>
           <Tabs defaultValue="all" className="w-full">
             <TabsList className="grid grid-cols-4 mb-6">
-              <TabsTrigger value="all">
-                Tous ({allMatches.length})
-              </TabsTrigger>
+              <TabsTrigger value="all">Tous ({allMatches.length})</TabsTrigger>
               <TabsTrigger value="upcoming">
                 À venir ({groupedMatches.scheduled?.length || 0})
               </TabsTrigger>
@@ -143,9 +154,9 @@ export function FighterMatches({ matches, loading }: FighterMatchesProps) {
               </TabsTrigger>
             </TabsList>
 
-            {['all', 'upcoming', 'completed', 'live'].map((tab) => (
+            {["all", "upcoming", "completed", "live"].map((tab) => (
               <TabsContent key={tab} value={tab} className="space-y-4">
-                {(tab === 'all' ? allMatches : groupedMatches[tab] || [])
+                {(tab === "all" ? allMatches : groupedMatches[tab] || [])
                   .slice(0, 5)
                   .map((match: any, index: number) => (
                     <motion.div
@@ -172,17 +183,25 @@ export function FighterMatches({ matches, loading }: FighterMatchesProps) {
                         <div className="flex items-center justify-between mb-2">
                           <div className="text-center flex-1">
                             <Typography variant="body-base" weight="medium">
-                              {match.opponent?.nickname || match.opponent?.firstName}
+                              {match.fighters?.fighter1?.id === fighterId
+                                ? `${match.fighters?.fighter1?.firstName} ${match.fighters?.fighter1?.lastName}`
+                                : `${match.fighters?.fighter2?.firstName} ${match.fighters?.fighter2?.lastName}`}
                             </Typography>
                             <Typography variant="body-sm" theme="muted">
-                              {match.opponent?.region?.name}
+                              {match.fighters?.fighter1?.id === fighterId
+                                ? match.fighters?.fighter1?.regionName
+                                : match.fighters?.fighter2?.regionName}
                             </Typography>
                           </div>
-                          
+
                           <div className="px-4">
                             <div className="flex items-center gap-2">
                               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <Typography variant="body-sm" weight="bold" className="text-primary">
+                                <Typography
+                                  variant="body-sm"
+                                  weight="bold"
+                                  className="text-primary"
+                                >
                                   VS
                                 </Typography>
                               </div>
@@ -191,10 +210,14 @@ export function FighterMatches({ matches, loading }: FighterMatchesProps) {
 
                           <div className="text-center flex-1">
                             <Typography variant="body-base" weight="medium">
-                              ?
+                              {match.fighters?.fighter1?.id === fighterId
+                                ? `${match.fighters?.fighter2?.firstName} ${match.fighters?.fighter2?.lastName}`
+                                : `${match.fighters?.fighter1?.firstName} ${match.fighters?.fighter1?.lastName}`}
                             </Typography>
                             <Typography variant="body-sm" theme="muted">
-                              ?
+                              {match.fighters?.fighter1?.id === fighterId
+                                ? match.fighters?.fighter2?.regionName
+                                : match.fighters?.fighter1?.regionName}
                             </Typography>
                           </div>
                         </div>
@@ -202,10 +225,10 @@ export function FighterMatches({ matches, loading }: FighterMatchesProps) {
                         {/* Match info */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-4">
-                            {getMatchResultBadge(match, 0)}
-                            {match.context?.edition && (
+                            {getMatchResultBadge(match, fighterId)}
+                            {match.editionYear && (
                               <Badge variant="outline" className="text-xs">
-                                {match.context.edition.theme} {match.context.edition.year}
+                                {match.editionTheme} {match.editionYear}
                               </Badge>
                             )}
                           </div>
@@ -236,12 +259,11 @@ export function FighterMatches({ matches, loading }: FighterMatchesProps) {
                       </Button>
                     </motion.div>
                   ))}
-                
-                {(tab === 'all' ? allMatches : groupedMatches[tab] || []).length > 5 && (
+
+                {(tab === "all" ? allMatches : groupedMatches[tab] || [])
+                  .length > 5 && (
                   <div className="text-center pt-4">
-                    <Button variant="outline">
-                      Voir tous les matchs
-                    </Button>
+                    <Button variant="outline">Voir tous les matchs</Button>
                   </div>
                 )}
               </TabsContent>
@@ -250,5 +272,5 @@ export function FighterMatches({ matches, loading }: FighterMatchesProps) {
         </CardContent>
       </Card>
     </motion.div>
-  )
+  );
 }

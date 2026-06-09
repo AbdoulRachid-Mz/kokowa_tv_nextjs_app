@@ -17,21 +17,11 @@ export const GET = publicHandler(async (request: NextRequest) => {
       }
     }, { status: 400 });
   }
-
-  const id = parseInt(subGroupId);
   
-  if (isNaN(id) || id <= 0) {
-    return Response.json({
-      success: false,
-      error: {
-        code: 400,
-        message: 'sub_group_id doit être un nombre valide',
-        timestamp: new Date().toISOString()
-      }
-    }, { status: 400 });
-  }
+  const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1;
+  const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20;
 
-  const result = await getMobileMatchesBySubGroup(id);
+  const result = await getMobileMatchesBySubGroup(parseInt(subGroupId), { page, limit });
   
   if (!result.success) {
     return Response.json(result, { 

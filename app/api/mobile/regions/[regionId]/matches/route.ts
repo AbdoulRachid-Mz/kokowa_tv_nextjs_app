@@ -8,6 +8,8 @@ export const GET = publicHandler(async (request: NextRequest, context: ApiContex
     const id = parseInt(regionId);
     const searchParams = request.nextUrl.searchParams;
     const editionId = searchParams.get("editionId") ? Number(searchParams.get("editionId")) : undefined;
+    const page = searchParams.get("page") ? Number(searchParams.get("page")) : 1;
+    const limit = searchParams.get("limit") ? Number(searchParams.get("limit")) : 20;
 
     if (isNaN(id) || id <= 0) {
         return Response.json({
@@ -20,7 +22,7 @@ export const GET = publicHandler(async (request: NextRequest, context: ApiContex
         }, { status: 400 });
     }
 
-    const result = await getRegionMatches(id, editionId);
+    const result = await getRegionMatches(id, editionId, { page, limit });
 
     if (!result) {
         return Response.json(result, {
