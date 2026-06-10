@@ -580,6 +580,7 @@ async function enrichMatchData(match: any) {
     startTime: formattedStartTime,
     totalDuration: formattedDuration,
     videoUrl: match.videoUrl || null,
+    breakCount: match.breakCount || 0,
     notes: match.notes || null,
     subGroupId: match.subGroupId,
     editionId: match.editionId,
@@ -686,12 +687,13 @@ async function calculateFighterStats(fighterId: number) {
 export async function getMobileFighterMatches(
   fighterId: number,
   editionId?: number,
-  filters?: { page?: number; limit?: number },
+  filters?: { page?: number; limit?: number; all?: boolean },
 ) {
   try {
     const page = filters?.page || 1;
     const limit = filters?.limit || 20;
     const offset = (page - 1) * limit;
+    const all = filters?.all || false;
 
     // Vérifier que le lutteur existe
     const existsSql =
@@ -709,12 +711,23 @@ export async function getMobileFighterMatches(
       };
     }
 
+    // Déterminer l'édition à utiliser
+    let finalEditionId = editionId;
+    if (!finalEditionId && !all) {
+      const participatedEditions = await getParticipatedEditions(fighterId, "fighter");
+      if (participatedEditions.length > 0) {
+        finalEditionId = participatedEditions[0].id;
+      }
+    }
+
     // Compter le total des matchs
     let countWhereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";
     const countParams: any[] = [fighterId];
-    if (editionId) {
-      countWhereClause += " AND p.edition_id = $2";
-      countParams.push(editionId);
+    let paramIndex = 2;
+    if (finalEditionId) {
+      countWhereClause += ` AND p.edition_id = $${paramIndex}`;
+      countParams.push(finalEditionId);
+      paramIndex++;
     }
 
     const countSql = `
@@ -731,7 +744,7 @@ export async function getMobileFighterMatches(
     // Récupérer les matchs paginés
     const matches = await getAllMatchesForFighter(
       fighterId,
-      editionId,
+      finalEditionId,
       limit,
       offset,
     );

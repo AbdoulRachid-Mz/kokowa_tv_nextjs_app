@@ -158,13 +158,13 @@ export function useMatches({
 
     const statusPriority: Record<string, number> = {
       'live': 1,
-      'round_break': 2,
+      'round_break': 1,
+      'reclamation': 1,
       'scheduled': 3,
       'upcoming': 4,
       'completed': 5,
       'postponed': 6,
-      'cancelled': 7,
-      'reclamation': 8
+      'cancelled': 7
     };
 
     return matches.sort((a, b) => {
@@ -182,7 +182,7 @@ export function useMatches({
   // Stats rapides
   const stats = useMemo(() => {
     const matches = organizedMatches;
-    const live = matches.filter(m => m.status === 'live' || m.status === 'round_break');
+    const live = matches.filter(m => m.status === 'live' || m.status === 'round_break' || m.status === 'reclamation');
     const upcoming = matches.filter(m => m.status === 'scheduled');
     const completed = matches.filter(m => m.status === 'completed');
 
@@ -202,11 +202,11 @@ export function useMatches({
     // Données
     matches: organizedMatches,
     matchesByStatus: {
-      live: organizedMatches.filter(m => m.status === 'live' || m.status === 'round_break'),
+      live: organizedMatches.filter(m => m.status === 'live' || m.status === 'round_break' || m.status === 'reclamation'),
       upcoming: organizedMatches.filter(m => m.status === 'scheduled'),
       completed: organizedMatches.filter(m => m.status === 'completed'),
       others: organizedMatches.filter(m =>
-        !['live', 'round_break', 'scheduled', 'completed'].includes(m.status)
+        !['live', 'round_break', 'reclamation', 'scheduled', 'completed'].includes(m.status)
       )
     },
 

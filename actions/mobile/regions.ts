@@ -349,19 +349,31 @@ async function getRegionFighters(regionId: number) {
 export async function getRegionMatches(
   regionId: number,
   editionId?: number,
-  filters?: { page?: number; limit?: number },
+  filters?: { page?: number; limit?: number; all?: boolean },
 ) {
   try {
     const page = filters?.page || 1;
     const limit = filters?.limit || 20;
     const offset = (page - 1) * limit;
+    const all = filters?.all || false;
+
+    // Déterminer l'édition à utiliser
+    let finalEditionId = editionId;
+    if (!finalEditionId && !all) {
+      const participatedEditions = await getParticipatedEditions(regionId, "region");
+      if (participatedEditions.length > 0) {
+        finalEditionId = participatedEditions[0].id;
+      }
+    }
 
     // Compter le total des matchs
     let countWhereClause = "(f1.region_id = $1 OR f2.region_id = $1)";
     const countParams: any[] = [regionId];
-    if (editionId) {
-      countWhereClause += " AND p.edition_id = $2";
-      countParams.push(editionId);
+    let paramIndex = 2;
+    if (finalEditionId) {
+      countWhereClause += ` AND p.edition_id = $${paramIndex}`;
+      countParams.push(finalEditionId);
+      paramIndex++;
     }
 
     const countSql = `
@@ -380,7 +392,7 @@ export async function getRegionMatches(
     // Récupérer tous les matchs de la région paginés
     const matches = await getAllMatchesForRegion(
       regionId,
-      editionId,
+      finalEditionId,
       limit,
       offset,
     );
@@ -605,6 +617,7 @@ async function enrichRegionMatchData(match: any, regionId: number) {
     startTime: formattedStartTime,
     totalDuration: formattedDuration,
     videoUrl: match.videoUrl || null,
+    breakCount: match.breakCount || 0,
     notes: match.notes || null,
     subGroupId: match.subGroupId,
     editionId: match.editionId,

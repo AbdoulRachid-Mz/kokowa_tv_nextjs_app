@@ -32,7 +32,7 @@ interface MatchTimerProps {
 }
 
 export function MatchTimer({
-  formattedTime,
+  formattedTime: initialFormattedTime,
   breakCount,
   isRunning,
   matchStatus,
@@ -46,21 +46,15 @@ export function MatchTimer({
   canResume,
 }: MatchTimerProps) {
   const [showStartDialog, setShowStartDialog] = useState(false);
+  const [displayTime, setDisplayTime] = useState(initialFormattedTime);
 
-  //   //initialStatus
-  //   let initialStatus = matchStatus;
-
-
-  //   useEffect(() => {
-  //   if (initialStatus === 'live') {
-  //     onStart();
-  //   } else {
-  //     onPause();
-  //   }
-  // }, [initialStatus]);
+  // Synchroniser le temps d'affichage avec le temps initial de la DB/RTDB au chargement
+  useEffect(() => {
+    setDisplayTime(initialFormattedTime);
+  }, [initialFormattedTime]);
 
   const handleStartClick = () => {
-    if (formattedTime === "00:00:00") {
+    if (displayTime === "00:00:00") {
       setShowStartDialog(true);
     } else {
       onStart();
@@ -81,7 +75,7 @@ export function MatchTimer({
           {/* Affichage du temps */}
           <div className="text-center">
             <Typography variant="h2" className="font-mono tracking-wider text-3xl font-bold">
-              {formattedTime}
+              {isRunning ? initialFormattedTime : displayTime}
             </Typography>
             <Typography variant="body-sm" theme="muted" className="mt-1">
               Durée du match

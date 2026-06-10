@@ -1005,6 +1005,7 @@ export async function createMatch(
     });
 
     revalidatePath(`/ad/sub-groups/${subGroupId}/matches`);
+    revalidatePath(`/matches`);
 
     return {
       id: matchId,

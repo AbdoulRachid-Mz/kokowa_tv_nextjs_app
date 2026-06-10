@@ -66,7 +66,7 @@ export async function buildRealtimeMatchPayload(
     liveStreamUrl: row.live_stream_url,
     updatedAt: Date.now(),
     startTime: row.start_time2 || null,
-    cards,
+    allCards: cards,
   };
 
   return {

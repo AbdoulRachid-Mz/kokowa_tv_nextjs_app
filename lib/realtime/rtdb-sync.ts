@@ -15,6 +15,13 @@ export async function syncMatchRealtime(
   try {
     const { payload, editionId, subGroupId } = await buildRealtimeMatchPayload(matchId);
     
+    // 🔥 On ne crée/met à jour dans RTDB que si le match est dans un état "actif" (live, break, reclamation)
+    const activeStatuses = ["live", "round_break", "reclamation"];
+    if (!activeStatuses.includes(payload.status)) {
+      console.log(`ℹ️ RTDB sync skipped: match ${matchId} is ${payload.status}`);
+      return;
+    }
+
     const db = getAdminRTDB();
     const ref = db.ref(
       `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}/matches/${matchId}`
@@ -25,6 +32,23 @@ export async function syncMatchRealtime(
     console.log(`✅ RTDB sync: match ${matchId} (edition ${editionId}, subGroup ${subGroupId}) | event: ${event ?? "none"} | live: ${payload.isLive}`);
   } catch (error) {
     console.error(`❌ RTDB sync failed for match ${matchId}:`, error);
+  }
+}
+
+/**
+ * Supprime tous les matches d'un sous-groupe de RTDB
+ */
+export async function deleteRealtimeSubGroupMatches(
+  subGroupId: number,
+  editionId: number
+): Promise<void> {
+  try {
+    const db = getAdminRTDB();
+    const ref = db.ref(`${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}/matches`);
+    await ref.remove();
+    console.log(`🗑️ RTDB: matches du subGroup ${subGroupId} supprimés (edition ${editionId})`);
+  } catch (error) {
+    console.error(`❌ RTDB deleteRealtimeSubGroupMatches failed for subGroup ${subGroupId}:`, error);
   }
 }
 

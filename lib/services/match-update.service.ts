@@ -367,7 +367,7 @@ async function ensureUniqueLiveStates(
            updated_at = CURRENT_TIMESTAMP
        WHERE id != $1
        AND status = 'live'
-       RETURNING id`,
+       RETURNING id, sub_group_id`,
       [matchId],
     );
 
@@ -391,6 +391,26 @@ async function ensureUniqueLiveStates(
       console.log(
         `   → ${ongoingSubGroupsRes.rowCount} autre(s) sous-groupe(s) ongoing arrêté(s)`,
       );
+
+      // 🧹 NETTOYAGE RTDB : Si on change de subGroup, on supprime les matches de l'ancien subGroup de RTDB
+      // On récupère l'editionId pour le nettoyage
+      const editionRes = await client.query(
+        `SELECT p.edition_id FROM sub_groups sg 
+         JOIN phase_groups pg ON sg.group_id = pg.id 
+         JOIN phases p ON pg.phase_id = p.id 
+         WHERE sg.id = $1`,
+        [subGroupId]
+      );
+      const editionId = editionRes.rows[0]?.edition_id;
+
+      if (editionId) {
+        const { deleteRealtimeSubGroupMatches } = await import("@/lib/realtime/rtdb-sync");
+        for (const sg of ongoingSubGroupsRes.rows) {
+           // Supprimer uniquement les matches de l'ancien subGroup de RTDB
+           await deleteRealtimeSubGroupMatches(sg.id, editionId);
+           console.log(`   → Matches du subGroup ${sg.id} supprimés de RTDB`);
+        }
+      }
     }
 
     // 3. Activer le sous-groupe du match (s'il n'est pas déjà terminé)

@@ -522,12 +522,9 @@ export async function createMatch(
 
     await client.query('COMMIT');
 
-    // 🔥 Émettre l'événement de création
-    await emitMatchEvent(matchId, 'match_created', {
-      matchId,
-      subGroupId: subGroupId
-    });
-
+    // 🔥 Émettre l'événement de création (RTDB désactivé pour 'scheduled')
+    // Le match ne sera créé dans RTDB que lors du passage à 'live' via updateMatch
+    
     revalidatePath(`/ad/sub-groups/${subGroupId}/matches`);
     updateTag("matches");
     updateTag(`matches-subgroup:${subGroupId}`);

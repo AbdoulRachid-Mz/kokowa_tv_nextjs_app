@@ -426,7 +426,7 @@ async function getMatchesForSubGroup(subGroupId: number) {
       startTime2: match.startTime2,
       status: match.status,
       totalDuration: formatDuration(match.totalDuration),
-      breakCount: match.breakCount,
+      breakCount: match.breakCount || 0,
       videoUrl: match.videoUrl,
       liveStreamUrl: match.liveStreamUrl,
       subGroupId: match.subGroupId,
@@ -574,6 +574,7 @@ async function getLiveMatchForEdition(editionId: number) {
         initialState: null,
       },
     };
+    liveMatch.editionId = editionId;
 
     liveMatch.result = {
       winnerId: liveMatch.winnerFighterId,
@@ -610,7 +611,7 @@ async function getLiveMatchForEdition(editionId: number) {
     fieldsToDelete.forEach((field) => delete liveMatch[field]);
   }
 
-  return { editionId, ...liveMatch };
+  return { liveMatch };
 }
 
 export async function getEditionStats(editionId: number) {

@@ -9,6 +9,7 @@ export const GET = publicHandler(async (request: NextRequest, context: ApiContex
    const editionId = searchParams.get("editionId") ? Number(searchParams.get("editionId")) : undefined;
    const page = searchParams.get("page") ? Number(searchParams.get("page")) : 1;
    const limit = searchParams.get("limit") ? Number(searchParams.get("limit")) : 20;
+   const all = searchParams.get("allEditions") === "true" || searchParams.get("all") === "true";
 
   if (isNaN(id) || id <= 0) {
     return Response.json({
@@ -21,7 +22,7 @@ export const GET = publicHandler(async (request: NextRequest, context: ApiContex
     }, { status: 400 });
   }
 
-  const result = await getMobileFighterMatches(id, editionId, { page, limit });
+  const result = await getMobileFighterMatches(id, editionId, { page, limit, all });
   
   if (!result.success) {
     return Response.json(result, { 

@@ -1,34 +1,50 @@
 //api/regions/[regionId]/matches
-import { NextRequest } from 'next/server';
-import { publicHandler, ApiContext } from '@/lib/api-handler';
-import { getRegionMatches } from '@/actions/mobile/regions';
+import { NextRequest } from "next/server";
+import { publicHandler, ApiContext } from "@/lib/api-handler";
+import { getRegionMatches } from "@/actions/mobile/regions";
 
-export const GET = publicHandler(async (request: NextRequest, context: ApiContext) => {
+export const GET = publicHandler(
+  async (request: NextRequest, context: ApiContext) => {
     const { regionId } = await context.params!;
     const id = parseInt(regionId);
     const searchParams = request.nextUrl.searchParams;
-    const editionId = searchParams.get("editionId") ? Number(searchParams.get("editionId")) : undefined;
-    const page = searchParams.get("page") ? Number(searchParams.get("page")) : 1;
-    const limit = searchParams.get("limit") ? Number(searchParams.get("limit")) : 20;
+    const editionId = searchParams.get("editionId")
+      ? Number(searchParams.get("editionId"))
+      : undefined;
+    const page = searchParams.get("page")
+      ? Number(searchParams.get("page"))
+      : 1;
+    const limit = searchParams.get("limit")
+      ? Number(searchParams.get("limit"))
+      : 20;
+    const all =
+      searchParams.get("allEditions") === "true" ||
+      searchParams.get("all") === "true";
 
     if (isNaN(id) || id <= 0) {
-        return Response.json({
-            success: false,
-            error: {
-                code: 400,
-                message: 'Le paramètre region_id est requis et doit être un nombre valide',
-                timestamp: new Date().toISOString()
-            }
-        }, { status: 400 });
+      return Response.json(
+        {
+          success: false,
+          error: {
+            code: 400,
+            message:
+              "Le paramètre region_id est requis et doit être un nombre valide",
+            timestamp: new Date().toISOString(),
+          },
+        },
+        { status: 400 },
+      );
     }
 
-    const result = await getRegionMatches(id, editionId, { page, limit });
+    const result = await getRegionMatches(id, editionId, { page, limit, all });
 
     if (!result) {
-        return Response.json(result, {
-            status: (result as any).error?.code || 500
-        });
+      return Response.json(result, {
+        status: (result as any).error?.code || 500,
+      });
     }
 
-    return Response.json({...result});
-}, ['GET']);
+    return Response.json({ ...result });
+  },
+  ["GET"],
+);

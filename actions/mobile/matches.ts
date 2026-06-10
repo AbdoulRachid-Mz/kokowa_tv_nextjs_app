@@ -527,6 +527,7 @@ async function enrichMatchData(match: any) {
     startTime: formattedStartTime,
     totalDuration: formattedDuration,
     videoUrl: match.videoUrl || match.video_url || null,
+    breakCount: match.breakCount || 0,
     notes: match.notes || null,
     subGroupId: match.subGroupId || match.sub_group_id,
     editionId: match.editionId || match.edition_id,

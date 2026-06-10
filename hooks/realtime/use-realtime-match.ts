@@ -30,7 +30,7 @@ export function useRealtimeMatch(
       (snapshot) => {
         if (snapshot.exists()) {
           const matchData = snapshot.val() as RealtimeMatchDocument;
-          matchData.cards = matchData.cards || [];
+          matchData.allCards = matchData.allCards || [];
           setData(matchData);
         } else {
           setData(null);

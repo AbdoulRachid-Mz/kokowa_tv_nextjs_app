@@ -12,8 +12,14 @@ import { useLiveMatches } from '@/hooks/use-matches'
 
 export function LiveMatchesSection() {
   const [activeMatch, setActiveMatch] = useState(0)
-  const { matches, isLoading } = useLiveMatches({ limit: 10 })
+  const { matches: dbMatches, isLoading } = useLiveMatches({ limit: 10 })
   const isListening = true; // Firestore Realtime acts as constant listen channel
+
+  // Fusionner avec le statut live étendu (reclamation, round_break)
+  const matches = dbMatches.map(m => ({
+    ...m,
+    is_actually_live: m.status === 'live' || m.status === 'round_break' || m.status === 'reclamation'
+  })).filter(m => m.is_actually_live);
 
   if (isLoading) {
     return (
