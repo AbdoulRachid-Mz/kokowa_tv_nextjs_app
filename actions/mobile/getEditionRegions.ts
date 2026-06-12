@@ -32,18 +32,57 @@ export async function getMobileEditionRegions(editionId: number) {
     // Classer les régions
     const rankedRegions = rankRegions(regions);
 
+    // Nettoyer les données des régions pour ne garder que les champs essentiels
+    const cleanedRegions = rankedRegions.map(region => ({
+      regionId: region.regionId,
+      regionName: region.regionName,
+      regionCode: region.regionCode,
+      flagImage: region.flagImage,
+      isEliminated: region.isEliminated,
+      stats: {
+        totalFighters: region.stats?.totalFighters || 0,
+        championFighters: region.stats?.championFighters || 0,
+        unbeatenFighters: region.stats?.unbeatenFighters || 0,
+        totalWins: region.stats?.totalWins || 0,
+        totalLosses: region.stats?.totalLosses || 0,
+        winRate: region.stats?.winRate || 0,
+        totalDraws: region.stats?.totalDraws || 0
+      },
+      unbeatenRatio: region.unbeatenRatio,
+      rank: region.rank
+    }));
+
+    // Nettoyer les données des lutteurs pour ne garder que les champs essentiels
+    const cleanedFighters = fighters.map(fighter => ({
+      fighterId: fighter.fighterId,
+      firstName: fighter.firstName,
+      lastName: fighter.lastName,
+      nickname: fighter.nickname || "",
+      profileImage: fighter.profileImage,
+      regionId: fighter.regionId,
+      regionName: fighter.regionName,
+      isChampion: fighter.isChampion,
+      totalMatches: fighter.totalMatches,
+      wins: fighter.wins,
+      losses: fighter.losses,
+      draws: fighter.draws,
+      yellowCards: fighter.yellowCards,
+      redCards: fighter.redCards,
+      winRate: fighter.winRate
+    }));
+
     return {
       success: true,
       data: {
         edition: editionInfo,
-        regions: rankedRegions,
-        fighters,
+        regions: cleanedRegions,
+        fighters: cleanedFighters,
         summary: {
           totalRegions: editionInfo.totalRegions,
           totalFighters: editionInfo.totalFighters,
           totalUnbeatenFighters: editionInfo.totalUnbeatenFighters,
-          eliminatedRegions: regions.filter((r: any) => r.isEliminated).length,
-          activeRegions: regions.filter((r: any) => !r.isEliminated).length,
+          eliminatedRegions: cleanedRegions.filter((r: any) => r.isEliminated).length,
+          activeRegions: cleanedRegions.filter((r: any) => !r.isEliminated).length,
         },
         timestamp: new Date().toISOString(),
       },
@@ -148,26 +187,11 @@ async function getRegionsWithStats(editionId: number) {
         COUNT(DISTINCT em.id) FILTER (
           WHERE em.match_result = 'draw' 
             AND (em.fighter1_id = fe.fighter_id OR em.fighter2_id = fe.fighter_id)
-        ) as draws,
-        
-        -- Terraces (victoires)
-        COUNT(DISTINCT em.id) FILTER (
-          WHERE em.winner_fighter_id = fe.fighter_id
-        ) as terraces_given,
-        
-        -- Terraces subis (défaites)
-        COUNT(DISTINCT em.id) FILTER (
-          WHERE em.loser_fighter_id = fe.fighter_id
-        ) as terraces_taken,
-        
-        -- Cartons (en s'assurant de ne compter que les cartons des matchs de cette édition)
-        COUNT(DISTINCT fc.id) FILTER (WHERE fc.card_type = 'yellow') as yellow_cards,
-        COUNT(DISTINCT fc.id) FILTER (WHERE fc.card_type = 'red') as red_cards
+        ) as draws
         
       FROM edition_fighters fe
       LEFT JOIN edition_matches em ON 
         (em.fighter1_id = fe.fighter_id OR em.fighter2_id = fe.fighter_id)
-      LEFT JOIN fighter_cards fc ON fc.match_id = em.id AND fc.fighter_id = fe.fighter_id
       WHERE fe.edition_id = $1
       GROUP BY fe.fighter_id, fe.region_id, fe.is_eliminated
     ),
@@ -186,21 +210,13 @@ async function getRegionsWithStats(editionId: number) {
       SELECT 
         fs.region_id,
         COUNT(DISTINCT fs.fighter_id) as total_fighters,
-        COUNT(DISTINCT fs.fighter_id) FILTER (WHERE fs.is_eliminated = false) as active_fighters,
-        COUNT(DISTINCT fs.fighter_id) FILTER (WHERE fs.is_eliminated = true) as eliminated_fighters,
-        COUNT(DISTINCT ef.fighter_id) FILTER (WHERE ef.is_champion = true) as champion_fighters,
         COUNT(DISTINCT fs.fighter_id) FILTER (WHERE fs.is_eliminated = false) as unbeaten_fighters,
+        COUNT(DISTINCT ef.fighter_id) FILTER (WHERE ef.is_champion = true) as champion_fighters,
         
         -- Stats des matchs
         COALESCE(SUM(fs.wins), 0) as total_wins,
         COALESCE(SUM(fs.losses), 0) as total_losses,
-        COALESCE(SUM(fs.draws), 0) as total_draws,
-        COALESCE(SUM(fs.terraces_given), 0) as total_terraces,
-        COALESCE(SUM(fs.terraces_taken), 0) as total_terraces_taken,
-        
-        -- Cartons
-        COALESCE(SUM(fs.yellow_cards), 0) as total_yellow_cards,
-        COALESCE(SUM(fs.red_cards), 0) as total_red_cards
+        COALESCE(SUM(fs.draws), 0) as total_draws
         
       FROM fighter_stats fs
       JOIN edition_fighters ef ON fs.fighter_id = ef.fighter_id 
@@ -219,16 +235,11 @@ async function getRegionsWithStats(editionId: number) {
       -- Statistiques agrégées
       json_build_object(
         'totalFighters', COALESCE(ra.total_fighters, 0),
-        'activeFighters', COALESCE(ra.active_fighters, 0),
-        'eliminatedFighters', COALESCE(ra.eliminated_fighters, 0),
         'championFighters', COALESCE(ra.champion_fighters, 0),
         'unbeatenFighters', COALESCE(ra.unbeaten_fighters, 0),
         'totalWins', COALESCE(ra.total_wins, 0),
         'totalLosses', COALESCE(ra.total_losses, 0),
-        'totalTerraces', COALESCE(ra.total_terraces, 0),
-        'totalBeenTerraced', COALESCE(ra.total_terraces_taken, 0),
-        'yellowCards', COALESCE(ra.total_yellow_cards, 0),
-        'redCards', COALESCE(ra.total_red_cards, 0),
+        'totalDraws', COALESCE(ra.total_draws, 0),
         'winRate', CASE 
           WHEN COALESCE(ra.total_wins, 0) + COALESCE(ra.total_losses, 0) > 0 
           THEN ROUND((COALESCE(ra.total_wins, 0) * 100.0) / (COALESCE(ra.total_wins, 0) + COALESCE(ra.total_losses, 0)), 1)
@@ -264,18 +275,11 @@ async function getRegionsWithStats(editionId: number) {
     stats: {
       ...r.stats,
       totalFighters: Number(r.stats?.totalFighters || 0),
-      activeFighters: Number(r.stats?.activeFighters || 0),
-      eliminatedFighters: Number(r.stats?.eliminatedFighters || 0),
       championFighters: Number(r.stats?.championFighters || 0),
       unbeatenFighters: Number(r.stats?.unbeatenFighters || 0),
-      totalMatches: Number(r.stats?.totalMatches || 0),
       totalWins: Number(r.stats?.totalWins || 0),
       totalLosses: Number(r.stats?.totalLosses || 0),
       totalDraws: Number(r.stats?.totalDraws || 0),
-      totalTerraces: Number(r.stats?.totalTerraces || 0),
-      totalBeenTerraced: Number(r.stats?.totalBeenTerraced || 0),
-      yellowCards: Number(r.stats?.yellowCards || 0),
-      redCards: Number(r.stats?.redCards || 0),
       winRate: Number(r.stats?.winRate || 0)
     }
   }));
@@ -304,7 +308,6 @@ async function getFightersForEdition(editionId: number) {
       SELECT 
         fe.fighter_id,
         fe.region_id,
-        fe.is_eliminated,
         COUNT(DISTINCT em.id) as total_matches,
         
         -- Victoires
@@ -323,16 +326,6 @@ async function getFightersForEdition(editionId: number) {
             AND (em.fighter1_id = fe.fighter_id OR em.fighter2_id = fe.fighter_id)
         ) as draws,
         
-        -- Terraces
-        COUNT(DISTINCT em.id) FILTER (
-          WHERE em.winner_fighter_id = fe.fighter_id
-        ) as terraces,
-        
-        -- Terraces subis
-        COUNT(DISTINCT em.id) FILTER (
-          WHERE em.loser_fighter_id = fe.fighter_id
-        ) as been_terraced,
-        
         -- Cartons
         COUNT(DISTINCT fc.id) FILTER (WHERE fc.card_type = 'yellow') as yellow_cards,
         COUNT(DISTINCT fc.id) FILTER (WHERE fc.card_type = 'red') as red_cards
@@ -342,36 +335,23 @@ async function getFightersForEdition(editionId: number) {
         (em.fighter1_id = fe.fighter_id OR em.fighter2_id = fe.fighter_id)
       LEFT JOIN fighter_cards fc ON fc.match_id = em.id AND fc.fighter_id = fe.fighter_id
       WHERE fe.edition_id = $1
-      GROUP BY fe.fighter_id, fe.region_id, fe.is_eliminated
+      GROUP BY fe.fighter_id, fe.region_id
     )
     SELECT 
-      fe.id,
       fe.fighter_id as "fighterId",
       f.first_name as "firstName",
       f.last_name as "lastName",
       f.nickname,
       f.profile_image as "profileImage",
-      f.height,
-      f.weight,
-      f.fighting_style as "fightingStyle",
-      f.ranking,
       fe.region_id as "regionId",
       r.name as "regionName",
-      r.color as "regionColor",
-      
-      -- Utiliser directement is_eliminated de edition_fighters
-      fe.is_eliminated as "isEliminated",
-      
       fe.is_champion as "isChampion",
-      fe.created_at as "createdAt",
       
       -- Statistiques
       COALESCE(stats.total_matches, 0) as "totalMatches",
       COALESCE(stats.wins, 0) as "wins",
       COALESCE(stats.losses, 0) as "losses",
       COALESCE(stats.draws, 0) as "draws",
-      COALESCE(stats.terraces, 0) as "terraces",
-      COALESCE(stats.been_terraced, 0) as "beenTerraced",
       COALESCE(stats.yellow_cards, 0) as "yellowCards",
       COALESCE(stats.red_cards, 0) as "redCards",
       
@@ -380,13 +360,7 @@ async function getFightersForEdition(editionId: number) {
         WHEN COALESCE(stats.total_matches, 0) > 0 
         THEN ROUND((COALESCE(stats.wins, 0) * 100.0) / COALESCE(stats.total_matches, 0), 1)
         ELSE 0 
-      END as "winRate",
-      
-      -- Invaincu = is_eliminated = false
-      CASE 
-        WHEN fe.is_eliminated = false THEN true
-        ELSE false
-      END as "isUnbeaten"
+      END as "winRate"
 
     FROM edition_fighters fe
     JOIN fighters f ON fe.fighter_id = f.id
@@ -395,7 +369,7 @@ async function getFightersForEdition(editionId: number) {
     WHERE fe.edition_id = $1
     ORDER BY 
       fe.is_champion DESC,
-      fe.is_eliminated ASC,  -- Non éliminés d'abord
+      fe.is_eliminated ASC,
       COALESCE(stats.wins, 0) DESC,
       COALESCE(stats.total_matches, 0) DESC
   `;
@@ -409,13 +383,10 @@ async function getFightersForEdition(editionId: number) {
     wins: Number(f.wins || 0),
     losses: Number(f.losses || 0),
     draws: Number(f.draws || 0),
-    terraces: Number(f.terraces || 0),
-    beenTerraced: Number(f.beenTerraced || 0),
     yellowCards: Number(f.yellowCards || 0),
     redCards: Number(f.redCards || 0),
     winRate: Number(f.winRate || 0),
-    isUnbeaten: Boolean(f.isUnbeaten),
-    isEliminated: Boolean(f.isEliminated)
+    isChampion: Boolean(f.isChampion)
   }));
 }
 
@@ -430,7 +401,6 @@ function rankRegions(regions: any[]) {
       totalFighters: Number(region.stats?.totalFighters || 0),
       unbeatenFighters: Number(region.stats?.unbeatenFighters || 0),
       totalWins: Number(region.stats?.totalWins || 0),
-      totalTerraces: Number(region.stats?.totalTerraces || 0),
       championFighters: Number(region.stats?.championFighters || 0)
     }
   }));
@@ -456,10 +426,6 @@ function rankRegions(regions: any[]) {
     // Nombre de victoires total
     if (a.stats.totalWins !== b.stats.totalWins)
       return b.stats.totalWins - a.stats.totalWins;
-
-    // Nombre de terraces infligés
-    if (a.stats.totalTerraces !== b.stats.totalTerraces)
-      return b.stats.totalTerraces - a.stats.totalTerraces;
 
     // Nombre de champions
     return b.stats.championFighters - a.stats.championFighters;

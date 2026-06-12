@@ -611,7 +611,7 @@ async function getLiveMatchForEdition(editionId: number) {
     fieldsToDelete.forEach((field) => delete liveMatch[field]);
   }
 
-  return { liveMatch };
+  return liveMatch ?? null;
 }
 
 export async function getEditionStats(editionId: number) {
@@ -719,6 +719,5 @@ export async function getParticipatedEditions(
     ORDER BY ce.year DESC, ce.edition_number DESC
     `;
   }
-
-  return await query(sql, params);
+  return await query(sql, params) ?? null;
 }
