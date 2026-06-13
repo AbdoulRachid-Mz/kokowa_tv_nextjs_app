@@ -13,6 +13,7 @@ export interface MobileRefereeFilters {
   limit?: number;
   withRegion?: boolean;
   withSubGroups?: boolean;
+  sortBy?: 'experience' | 'matches' | 'name';
   sortOrder?: 'asc' | 'desc';
 }
 
@@ -67,8 +68,10 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
 
     // Obtenir le total
     const countSql = `
-      SELECT COUNT(*) as total
+      SELECT COUNT(DISTINCT r.id) as total
       FROM referees r
+      LEFT JOIN sub_groups sg ON r.id = sg.main_referee_id
+      LEFT JOIN matches m ON sg.id = m.sub_group_id
       ${whereClause}
     `;
 
@@ -86,30 +89,36 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
       'r.certification_level as "certificationLevel"',
       'r.experience_years as "experienceYears"',
       'r.is_active as "isActive"',
-      'r.social_links as "socialLinks"'
+      'r.social_links as "socialLinks"',
+      'COUNT(DISTINCT m.id) as "matchesCount"'
     ];
+
+    // Déterminer le tri
+    let orderByClause = 'ORDER BY r.last_name ASC, r.first_name ASC';
+    const sortBy = filters.sortBy || 'name';
+    const sortOrder = filters.sortOrder || 'desc';
+
+    if (sortBy === 'experience') {
+      orderByClause = `ORDER BY r.experience_years ${sortOrder.toUpperCase()}, r.last_name ASC`;
+    } else if (sortBy === 'matches') {
+      orderByClause = `ORDER BY "matchesCount" ${sortOrder.toUpperCase()}, r.last_name ASC`;
+    }
 
     const sql = `
       SELECT 
         ${selectFields.join(', ')}
       FROM referees r
+      LEFT JOIN sub_groups sg ON r.id = sg.main_referee_id
+      LEFT JOIN matches m ON sg.id = m.sub_group_id
       ${whereClause}
-      ORDER BY r.last_name ASC, r.first_name ASC
+      GROUP BY r.id
+      ${orderByClause}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
     params.push(limit, offset);
 
     const referees = await query(sql, params);
-
-    // Récupérer les compteurs de sous-groupes et de matches si demandé
-    if (filters.withSubGroups === true && referees.length > 0) {
-      for (const referee of referees) {
-        const stats = await getRefereeCounts(referee.id);
-        referee.subGroupsCount = stats.subGroupsCount;
-        referee.matchesCount = stats.matchesCount;
-      }
-    }
 
     // Calculer la pagination
     const totalPages = Math.ceil(total / limit);

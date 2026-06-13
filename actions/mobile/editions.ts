@@ -280,6 +280,117 @@ async function getSubgroupsWithMatchesForGroup(groupId: number) {
   return subGroups;
 }
 
+// Helper function to retrieve all cards for a match
+async function getCardsForMatch(matchId: number) {
+  const sql = `
+    SELECT id, fighter_id as "fighterId", minute_given as "minuteGiven"
+    FROM fighter_cards
+    WHERE match_id = $1
+  `;
+  return await query(sql, [matchId]);
+}
+
+// Match data enrichment function following the required format
+async function enrichMatchData(match: any) {
+  // Retrieve all cards for this match
+  const cards = await getCardsForMatch(match.id);
+
+  // Format totalDuration (handles INTERVAL objects, strings, and numeric values)
+  let formattedDuration = "00:00:00";
+  if (match.totalDuration) {
+    if (typeof match.totalDuration === "object") {
+      const hours = String(match.totalDuration.hours || 0).padStart(2, "0");
+      const minutes = String(match.totalDuration.minutes || 0).padStart(2, "0");
+      const seconds = String(match.totalDuration.seconds || 0).padStart(2, "0");
+      formattedDuration = `${hours}:${minutes}:${seconds}`;
+    } else if (typeof match.totalDuration === "string") {
+      const match_interval = match.totalDuration.match(/(\d+):(\d+):(\d+)/);
+      if (match_interval) {
+        formattedDuration = match_interval[0];
+      } else {
+        formattedDuration = match.totalDuration;
+      }
+    } else if (typeof match.totalDuration === "number") {
+      const hours = Math.floor(match.totalDuration / 3600);
+      const minutes = Math.floor((match.totalDuration % 3600) / 60);
+      const seconds = match.totalDuration % 60;
+      formattedDuration = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+  }
+
+  // Format start time into a complete ISO timestamp
+  let formattedStartTime = match.startTime;
+  const dateStr = match.matchDate
+    ? new Date(match.matchDate).toISOString().split("T")[0]
+    : null;
+
+  if (dateStr && match.startTime) {
+    formattedStartTime = new Date(match.startTime).toISOString();
+  } else if (
+    dateStr &&
+    match.startTime &&
+    typeof match.startTime === "string"
+  ) {
+    const timeStr = match.startTime.includes("T")
+      ? match.startTime.split("T")[1]
+      : match.startTime;
+    formattedStartTime = new Date(`${dateStr}T${timeStr}`).toISOString();
+  }
+
+  // Structure fighter 1 data
+  const fighter1 = {
+    id: match.fighter1Id || match.fighter1_id,
+    firstName: match.fighter1FirstName || match.fighter1_first_name,
+    lastName: match.fighter1LastName || match.fighter1_last_name,
+    nickname: match.fighter1Nickname || match.fighter1_nickname || "",
+    profileImage: match.fighter1ProfileImage || match.fighter1_profile_image,
+    regionName: match.fighter1RegionName || match.fighter1_region_name,
+    initialState:
+      match.fighter1InitialState || match.fighter1_initial_state || null,
+  };
+
+  // Structure fighter 2 data
+  const fighter2 = {
+    id: match.fighter2Id || match.fighter2_id,
+    firstName: match.fighter2FirstName || match.fighter2_first_name,
+    lastName: match.fighter2LastName || match.fighter2_last_name,
+    nickname: match.fighter2Nickname || match.fighter2_nickname || "",
+    profileImage: match.fighter2ProfileImage || match.fighter2_profile_image,
+    regionName: match.fighter2RegionName || match.fighter2_region_name,
+    initialState:
+      match.fighter2InitialState || match.fighter2_initial_state || null,
+  };
+
+  // Build and return the formatted match object
+  return {
+    id: match.id,
+    matchNumber: match.matchNumber || match.match_number,
+    status: match.status,
+    startTime: formattedStartTime,
+    totalDuration: formattedDuration,
+    videoUrl: match.videoUrl || match.video_url || null,
+    breakCount: match.breakCount || 0,
+    notes: match.notes || null,
+    subGroupId: match.subGroupId || match.sub_group_id,
+    editionId: match.editionId || match.edition_id,
+
+    fighters: {
+      fighter1,
+      fighter2,
+    },
+
+    result: {
+      winnerId: match.winnerFighterId || match.winner_fighter_id || null,
+      loserId: match.loserFighterId || match.loser_fighter_id || null,
+    },
+
+    allCards: cards.map((card: any) => ({
+      fighterId: card.fighterId,
+      minuteGiven: card.minuteGiven,
+    })),
+  };
+}
+
 // Fonction pour récupérer les matches d'un sous-groupe (format simplifié comme demandé)
 async function getMatchesForSubGroup(subGroupId: number) {
   const sql = `
@@ -287,7 +398,7 @@ async function getMatchesForSubGroup(subGroupId: number) {
       m.id,
       m.match_number as "matchNumber",
       m.match_date as "matchDate",
-      m.start_time2 as "startTime2",
+      m.start_time2 as "startTime",
       m.status,
       m.total_duration as "totalDuration",
       m.break_count as "breakCount",
@@ -317,140 +428,21 @@ async function getMatchesForSubGroup(subGroupId: number) {
       
       -- Winner
       m.winner_fighter_id as "winnerFighterId",
-      m.loser_fighter_id as "loserFighterId",
-      
-      -- Winner fighter details
-      wf.first_name as "winnerFirstName",
-      wf.last_name as "winnerLastName",
-      wf.nickname as "winnerNickname",
-      wf.profile_image as "winnerProfileImage",
-      wf.region_id as "winnerRegionId",
-      wr.name as "winnerRegionName",
-      
-      -- Loser fighter details
-      lf.first_name as "loserFirstName",
-      lf.last_name as "loserLastName",
-      lf.nickname as "loserNickname",
-      lf.profile_image as "loserProfileImage",
-      lf.region_id as "loserRegionId",
-      lr.name as "loserRegionName",
-        
-      -- Cards count
-      (SELECT COUNT(*) FROM fighter_cards fc WHERE fc.match_id = m.id) as total_cards,
-      (SELECT COUNT(*) FROM fighter_cards fc WHERE fc.match_id = m.id AND fc.card_type = 'yellow') as yellow_cards,
-      (SELECT COUNT(*) FROM fighter_cards fc WHERE fc.match_id = m.id AND fc.card_type = 'red') as red_cards
-      
+      m.loser_fighter_id as "loserFighterId"
     FROM matches m
     JOIN fighters f1 ON m.fighter1_id = f1.id
     JOIN fighters f2 ON m.fighter2_id = f2.id
     JOIN regions r1 ON f1.region_id = r1.id
     JOIN regions r2 ON f2.region_id = r2.id
-    LEFT JOIN fighters wf ON m.winner_fighter_id = wf.id
-    LEFT JOIN regions wr ON wf.region_id = wr.id
-    LEFT JOIN fighters lf ON m.loser_fighter_id = lf.id
-    LEFT JOIN regions lr ON lf.region_id = lr.id
     WHERE m.sub_group_id = $1
     ORDER BY m.match_number ASC
   `;
 
   const matches = await query(sql, [subGroupId]);
-
-  // Formater chaque match selon le modèle demandé
-  return matches.map((match) => {
-    // Structurer les données des fighters
-    const fighter1 = {
-      id: match.fighter1Id,
-      firstName: match.fighter1FirstName,
-      lastName: match.fighter1LastName,
-      nickname: match.fighter1Nickname || "",
-      profileImage: match.fighter1ProfileImage,
-      region: {
-        id: match.fighter1RegionId,
-        name: match.fighter1RegionName,
-      },
-      initialState: match.fighter1InitialState,
-    };
-
-    const fighter2 = {
-      id: match.fighter2Id,
-      firstName: match.fighter2FirstName,
-      lastName: match.fighter2LastName,
-      nickname: match.fighter2Nickname || "",
-      profileImage: match.fighter2ProfileImage,
-      region: {
-        id: match.fighter2RegionId,
-        name: match.fighter2RegionName,
-      },
-      initialState: match.fighter2InitialState,
-    };
-
-    // Structurer le résultat
-    let winner = null;
-    let loser = null;
-
-    if (match.winnerFighterId) {
-      winner = {
-        id: match.winnerFighterId,
-        firstName: match.winnerFirstName,
-        lastName: match.winnerLastName,
-        nickname: match.winnerNickname || "",
-        profileImage: match.winnerProfileImage,
-        region: {
-          id: match.winnerRegionId,
-          name: match.winnerRegionName,
-          flagImage: match.winnerRegionFlagImage,
-        },
-      };
-    }
-
-    if (match.loserFighterId) {
-      loser = {
-        id: match.loserFighterId,
-        firstName: match.loserFirstName,
-        lastName: match.loserLastName,
-        nickname: match.loserNickname || "",
-        profileImage: match.loserProfileImage,
-        region: {
-          id: match.loserRegionId,
-          name: match.loserRegionName,
-          flagImage: match.loserRegionFlagImage,
-        },
-      };
-    }
-
-    // Formater le match selon le modèle demandé
-    const formattedMatch = {
-      id: match.id,
-      matchNumber: match.matchNumber,
-      matchDate: match.matchDate,
-      startTime2: match.startTime2,
-      status: match.status,
-      totalDuration: formatDuration(match.totalDuration),
-      breakCount: match.breakCount || 0,
-      videoUrl: match.videoUrl,
-      liveStreamUrl: match.liveStreamUrl,
-      subGroupId: match.subGroupId,
-      notes: match.notes,
-      fighters: {
-        fighter1,
-        fighter2,
-      },
-      result: {
-        winner,
-        loser,
-      },
-      // stats: {
-      //   totalCards: match.total_cards,
-      //   yellowCards: match.yellow_cards,
-      //   redCards: match.red_cards,
-      //   duration: {},
-      //   breaks: match.breakCount,
-      // },
-      allCards: [], // Les cartes détaillées peuvent être ajoutées dans une requête séparée si nécessaire
-    };
-
-    return formattedMatch;
-  });
+  const enrichedMatches = await Promise.all(
+    matches.map((match) => enrichMatchData(match)),
+  );
+  return enrichedMatches;
 }
 
 async function getSubgroupsForGroup(groupId: number) {
@@ -719,5 +711,5 @@ export async function getParticipatedEditions(
     ORDER BY ce.year DESC, ce.edition_number DESC
     `;
   }
-  return await query(sql, params) ?? null;
+  return (await query(sql, params)) ?? null;
 }

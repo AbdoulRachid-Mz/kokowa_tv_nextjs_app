@@ -1,6 +1,7 @@
 "use server";
 
 import { query } from "@/lib/db/neon-client";
+import { enrichMatchData, getCardsForMatch } from "@/utils/match-utils";
 
 export async function getMobileMatchesBySubGroup(
   subGroupId: number,
@@ -448,126 +449,7 @@ async function getAllMatchesForSubGroup(subGroupId: number) {
   return await query(sql, [subGroupId]);
 }
 
-// Dans matches.ts, fonction enrichMatchData()
 
-async function enrichMatchData(match: any) {
-  // Récupérer les cartons pour ce match
-  const cards = await getCardsForMatch(match.id);
-
-  // Formater totalDuration (INTERVAL -> HH:MM:SS)
-  let formattedDuration = "00:00:00";
-  if (match.totalDuration) {
-    if (typeof match.totalDuration === "object") {
-      const hours = String(match.totalDuration.hours || 0).padStart(2, "0");
-      const minutes = String(match.totalDuration.minutes || 0).padStart(2, "0");
-      const seconds = String(match.totalDuration.seconds || 0).padStart(2, "0");
-      formattedDuration = `${hours}:${minutes}:${seconds}`;
-    } else if (typeof match.totalDuration === "string") {
-      const match_interval = match.totalDuration.match(/(\d+):(\d+):(\d+)/);
-      if (match_interval) {
-        formattedDuration = match_interval[0];
-      } else {
-        formattedDuration = match.totalDuration;
-      }
-    } else if (typeof match.totalDuration === "number") {
-      const hours = Math.floor(match.totalDuration / 3600);
-      const minutes = Math.floor((match.totalDuration % 3600) / 60);
-      const seconds = match.totalDuration % 60;
-      formattedDuration = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-    }
-  }
-
-  // Formater startTime en timestamp ISO complet
-  let formattedStartTime = match.startTime || match.start_time2;
-  const dateStr = match.match_date
-    ? new Date(match.match_date).toISOString().split("T")[0]
-    : null;
-
-  if (dateStr && match.start_time2) {
-    formattedStartTime = new Date(match.start_time2).toISOString();
-  } else if (
-    dateStr &&
-    match.startTime &&
-    typeof match.startTime === "string"
-  ) {
-    const timeStr = match.startTime.includes("T")
-      ? match.startTime.split("T")[1]
-      : match.startTime;
-    formattedStartTime = new Date(`${dateStr}T${timeStr}`).toISOString();
-  }
-
-  // Formater les données des lutteurs
-  const fighter1 = {
-    id: match.fighter1Id || match.fighter1_id,
-    firstName: match.fighter1FirstName || match.fighter1_first_name,
-    lastName: match.fighter1LastName || match.fighter1_last_name,
-    nickname: match.fighter1Nickname || match.fighter1_nickname || "",
-    profileImage: match.fighter1ProfileImage || match.fighter1_profile_image,
-    regionName: match.fighter1RegionName || match.fighter1_region_name,
-    initialState:
-      match.fighter1InitialState || match.fighter1_initial_state || null,
-  };
-
-  const fighter2 = {
-    id: match.fighter2Id || match.fighter2_id,
-    firstName: match.fighter2FirstName || match.fighter2_first_name,
-    lastName: match.fighter2LastName || match.fighter2_last_name,
-    nickname: match.fighter2Nickname || match.fighter2_nickname || "",
-    profileImage: match.fighter2ProfileImage || match.fighter2_profile_image,
-    regionName: match.fighter2RegionName || match.fighter2_region_name,
-    initialState:
-      match.fighter2InitialState || match.fighter2_initial_state || null,
-  };
-
-  // Formater la réponse avec les champs formatés selon error-to-fix.md
-  return {
-    id: match.id,
-    matchNumber: match.matchNumber || match.match_number,
-    status: match.status,
-    startTime: formattedStartTime,
-    totalDuration: formattedDuration,
-    videoUrl: match.videoUrl || match.video_url || null,
-    breakCount: match.breakCount || 0,
-    notes: match.notes || null,
-    subGroupId: match.subGroupId || match.sub_group_id,
-    editionId: match.editionId || match.edition_id,
-
-    fighters: {
-      fighter1,
-      fighter2,
-    },
-
-    result: {
-      winnerId: match.winnerFighterId || match.winner_fighter_id || null,
-      loserId: match.loserFighterId || match.loser_fighter_id || null,
-    },
-
-    allCards: cards.map((card: any) => ({
-      fighterId: card.fighterId,
-      minuteGiven: card.minuteGiven,
-    })),
-  };
-}
-
-async function getCardsForMatch(matchId: number) {
-  const sql = `
-    SELECT 
-      fc.id,
-      fc.fighter_id as "fighterId",
-      f.first_name as "fighterFirstName",
-      f.last_name as "fighterLastName",
-      f.nickname as "fighterNickname",
-      fc.minute_given as "minuteGiven",
-      fc.is_cancelled as "isCancelled",
-      fc.created_at as "createdAt"
-    FROM fighter_cards fc
-    JOIN fighters f ON fc.fighter_id = f.id
-    WHERE fc.match_id = $1
-    ORDER BY fc.minute_given
-  `;
-
-  return await query(sql, [matchId]);
-}
 
 async function getMatchStats(matchId: number) {
   const cardsStats = await countCardsForMatch(matchId);

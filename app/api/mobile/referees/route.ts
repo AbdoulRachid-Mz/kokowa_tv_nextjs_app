@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20,
       withRegion: searchParams.get('withRegion') !== 'false',
       withSubGroups: searchParams.get('withSubGroups') === 'true',
-      sortOrder: searchParams.get('sortOrder') as 'asc' | 'desc' || 'asc',
+      sortBy: searchParams.get('sortBy') as 'experience' | 'matches' | 'name' || 'name',
+      sortOrder: searchParams.get('sortOrder') as 'asc' | 'desc' || 'desc',
     };
 
     const result = await getMobileReferees(filters);

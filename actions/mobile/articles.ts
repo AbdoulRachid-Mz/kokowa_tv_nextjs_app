@@ -51,7 +51,7 @@ export async function getArticles(filters?: {
 
     if (filters?.search) {
       conditions.push(
-        `(a.title ILIKE $${paramIndex} OR a.excerpt ILIKE $${paramIndex} OR a.content ILIKE $${paramIndex})`
+        `(a.title ILIKE $${paramIndex} OR a.excerpt ILIKE $${paramIndex} OR a.content ILIKE $${paramIndex} OR u.first_name ILIKE $${paramIndex} OR u.last_name ILIKE $${paramIndex} OR u.username ILIKE $${paramIndex})`
       );
       params.push(`%${filters.search}%`);
       paramIndex++;
@@ -83,10 +83,7 @@ export async function getArticles(filters?: {
       -- Author information
       JSON_BUILD_OBJECT(
         'id', u.id,
-        'username', u.username,
-        'firstName', u.first_name,
-        'lastName', u.last_name,
-        'profilePicture', u.profile_picture
+        'username', u.username
       ) as author
     `;
 

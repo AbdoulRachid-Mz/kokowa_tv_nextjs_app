@@ -125,7 +125,7 @@ export default function TransferForm({
         const fightersResponse = await fetch("/api/fighters/select");
         if (fightersResponse.ok) {
           const fightersResult = await fightersResponse.json();
-          setFighters(fightersResult.fighters || []);
+          setFighters(fightersResult || []);
         }
 
         // Charger les régions

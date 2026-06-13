@@ -4,6 +4,7 @@ import { query } from "@/lib/db/neon-client";
 import { Region } from "@/types";
 import { getParticipatedEditions } from "./editions";
 import { formatDateTime, formatDuration } from "@/utils/duration";
+import { enrichMatchData } from "@/utils/match-utils";
 
 export async function getMobileRegions(filters?: {
   page?: number;
@@ -244,7 +245,6 @@ async function getCardsForMatch(matchId: number) {
 //       r.flag_image as "flagImage",
 //       r.stadium_image as "stadiumImage",
 //       r.total_fighters as "totalFighters",
-//       r.created_at as "createdAt",
 
 //       -- Compter le nombre de likes
 //       COALESCE((
@@ -287,7 +287,6 @@ async function getRegionInfo(regionId: number, userId?: number) {
       r.flag_image as "flagImage",
       r.stadium_image as "stadiumImage",
       r.total_fighters as "totalFighters",
-      r.created_at as "createdAt",
       
       -- Compter le nombre de likes
       COALESCE((
@@ -544,95 +543,10 @@ async function getAllMatchesForRegion(
   const matches = await query(sql, params);
   const enrichedMatches = [];
   for (const match of matches) {
-    const enriched = await enrichRegionMatchData(match, regionId);
+    const enriched = await enrichMatchData(match);
     enrichedMatches.push(enriched);
   }
   return enrichedMatches;
-}
-
-async function enrichRegionMatchData(match: any, regionId: number) {
-  const cards = await getCardsForMatch(match.id);
-
-  // Formater totalDuration (INTERVAL -> HH:MM:SS)
-  let formattedDuration = "00:00:00";
-  if (match.totalDuration) {
-    if (typeof match.totalDuration === "object") {
-      const hours = String(match.totalDuration.hours || 0).padStart(2, "0");
-      const minutes = String(match.totalDuration.minutes || 0).padStart(2, "0");
-      const seconds = String(match.totalDuration.seconds || 0).padStart(2, "0");
-      formattedDuration = `${hours}:${minutes}:${seconds}`;
-    } else if (typeof match.totalDuration === "string") {
-      const match_interval = match.totalDuration.match(/(\d+):(\d+):(\d+)/);
-      if (match_interval) {
-        formattedDuration = match_interval[0];
-      } else {
-        formattedDuration = match.totalDuration;
-      }
-    } else if (typeof match.totalDuration === "number") {
-      const hours = Math.floor(match.totalDuration / 3600);
-      const minutes = Math.floor((match.totalDuration % 3600) / 60);
-      const seconds = match.totalDuration % 60;
-      formattedDuration = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-    }
-  }
-
-  // Formater startTime en timestamp ISO complet
-  let formattedStartTime = match.startTime || match.start_time2;
-  const dateStr = match.matchDate || match.match_date
-    ? new Date(match.matchDate || match.match_date).toISOString().split("T")[0]
-    : null;
-
-  if (dateStr && match.startTime && typeof match.startTime === "string" && !match.startTime.includes("T")) {
-    formattedStartTime = new Date(`${dateStr}T${match.startTime}`).toISOString();
-  } else if (match.startTime instanceof Date) {
-    formattedStartTime = match.startTime.toISOString();
-  } else if (typeof match.startTime === "string" && match.startTime.includes("T")) {
-    formattedStartTime = match.startTime;
-  }
-
-  const fighter1 = {
-    id: match.fighter1Id,
-    firstName: match.fighter1FirstName,
-    lastName: match.fighter1LastName,
-    nickname: match.fighter1Nickname || "",
-    profileImage: match.fighter1ProfileImage,
-    regionName: match.fighter1RegionName,
-    initialState: match.fighter1InitialState || null,
-  };
-
-  const fighter2 = {
-    id: match.fighter2Id,
-    firstName: match.fighter2FirstName,
-    lastName: match.fighter2LastName,
-    nickname: match.fighter2Nickname || "",
-    regionName: match.fighter2RegionName,
-    profileImage: match.fighter2ProfileImage,
-    initialState: match.fighter2InitialState || null,
-  };
-
-  return {
-    id: match.id,
-    matchNumber: match.matchNumber,
-    status: match.status,
-    startTime: formattedStartTime,
-    totalDuration: formattedDuration,
-    videoUrl: match.videoUrl || null,
-    breakCount: match.breakCount || 0,
-    notes: match.notes || null,
-    subGroupId: match.subGroupId,
-    editionId: match.editionId,
-
-    fighters: { fighter1, fighter2 },
-
-    result: match.winnerFighterId
-      ? { winnerId: match.winnerFighterId, loserId: match.loserFighterId }
-      : { winnerId: null, loserId: null },
-
-    allCards: cards.map((card: any) => ({
-      fighterId: card.fighterId,
-      minuteGiven: card.minuteGiven,
-    })),
-  };
 }
 
 async function getRegionTransfers(regionId: number) {
@@ -652,8 +566,7 @@ async function getRegionTransfers(regionId: number) {
       r2.name as "toRegionName",
       r2.flag_image as "toRegionFlagImage",
       r2.code as "toRegionCode",
-      ft.transfer_date as "transferDate",
-      ft.created_at as "createdAt"
+      ft.transfer_date as "transferDate"
     FROM fighter_transfers ft
     JOIN fighters f ON ft.fighter_id = f.id
     JOIN regions r1 ON ft.from_region_id = r1.id
@@ -676,8 +589,7 @@ async function getRegionAchievements(regionId: number) {
       e.year as "editionYear",
       fa.position,
       fa.title,
-      fa.description,
-      fa.created_at as "createdAt"
+      fa.description
     FROM fighter_achievements fa
     JOIN fighters f ON fa.fighter_id = f.id
     JOIN competition_editions e ON fa.edition_id = e.id
@@ -749,7 +661,7 @@ function organizeAchievements(achievements: any[]) {
   });
 
   return {
-    all: achievements,
+    // all: achievements,
     byCompetition: Object.values(byCompetition),
   };
 }

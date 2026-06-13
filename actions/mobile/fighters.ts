@@ -3,6 +3,7 @@
 import { query } from "@/lib/db/neon-client";
 import { getParticipatedEditions } from "./editions";
 import { formatDateTime, formatDuration } from "@/utils/duration";
+import { enrichMatchData } from "@/utils/match-utils";
 
 export async function getMobileFighters(filters?: {
   page?: number;
@@ -163,6 +164,25 @@ export async function getMobileFighters(filters?: {
       ...fighter,
     }));
 
+    // Calculate global stats
+    const statsSql = `
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as actifs,
+        SUM(CASE WHEN is_champion = true THEN 1 ELSE 0 END) as champions,
+        AVG(EXTRACT(YEAR FROM AGE(CURRENT_DATE, birth_date))) as averageAge
+      FROM fighters
+      WHERE birth_date IS NOT NULL
+    `;
+
+    const statsResult = await query(statsSql);
+    const stats = {
+      total: parseInt(statsResult[0]?.total || "0"),
+      actifs: parseInt(statsResult[0]?.actifs || "0"),
+      champions: parseInt(statsResult[0]?.champions || "0"),
+      ageMoyen: parseFloat(statsResult[0]?.averageAge || "0").toFixed(1),
+    };
+
     // Calculate pagination
     const totalPages = Math.ceil(total / limit);
 
@@ -172,6 +192,7 @@ export async function getMobileFighters(filters?: {
         fighters: fightersWithDecodedSocialLinks,
         count: fighters.length,
         total: total,
+        stats,
         pagination: {
           page,
           limit,
@@ -510,107 +531,6 @@ async function getAllMatchesForFighter(
     enrichedMatches.push(enriched);
   }
   return enrichedMatches;
-}
-
-async function enrichMatchData(match: any) {
-  const cards = await getCardsForMatch(match.id);
-
-  // Formater totalDuration (INTERVAL -> HH:MM:SS)
-  let formattedDuration = "00:00:00";
-  if (match.totalDuration) {
-    if (typeof match.totalDuration === "object") {
-      const hours = String(match.totalDuration.hours || 0).padStart(2, "0");
-      const minutes = String(match.totalDuration.minutes || 0).padStart(2, "0");
-      const seconds = String(match.totalDuration.seconds || 0).padStart(2, "0");
-      formattedDuration = `${hours}:${minutes}:${seconds}`;
-    } else if (typeof match.totalDuration === "string") {
-      const match_interval = match.totalDuration.match(/(\d+):(\d+):(\d+)/);
-      if (match_interval) {
-        formattedDuration = match_interval[0];
-      } else {
-        formattedDuration = match.totalDuration;
-      }
-    } else if (typeof match.totalDuration === "number") {
-      const hours = Math.floor(match.totalDuration / 3600);
-      const minutes = Math.floor((match.totalDuration % 3600) / 60);
-      const seconds = match.totalDuration % 60;
-      formattedDuration = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-    }
-  }
-
-  // Formater startTime en timestamp ISO complet
-  let formattedStartTime = match.startTime || match.start_time2;
-  const dateStr = match.matchDate || match.match_date
-    ? new Date(match.matchDate || match.match_date).toISOString().split("T")[0]
-    : null;
-
-  if (dateStr && match.startTime && typeof match.startTime === "string" && !match.startTime.includes("T")) {
-    formattedStartTime = new Date(`${dateStr}T${match.startTime}`).toISOString();
-  } else if (match.startTime instanceof Date) {
-    formattedStartTime = match.startTime.toISOString();
-  } else if (typeof match.startTime === "string" && match.startTime.includes("T")) {
-    formattedStartTime = match.startTime;
-  }
-
-  const fighter1 = {
-    id: match.fighter1Id,
-    firstName: match.fighter1FirstName,
-    lastName: match.fighter1LastName,
-    nickname: match.fighter1Nickname || "",
-    profileImage: match.fighter1ProfileImage,
-    regionName: match.fighter1RegionName,
-    initialState: match.fighter1InitialState || null,
-  };
-
-  const fighter2 = {
-    id: match.fighter2Id,
-    firstName: match.fighter2FirstName,
-    lastName: match.fighter2LastName,
-    nickname: match.fighter2Nickname || "",
-    regionName: match.fighter2RegionName,
-    profileImage: match.fighter2ProfileImage,
-    initialState: match.fighter2InitialState || null,
-  };
-
-  // ✅ Retour aligné sur error-to-fix.md
-  return {
-    id: match.id,
-    matchNumber: match.matchNumber,
-    status: match.status,
-    startTime: formattedStartTime,
-    totalDuration: formattedDuration,
-    videoUrl: match.videoUrl || null,
-    breakCount: match.breakCount || 0,
-    notes: match.notes || null,
-    subGroupId: match.subGroupId,
-    editionId: match.editionId,
-
-    fighters: { fighter1, fighter2 },
-
-    result: match.winnerFighterId
-      ? { winnerId: match.winnerFighterId, loserId: match.loserFighterId }
-      : { winnerId: null, loserId: null },
-
-    allCards: cards.map((card: any) => ({
-      fighterId: card.fighterId,
-      minuteGiven: card.minuteGiven,
-    })),
-  };
-}
-
-async function getCardsForMatch(matchId: number) {
-  const sql = `
-    SELECT 
-      fc.id,
-      fc.fighter_id as "fighterId",
-        fc.card_type as "cardType",
-      fc.minute_given as "minuteGiven"
-    FROM fighter_cards fc
-    WHERE fc.match_id = $1
-    ORDER BY fc.minute_given
-  `;
-
-  return await query(sql, [matchId]);
 }
 
 async function calculateFighterStats(fighterId: number) {

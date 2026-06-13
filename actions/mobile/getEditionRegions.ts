@@ -2,6 +2,7 @@
 
 import { query } from "@/lib/db/neon-client";
 import { formatDateTime, formatDuration } from "@/utils/duration";
+import { enrichMatchData, getCardsForMatch } from "@/utils/match-utils";
 
 export async function getMobileEditionRegions(editionId: number) {
   try {
@@ -33,7 +34,7 @@ export async function getMobileEditionRegions(editionId: number) {
     const rankedRegions = rankRegions(regions);
 
     // Nettoyer les données des régions pour ne garder que les champs essentiels
-    const cleanedRegions = rankedRegions.map(region => ({
+    const cleanedRegions = rankedRegions.map((region) => ({
       regionId: region.regionId,
       regionName: region.regionName,
       regionCode: region.regionCode,
@@ -46,14 +47,14 @@ export async function getMobileEditionRegions(editionId: number) {
         totalWins: region.stats?.totalWins || 0,
         totalLosses: region.stats?.totalLosses || 0,
         winRate: region.stats?.winRate || 0,
-        totalDraws: region.stats?.totalDraws || 0
+        totalDraws: region.stats?.totalDraws || 0,
       },
       unbeatenRatio: region.unbeatenRatio,
-      rank: region.rank
+      rank: region.rank,
     }));
 
     // Nettoyer les données des lutteurs pour ne garder que les champs essentiels
-    const cleanedFighters = fighters.map(fighter => ({
+    const cleanedFighters = fighters.map((fighter) => ({
       fighterId: fighter.fighterId,
       firstName: fighter.firstName,
       lastName: fighter.lastName,
@@ -68,7 +69,7 @@ export async function getMobileEditionRegions(editionId: number) {
       draws: fighter.draws,
       yellowCards: fighter.yellowCards,
       redCards: fighter.redCards,
-      winRate: fighter.winRate
+      winRate: fighter.winRate,
     }));
 
     return {
@@ -81,8 +82,10 @@ export async function getMobileEditionRegions(editionId: number) {
           totalRegions: editionInfo.totalRegions,
           totalFighters: editionInfo.totalFighters,
           totalUnbeatenFighters: editionInfo.totalUnbeatenFighters,
-          eliminatedRegions: cleanedRegions.filter((r: any) => r.isEliminated).length,
-          activeRegions: cleanedRegions.filter((r: any) => !r.isEliminated).length,
+          eliminatedRegions: cleanedRegions.filter((r: any) => r.isEliminated)
+            .length,
+          activeRegions: cleanedRegions.filter((r: any) => !r.isEliminated)
+            .length,
         },
         timestamp: new Date().toISOString(),
       },
@@ -268,7 +271,7 @@ async function getRegionsWithStats(editionId: number) {
   const results = await query(sql, [editionId]);
 
   // Forcer les types numériques
-  return results.map(r => ({
+  return results.map((r) => ({
     ...r,
     points: Number(r.points || 0),
     unbeatenRatio: Number(r.unbeatenRatio || 0),
@@ -280,8 +283,8 @@ async function getRegionsWithStats(editionId: number) {
       totalWins: Number(r.stats?.totalWins || 0),
       totalLosses: Number(r.stats?.totalLosses || 0),
       totalDraws: Number(r.stats?.totalDraws || 0),
-      winRate: Number(r.stats?.winRate || 0)
-    }
+      winRate: Number(r.stats?.winRate || 0),
+    },
   }));
 }
 
@@ -377,7 +380,7 @@ async function getFightersForEdition(editionId: number) {
   const fighters = await query(sql, [editionId]);
 
   // Forcer la conversion en nombres
-  return fighters.map(f => ({
+  return fighters.map((f) => ({
     ...f,
     totalMatches: Number(f.totalMatches || 0),
     wins: Number(f.wins || 0),
@@ -386,13 +389,13 @@ async function getFightersForEdition(editionId: number) {
     yellowCards: Number(f.yellowCards || 0),
     redCards: Number(f.redCards || 0),
     winRate: Number(f.winRate || 0),
-    isChampion: Boolean(f.isChampion)
+    isChampion: Boolean(f.isChampion),
   }));
 }
 
 function rankRegions(regions: any[]) {
   // S'assurer que toutes les valeurs numériques sont des nombres
-  const regionsWithNumbers = regions.map(region => ({
+  const regionsWithNumbers = regions.map((region) => ({
     ...region,
     points: Number(region.points || 0),
     unbeatenRatio: Number(region.unbeatenRatio || 0),
@@ -401,8 +404,8 @@ function rankRegions(regions: any[]) {
       totalFighters: Number(region.stats?.totalFighters || 0),
       unbeatenFighters: Number(region.stats?.unbeatenFighters || 0),
       totalWins: Number(region.stats?.totalWins || 0),
-      championFighters: Number(region.stats?.championFighters || 0)
-    }
+      championFighters: Number(region.stats?.championFighters || 0),
+    },
   }));
 
   // Trier les régions selon plusieurs critères
@@ -412,8 +415,7 @@ function rankRegions(regions: any[]) {
       return (a.isEliminated ? 1 : 0) - (b.isEliminated ? 1 : 0);
 
     // Points totaux
-    if (a.points !== b.points)
-      return b.points - a.points;
+    if (a.points !== b.points) return b.points - a.points;
 
     // Nombre de lutteurs invaincus (is_eliminated = false)
     if (a.stats.unbeatenFighters !== b.stats.unbeatenFighters)
@@ -439,12 +441,15 @@ function rankRegions(regions: any[]) {
   return regionsWithNumbers;
 }
 
+
+
 // Fonction pour obtenir les détails d'un match
 export async function getMobileEditionMatchDetails(matchId: number) {
   try {
     const sql = `
       SELECT 
         m.id,
+        m.sub_group_id as "subGroupId",
         m.match_number as "matchNumber",
         m.match_date as "matchDate",
         m.start_time as "startTime",
@@ -458,6 +463,10 @@ export async function getMobileEditionMatchDetails(matchId: number) {
         m.video_url as "videoUrl",
         m.live_stream_url as "liveStreamUrl",
         m.notes,
+        (SELECT p.edition_id FROM phases p 
+         JOIN phase_groups pg ON p.id = pg.phase_id
+         JOIN sub_groups sg ON pg.id = sg.group_id
+         WHERE sg.id = m.sub_group_id) as "editionId",
         
         -- Fighter 1
         m.fighter1_id as "fighter1Id",
@@ -465,9 +474,7 @@ export async function getMobileEditionMatchDetails(matchId: number) {
         f1.last_name as "fighter1LastName",
         f1.nickname as "fighter1Nickname",
         f1.profile_image as "fighter1ProfileImage",
-        fe1.region_id as "fighter1RegionId",
         r1.name as "fighter1RegionName",
-        r1.color as "fighter1RegionColor",
         
         -- Fighter 2
         m.fighter2_id as "fighter2Id",
@@ -475,35 +482,11 @@ export async function getMobileEditionMatchDetails(matchId: number) {
         f2.last_name as "fighter2LastName",
         f2.nickname as "fighter2Nickname",
         f2.profile_image as "fighter2ProfileImage",
-        fe2.region_id as "fighter2RegionId",
         r2.name as "fighter2RegionName",
-        r2.color as "fighter2RegionColor",
         
-        -- Résultat
+        -- Result
         m.winner_fighter_id as "winnerFighterId",
-        m.loser_fighter_id as "loserFighterId",
-        
-        -- Contexte
-        sg.name as "subGroupName",
-        pg.name as "groupName",
-        p.name as "phaseName",
-        ce.theme as "editionTheme",
-        ce.year as "editionYear",
-        c.name as "competitionName",
-        
-        -- Cartons
-        COALESCE(
-          JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'id', fc.id,
-              'fighterId', fc.fighter_id,
-              'cardType', fc.card_type,
-              'cardReason', fc.card_reason,
-              'minuteGiven', fc.minute_given
-            )
-          ) FILTER (WHERE fc.id IS NOT NULL), '[]'
-        ) as "cards"
-        
+        m.loser_fighter_id as "loserFighterId"
       FROM matches m
       JOIN fighters f1 ON m.fighter1_id = f1.id
       JOIN fighters f2 ON m.fighter2_id = f2.id
@@ -521,16 +504,7 @@ export async function getMobileEditionMatchDetails(matchId: number) {
       )
       JOIN regions r1 ON fe1.region_id = r1.id
       JOIN regions r2 ON fe2.region_id = r2.id
-      JOIN sub_groups sg ON m.sub_group_id = sg.id
-      JOIN phase_groups pg ON sg.group_id = pg.id
-      JOIN phases p ON pg.phase_id = p.id
-      JOIN competition_editions ce ON p.edition_id = ce.id
-      JOIN competitions c ON ce.competition_id = c.id
-      LEFT JOIN fighter_cards fc ON fc.match_id = m.id
       WHERE m.id = $1
-      GROUP BY 
-        m.id, f1.id, f2.id, fe1.region_id, fe2.region_id, r1.id, r2.id,
-        sg.id, pg.id, p.id, ce.id, c.id
     `;
 
     const result = await query(sql, [matchId]);
@@ -546,87 +520,8 @@ export async function getMobileEditionMatchDetails(matchId: number) {
       };
     }
 
-    const match = result[0];
-
-    // Formater les durées et heures
-    const formattedDuration = formatDuration(match.totalDuration);
-    const formattedStartTime = formatDateTime(match.matchDate, match.startTime);
-    const formattedEndTime = formatDateTime(match.matchDate, match.endTime);
-
-    // Structurer les données des fighters
-    const fighter1 = {
-      id: match.fighter1Id,
-      firstName: match.fighter1FirstName,
-      lastName: match.fighter1LastName,
-      nickname: match.fighter1Nickname,
-      profileImage: match.fighter1ProfileImage,
-      region: {
-        id: match.fighter1RegionId,
-        name: match.fighter1RegionName,
-        color: match.fighter1RegionColor,
-      }
-    };
-
-    const fighter2 = {
-      id: match.fighter2Id,
-      firstName: match.fighter2FirstName,
-      lastName: match.fighter2LastName,
-      nickname: match.fighter2Nickname,
-      profileImage: match.fighter2ProfileImage,
-      region: {
-        id: match.fighter2RegionId,
-        name: match.fighter2RegionName,
-        color: match.fighter2RegionColor,
-      }
-    };
-
-    // Déterminer le vainqueur
-    let winner = null;
-    if (match.winnerFighterId) {
-      winner = match.winnerFighterId === match.fighter1Id ? fighter1 : fighter2;
-    }
-
-    // Créer l'objet de réponse formaté
-    const formattedMatch = {
-      id: match.id,
-      matchNumber: match.matchNumber,
-      matchDate: match.matchDate,
-      startTime: formattedStartTime,
-      endTime: match.endTime,
-      status: match.status,
-      matchResult: match.matchResult,
-      totalDuration: formattedDuration,
-      breakCount: match.breakCount,
-      audienceCount: match.audienceCount,
-      videoUrl: match.videoUrl,
-      liveStreamUrl: match.liveStreamUrl,
-      notes: match.notes,
-
-      fighters: {
-        fighter1,
-        fighter2,
-      },
-
-      result: winner ? {
-        winner,
-        resultType: match.matchResult,
-      } : null,
-
-      context: {
-        subGroupName: match.subGroupName,
-        groupName: match.groupName,
-        phaseName: match.phaseName,
-        edition: {
-          theme: match.editionTheme,
-          year: match.editionYear,
-        },
-        competition: {
-          name: match.competitionName,
-        }
-      },
-
-      cards: match.cards,
-    };
+    const rawMatch = result[0];
+    const formattedMatch = await enrichMatchData(rawMatch);
 
     return {
       success: true,
