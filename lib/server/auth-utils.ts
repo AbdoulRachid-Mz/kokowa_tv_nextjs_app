@@ -119,7 +119,7 @@ export async function getCompleteUserData(uid: string, firebaseUser?: any): Prom
  */
 export async function checkUserPermissions(
   uid: string,
-  requiredPermissions: string[]
+  requiredRoles: string[]
 ): Promise<{ hasPermission: boolean; user?: UserDocument }> {
   try {
     const user = await getUserByFirebaseUid(uid);
@@ -129,11 +129,11 @@ export async function checkUserPermissions(
 
     // Pour l'instant, on vérifie seulement le rôle
     // Tu peux étendre cette logique avec un système de permissions plus complexe
-    const hasPermission = requiredPermissions.includes(user.role);
+    const hasPermission = requiredRoles.includes(user.role);
 
     return { hasPermission, user };
   } catch (error) {
-    console.error('Error checking user permissions:', error);
+    console.error('Error checking user roles:', error);
     return { hasPermission: false };
   }
 }

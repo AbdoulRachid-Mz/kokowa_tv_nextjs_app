@@ -62,7 +62,7 @@ export interface ApiContext {
 export interface ApiHandlerOptions {
   requireAuth?: boolean;
   requireAppCheck?: boolean;
-  requiredPermissions?: string[];
+  requiredRoles?: string[];
   allowedMethods?: string[];
   rateLimit?: {
     windowMs: number;
@@ -80,7 +80,7 @@ export async function apiHandler(
   const {
     requireAuth = false,
     requireAppCheck = false,
-    requiredPermissions = [],
+    requiredRoles = [],
     allowedMethods = [],
     rateLimit,
     skipAppIdValidation = false,
@@ -227,11 +227,11 @@ export async function apiHandler(
       }
 
       // Vérifier les permissions
-      if (requiredPermissions.length > 0) {
+      if (requiredRoles.length > 0) {
         const { checkUserPermissions } = await import("./auth-utils");
         const permissionResult = await checkUserPermissions(
           authResult.user.uid,
-          requiredPermissions,
+          requiredRoles,
         );
 
         if (!permissionResult.hasPermission) {
@@ -342,10 +342,10 @@ export function withAuth(
 
 export function withAdminAuth(
   handler: (request: NextRequest, context: ApiContext) => Promise<Response>,
-  options: Omit<ApiHandlerOptions, "requireAuth" | "requiredPermissions"> = {},
+  options: Omit<ApiHandlerOptions, "requireAuth" | "requiredRoles"> = {},
 ) {
   return withAuth(handler, {
-    requiredPermissions: ["admin"],
+    requiredRoles: ["admin"],
     ...options,
   });
 }

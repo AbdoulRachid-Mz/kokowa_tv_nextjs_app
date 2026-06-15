@@ -1,8 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kokowa TV
 
-## Getting Started
+Kokowa TV est une plateforme de gestion et de diffusion de contenu pour les compétitions de lutte.
 
-First, run the development server:
+## Stack Technique
+
+- **Framework**: Next.js 14 (App Router)
+- **Langage**: TypeScript
+- **Base de données**: PostgreSQL (via Neon)
+- **Authentification**: Firebase Auth + Firebase App Check
+- **Gestion de fichiers**: Firebase Storage
+- **Rate Limiting**: Redis (via Upstash)
+- **Styling**: Tailwind CSS
+
+## Prérequis
+
+- Node.js 18+
+- npm, yarn, pnpm ou bun
+- Un projet Firebase configuré
+- Une base de données PostgreSQL (ou compte Neon)
+- Un compte Upstash (pour Redis)
+
+## Installation
+
+1. Cloner le dépôt
+2. Installer les dépendances:
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+# or
+bun install
+```
+
+3. Configurer les variables d'environnement (copier `.env.example` en `.env` et remplir les valeurs):
+
+```bash
+cp .env.example .env
+```
+
+4. Démarrer le serveur de développement:
 
 ```bash
 npm run dev
@@ -14,22 +53,50 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ouvrez [http://localhost:3000](http://localhost:3000) pour voir l'application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Structure du Projet
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `app/`: Pages et routes API
+- `actions/`: Server Actions
+- `components/`: Composants React
+- `lib/`: Utilitaires et bibliothèques
+  - `db/`: Configuration et requêtes pour la base de données
+  - `server/`: Utilitaires côté serveur (apiHandler, auth-middleware, etc.)
+  - `client/`: Utilitaires côté client (api, firebase-app-check, etc.)
+  - `firebase-admin.ts`: Configuration Firebase Admin
+- `hooks/`: Custom Hooks React
+- `contexts/`: Contextes React
+- `configs/`: Fichiers de configuration
+- `types/`: Définitions de types TypeScript
+
+## Authentification
+
+L'authentification utilise Firebase Auth avec Firebase App Check pour la sécurité.
+
+- `/api/auth/sign-up`: Inscription
+- `/api/auth/sign-in`: Connexion
+- `/api/auth/sign-out`: Déconnexion
+- `/api/auth/me`: Récupérer le profil utilisateur (lecture seule)
+- `/api/auth/sync`: Synchroniser l'utilisateur Firebase avec la base de données (créer si absent, mettre à jour last_login)
+- `/api/auth/forgot-password`: Demander un email de réinitialisation de mot de passe
+- `/api/auth/reset-password`: Réinitialiser le mot de passe
+
+## Documentation Additionnelle
+
+- [API](./app/api/README.md)
+- [Actions](./actions/README.md)
+- [API Mobile](./app/api/mobile/README.md)
+- [Admin](./app/(admins)/README.md)
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+Pour en savoir plus sur Next.js:
 
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
+## Déploiement
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 

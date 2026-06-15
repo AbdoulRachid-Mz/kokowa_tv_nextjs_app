@@ -17,21 +17,26 @@ const revokedTokensCache = new Map<string, number>();
 
 export async function verifyFirebaseToken(request: NextRequest) {
   try {
+    console.log('verifyFirebaseToken called');
     let token: string | null = null;
 
     // 1. Essayer le header Authorization
     const authHeader = request.headers.get('authorization');
+    console.log('Authorization header:', authHeader ? 'present' : 'missing');
     if (authHeader?.startsWith('Bearer ')) {
       token = authHeader.split('Bearer ')[1];
+      console.log('Got token from Authorization header');
     }
 
     // 2. Sinon essayer le cookie de session
     if (!token) {
       const cookieStore = await cookies();
       token = cookieStore.get('firebase_session')?.value || null;
+      console.log('Got token from cookie:', token ? 'yes' : 'no');
     }
 
     if (!token) {
+      console.log('No token found');
       return { user: null, error: 'Token manquant' };
     }
 
@@ -43,11 +48,20 @@ export async function verifyFirebaseToken(request: NextRequest) {
     // Vérifier le token (session cookie ou ID token)
     let decodedToken;
     try {
+      console.log('Trying to verify as session cookie');
       // Essayer comme session cookie d'abord
       decodedToken = await adminAuth.verifySessionCookie(token, true);
-    } catch {
-      // Sinon comme ID token
-      decodedToken = await adminAuth.verifyIdToken(token, true);
+      console.log('Successfully verified as session cookie');
+    } catch (sessionError) {
+      console.log('Session cookie verification failed, trying ID token:', sessionError);
+      try {
+        // Sinon comme ID token
+        decodedToken = await adminAuth.verifyIdToken(token, true);
+        console.log('Successfully verified as ID token');
+      } catch (idTokenError) {
+        console.error('ID token verification also failed:', idTokenError);
+        throw idTokenError;
+      }
     }
 
     // Vérifier que l'utilisateur n'est pas désactivé
@@ -58,6 +72,7 @@ export async function verifyFirebaseToken(request: NextRequest) {
 
     const customClaims = userRecord.customClaims || {};
 
+    console.log('Token verified, returning user');
     return {
       user: {
         uid: decodedToken.uid,
@@ -80,7 +95,7 @@ export async function verifyFirebaseToken(request: NextRequest) {
 
 export async function requireAuth(
   request: NextRequest,
-  requiredPermissions: string[] = []
+  requiredRoles: string[] = []
 ): Promise<{
   authorized: boolean;
   user?: AuthUser;
@@ -92,11 +107,11 @@ export async function requireAuth(
     return { authorized: false, error: authResult.error || 'Non autorisé', status: 401 };
   }
 
-  if (requiredPermissions.length > 0) {
+  if (requiredRoles.length > 0) {
     const { checkUserPermissions } = await import('./auth-utils');
-    const permissionResult = await checkUserPermissions(authResult.user.uid, requiredPermissions);
+    const permissionResult = await checkUserPermissions(authResult.user.uid, requiredRoles);
     if (!permissionResult.hasPermission) {
-      return { authorized: false, error: 'Permissions insuffisantes', status: 403 };
+      return { authorized: false, error: 'Roles requis manquants', status: 403 };
     }
     return { authorized: true, user: { ...authResult.user, ...permissionResult.user } };
   }
@@ -106,10 +121,10 @@ export async function requireAuth(
 
 export function withAuth(
   handler: (request: NextRequest, user: AuthUser) => Promise<Response>,
-  requiredPermissions: string[] = []
+  requiredRoles: string[] = []
 ) {
   return async (request: NextRequest, context?: any): Promise<Response> => {
-    const authResult = await requireAuth(request, requiredPermissions);
+    const authResult = await requireAuth(request, requiredRoles);
     if (!authResult.authorized) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
     }
@@ -120,10 +135,10 @@ export function withAuth(
 // Version alternative plus simple si vous n'utilisez pas les params
 export function withAuthSimple(
   handler: (request: NextRequest, user: any) => Promise<Response>,
-  requiredPermissions: string[] = []
+  requiredRoles: string[] = []
 ) {
   return async (request: NextRequest): Promise<Response> => {
-    const authResult = await requireAuth(request, requiredPermissions);
+    const authResult = await requireAuth(request, requiredRoles);
 
     if (!authResult.authorized) {
       return NextResponse.json(

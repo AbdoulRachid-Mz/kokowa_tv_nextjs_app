@@ -1,49 +1,14 @@
-{
-     
-    "id": 375,
-    "matchNumber": 5,
-    "status": "round_break",
-    "startTime": "2026-06-08T11:44:27.824Z",
-    "totalDuration": "00:00:11",
-    "videoUrl": null,
-    "notes": null,
-    "subGroupId": 111,
-    "editionId": 26,
-    
-    "fighters": {
-        "fighter1": {
-            "id": 60,
-            "firstName": "Ridouane",
-            "lastName": "Seyni",
-            "nickname": "",
-            "profileImage": "https://cloudinary.com/kokowa/fighters/profile2.jpg",
-            "regionName": "Dosso",
-            "initialState": null
-        },
-        "fighter2": {
-            "id": 52,
-            "firstName": "Zayanou",
-            "lastName": "Sala",
-            "nickname": "",
-            "profileImage": "https://cloudinary.com/kokowa/fighters/profile5.jpg",
-            "regionName": "Niamey",
-            "initialState": null
-        }
-    },
-
-    "result": {
-        "winnerId": null,
-        "loserId": null
-    },
-
-    "allCards": [
-        {
-            "fighterId": 60,
-            "minuteGiven": "00:03:00"
-        },
-        {
-            "fighterId": 52,
-            "minuteGiven": "00:04:00"
-        }
-    ]
-}
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✅ Connexion réussie à Neon PostgreSQL : 2026-06-15T16:06:51.069Z
+○ Compiling /api/auth/sync ...
+ POST / 200 in 54s (next.js: 19ms, application-code: 54s)
+  └─ ƒ getAllAppSettings() in 4434ms actions/app-settings.ts
+[browser] [2026-06-15T16:06:40.613Z]  @firebase/app-check: AppCheck: 400 error. Attempts allowed again after 00m:01s (appCheck/initial-throttle). (file://C:/Users/user/Desktop/abdoul/react projets/kokowa_tv/.next/dev/static/chunks/0bij_next_dist_0_ghd7m._.js:2477:13)
+[browser] [2026-06-15T16:06:40.615Z]  @firebase/app-check: AppCheck: 400 error. Attempts allowed again after 00m:01s (appCheck/initial-throttle). (file://C:/Users/user/Desktop/abdoul/react projets/kokowa_tv/.next/dev/static/chunks/0bij_next_dist_0_ghd7m._.js:2477:13)
+[browser] App Check indisponible (fallback autorisé): FirebaseError: AppCheck: 400 error. Attempts allowed again after 00m:01s (appCheck/initial-throttle).
+    at ReCaptchaV3Provider.getToken (file://C:/Users/user/Desktop/abdoul/react projets/kokowa_tv/.next/dev/static/chunks/node_modules__pnpm_13drnqb._.js:10997:37) (file://C:/Users/user/Desktop/abdoul/react projets/kokowa_tv/.next/dev/static/chunks/0bij_next_dist_0_ghd7m._.js:2477:13)
+✅ Firebase Admin déjà initialisé
+ POST /api/auth/sync 401 in 14.5s (next.js: 13.7s, application-code: 878ms)
+○ Compiling /api/auth/me ...
+ GET /api/auth/me 401 in 7.5s (next.js: 7.5s, application-code: 17ms)
