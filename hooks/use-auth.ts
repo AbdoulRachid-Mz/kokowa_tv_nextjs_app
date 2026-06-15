@@ -13,12 +13,12 @@ export function useAuth() {
 
   const fetchUserData = useCallback(async (firebaseUser: any) => {
     try {
-      console.log('fetchUserData called with firebaseUser:', firebaseUser);
       const token = await firebaseUser.getIdToken();
-      console.log('Got Firebase ID token:', token ? 'yes' : 'no');
       const appCheckToken = await getAppCheckToken();
-      console.log('Got App Check token:', appCheckToken ? 'yes' : 'no');
-      
+
+      // console.log('appCheckToken:', appCheckToken);
+      // console.log('appToken:', token);
+
       const headers: Record<string, string> = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -28,7 +28,6 @@ export function useAuth() {
         headers['x-firebase-appcheck'] = appCheckToken;
       }
       
-      console.log('Calling /api/auth/sync with headers:', Object.keys(headers));
       // First call /api/auth/sync to ensure user exists in DB and update last_login
       const syncResponse = await fetch('/api/auth/sync', {
         method: 'POST',
@@ -38,7 +37,6 @@ export function useAuth() {
       console.log('syncResponse status:', syncResponse.status);
       if (syncResponse.ok) {
         const syncResult = await syncResponse.json();
-        console.log('syncResult:', syncResult);
         if (syncResult.success && syncResult.data) {
           setUserDocument(syncResult.data.db);
           setUser({
@@ -54,12 +52,10 @@ export function useAuth() {
       }
       
       // Fallback to /api/auth/me if sync fails
-      console.log('Calling /api/auth/me with headers:', Object.keys(headers));
-      const response = await fetch('/api/auth/me', { headers });
-      console.log('meResponse status:', response.status);
-      if (response.ok) {
-        const result = await response.json();
-        console.log('meResult:', result);
+      const meResponse = await fetch('/api/auth/me', { headers });
+      console.log('meResponse status:', meResponse.status);
+      if (meResponse.ok) {
+        const result = await meResponse.json();
         if (result.success && result.data) {
           setUserDocument(result.data.db);
           setUser({
@@ -75,7 +71,6 @@ export function useAuth() {
       }
       
       // Fallback : utilisateur Firebase uniquement
-      console.log('Using Firebase user only');
       setUser({
         uid: firebaseUser.uid,
         email: firebaseUser.email,

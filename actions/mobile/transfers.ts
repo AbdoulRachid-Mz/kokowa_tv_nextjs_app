@@ -39,11 +39,11 @@ export async function getMobileTransfers(
     }
 
     if (fighter_id) {
-      return await getTransfersByFighter(fighter_id, status, limit, offset);
+      return await getTransfersByFighter(fighter_id, status, limit, offset, search);
     } else if (region_id) {
-      return await getTransfersByRegion(region_id, status, limit, offset);
+      return await getTransfersByRegion(region_id, status, limit, offset, search);
     } else {
-      return await getAllTransfers(status, limit, offset);
+      return await getAllTransfers(status, limit, offset, search);
     }
   } catch (error) {
     console.error("Error in getMobileTransfers:", error);

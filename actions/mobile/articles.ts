@@ -51,7 +51,7 @@ export async function getArticles(filters?: {
 
     if (filters?.search) {
       conditions.push(
-        `(a.title ILIKE $${paramIndex} OR a.excerpt ILIKE $${paramIndex} OR a.content ILIKE $${paramIndex} OR u.first_name ILIKE $${paramIndex} OR u.last_name ILIKE $${paramIndex} OR u.username ILIKE $${paramIndex})`
+        `(a.title ILIKE $${paramIndex} OR a.excerpt ILIKE $${paramIndex} OR a.content ILIKE $${paramIndex} OR u.username ILIKE $${paramIndex})`
       );
       params.push(`%${filters.search}%`);
       paramIndex++;
@@ -63,6 +63,7 @@ export async function getArticles(filters?: {
     const countSql = `
       SELECT COUNT(*) as total
       FROM articles a
+      LEFT JOIN users u ON a.author_id = u.id
       ${whereClause}
     `;
 
@@ -81,10 +82,7 @@ export async function getArticles(filters?: {
       a.published_at as "publishedAt",
       
       -- Author information
-      JSON_BUILD_OBJECT(
-        'id', u.id,
-        'username', u.username
-      ) as author
+      u.username as "authorName"
     `;
 
     const likesField = `

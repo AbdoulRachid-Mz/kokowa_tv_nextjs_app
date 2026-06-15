@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 
 import { getMobileTransfers } from '@/actions/mobile/transfers';
-import { publicHandler } from '@/lib/api-handler';
+import { publicHandler } from '@/lib/server/api-handler';
 
 export const GET = publicHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
@@ -82,4 +82,4 @@ export const GET = publicHandler(async (request: NextRequest) => {
   }
 
   return Response.json(result);
-}, ['GET']);
+}, { allowedMethods: ['GET'], skipAppIdValidation: true });

@@ -39,6 +39,7 @@ import {
 import { UserRoles } from "@/lib/routes/config";
 import { getHeaderMenuGroups, getRouteIcon } from "@/lib/routes/header-config";
 import { useScreenSize } from "@/hooks/use-screen";
+import { ThemeToggle } from "../shared/ThemeToggle";
 
 interface HeaderProps {
   showNavigation?: boolean;
@@ -188,9 +189,10 @@ export function Header({ showNavigation = true, user }: HeaderProps) {
           {/* Actions utilisateur */}
           <div className="flex items-center gap-2">
             {/* Barre de recherche */}
-            <Button variant="ghost" size="icon" className="hidden sm:flex">
+            {/* <Button variant="ghost" size="icon" className="hidden sm:flex">
               <Search className="h-4 w-4" />
-            </Button>
+            </Button> */}
+            <ThemeToggle />
 
             {/* Notifications */}
             <Button variant="ghost" size="icon" className="relative">

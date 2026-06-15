@@ -1,14 +1,65 @@
-See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
-(Use `node --trace-warnings ...` to show where the warning was created)
-✅ Connexion réussie à Neon PostgreSQL : 2026-06-15T16:06:51.069Z
-○ Compiling /api/auth/sync ...
- POST / 200 in 54s (next.js: 19ms, application-code: 54s)
-  └─ ƒ getAllAppSettings() in 4434ms actions/app-settings.ts
-[browser] [2026-06-15T16:06:40.613Z]  @firebase/app-check: AppCheck: 400 error. Attempts allowed again after 00m:01s (appCheck/initial-throttle). (file://C:/Users/user/Desktop/abdoul/react projets/kokowa_tv/.next/dev/static/chunks/0bij_next_dist_0_ghd7m._.js:2477:13)
-[browser] [2026-06-15T16:06:40.615Z]  @firebase/app-check: AppCheck: 400 error. Attempts allowed again after 00m:01s (appCheck/initial-throttle). (file://C:/Users/user/Desktop/abdoul/react projets/kokowa_tv/.next/dev/static/chunks/0bij_next_dist_0_ghd7m._.js:2477:13)
-[browser] App Check indisponible (fallback autorisé): FirebaseError: AppCheck: 400 error. Attempts allowed again after 00m:01s (appCheck/initial-throttle).
-    at ReCaptchaV3Provider.getToken (file://C:/Users/user/Desktop/abdoul/react projets/kokowa_tv/.next/dev/static/chunks/node_modules__pnpm_13drnqb._.js:10997:37) (file://C:/Users/user/Desktop/abdoul/react projets/kokowa_tv/.next/dev/static/chunks/0bij_next_dist_0_ghd7m._.js:2477:13)
-✅ Firebase Admin déjà initialisé
- POST /api/auth/sync 401 in 14.5s (next.js: 13.7s, application-code: 878ms)
-○ Compiling /api/auth/me ...
- GET /api/auth/me 401 in 7.5s (next.js: 7.5s, application-code: 17ms)
+:'Trying to verify as session cookie
+Session cookie verification failed, trying ID token: Error: Firebase session cookie has incorrect "iss" (issuer) claim. Expected "" but got "". Make sure the session cookie comes from the same Firebase project as the service account used to authenticate this SDK. See  for details on how to retrieve a session cookie.
+    at async verifyFirebaseToken (lib\server\auth-middleware.ts:53:22)
+    at async apiHandler (lib\server\api-handler.ts:219:26)
+  51 |       console.log('Trying to verify as session cookie');
+  52 |       // Essayer comme session cookie d'abord
+> 53 |       decodedToken = await adminAuth.verifySessionCookie(token, true);
+     |                      ^
+  54 |       console.log('Successfully verified as session cookie');
+  55 |     } catch (sessionError) {
+  56 |       console.log('Session cookie verification failed, trying ID token:', sessionErr... {
+  errorInfo: {
+    code: 'auth/argument-error',
+    message: 'Firebase session cookie has incorrect "iss" (issuer) claim. Expected "" but got "". Make sure the session cookie comes from the same Firebase project as the service account used to authenticate this SDK. See  for details on how to retrieve a session cookie.'
+  },
+  codePrefix: 'auth'
+}
+Successfully verified as ID token
+Token verified, returning user
+Calling sync API, ctx: {
+  params: undefined,
+  appId: 'web-client',
+  user: {
+    uid: 'jHPGHLJMtmWEOwGrXGhFbMtIKyD3',
+    email: 'rashwrightmz@gmail.com',
+    email_verified: true,
+    name: 'Abdoul Rachid Awal',
+    picture: '',
+    role: 'user',
+    permissions: []
+  },
+  firebaseUser: {
+    uid: 'jHPGHLJMtmWEOwGrXGhFbMtIKyD3',
+    email: 'rashwrightmz@gmail.com',
+    email_verified: true,
+    name: 'Abdoul Rachid Awal',
+    picture: '',
+    role: 'user',
+    permissions: []
+  }
+}
+🔍 SQL: SELECT id, auth_id, username, email, role, first_name, last_name, profile_picture, is_active, is_verified, created_at ...
+🔍 SQL: UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1 ...
+ POST /api/auth/sync 200 in 4.4s (next.js: 1562ms, application-code: 2.8s)
+🔍 SQL: SELECT  ...
+🔍 SQL: SELECT  ...
+🔍 SQL: SELECT  ...
+🔍 SQL: SELECT  ...
+🔍 SQL: SELECT  ...
+🔍 SQL: SELECT  ...
+🔍 SQL: SELECT  ...
+🔍 SQL: SELECT  ...
+🔍 SQL: SELECT  ...
+🔍 SQL: SELECT COUNT(*) as total FROM messages ...
+🔍 SQL: SELECT  ...
+🔍 SQL: SELECT  ...
+🔍 SQL: SELECT  ...
+ POST / 200 in 411ms (next.js: 9ms, application-code: 403ms)
+  └─ ƒ getGlobalStats() in 381ms actions/stats.ts
+🔍 SQL: SELECT COUNT(DISTINCT m.id) as total ...
+🔍 SQL: SELECT m.*,  ...
+ POST / 200 in 464ms (next.js: 8ms, application-code: 456ms)
+  └─ ƒ getMatches({"limit":10,"status":"live"}) in 409ms actions/matches.ts
+🔍 SQL: SELECT  ...
+🔍 SQL: SELECT  ...
