@@ -32,7 +32,7 @@ export function useAuth() {
       // First call /api/auth/sync to ensure user exists in DB and update last_login
       const syncResponse = await fetch('/api/auth/sync', {
         method: 'POST',
-        headers,
+        headers
       });
       
       console.log('syncResponse status:', syncResponse.status);

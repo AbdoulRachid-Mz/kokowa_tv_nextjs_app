@@ -94,6 +94,6 @@ export async function DELETE(request: NextRequest, context: ApiContext) {
         },
       });
     },
-    { requiredPermissions: ['admin', 'editor'] } // Nécessite admin OU editor
+    { requiredRoles: ['admin', 'editor'] } // Nécessite admin OU editor
   )(request, context);
 }
