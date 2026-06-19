@@ -34,10 +34,9 @@ export default function RefereesPage() {
   } = useEntityList<Referee>({
     entityType: 'referees',
     defaultFilters: {
-      is_active: 'active',
-      with_region: true,
-      limit: '20',
+      is_active: true,
     },
+    withRelations: ['region'],
   });
 
   // Statistiques pour les arbitres

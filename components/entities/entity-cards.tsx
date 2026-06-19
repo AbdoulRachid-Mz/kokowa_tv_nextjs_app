@@ -156,14 +156,19 @@ export function FighterCard({
         <div className={cn("flex items-center gap-3", !isListView && "w-full")}>
           <div className="relative flex-shrink-0">
             {fighter.profile_image ? (
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-background shadow-sm">
+              <Avatar className="w-12 h-12 border-2 border-background shadow-sm">
                 <Image
                   src={fighter.profile_image}
                   alt={fighter.first_name}
                   fill
+                  sizes="48px"
                   className="object-cover"
                 />
-              </div>
+                <AvatarFallback>
+                  {fighter.first_name[0]}
+                  {fighter.last_name[0]}
+                </AvatarFallback>
+              </Avatar>
             ) : (
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
                 {fighter.first_name[0]}
@@ -1361,12 +1366,16 @@ export const CoachCard = ({
                   isCompact ? "w-8 h-8" : "w-12 h-12",
                 )}
               >
-                <Image
-                  src={coach.profile_image || "/placeholder-profile.jpg"}
-                  alt={`${coach.first_name} ${coach.last_name}`}
-                  fill
-                  className="object-cover"
-                />
+                <Avatar className="h-full w-full">
+                  <AvatarImage
+                    src={coach.profile_image || "/placeholder-profile.jpg"}
+                    alt={`${coach.first_name} ${coach.last_name}`}
+                    className="object-cover"
+                  />
+                  <AvatarFallback>
+                    {coach.first_name[0]}{coach.last_name[0]}
+                  </AvatarFallback>
+                </Avatar>
               </div>
               <div className="min-w-0">
                 <Typography

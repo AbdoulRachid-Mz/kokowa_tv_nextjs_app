@@ -77,12 +77,7 @@ export default function ArchivesPage() {
     onRefresh,
   } = useEntityList<ArchiveFighterAchievement>({
     entityType: "archives",
-    defaultFilters: {
-      limit: "20",
-      with_fighter: true,
-      with_region: true,
-      with_edition: true,
-    },
+    withRelations: ['fighter', 'region', 'edition'],
   });
 
   const handleCreate = () => {

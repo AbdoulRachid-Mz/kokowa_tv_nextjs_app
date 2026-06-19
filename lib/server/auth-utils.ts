@@ -155,10 +155,13 @@ export async function getOrCreateUserFromFirebase(
   }
 
   // 2. Créer un nouvel utilisateur
-  const username = `user_${firebaseUser.uid.slice(0, 8)}`;
   const firstName = firebaseUser.displayName?.split(' ')[0] || '';
   const lastName = firebaseUser.displayName?.split(' ').slice(1).join(' ') || '';
-
+  // Clean and join all parts of first and last name to avoid spaces in username
+  const cleanFirstName = firstName.replace(/\s+/g, '_');
+  const cleanLastName = lastName.replace(/\s+/g, '_');
+  const baseUsername = [cleanFirstName, cleanLastName].filter(Boolean).join('_').toLowerCase() || `user_${firebaseUser.uid.slice(0, 8)}`;
+  const username = `@${baseUsername}`;
   const insertResult = await query<UserDocument>(
     `INSERT INTO users (auth_id, email, username, password_hash, role, first_name, last_name, profile_picture, is_active, is_verified)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)

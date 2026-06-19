@@ -33,13 +33,7 @@ export default function EditionsPage() {
     onRefresh,
   } = useEntityList<CompetitionEdition>({
     entityType: 'editions',
-    defaultFilters: {
-      with_phases: true,
-      with_fighters: true,
-      with_regions: true,
-      with_competition: true,
-      limit: '20',
-    },
+    withRelations: ['phases', 'fighters', 'regions', 'competition'],
   });
 
   // Statistiques pour les éditions

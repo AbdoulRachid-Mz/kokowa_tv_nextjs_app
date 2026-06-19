@@ -16,6 +16,7 @@ export function useAuth() {
       const token = await firebaseUser.getIdToken();
       const appCheckToken = await getAppCheckToken();
 
+
       // console.log('appCheckToken:', appCheckToken);
       // console.log('appToken:', token);
 

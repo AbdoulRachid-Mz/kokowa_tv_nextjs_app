@@ -37,6 +37,7 @@ class ApiService {
       if (!config.headers) {
         config.headers = new axios.AxiosHeaders();
       }
+      
       (config.headers as any)["x-app-id"] = APP_ID;
 
       if (authToken) {

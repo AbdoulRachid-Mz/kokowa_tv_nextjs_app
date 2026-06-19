@@ -33,11 +33,7 @@ export default function TransfersPage() {
     onRefresh,
   } = useEntityList<FighterTransfer>({
     entityType: "transfers",
-    defaultFilters: {
-      with_fighter: true,
-      with_regions: true,
-      limit: "20",
-    },
+    withRelations: ['fighter', 'from_region', 'to_region'],
   });
 
   // Statistiques pour les transferts

@@ -32,16 +32,13 @@ export default function ClientRegionsPage() {
     onRefresh,
   } = useEntityList<Region>({
     entityType: 'regions',
-    defaultFilters: {
-      with_fighters: true,
-      limit: '20',
-    },
+    withRelations: ['fighters'],
   });
 
   // Statistiques pour les régions
   const renderStats = () => {
-    const totalFighters = data.reduce((sum, region) => sum + (region.total_fighters ?? 0), 0);
-    const totalChampions = data.reduce((sum, region) => sum + (region.total_champions ?? 0), 0);
+    const totalFighters = data.reduce((sum, region) => sum + Number(region.total_fighters ?? 0), 0);
+    const totalChampions = data.reduce((sum, region) => sum + Number(region.total_champions ?? 0), 0);
     const averageFighters = data.length > 0 ? Math.round(totalFighters / data.length) : 0;
 
     const stats = [

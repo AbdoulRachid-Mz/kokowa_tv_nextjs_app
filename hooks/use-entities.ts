@@ -7,9 +7,10 @@ import {
 } from '@tanstack/react-query';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getEntities, EntityType, EntityQueryOptions } from '@/actions/entities';
+import { getEntities, EntityQueryOptions } from '@/actions/entities';
 import { PaginatedResponse, BaseFilters } from '@/types';
 import { useDebounce } from './use-debounce';
+import { EntityType } from '@/lib/entity-utils';
 
 // Types pour les options du hook
 export interface UseEntitiesOptions<TFilters = BaseFilters> {

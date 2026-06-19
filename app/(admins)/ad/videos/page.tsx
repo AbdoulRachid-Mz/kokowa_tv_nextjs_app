@@ -42,9 +42,6 @@ export default function VideosPage() {
     onResetFilters,
   } = useEntityList<Video>({
     entityType: "videos",
-    defaultFilters: {
-      limit: 20,
-    },
     defaultLimit: 20,
   });
 

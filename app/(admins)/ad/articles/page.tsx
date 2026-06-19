@@ -41,10 +41,7 @@ export default function ArticlesPage() {
     onResetFilters,
   } = useEntityList<Article>({
     entityType: "articles",
-    defaultFilters: {
-      with_author: true,
-      limit: 20,
-    },
+    withRelations: ['author'],
     defaultLimit: 20,
   });
 

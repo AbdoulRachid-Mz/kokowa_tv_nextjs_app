@@ -33,12 +33,7 @@ export default function SubGroupsPage() {
     onRefresh,
   } = useEntityList<SubGroup>({
     entityType: "sub-groups",
-    defaultFilters: {
-      with_group: true,
-      with_regions: true,
-      with_matches: true,
-      limit: "20",
-    },
+    withRelations: ['group', 'matches'],
   });
 
   // Statistiques pour les sous-groupes

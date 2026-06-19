@@ -35,7 +35,6 @@ export default function CoachesPage() {
     entityType: "coaches",
     defaultFilters: {
       is_active: true,
-      limit: "20",
     },
   });
 

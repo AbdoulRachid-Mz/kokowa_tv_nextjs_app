@@ -38,10 +38,7 @@ export default function MediaPage() {
     onResetFilters,
   } = useEntityList<Media>({
     entityType: "media",
-    defaultFilters: {
-      with_uploader: true,
-      limit: 20,
-    },
+    withRelations: ['uploader'],
     defaultLimit: 20,
   });
 

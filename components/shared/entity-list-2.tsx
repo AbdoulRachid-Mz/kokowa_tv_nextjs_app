@@ -40,12 +40,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { EntityType } from "@/actions/entities";
+// import { EntityType } from "@/actions/entities";
 import { UseEntitiesReturn } from "@/hooks/use-entities";
 import { EntityFilters } from "./entity-filters";
 import { StatsCarousel } from "./stats-carousel";
 import { MobileScreen } from "./mobile-screen";
 import { useScreenSize } from "@/hooks/use-screen";
+import { EntityType } from "@/lib/entity-utils";
 
 // Interface des props du composant
 export interface EntityListProps<T> {

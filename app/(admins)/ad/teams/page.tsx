@@ -26,10 +26,9 @@ export default function TeamsPage() {
     onAdd,
     onEdit,
     onView,
-    onExport,
     onRefresh,
   } = useEntityList<TeamMember>({
-    entityType: "teams",
+    entityType: 'teams',
     defaultFilters: {
       is_active: "all",
       limit: "20",

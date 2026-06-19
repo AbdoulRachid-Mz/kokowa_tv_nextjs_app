@@ -34,8 +34,7 @@ export default function FightersPage() {
   } = useEntityList<Fighter>({
     entityType: "fighters",
     defaultFilters: {
-      is_active: "active",
-      limit: "20",
+      is_active: true,
     },
   });
 

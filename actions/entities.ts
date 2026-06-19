@@ -21,18 +21,13 @@ import {
   PaginatedResponse,
   BaseFilters
 } from '@/types';
+import { EntityType, toPluralEntityType } from '@/lib/entity-utils';
 
-// Type pour les entités supportées
-export type EntityType = 
-  | 'fighters' | 'regions' | 'competitions' | 'editions' | 'matches'
-  | 'referees' | 'phases' | 'phase-groups' | 'sub-groups'
-  | 'articles' | 'media' | 'videos' | 'messages' | 'notifications'
-  | 'users' | 'coaches' | 'transfers' | 'advertisements' | 'interactions'
-  | 'archives' | 'belts' | 'fighter-achievements' | 'edition-fighters'
-  | 'edition-regions' | 'fighter-cards';
+// Re-export for compatibility
+export { toPluralEntityType };
 
 // Mapping des types d'entités vers leurs noms de table
-const ENTITY_TABLE_MAP: Record<EntityType, string> = {
+const ENTITY_TABLE_MAP: Record<string, string> = {
   fighters: 'fighters',
   regions: 'regions',
   competitions: 'competitions',
@@ -52,12 +47,13 @@ const ENTITY_TABLE_MAP: Record<EntityType, string> = {
   transfers: 'fighter_transfers',
   advertisements: 'advertisements',
   interactions: 'interactions',
-  archives: 'fighter_achievements_archive',
+  archives: 'fighter_achievements',
   belts: 'belt',
   'fighter-achievements': 'fighter_achievements',
   'edition-fighters': 'edition_fighters',
   'edition-regions': 'edition_regions',
   'fighter-cards': 'fighter_cards',
+  teams: 'team_members',
 };
 
 // Mapping des types d'entités vers leurs jointures par défaut
@@ -87,6 +83,7 @@ const DEFAULT_RELATIONS_MAP: Partial<Record<EntityType, string[]>> = {
   'edition-fighters': ['edition', 'fighter', 'region'],
   'edition-regions': ['edition', 'region'],
   'fighter-cards': ['fighter', 'match'],
+  teams: [],
 };
 
 // Interface pour les options de requête
@@ -123,8 +120,9 @@ class EntityQueryBuilder {
   private selectFields: string[] = [];
 
   constructor(entityType: EntityType, options: EntityQueryOptions = {}) {
-    this.entityType = entityType;
-    this.tableName = ENTITY_TABLE_MAP[entityType];
+    const pluralType = toPluralEntityType(entityType);
+    this.entityType = pluralType;
+    this.tableName = ENTITY_TABLE_MAP[pluralType as keyof typeof ENTITY_TABLE_MAP];
     this.options = options;
     this.selectFields = [`${this.tableName}.*`];
   }
@@ -550,7 +548,7 @@ class EntityQueryBuilder {
 
       case 'archives':
         if (relations.includes('fighter')) {
-          this.addJoin(`LEFT JOIN fighters f ON fighter_achievements_archive.fighter_id = f.id`);
+          this.addJoin(`LEFT JOIN fighters f ON fighter_achievements.fighter_id = f.id`);
           this.addSelectField(`
             JSON_BUILD_OBJECT(
               'id', f.id,
@@ -561,7 +559,7 @@ class EntityQueryBuilder {
           `);
         }
         if (relations.includes('region')) {
-          this.addJoin(`LEFT JOIN regions r ON fighter_achievements_archive.region_id = r.id`);
+          this.addJoin(`LEFT JOIN regions r ON fighter_achievements.region_id = r.id`);
           this.addSelectField(`
             JSON_BUILD_OBJECT(
               'id', r.id,
@@ -571,7 +569,7 @@ class EntityQueryBuilder {
           `);
         }
         if (relations.includes('edition')) {
-          this.addJoin(`LEFT JOIN competition_editions ce ON fighter_achievements_archive.edition_id = ce.id`);
+          this.addJoin(`LEFT JOIN competition_editions ce ON fighter_achievements.edition_id = ce.id`);
           this.addSelectField(`
             JSON_BUILD_OBJECT(
               'id', ce.id,
@@ -758,10 +756,11 @@ class EntityQueryBuilder {
       FROM ${this.tableName}
       ${this.joins.join(' ')}
       ${whereClause}
-      GROUP BY ${this.tableName}.id
       ORDER BY ${this.tableName}.${sortBy} ${sortOrder}
       LIMIT $${this.params.length + 1} OFFSET $${this.params.length + 2}
     `;
+
+    // console.log("SQL QUERY:", sql);
 
     return {
       sql,
@@ -790,10 +789,11 @@ export async function getEntities<T = any>(
       withRelations = false,
     } = options;
 
+    const pluralType = toPluralEntityType(entityType);
     const builder = new EntityQueryBuilder(entityType, { ...options, search });
 
     // Appliquer les filtres spécifiques à chaque entité
-    applyEntityFilters(builder, entityType, filters);
+    applyEntityFilters(builder, pluralType, filters);
 
     // Ajouter les relations
     builder.buildRelations();
@@ -802,7 +802,7 @@ export async function getEntities<T = any>(
     const { sql, countSql, params } = builder.build();
 
     // Exécuter la requête COUNT
-    const countResult = await query<{ total: string }>(countSql, params.slice(0, -2));
+    const countResult = await query<{ total: string }>(countSql, params);
     const total = parseInt(countResult[0]?.total ?? '0');
 
     // Pagination
@@ -811,7 +811,7 @@ export async function getEntities<T = any>(
     const offset = (validatedPage - 1) * validatedLimit;
 
     // Exécuter la requête principale avec les paramètres de pagination
-    const data = await query<T>(sql, [...params.slice(0, -2), validatedLimit, offset]);
+    const data = await query<T>(sql, [...params, validatedLimit, offset]);
 
     const totalPages = Math.ceil(total / validatedLimit);
 
@@ -853,7 +853,20 @@ function applyEntityFilters(
   // Fonction utilitaire pour ajouter un filtre avec un paramètre
   const addFilter = (condition: string, value: any) => {
     if (value !== undefined && value !== null && value !== 'all' && value !== '') {
-      builder.addWhere(condition, value);
+      let parsedValue = value;
+      
+      // Convert boolean strings to actual booleans
+      if (value === 'true' || value === 'active') {
+        parsedValue = true;
+      } else if (value === 'false' || value === 'inactive') {
+        parsedValue = false;
+      }
+      // Convert numeric strings to numbers (for year, ranking, etc.)
+      else if (!isNaN(Number(value)) && value !== '') {
+        parsedValue = Number(value);
+      }
+
+      builder.addWhere(condition, parsedValue);
     }
   };
 
@@ -1022,15 +1035,12 @@ function applyEntityFilters(
       break;
 
     case 'archives':
-      builder.applySearch(['title', 'description', 'archive_reason']);
+      builder.applySearch(['title', 'description']);
       addFilter(`${tableName}.fighter_id = $${builder['params'].length + 1}`, filters.fighter_id);
       addFilter(`${tableName}.region_id = $${builder['params'].length + 1}`, filters.region_id);
       addFilter(`${tableName}.edition_id = $${builder['params'].length + 1}`, filters.edition_id);
       addFilter(`${tableName}.year = $${builder['params'].length + 1}`, filters.year);
       addFilter(`${tableName}.position = $${builder['params'].length + 1}`, filters.position);
-      addFilter(`${tableName}.archive_reason = $${builder['params'].length + 1}`, filters.archive_reason);
-      addFilter(`${tableName}.archived_at >= $${builder['params'].length + 1}`, filters.date_from);
-      addFilter(`${tableName}.archived_at <= $${builder['params'].length + 1}`, filters.date_to);
       break;
 
     case 'belts':
@@ -1071,6 +1081,13 @@ function applyEntityFilters(
       addFilter(`${tableName}.card_type = $${builder['params'].length + 1}`, filters.card_type);
       addFilter(`${tableName}.is_cancelled = $${builder['params'].length + 1}`, filters.is_cancelled);
       break;
+
+    case 'teams':
+      builder.applySearch(['first_name', 'last_name', 'role']);
+      addFilter(`${tableName}.is_active = $${builder['params'].length + 1}`, filters.is_active);
+      addFilter(`${tableName}.is_lead = $${builder['params'].length + 1}`, filters.is_lead);
+      addFilter(`${tableName}.role = $${builder['params'].length + 1}`, filters.role);
+      break;
   }
 }
 
@@ -1081,9 +1098,10 @@ export async function getEntityById<T = any>(
   withRelations: boolean = true
 ): Promise<T | null> {
   try {
+    const pluralType = toPluralEntityType(entityType);
     const builder = new EntityQueryBuilder(entityType, { withRelations });
     
-    builder.addWhere(`${ENTITY_TABLE_MAP[entityType]}.id = $1`, id);
+    builder.addWhere(`${ENTITY_TABLE_MAP[pluralType as keyof typeof ENTITY_TABLE_MAP]}.id = $1`, id);
     builder.buildRelations();
 
     const { sql, params } = builder.build();
@@ -1098,12 +1116,13 @@ export async function getEntityById<T = any>(
 
 // Fonction pour récupérer une entité par slug
 export async function getEntityBySlug<T = any>(
-  entityType: Extract<EntityType, 'fighters' | 'articles' | 'videos' | 'competitions'>,
+  entityType: EntityType,
   slug: string,
   withRelations: boolean = true
 ): Promise<T | null> {
   try {
-    const tableName = ENTITY_TABLE_MAP[entityType];
+    const pluralType = toPluralEntityType(entityType);
+    const tableName = ENTITY_TABLE_MAP[pluralType as keyof typeof ENTITY_TABLE_MAP];
     const builder = new EntityQueryBuilder(entityType, { withRelations });
     
     builder.addWhere(`${tableName}.slug = $1`, slug);

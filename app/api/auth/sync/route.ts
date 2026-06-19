@@ -1,21 +1,23 @@
 // app/api/auth/sync/route.ts
-import { NextRequest } from 'next/server';
-import { apiHandler, ApiContext } from '@/lib/server/api-handler';
-import { getOrCreateUserFromFirebase } from '@/lib/server/auth-utils';
+import { NextRequest } from "next/server";
+import { apiHandler, ApiContext } from "@/lib/server/api-handler";
+import { getOrCreateUserFromFirebase } from "@/lib/server/auth-utils";
 
 export const POST = (request: NextRequest, context: ApiContext) =>
   apiHandler(
     request,
     context,
     async (req, ctx) => {
-      console.log('Calling sync API, ctx:', ctx);
+      const body = await request.json().catch(() => ({}));
+      const { uid, email, displayName, photoURL, emailVerified } = body || {};
+
       const firebaseUser = ctx.firebaseUser!;
       const dbUser = await getOrCreateUserFromFirebase({
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.name,
-        photoURL: firebaseUser.picture,
-        emailVerified: firebaseUser.email_verified ?? false,
+        uid: uid ?? firebaseUser.uid,
+        email: email ?? firebaseUser.email,
+        displayName: displayName ?? firebaseUser.name,
+        photoURL: photoURL ?? firebaseUser.picture,
+        emailVerified: emailVerified ?? firebaseUser.email_verified ?? false,
       });
 
       return Response.json({
@@ -33,7 +35,7 @@ export const POST = (request: NextRequest, context: ApiContext) =>
     {
       requireAuth: true,
       requireAppCheck: false,
-      allowedMethods: ['POST'],
+      allowedMethods: ["POST"],
       rateLimit: { windowMs: 60000, max: 20 },
-    }
+    },
   );
