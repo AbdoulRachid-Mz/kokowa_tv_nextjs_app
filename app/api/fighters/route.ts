@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
 
     // Reading and validating parameters
     const limitParam = searchParams.get('limit');
+    const pageParam = searchParams.get('page');
     const offsetParam = searchParams.get('offset');
     const orderByParam = searchParams.get('orderBy');
     const orderParam = searchParams.get('order');
@@ -17,9 +18,12 @@ export async function GET(request: NextRequest) {
     const rawLimit = limitParam ? Number(limitParam) : 20;
     // 🔥 allow ALL mode
     const limit = isNaN(rawLimit) ? 20 : rawLimit;
-    const offset = offsetParam ? Math.max(0, Number(offsetParam)) : 0;
-    // ⚠️ avoid division by 0
-    const page = limit > 0 ? Math.floor(offset / limit) + 1 : 1;
+    // Support both page param and offset-based page calculation
+    const page = pageParam
+      ? Math.max(1, parseInt(pageParam))
+      : offsetParam
+        ? (limit > 0 ? Math.floor(Math.max(0, Number(offsetParam)) / limit) + 1 : 1)
+        : 1;
     const orderBy =
       orderByParam === 'ranking' || orderByParam === 'id' || orderByParam === 'name'
         ? orderByParam
@@ -33,6 +37,7 @@ export async function GET(request: NextRequest) {
       page,
       search,
       region_id: searchParams.get('region_id') ? parseInt(searchParams.get('region_id')!) : undefined,
+      not_in_edition: searchParams.get('not_in_edition') ? parseInt(searchParams.get('not_in_edition')!) : undefined,
       is_active: searchParams.get('is_active') === '1'
         ? true
         : searchParams.get('is_active') === '0'

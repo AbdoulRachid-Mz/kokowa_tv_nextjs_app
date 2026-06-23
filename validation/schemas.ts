@@ -104,6 +104,18 @@ export const fighterAchievementSchema = z.object({
     "semifinalist",
     "quarterfinalist",
   ]),
+  type: z.enum([
+    "competition",
+    "kirari",
+    "fair-play",
+    "point",
+    "walki",
+    "dance",
+    "tchali_tchali",
+    "once_beat",
+    "best_beaten",
+    "other",
+  ]),
   description: z.string().optional(),
   medal_image: z.string().nullable().optional(),
 });

@@ -44,7 +44,7 @@ export default function EditionDetailPage() {
   const [phaseDialogOpen, setPhaseDialogOpen] = useState<boolean>(false);
 
   const handleOnSuccess = () => {
-    toast.success("Phase créée avec succès");
+    toast.success("Lutteur créé ou modifié avec succès");
     setPhaseDialogOpen(false);
     setActiveTab("phases");
   };
@@ -81,17 +81,21 @@ export default function EditionDetailPage() {
     defaultLimit: 10
   });
 
-  const fightersList = useEntityList<any>({
+  const fightersList = useEntityList<Fighter>({
     entityType: 'fighters',
     apiPath: `/api/editions/${editionId}/fighters`,
-    defaultLimit: 10
+    defaultLimit: 10,
   });
 
-  const regionsList = useEntityList<any>({
+  const regionsList = useEntityList<Region>({
     entityType: 'regions',
     apiPath: `/api/editions/${editionId}/regions`,
     defaultLimit: 10
   });
+
+  const isFightersLoading = fightersList.loading;
+  const isRegionsLoading = regionsList.loading;
+  const isPhasesLoading = phasesList.loading;
 
   // Statistiques pour l'édition
   const getEditionStats = () => {
@@ -543,12 +547,13 @@ export default function EditionDetailPage() {
           />
         </TabsContent>
 
+
         {/* Lutteurs */}
         <TabsContent value="fighters">
           <EntityList
             title="Lutteurs de l'Édition"
             description={`Gérez les lutteurs de l'édition ${edition.edition_number}`}
-            entityType="fighter"
+            entityType='fighters'
             data={fightersList.data}
             total={fightersList.total}
             loading={fightersList.loading}
@@ -560,15 +565,15 @@ export default function EditionDetailPage() {
             onSearchChange={fightersList.setSearchTerm}
             filters={fightersList.filters}
             onFilterChange={fightersList.setFilters}
-            onAdd={handleAddPhase}
+            onAdd={handleAddFighter}
             onRefresh={fightersList.onRefresh}
             viewMode={fightersList.viewMode}
             onViewModeChange={fightersList.setViewMode}
-            renderCard={(item: any, viewMode) => (
+            renderCard={(item: Fighter, viewMode) => (
               <MiniFighterCard 
-                item={item.fighter}
+                item={item}
                 viewMode={viewMode}
-                onView={() => router.push(`/ad/fighters/${item.fighter.id}`)}
+                onView={() => router.push(`/ad/fighters/${item.id}`)}
               />
             )}
           />

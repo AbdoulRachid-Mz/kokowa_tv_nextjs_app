@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { Trophy, MapPin, User, Star, MoreHorizontal, Eye, Pencil, Trash2, AlertTriangle, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BaseCardProps } from "./entity-cards";
+import { BaseCardProps, CardActionMenu } from "./entity-cards";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "../ui/button";
 import {
@@ -27,102 +27,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-function CardActionMenu({
-  onEdit,
-  onView,
-  onDelete,
-  entityName = "cet élément",
-}: {
-  onEdit?: () => void;
-  onView?: () => void;
-  onDelete?: () => void;
-  entityName?: string;
-}) {
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  if (!onEdit && !onView && !onDelete) return null;
-
-  return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-full bg-primary/20 text-primary"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <MoreHorizontal className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-          {onView && (
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(); }}>
-              <Eye className="h-3 w-3 mr-2" /> Voir
-            </DropdownMenuItem>
-          )}
-          {onEdit && (
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
-              <Pencil className="h-3 w-3 mr-2" /> Modifier
-            </DropdownMenuItem>
-          )}
-          {onDelete && (
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsConfirmOpen(true);
-              }}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="h-3 w-3 mr-2" /> Supprimer
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="w-5 h-5" />
-              Confirmer la suppression
-            </DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer {entityName} ? Cette action est irréversible et effacera toutes ses données.
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="flex gap-2 sm:gap-0 mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsConfirmOpen(false);
-              }}
-              className="flex-1"
-            >
-              <X className="w-4 h-4 mr-2" />
-              Annuler
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsConfirmOpen(false);
-                onDelete?.();
-              }}
-              className="flex-1"
-            >
-              <Check className="w-4 h-4 mr-2" />
-              Confirmer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
 
 const getStatusBorder = (status?: string) => {
   switch (status) {
@@ -160,7 +64,7 @@ export function MiniFighterCard({
   return (
     <Card
       className={cn(
-        "overflow-hidden transition-all duration-300 group",
+        "overflow-hidden transition-all relative duration-300 group",
         isCliquable && "cursor-pointer active:scale-95 hover:border-primary",
         getStatusBorder(status),
         className
@@ -171,8 +75,8 @@ export function MiniFighterCard({
       <CardContent className="p-2 flex items-center gap-2">
         <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-muted border shadow-sm">
           <Image
-            src={fighter.profile_image || "/placeholder-profile.jpg"}
-            alt={`${fighter.first_name} ${fighter.last_name}`}
+            src={fighter?.profile_image || "/placeholder-profile.jpg"}
+            alt={`${fighter?.first_name} ${fighter?.last_name}`}
             fill
             className="object-cover"
           />
@@ -180,7 +84,7 @@ export function MiniFighterCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-1">
             <Typography variant="body-sm" weight="bold" className="truncate group-hover:text-primary transition-colors">
-              {fighter.first_name} {fighter.last_name}
+              {fighter?.first_name} {fighter?.last_name}
             </Typography>
             {hasActions && (
               <div onClick={e => e.stopPropagation()}>
@@ -227,7 +131,7 @@ export function MiniRegionCard({
   return (
     <Card
       className={cn(
-        "overflow-hidden transition-all duration-300 group",
+        "overflow-hidden transition-all relative duration-300 group",
         isCliquable && "cursor-pointer active:scale-95 hover:border-primary",
         getStatusBorder(status || region.color),
         className
@@ -287,7 +191,7 @@ export function MiniCompetitionCard({
   return (
     <Card
       className={cn(
-        "overflow-hidden transition-all duration-300 group",
+        "overflow-hidden transition-all relative duration-300 group",
         isCliquable && "cursor-pointer active:scale-95 hover:border-primary",
         getStatusBorder(status),
         className
@@ -351,7 +255,7 @@ export function MiniCoachCard({
   return (
     <Card
       className={cn(
-        "overflow-hidden transition-all duration-300 group",
+        "overflow-hidden transition-all relative duration-300 group",
         isCliquable && "cursor-pointer active:scale-95 hover:border-primary",
         getStatusBorder(status),
         className
@@ -412,7 +316,7 @@ export function MiniRefereeCard({
   return (
     <Card
       className={cn(
-        "overflow-hidden transition-all duration-300 group",
+        "overflow-hidden transition-all relative duration-300 group",
         isCliquable && "cursor-pointer active:scale-95 hover:border-primary",
         getStatusBorder(status),
         className
@@ -447,4 +351,3 @@ export function MiniRefereeCard({
     </Card>
   );
 }
-

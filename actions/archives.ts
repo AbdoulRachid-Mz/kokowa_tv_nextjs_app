@@ -344,12 +344,13 @@ export async function createArchiveFighterAchievement(validatedData: any) {
         edition_id,
         year,
         position,
+        type,
         description,
         medal_image,
         created_at
       ) 
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8,
+        $1, $2, $3, $4, $5, $6, $7, $8, $9,
         CURRENT_TIMESTAMP
       )
       RETURNING id
@@ -362,6 +363,7 @@ export async function createArchiveFighterAchievement(validatedData: any) {
       validatedData.edition_id,
       validatedData.year,
       validatedData.position,
+      validatedData.type ?? 'other',
       validatedData.description ?? null,
       validatedData.medal_image ?? null,
     ]);
@@ -404,6 +406,7 @@ export async function updateArchiveFighterAchievement(
       edition_id: formData.get("edition_id"),
       year: formData.get("year"),
       position: formData.get("position"),
+      type: formData.get("type"),
       description: formData.get("description"),
       medal_image: formData.get("medal_image"),
     };
@@ -414,7 +417,8 @@ export async function updateArchiveFighterAchievement(
       title: rawData.title as string,
       edition_id: rawData.edition_id ? Number(rawData.edition_id) : undefined,
       year: Number(rawData.year),
-      position: rawData.position ? Number(rawData.position) : undefined,
+      position: rawData.position ? String(rawData.position) : undefined,
+      type: (rawData.type as string) || 'other',
       description: (rawData.description as string) || undefined,
       medal_image: (rawData.medal_image as string) || undefined,
     };
@@ -423,9 +427,9 @@ export async function updateArchiveFighterAchievement(
       UPDATE fighter_achievements
       SET
         fighter_id = $1, region_id = $2, title = $3, edition_id = $4,
-        year = $5, position = $6, description = $7, medal_image = $8,
+        year = $5, position = $6, type = $7, description = $8, medal_image = $9,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $9
+      WHERE id = $10
     `;
 
     await query(sql, [
@@ -435,6 +439,7 @@ export async function updateArchiveFighterAchievement(
       cleanedData.edition_id || null,
       cleanedData.year,
       cleanedData.position || null,
+      cleanedData.type,
       cleanedData.description || null,
       cleanedData.medal_image || null,
       id,

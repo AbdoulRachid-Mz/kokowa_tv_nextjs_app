@@ -1231,9 +1231,9 @@ export async function getEditionRegions(
     const countResult = await query<{ total: string }>(countSql, params);
     const total = parseInt(countResult[0]?.total ?? "0");
 
-    // Pagination
+    // Pagination - allow "all" mode by passing limit <= 0
     const validatedPage = Math.max(1, page);
-    const validatedLimit = Math.max(1, Math.min(100, limit));
+    const validatedLimit = limit <= 0 ? total : Math.max(1, Math.min(100, limit));
     const offset = (validatedPage - 1) * validatedLimit;
     const totalPages = Math.ceil(total / validatedLimit);
 
@@ -1266,10 +1266,13 @@ export async function getEditionRegions(
       ${joinClause}
       ${whereClause}
       ${orderClause}
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+      ${limit <= 0 ? "" : `LIMIT $${params.length + 1} OFFSET $${params.length + 2}`}
     `;
 
-    const data = await query(dataSql, [...params, validatedLimit, offset]);
+    const data = await query(
+      dataSql,
+      limit <= 0 ? params : [...params, validatedLimit, offset],
+    );
 
     return {
       data,

@@ -83,44 +83,82 @@ export function AchievementForm({
       edition_id: undefined,
       year: new Date().getFullYear(),
       position: "1st",
+      type: "other",
       description: "",
       medal_image: "/icons/3d-medal.png",
     },
   });
 
   // Génère une description dynamique basée sur les données sélectionnées
+  const getTypeLabel = (type: string) => {
+    const types: Record<string, string> = {
+      competition: "champion de",
+      kirari: "kirari de",
+      "fair-play": "fair-play de",
+      point: "meilleur pointeur de",
+      walki: "meilleur walki de",
+      dance: "meilleur danseur de",
+      tchali_tchali: "tchali tchali de",
+      once_beat: "terrassé une fois",
+      best_beaten: "meilleur combat",
+      other: "distingué à",
+    };
+    return types[type] || "distingué à";
+  };
+
+  const getTypeLabelDisplay = (type: string) => {
+    const types: Record<string, { label: string; icon: string }> = {
+      competition: { label: "Compétition", icon: "🏆" },
+      kirari: { label: "Kirari", icon: "💪" },
+      "fair-play": { label: "Fair-Play", icon: "🤝" },
+      point: { label: "Point", icon: "🎯" },
+      walki: { label: "Walki", icon: "🦶" },
+      dance: { label: "Danse", icon: "💃" },
+      tchali_tchali: { label: "Tchali Tchali", icon: "🔥" },
+      once_beat: { label: "Terrassé une fois", icon: "👊" },
+      best_beaten: { label: "Meilleur combat", icon: "🥊" },
+      other: { label: "Autre", icon: "🏅" },
+    };
+    return types[type] || { label: type, icon: "🏅" };
+  };
+
   const generateDynamicDescription = (): string => {
     const fighterId = form.getValues("fighter_id");
     const regionId = form.getValues("region_id");
     const editionId = form.getValues("edition_id");
     const year = form.getValues("year");
     const position = form.getValues("position");
+    const type = form.getValues("type");
 
     const fighter = fighters.find((f) => f.id === fighterId);
     const region = regions.find((r) => r.id === regionId);
     const edition = editions.find((e) => e.id === editionId);
 
     const positionLabel = getPositionLabel(position).label;
+    const typeLabel = getTypeLabel(type);
 
     const parts: string[] = [];
 
     if (fighter) {
       parts.push(`${fighter.first_name} ${fighter.last_name}`);
-      if (fighter.nickname) parts.push(`(${fighter.nickname})`);
+      if (fighter.nickname) parts.push(`dit (${fighter.nickname})`);
     }
 
-    if (region) {
-      parts.push(`de la région ${region.name}`);
-    }
+    // Build description based on type
+    parts.push(typeLabel);
 
     if (edition && edition.competition) {
-      parts.push(`a obtenu ${positionLabel} à ${edition.competition.name}`);
+      parts.push(`${edition.competition.name}`);
       if (edition.edition_number) {
         parts.push(`(Édition ${edition.edition_number})`);
       }
-    } else {
-      parts.push(`a obtenu ${positionLabel}`);
     }
+
+    if (region) {
+      parts.push(`représentant la région ${region.name}`);
+    }
+
+    parts.push(`- ${positionLabel}`);
 
     if (year) {
       parts.push(`en ${year}`);
@@ -137,7 +175,8 @@ export function AchievementForm({
         name === "region_id" ||
         name === "edition_id" ||
         name === "year" ||
-        name === "position"
+        name === "position" ||
+        name === "type"
       ) {
         const dynamicDesc = generateDynamicDescription();
         form.setValue("description", dynamicDesc, { shouldDirty: false });
@@ -163,6 +202,7 @@ export function AchievementForm({
               edition_id: data.edition_id,
               year: data.year,
               position: data.position,
+              type: data.type || "other",
               description: data.description || "",
               medal_image: data.medal_image || "",
             });
@@ -608,6 +648,65 @@ export function AchievementForm({
                             <FormDescription>
                               <Badge className={positionInfo.color}>
                                 {positionInfo.label}
+                              </Badge>
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+
+                    {/* Type */}
+                    <FormField
+                      control={form.control}
+                      name="type"
+                      render={({ field }) => {
+                        const typeInfo = getTypeLabelDisplay(field.value);
+                        return (
+                          <FormItem>
+                            <FormLabel>Type *</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="competition">
+                                  <span className="flex items-center gap-2">🏆 Compétition</span>
+                                </SelectItem>
+                                <SelectItem value="kirari">
+                                  <span className="flex items-center gap-2">💪 Kirari</span>
+                                </SelectItem>
+                                <SelectItem value="fair-play">
+                                  <span className="flex items-center gap-2">🤝 Fair-Play</span>
+                                </SelectItem>
+                                <SelectItem value="point">
+                                  <span className="flex items-center gap-2">🎯 Point</span>
+                                </SelectItem>
+                                <SelectItem value="walki">
+                                  <span className="flex items-center gap-2">🦶 Walki</span>
+                                </SelectItem>
+                                <SelectItem value="dance">
+                                  <span className="flex items-center gap-2">💃 Danse</span>
+                                </SelectItem>
+                                <SelectItem value="tchali_tchali">
+                                  <span className="flex items-center gap-2">🔥 Tchali Tchali</span>
+                                </SelectItem>
+                                <SelectItem value="once_beat">
+                                  <span className="flex items-center gap-2">👊 Once Beat</span>
+                                </SelectItem>
+                                <SelectItem value="best_beaten">
+                                  <span className="flex items-center gap-2">🥊 Best Beaten</span>
+                                </SelectItem>
+                                <SelectItem value="other">
+                                  <span className="flex items-center gap-2">🏅 Autre</span>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              <Badge variant="outline">
+                                {typeInfo.icon} {typeInfo.label}
                               </Badge>
                             </FormDescription>
                             <FormMessage />

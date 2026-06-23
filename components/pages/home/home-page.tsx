@@ -1,15 +1,15 @@
 // components/home/home-page.tsx
-'use client'
+"use client";
 
-import { CtaSection } from './sections/cta-section'
-import { FeaturedContentSection } from './sections/featured-content-section'
-import { FeaturesSection } from './sections/features-section'
-import { HeroSection } from './sections/hero-section'
-import { motion } from 'framer-motion'
-import { ImpactSection } from './sections/impact-section'
-import { LiveMatchesSection } from './sections/live-matches-section'
-import { StatsSection } from './sections/stats-section'
-import { TeamSection } from './sections/team-section'
+import { CtaSection } from "./sections/cta-section";
+import { FeaturedContentSection } from "./sections/featured-content-section";
+import { FeaturesSection } from "./sections/features-section";
+import { HeroSection } from "./sections/hero-section";
+import { motion } from "framer-motion";
+import { ImpactSection } from "./sections/impact-section";
+import { LiveMatchesSection } from "./sections/live-matches-section";
+import { StatsSection } from "./sections/stats-section";
+import { TeamSection } from "./sections/team-section";
 
 export default function HomePage() {
   return (
@@ -21,8 +21,8 @@ export default function HomePage() {
     >
       {/* Fond animé */}
       <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-br from-background via-background to-primary/5" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
       </div>
 
       <div className="relative space-y-20 pb-20">
@@ -36,5 +36,5 @@ export default function HomePage() {
         <CtaSection />
       </div>
     </motion.div>
-  )
+  );
 }

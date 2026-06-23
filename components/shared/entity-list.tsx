@@ -1,25 +1,18 @@
-'use client';
+"use client";
 
-import React, { useMemo } from 'react';
-import { Typography } from '@/components/ui/typography';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useMemo } from "react";
+import { Typography } from "@/components/ui/typography";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import {
-  Search,
-  Grid,
-  List,
-  Plus,
-  RefreshCw,
-  LayoutGrid,
-} from 'lucide-react';
+} from "@/components/ui/select";
+import { Search, Grid, List, Plus, RefreshCw, LayoutGrid } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -28,10 +21,10 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from '@/components/ui/pagination';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
-import { EntityType, toPluralEntityType } from '@/lib/entity-utils';
+} from "@/components/ui/pagination";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { EntityType, toPluralEntityType } from "@/lib/entity-utils";
 
 // Types génériques
 export interface EntityListProps<T> {
@@ -61,11 +54,20 @@ export interface EntityListProps<T> {
   onExport?: () => void;
 
   // Affichage
-  viewMode?: 'grid' | 'list' | 'compact';
-  onViewModeChange?: (mode: 'grid' | 'list' | 'compact') => void;
+  viewMode?: "grid" | "list" | "compact";
+  itemsPerView?: {
+    mobile?: number;
+    md?: number;
+    lg?: number;
+    xl?: number;
+  };
+  onViewModeChange?: (mode: "grid" | "list" | "compact") => void;
 
   // Renderers personnalisés
-  renderCard: (item: T, viewMode: 'grid' | 'list' | 'compact') => React.ReactNode;
+  renderCard: (
+    item: T,
+    viewMode: "grid" | "list" | "compact",
+  ) => React.ReactNode;
   renderStats?: () => React.ReactNode;
 
   // Filtres disponibles supplémentaires
@@ -80,546 +82,547 @@ export interface EntityListProps<T> {
 const getEntityFilters = (entityType: EntityType) => {
   const baseFilters = [
     {
-      key: 'limit',
-      label: 'Éléments par page',
+      key: "limit",
+      label: "Éléments par page",
       options: [
-        { value: '10', label: '10' },
-        { value: '20', label: '20' },
-        { value: '50', label: '50' },
-        { value: '100', label: '100' },
+        { value: "10", label: "10" },
+        { value: "20", label: "20" },
+        { value: "50", label: "50" },
+        { value: "100", label: "100" },
       ],
     },
   ];
 
   const pluralType = toPluralEntityType(entityType);
 
-  const entityFiltersMap: Record<string, Array<{
-    key: string;
-    label: string;
-    options: Array<{ value: string; label: string }>;
-  }>> = {
+  const entityFiltersMap: Record<
+    string,
+    Array<{
+      key: string;
+      label: string;
+      options: Array<{ value: string; label: string }>;
+    }>
+  > = {
     fighters: [
       {
-        key: 'is_active',
-        label: 'Statut',
+        key: "is_active",
+        label: "Statut",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Actifs' },
-          { value: 'false', label: 'Inactifs' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Actifs" },
+          { value: "false", label: "Inactifs" },
         ],
       },
       {
-        key: 'is_champion',
-        label: 'Champion',
+        key: "is_champion",
+        label: "Champion",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Champions' },
-          { value: 'false', label: 'Non champions' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Champions" },
+          { value: "false", label: "Non champions" },
         ],
       },
     ],
     regions: [],
     competitions: [
       {
-        key: 'status',
-        label: 'Statut',
+        key: "status",
+        label: "Statut",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'upcoming', label: 'À venir' },
-          { value: 'ongoing', label: 'En cours' },
-          { value: 'completed', label: 'Terminées' },
-          { value: 'cancelled', label: 'Annulées' },
-          { value: 'postponed', label: 'Reportés' },
+          { value: "all", label: "Tous" },
+          { value: "upcoming", label: "À venir" },
+          { value: "ongoing", label: "En cours" },
+          { value: "completed", label: "Terminées" },
+          { value: "cancelled", label: "Annulées" },
+          { value: "postponed", label: "Reportés" },
         ],
       },
       {
-        key: 'is_active',
-        label: 'Actif',
+        key: "is_active",
+        label: "Actif",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Oui' },
-          { value: 'false', label: 'Non' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Oui" },
+          { value: "false", label: "Non" },
         ],
       },
     ],
     editions: [
       {
-        key: 'year',
-        label: 'Année',
+        key: "year",
+        label: "Année",
         options: [
-          { value: 'all', label: 'Toutes années' },
-          { value: '2026', label: '2026' },
-          { value: '2025', label: '2025' },
-          { value: '2024', label: '2024' },
-          { value: '2023', label: '2023' },
-          { value: '2022', label: '2022' },
-          { value: '2021', label: '2021' },
-          { value: '2020', label: '2020' },
+          { value: "all", label: "Toutes années" },
+          { value: "2026", label: "2026" },
+          { value: "2025", label: "2025" },
+          { value: "2024", label: "2024" },
+          { value: "2023", label: "2023" },
+          { value: "2022", label: "2022" },
+          { value: "2021", label: "2021" },
+          { value: "2020", label: "2020" },
         ],
       },
       {
-        key: 'is_active',
-        label: 'Actif',
+        key: "is_active",
+        label: "Actif",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Oui' },
-          { value: 'false', label: 'Non' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Oui" },
+          { value: "false", label: "Non" },
         ],
       },
     ],
     matches: [
       {
-        key: 'status',
-        label: 'Statut',
+        key: "status",
+        label: "Statut",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'scheduled', label: 'Programmé' },
-          { value: 'live', label: 'En direct' },
-          { value: 'completed', label: 'Terminé' },
-          { value: 'cancelled', label: 'Annulé' },
+          { value: "all", label: "Tous" },
+          { value: "scheduled", label: "Programmé" },
+          { value: "round_break", label: "En pause" },
+          { value: "live", label: "En direct" },
+          { value: "completed", label: "Terminé" },
+          { value: "cancelled", label: "Annulé" },
         ],
       },
     ],
     referees: [
       {
-        key: 'is_active',
-        label: 'Statut',
+        key: "is_active",
+        label: "Statut",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Actifs' },
-          { value: 'false', label: 'Inactifs' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Actifs" },
+          { value: "false", label: "Inactifs" },
         ],
       },
       {
-        key: 'certification_level',
-        label: 'Niveau Certification',
+        key: "certification_level",
+        label: "Niveau Certification",
         options: [
-          { value: 'all', label: 'Tous niveaux' },
-          { value: 'regional', label: 'Régional' },
-          { value: 'national', label: 'National' },
-          { value: 'international', label: 'International' },
+          { value: "all", label: "Tous niveaux" },
+          { value: "regional", label: "Régional" },
+          { value: "national", label: "National" },
+          { value: "international", label: "International" },
         ],
       },
     ],
     phases: [
       {
-        key: 'phase_type',
-        label: 'Type de Phase',
+        key: "phase_type",
+        label: "Type de Phase",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'qualification', label: 'Qualification' },
-          { value: 'group', label: 'Groupe' },
-          { value: 'knockout', label: 'Élimination directe' },
-          { value: 'quarterfinal', label: 'Quart de finale' },
-          { value: 'semifinal', label: 'Demi-finale' },
-          { value: 'final', label: 'Finale' },
+          { value: "all", label: "Tous" },
+          { value: "qualification", label: "Qualification" },
+          { value: "group", label: "Groupe" },
+          { value: "knockout", label: "Élimination directe" },
+          { value: "quarterfinal", label: "Quart de finale" },
+          { value: "semifinal", label: "Demi-finale" },
+          { value: "final", label: "Finale" },
         ],
       },
       {
-        key: 'is_completed',
-        label: 'Terminé',
+        key: "is_completed",
+        label: "Terminé",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Oui' },
-          { value: 'false', label: 'Non' },
-        ],
-      },
-    ],
-    'phase-groups': [
-      {
-        key: 'is_completed',
-        label: 'Terminé',
-        options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Oui' },
-          { value: 'false', label: 'Non' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Oui" },
+          { value: "false", label: "Non" },
         ],
       },
     ],
-    'sub-groups': [
+    "phase-groups": [
       {
-        key: 'is_completed',
-        label: 'Terminé',
+        key: "is_completed",
+        label: "Terminé",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Oui' },
-          { value: 'false', label: 'Non' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Oui" },
+          { value: "false", label: "Non" },
+        ],
+      },
+    ],
+    "sub-groups": [
+      {
+        key: "is_completed",
+        label: "Terminé",
+        options: [
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Oui" },
+          { value: "false", label: "Non" },
         ],
       },
     ],
     articles: [
       {
-        key: 'status',
-        label: 'Statut',
+        key: "status",
+        label: "Statut",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'draft', label: 'Brouillon' },
-          { value: 'published', label: 'Publié' },
-          { value: 'archived', label: 'Archivé' },
+          { value: "all", label: "Tous" },
+          { value: "draft", label: "Brouillon" },
+          { value: "published", label: "Publié" },
+          { value: "archived", label: "Archivé" },
         ],
       },
       {
-        key: 'language',
-        label: 'Langue',
+        key: "language",
+        label: "Langue",
         options: [
-          { value: 'all', label: 'Toutes' },
-          { value: 'fr', label: 'Français' },
-          { value: 'ha', label: 'Haoussa' },
-          { value: 'en', label: 'Anglais' },
+          { value: "all", label: "Toutes" },
+          { value: "fr", label: "Français" },
+          { value: "ha", label: "Haoussa" },
+          { value: "en", label: "Anglais" },
         ],
       },
     ],
     media: [
       {
-        key: 'file_type',
-        label: 'Type de fichier',
+        key: "file_type",
+        label: "Type de fichier",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'image', label: 'Image' },
-          { value: 'video', label: 'Vidéo' },
-          { value: 'document', label: 'Document' },
-          { value: 'audio', label: 'Audio' },
+          { value: "all", label: "Tous" },
+          { value: "image", label: "Image" },
+          { value: "video", label: "Vidéo" },
+          { value: "document", label: "Document" },
+          { value: "audio", label: "Audio" },
         ],
       },
     ],
     videos: [
       {
-        key: 'category',
-        label: 'Catégorie',
+        key: "category",
+        label: "Catégorie",
         options: [
-          { value: 'all', label: 'Toutes' },
-          { value: 'match', label: 'Match' },
-          { value: 'interview', label: 'Interview' },
-          { value: 'highlights', label: 'Highlights' },
-          { value: 'training', label: 'Entraînement' },
-          { value: 'documentary', label: 'Documentaire' },
-          { value: 'ceremony', label: 'Cérémonie' },
+          { value: "all", label: "Toutes" },
+          { value: "match", label: "Match" },
+          { value: "interview", label: "Interview" },
+          { value: "highlights", label: "Highlights" },
+          { value: "training", label: "Entraînement" },
+          { value: "documentary", label: "Documentaire" },
+          { value: "ceremony", label: "Cérémonie" },
         ],
       },
       {
-        key: 'type',
-        label: 'Plateforme',
+        key: "type",
+        label: "Plateforme",
         options: [
-          { value: 'all', label: 'Toutes' },
-          { value: 'youtube', label: 'YouTube' },
-          { value: 'facebook', label: 'Facebook' },
-          { value: 'tiktok', label: 'TikTok' },
-          { value: 'upload', label: 'Upload' },
+          { value: "all", label: "Toutes" },
+          { value: "youtube", label: "YouTube" },
+          { value: "facebook", label: "Facebook" },
+          { value: "tiktok", label: "TikTok" },
+          { value: "upload", label: "Upload" },
         ],
       },
       {
-        key: 'is_live',
-        label: 'Live',
+        key: "is_live",
+        label: "Live",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Oui' },
-          { value: 'false', label: 'Non' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Oui" },
+          { value: "false", label: "Non" },
         ],
       },
       {
-        key: 'is_featured',
-        label: 'En vedette',
+        key: "is_featured",
+        label: "En vedette",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Oui' },
-          { value: 'false', label: 'Non' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Oui" },
+          { value: "false", label: "Non" },
         ],
       },
     ],
     messages: [
       {
-        key: 'message_type',
-        label: 'Type de message',
+        key: "message_type",
+        label: "Type de message",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'comment', label: 'Commentaire' },
-          { value: 'direct_message', label: 'Message direct' },
-          { value: 'group_message', label: 'Message groupe' },
-          { value: 'match_commentary', label: 'Commentaire match' },
-          { value: 'system_notification', label: 'Notification système' },
+          { value: "all", label: "Tous" },
+          { value: "comment", label: "Commentaire" },
+          { value: "direct_message", label: "Message direct" },
+          { value: "group_message", label: "Message groupe" },
+          { value: "match_commentary", label: "Commentaire match" },
+          { value: "system_notification", label: "Notification système" },
         ],
       },
     ],
     notifications: [
       {
-        key: 'notification_type',
-        label: 'Type de notification',
+        key: "notification_type",
+        label: "Type de notification",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'match_update', label: 'Mise à jour match' },
-          { value: 'fighter_update', label: 'Mise à jour lutteur' },
-          { value: 'competition_update', label: 'Mise à jour compétition' },
-          { value: 'system_notification', label: 'Notification système' },
-          { value: 'achievement', label: 'Réalisation' },
-          { value: 'message', label: 'Message' },
+          { value: "all", label: "Tous" },
+          { value: "match_update", label: "Mise à jour match" },
+          { value: "fighter_update", label: "Mise à jour lutteur" },
+          { value: "competition_update", label: "Mise à jour compétition" },
+          { value: "system_notification", label: "Notification système" },
+          { value: "achievement", label: "Réalisation" },
+          { value: "message", label: "Message" },
         ],
       },
       {
-        key: 'is_read',
-        label: 'Lu',
+        key: "is_read",
+        label: "Lu",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Oui' },
-          { value: 'false', label: 'Non' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Oui" },
+          { value: "false", label: "Non" },
         ],
       },
     ],
     users: [
       {
-        key: 'role',
-        label: 'Rôle',
+        key: "role",
+        label: "Rôle",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'admin', label: 'Administrateur' },
-          { value: 'editor', label: 'Éditeur' },
-          { value: 'user', label: 'Utilisateur' },
-          { value: 'moderator', label: 'Modérateur' },
-          { value: 'fighter_manager', label: 'Gestionnaire de lutteurs' },
+          { value: "all", label: "Tous" },
+          { value: "admin", label: "Administrateur" },
+          { value: "editor", label: "Éditeur" },
+          { value: "user", label: "Utilisateur" },
+          { value: "moderator", label: "Modérateur" },
+          { value: "fighter_manager", label: "Gestionnaire de lutteurs" },
         ],
       },
       {
-        key: 'is_active',
-        label: 'Statut',
+        key: "is_active",
+        label: "Statut",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Actifs' },
-          { value: 'false', label: 'Inactifs' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Actifs" },
+          { value: "false", label: "Inactifs" },
         ],
       },
       {
-        key: 'is_verified',
-        label: 'Vérifié',
+        key: "is_verified",
+        label: "Vérifié",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Oui' },
-          { value: 'false', label: 'Non' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Oui" },
+          { value: "false", label: "Non" },
         ],
       },
     ],
     coaches: [
       {
-        key: 'is_active',
-        label: 'Statut',
+        key: "is_active",
+        label: "Statut",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Actifs' },
-          { value: 'false', label: 'Inactifs' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Actifs" },
+          { value: "false", label: "Inactifs" },
         ],
       },
       {
-        key: 'certification_level',
-        label: 'Niveau Certification',
+        key: "certification_level",
+        label: "Niveau Certification",
         options: [
-          { value: 'all', label: 'Tous niveaux' },
-          { value: 'regional', label: 'Régional' },
-          { value: 'national', label: 'National' },
-          { value: 'international', label: 'International' },
+          { value: "all", label: "Tous niveaux" },
+          { value: "regional", label: "Régional" },
+          { value: "national", label: "National" },
+          { value: "international", label: "International" },
         ],
       },
     ],
     transfers: [
       {
-        key: 'status',
-        label: 'Statut',
+        key: "status",
+        label: "Statut",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'pending', label: 'En attente' },
-          { value: 'approved', label: 'Approuvé' },
-          { value: 'rejected', label: 'Rejeté' },
-          { value: 'cancelled', label: 'Annulé' },
+          { value: "all", label: "Tous" },
+          { value: "pending", label: "En attente" },
+          { value: "approved", label: "Approuvé" },
+          { value: "rejected", label: "Rejeté" },
+          { value: "cancelled", label: "Annulé" },
         ],
       },
     ],
     advertisements: [
       {
-        key: 'position',
-        label: 'Position',
+        key: "position",
+        label: "Position",
         options: [
-          { value: 'all', label: 'Toutes' },
-          { value: 'header', label: 'En-tête' },
-          { value: 'sidebar', label: 'Barre latérale' },
-          { value: 'footer', label: 'Pied de page' },
-          { value: 'inline', label: 'En ligne' },
+          { value: "all", label: "Toutes" },
+          { value: "header", label: "En-tête" },
+          { value: "sidebar", label: "Barre latérale" },
+          { value: "footer", label: "Pied de page" },
+          { value: "inline", label: "En ligne" },
         ],
       },
       {
-        key: 'media_type',
-        label: 'Type média',
+        key: "media_type",
+        label: "Type média",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'image', label: 'Image' },
-          { value: 'video', label: 'Vidéo' },
+          { value: "all", label: "Tous" },
+          { value: "image", label: "Image" },
+          { value: "video", label: "Vidéo" },
         ],
       },
       {
-        key: 'is_active',
-        label: 'Actif',
+        key: "is_active",
+        label: "Actif",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Oui' },
-          { value: 'false', label: 'Non' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Oui" },
+          { value: "false", label: "Non" },
         ],
       },
     ],
     interactions: [
       {
-        key: 'entity_type',
-        label: 'Type d\'entité',
+        key: "entity_type",
+        label: "Type d'entité",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'fighter', label: 'Lutteur' },
-          { value: 'article', label: 'Article' },
-          { value: 'video', label: 'Vidéo' },
-          { value: 'match', label: 'Match' },
+          { value: "all", label: "Tous" },
+          { value: "fighter", label: "Lutteur" },
+          { value: "article", label: "Article" },
+          { value: "video", label: "Vidéo" },
+          { value: "match", label: "Match" },
         ],
       },
       {
-        key: 'interaction_type',
-        label: 'Type d\'interaction',
+        key: "interaction_type",
+        label: "Type d'interaction",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'like', label: 'Like' },
-          { value: 'comment', label: 'Commentaire' },
-          { value: 'share', label: 'Partage' },
-          { value: 'view', label: 'Vue' },
+          { value: "all", label: "Tous" },
+          { value: "like", label: "Like" },
+          { value: "comment", label: "Commentaire" },
+          { value: "share", label: "Partage" },
+          { value: "view", label: "Vue" },
         ],
       },
     ],
     archives: [
       {
-        key: 'year',
-        label: 'Année',
+        key: "year",
+        label: "Année",
         options: [
-          { value: 'all', label: 'Toutes années' },
-          { value: '2026', label: '2026' },
-          { value: '2025', label: '2025' },
-          { value: '2024', label: '2024' },
-          { value: '2023', label: '2023' },
-          { value: '2022', label: '2022' },
-          { value: '2021', label: '2021' },
-          { value: '2020', label: '2020' },
+          { value: "all", label: "Toutes années" },
+          { value: "2026", label: "2026" },
+          { value: "2025", label: "2025" },
+          { value: "2024", label: "2024" },
+          { value: "2023", label: "2023" },
+          { value: "2022", label: "2022" },
+          { value: "2021", label: "2021" },
+          { value: "2020", label: "2020" },
         ],
       },
       {
-        key: 'position',
-        label: 'Position',
+        key: "position",
+        label: "Position",
         options: [
-          { value: 'all', label: 'Toutes positions' },
-          { value: '1st', label: '1er' },
-          { value: '2nd', label: '2e' },
-          { value: '3rd', label: '3e' },
-          { value: 'finalist', label: 'Finaliste' },
-          { value: 'semifinalist', label: 'Demi-finaliste' },
-          { value: 'quarterfinalist', label: 'Quart-finaliste' },
+          { value: "all", label: "Toutes positions" },
+          { value: "1st", label: "1er" },
+          { value: "2nd", label: "2e" },
+          { value: "3rd", label: "3e" },
+          { value: "finalist", label: "Finaliste" },
+          { value: "semifinalist", label: "Demi-finaliste" },
+          { value: "quarterfinalist", label: "Quart-finaliste" },
         ],
       },
     ],
     belts: [
       {
-        key: 'is_active',
-        label: 'Actif',
+        key: "is_active",
+        label: "Actif",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Oui' },
-          { value: 'false', label: 'Non' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Oui" },
+          { value: "false", label: "Non" },
         ],
       },
     ],
-    'fighter-achievements': [
+    "fighter-achievements": [
       {
-        key: 'year',
-        label: 'Année',
+        key: "year",
+        label: "Année",
         options: [
-          { value: 'all', label: 'Toutes années' },
-          { value: '2026', label: '2026' },
-          { value: '2025', label: '2025' },
-          { value: '2024', label: '2024' },
-          { value: '2023', label: '2023' },
-          { value: '2022', label: '2022' },
-          { value: '2021', label: '2021' },
-          { value: '2020', label: '2020' },
+          { value: "all", label: "Toutes années" },
+          { value: "2026", label: "2026" },
+          { value: "2025", label: "2025" },
+          { value: "2024", label: "2024" },
+          { value: "2023", label: "2023" },
+          { value: "2022", label: "2022" },
+          { value: "2021", label: "2021" },
+          { value: "2020", label: "2020" },
         ],
       },
       {
-        key: 'position',
-        label: 'Position',
+        key: "position",
+        label: "Position",
         options: [
-          { value: 'all', label: 'Toutes positions' },
-          { value: '1st', label: '1er' },
-          { value: '2nd', label: '2e' },
-          { value: '3rd', label: '3e' },
-        ],
-      },
-    ],
-    'edition-fighters': [
-      {
-        key: 'status',
-        label: 'Statut',
-        options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'active', label: 'Actif' },
-          { value: 'eliminated', label: 'Éliminé' },
-        ],
-      },
-      {
-        key: 'is_champion',
-        label: 'Champion',
-        options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Oui' },
-          { value: 'false', label: 'Non' },
+          { value: "all", label: "Toutes positions" },
+          { value: "1st", label: "1er" },
+          { value: "2nd", label: "2e" },
+          { value: "3rd", label: "3e" },
         ],
       },
     ],
-    'edition-regions': [
+    "edition-fighters": [
       {
-        key: 'status',
-        label: 'Statut',
+        key: "status",
+        label: "Statut",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'active', label: 'Actif' },
-          { value: 'eliminated', label: 'Éliminé' },
+          { value: "all", label: "Tous" },
+          { value: "active", label: "Actif" },
+          { value: "eliminated", label: "Éliminé" },
+        ],
+      },
+      {
+        key: "is_champion",
+        label: "Champion",
+        options: [
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Oui" },
+          { value: "false", label: "Non" },
         ],
       },
     ],
-    'fighter-cards': [],
+    "edition-regions": [
+      {
+        key: "status",
+        label: "Statut",
+        options: [
+          { value: "all", label: "Tous" },
+          { value: "active", label: "Actif" },
+          { value: "eliminated", label: "Éliminé" },
+        ],
+      },
+    ],
+    "fighter-cards": [],
     teams: [
       {
-        key: 'is_active',
-        label: 'Statut',
+        key: "is_active",
+        label: "Statut",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Actifs' },
-          { value: 'false', label: 'Inactifs' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Actifs" },
+          { value: "false", label: "Inactifs" },
         ],
       },
       {
-        key: 'is_lead',
-        label: 'Lead',
+        key: "is_lead",
+        label: "Lead",
         options: [
-          { value: 'all', label: 'Tous' },
-          { value: 'true', label: 'Leads' },
-          { value: 'false', label: 'Membres' },
+          { value: "all", label: "Tous" },
+          { value: "true", label: "Leads" },
+          { value: "false", label: "Membres" },
         ],
       },
       {
-        key: 'role',
-        label: 'Rôle',
+        key: "role",
+        label: "Rôle",
         options: [
-          { value: 'all', label: 'Tous les rôles' },
-          { value: 'Lead Developer', label: 'Lead Developer' },
-          { value: 'UI/UX Designer', label: 'UI/UX Designer' },
-          { value: 'Backend Engineer', label: 'Backend Engineer' },
-          { value: 'Project Manager', label: 'Project Manager' },
+          { value: "all", label: "Tous les rôles" },
+          { value: "Lead Developer", label: "Lead Developer" },
+          { value: "UI/UX Designer", label: "UI/UX Designer" },
+          { value: "Backend Engineer", label: "Backend Engineer" },
+          { value: "Project Manager", label: "Project Manager" },
         ],
       },
     ],
   };
 
-  return [
-    ...baseFilters,
-    ...(entityFiltersMap[pluralType] || []),
-  ];
+  return [...baseFilters, ...(entityFiltersMap[pluralType] || [])];
 };
 
 export function EntityList<T>({
@@ -640,7 +643,13 @@ export function EntityList<T>({
   onAdd,
   onRefresh,
   onExport,
-  viewMode = 'grid',
+  viewMode = "grid",
+  itemsPerView = {
+    mobile: viewMode === 'grid' ? 1 : viewMode === 'list' ? 1 : 2,
+    md: viewMode === 'grid' ? 2 : viewMode === 'list' ? 1 : 3,
+    lg: viewMode === 'grid' ? 2 : viewMode === 'list' ? 1 : 3,
+    xl: viewMode === 'grid' ? 3 : viewMode === 'list' ? 1 : 4,
+  },
   onViewModeChange,
   renderCard,
   renderStats,
@@ -650,22 +659,19 @@ export function EntityList<T>({
 
   // Obtenir les filtres pour cette entité
   const entityFilters = useMemo(() => {
-    const allFilters = [
-      ...getEntityFilters(entityType),
-      ...availableFilters,
-    ];
-    
+    const allFilters = [...getEntityFilters(entityType), ...availableFilters];
+
     // Dédupliquer par clé pour éviter les erreurs de clés React (ex: filtres vidéos)
     const uniqueFilters: Array<any> = [];
     const seenKeys = new Set<string>();
-    
+
     for (const filter of allFilters) {
       if (!seenKeys.has(filter.key)) {
         seenKeys.add(filter.key);
         uniqueFilters.push(filter);
       }
     }
-    
+
     return uniqueFilters;
   }, [entityType, availableFilters]);
 
@@ -688,27 +694,27 @@ export function EntityList<T>({
           {onViewModeChange && (
             <div className="flex border rounded-lg p-1 bg-muted/50">
               <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => onViewModeChange('grid')}
+                onClick={() => onViewModeChange("grid")}
                 className="h-8 w-8 p-0"
                 title="Grille"
               >
                 <Grid className="h-4 w-4" />
               </Button>
               <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                variant={viewMode === "list" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => onViewModeChange('list')}
+                onClick={() => onViewModeChange("list")}
                 className="h-8 w-8 p-0"
                 title="Liste"
               >
                 <List className="h-4 w-4" />
               </Button>
               <Button
-                variant={viewMode === 'compact' ? 'default' : 'ghost'}
+                variant={viewMode === "compact" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => onViewModeChange('compact')}
+                onClick={() => onViewModeChange("compact")}
                 className="h-8 w-8 p-0"
                 title="Compact"
               >
@@ -762,12 +768,19 @@ export function EntityList<T>({
               {entityFilters.map((filter) => (
                 <Select
                   key={filter.key}
-                  value={filter.key === 'limit' ? limit.toString() : (filters[filter.key] ?? 'all')}
+                  value={
+                    filter.key === "limit"
+                      ? limit.toString()
+                      : (filters[filter.key] ?? "all")
+                  }
                   onValueChange={(value) => {
-                    if (filter.key === 'limit') {
+                    if (filter.key === "limit") {
                       onLimitChange(Number(value));
                     } else {
-                      onFilterChange({ ...filters, [filter.key]: value === 'all' ? undefined : value });
+                      onFilterChange({
+                        ...filters,
+                        [filter.key]: value === "all" ? undefined : value,
+                      });
                     }
                   }}
                 >
@@ -793,7 +806,8 @@ export function EntityList<T>({
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>
-              {total} {total > 1 ? 'éléments' : 'élément'} trouvé{total > 1 ? 's' : ''}
+              {total} {total > 1 ? "éléments" : "élément"} trouvé
+              {total > 1 ? "s" : ""}
             </CardTitle>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>
@@ -806,10 +820,12 @@ export function EntityList<T>({
           {loading ? (
             <div
               className={cn(
-                'grid gap-4',
-                viewMode === 'grid' && 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3',
-                viewMode === 'list' && 'grid-cols-1',
-                viewMode === 'compact' && 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+                "grid gap-4",
+                viewMode === "grid" &&
+                  "grid-cols-1 md:grid-cols-2 xl:grid-cols-3",
+                viewMode === "list" && "grid-cols-1",
+                viewMode === "compact" &&
+                  "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
               )}
             >
               {Array.from({ length: 6 }).map((_, index) => (
@@ -841,10 +857,10 @@ export function EntityList<T>({
           ) : (
             <div
               className={cn(
-                'grid gap-4',
-                viewMode === 'grid' && 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3',
-                viewMode === 'list' && 'grid-cols-1',
-                viewMode === 'compact' && 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+                "grid gap-4",
+                viewMode === "grid" && `grid-cols-${itemsPerView.mobile} md:grid-cols-${itemsPerView.md} lg:grid-cols-${itemsPerView.lg} xl:grid-cols-${itemsPerView.xl}`,
+                viewMode === "list" && "grid-cols-1",
+                viewMode === "compact" && `grid-cols-${itemsPerView.mobile} md:grid-cols-${itemsPerView.md} lg:grid-cols-${itemsPerView.lg} xl:grid-cols-${itemsPerView.xl}`,
               )}
             >
               {data.map((item, index) => (
@@ -861,7 +877,7 @@ export function EntityList<T>({
       {totalPages > 1 && (
         <div className="flex justify-between items-center">
           <div className="text-sm text-muted-foreground">
-            Affichage de {(page - 1) * limit + 1} à{' '}
+            Affichage de {(page - 1) * limit + 1} à{" "}
             {Math.min(page * limit, total)} sur {total} éléments
           </div>
           <Pagination>
@@ -874,7 +890,7 @@ export function EntityList<T>({
                     if (page > 1) onPageChange(page - 1);
                   }}
                   aria-disabled={page <= 1}
-                  className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
+                  className={page <= 1 ? "pointer-events-none opacity-50" : ""}
                 />
               </PaginationItem>
 
@@ -952,7 +968,7 @@ export function EntityList<T>({
                   }}
                   aria-disabled={page >= totalPages}
                   className={
-                    page >= totalPages ? 'pointer-events-none opacity-50' : ''
+                    page >= totalPages ? "pointer-events-none opacity-50" : ""
                   }
                 />
               </PaginationItem>

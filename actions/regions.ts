@@ -29,6 +29,7 @@ export async function getRegions(
       with_competitions,
       fighter_count_min,
       fighter_count_max,
+      not_in_edition,
     } = filters;
 
     let whereClause = 'WHERE 1=1';
@@ -56,6 +57,11 @@ export async function getRegions(
     if (fighter_count_max !== undefined) {
       whereClause += ` AND r.total_fighters <= $${params.length + 1}`;
       params.push(fighter_count_max);
+    }
+
+    if (not_in_edition !== undefined) {
+      whereClause += ` AND r.id NOT IN (SELECT region_id FROM edition_regions WHERE edition_id = $${params.length + 1})`;
+      params.push(not_in_edition);
     }
 
     // COACH

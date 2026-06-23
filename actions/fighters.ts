@@ -34,6 +34,7 @@ export async function getFighters(
       max_ranking,
       with_region = false,
       with_achievements = false,
+      not_in_edition,
     } = filters;
 
     let whereClause = "WHERE 1=1";
@@ -85,6 +86,11 @@ export async function getFighters(
     if (max_ranking !== undefined) {
       whereClause += ` AND f.ranking <= $${params.length + 1}`;
       params.push(max_ranking);
+    }
+
+    if (not_in_edition !== undefined) {
+      whereClause += ` AND f.id NOT IN (SELECT fighter_id FROM edition_fighters WHERE edition_id = $${params.length + 1})`;
+      params.push(not_in_edition);
     }
 
     // JOIN region

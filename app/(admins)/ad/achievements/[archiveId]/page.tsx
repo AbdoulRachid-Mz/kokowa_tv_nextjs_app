@@ -19,6 +19,7 @@ import {
   Trophy,
   History,
   RotateCcw,
+  Pen,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -79,6 +80,10 @@ export default function ArchiveDetailPage() {
       setRestoring(false);
     }
   };
+
+  const handleEdit = () => {
+    router.push(`/ad/achievements/${id}/edit`)
+  }
 
   const getPositionColor = (position: string) => {
     switch (position) {
@@ -149,6 +154,13 @@ export default function ArchiveDetailPage() {
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
                 {restoring ? "Restauration..." : "Restaurer"}
+              </Button>
+              <Button
+                onClick={handleEdit}
+                variant="default"
+              >
+                <Pen className="h-4 w-4 mr-2" />
+                modifier
               </Button>
               <Button
                 onClick={() => router.push("/ad/archives")}

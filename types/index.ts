@@ -62,8 +62,10 @@ export interface FighterAchievement extends BaseEntity {
   edition_id: number;
   year: number;
   position: '1st' | '2nd' | '3rd' | 'finalist' | 'semifinalist' | 'quarterfinalist';
+  type?: 'competition' | 'kirari' | 'fair-play' | 'point' | 'walki' | 'dance' | 'tchali_tchali' | 'once_beat' | 'best_beaten' | 'other';
   description?: string;
   medal_image?: string;
+  dynamic_description?: string;
 
   fighter?: Fighter;
   region?: Region;
@@ -561,6 +563,7 @@ export interface RegionFilters extends BaseFilters {
   with_competitions?: boolean;
   fighter_count_min?: number;
   fighter_count_max?: number;
+  not_in_edition?: number;
 }
 
 export interface FighterFilters extends BaseFilters {
@@ -572,6 +575,7 @@ export interface FighterFilters extends BaseFilters {
   with_region?: boolean;
   with_achievements?: boolean;
   with_transfers?: boolean;
+  not_in_edition?: number;
 }
 
 export interface FighterAchievementFilters extends BaseFilters {
@@ -784,6 +788,7 @@ export interface ArchiveFighterAchievement extends BaseEntity {
   description?: string;
   medal_image?: string;
   archived_at: string;
+  type?: 'competition' | 'kirari' | 'fair-play' | 'point' | 'walki' | 'dance' | 'tchali_tchali' | 'once_beat' | 'best_beaten' | 'other';
   archive_reason?: string;
   original_id: number;
   

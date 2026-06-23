@@ -258,6 +258,20 @@ CREATE TABLE IF NOT EXISTS fighter_achievements (
             'quarterfinalist'
         )
     ) NOT NULL,
+    type VARCHAR(50) CHECK (
+        type IN (
+            'competition',
+            'kirari',
+            'fair-play',
+            'point',
+            'walki',
+            'dance',
+            'tchali_tchali',
+            'once_beat',
+            'best_beaten',
+            'other'
+        )
+    ) DEFAULT 'other',
     description TEXT,
     medal_image VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

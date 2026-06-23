@@ -1,0 +1,19 @@
+ {
+          "title": "champion",
+          "position": "1st",
+          "type": "competition",
+          "description": "Kadri Abdou de la région Dosso a obtenu 🥇 1ère Place à Coupe du Président (Édition 1) en 2026.",
+          "medalImage": "/icons/3d-medal.png",
+          "editionTheme": "coupe du president",
+          "editionYear": 2026,
+          "competitionName": "Coupe du Président",
+          "regionName": "Dosso",
+          "regionFlagImage": "https://res.cloudinary.com/dwgbrbcf7/image/upload/dosso_ukhato.png",
+          "stadiumName": "Arène de Dosso",
+          "fighterFirstName": "Kadri",
+          "fighterLastName": "Abdou",
+          "fighterNickname": "",
+          "dynamic_description": "Kadri Abdou de la région Dosso champion de Coupe du Président (Édition 1) - 1ère place en 2026"
+        }
+
+        

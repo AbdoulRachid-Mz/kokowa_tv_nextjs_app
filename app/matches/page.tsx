@@ -1,56 +1,66 @@
 // app/matches/page.tsx
-'use client'
+"use client";
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
-import { MatchesHeader } from '@/components/pages/matches/matches-header'
-import { MatchesFilters } from '@/components/pages/matches/matches-filters'
-import { MatchesGrid } from '@/components/pages/matches/matches-grid'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
-import { Typography } from '@/components/ui/typography'
-import { useMatches } from '@/hooks/use-matches'
-import { useMatchFilters } from '@/hooks/use-match-filters'
-import { Calendar, Grid, List, RefreshCw, Filter, Eye, EyeOff } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { MatchesList } from '@/components/pages/matches/matches-list'
-import { MatchesStats } from '@/components/pages/matches/matches-stats'
+import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
+import { MatchesHeader } from "@/components/pages/matches/matches-header";
+import { MatchesFilters } from "@/components/pages/matches/matches-filters";
+import { MatchesGrid } from "@/components/pages/matches/matches-grid";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Typography } from "@/components/ui/typography";
+import { useMatches } from "@/hooks/use-matches";
+import { useMatchFilters } from "@/hooks/use-match-filters";
+import {
+  Calendar,
+  Grid,
+  List,
+  RefreshCw,
+  Filter,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { MatchesList } from "@/components/pages/matches/matches-list";
+import { MatchesStats } from "@/components/pages/matches/matches-stats";
 
 export default function MatchesPage() {
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [showFilters, setShowFilters] = useState(true)
-  const [activeTab, setActiveTab] = useState<'all' | 'live' | 'upcoming' | 'completed'>('all')
-  const [appliedFilters, setAppliedFilters] = useState<any>({})
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showFilters, setShowFilters] = useState(true);
+  const [activeTab, setActiveTab] = useState<
+    "all" | "live" | "upcoming" | "completed"
+  >("all");
+  const [appliedFilters, setAppliedFilters] = useState<any>({});
 
   // Gestion des filtres
-  const filterState = useMatchFilters()
+  const filterState = useMatchFilters();
 
   // Gestion des matches avec filtres - utiliser appliedFilters
-  const { 
-    matches, 
+  const {
+    matches,
     matchesByStatus,
-    isLoading, 
-    error, 
+    isLoading,
+    error,
     stats,
     updateFilters,
     refetch,
     goToPage,
     nextPage,
-    prevPage
+    prevPage,
   } = useMatches({
     initialFilters: appliedFilters,
     priorityOrder: true,
-    autoFetch: Object.keys(appliedFilters).length > 0 // Ne pas auto-fetch si pas de filtres
-  })
+    autoFetch: Object.keys(appliedFilters).length > 0, // Ne pas auto-fetch si pas de filtres
+  });
 
   // Appliquer les filtres avec un délai pour éviter les requêtes multiples
   useEffect(() => {
     const timer = setTimeout(() => {
-      setAppliedFilters(filterState.buildFilters)
-    }, 300) // Délai de 300ms pour éviter les requêtes multiples
+      setAppliedFilters(filterState.buildFilters);
+    }, 300); // Délai de 300ms pour éviter les requêtes multiples
 
-    return () => clearTimeout(timer)
-  }, [filterState.buildFilters])
+    return () => clearTimeout(timer);
+  }, [filterState.buildFilters]);
 
   // Gestion des erreurs
   if (error) {
@@ -69,29 +79,29 @@ export default function MatchesPage() {
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   // Filtrer les matches selon l'onglet actif
   const getFilteredMatches = () => {
     switch (activeTab) {
-      case 'live':
-        return matchesByStatus.live
-      case 'upcoming':
-        return matchesByStatus.upcoming
-      case 'completed':
-        return matchesByStatus.completed
+      case "live":
+        return matchesByStatus.live;
+      case "upcoming":
+        return matchesByStatus.upcoming;
+      case "completed":
+        return matchesByStatus.completed;
       default:
-        return matches
+        return matches;
     }
-  }
+  };
 
-  const filteredMatches = getFilteredMatches()
+  const filteredMatches = getFilteredMatches();
 
   // Fonction pour déclencher manuellement une recherche
   const handleSearch = useCallback(() => {
-    setAppliedFilters(filterState.buildFilters)
-  }, [filterState.buildFilters])
+    setAppliedFilters(filterState.buildFilters);
+  }, [filterState.buildFilters]);
 
   return (
     <motion.div
@@ -120,8 +130,8 @@ export default function MatchesPage() {
               <div className="sticky top-6">
                 <MatchesFilters {...filterState} />
                 {/* Bouton de recherche */}
-                <Button 
-                  className="w-full mt-4" 
+                <Button
+                  className="w-full mt-4"
                   onClick={handleSearch}
                   disabled={filterState.loading}
                 >
@@ -131,7 +141,7 @@ export default function MatchesPage() {
                       Chargement...
                     </>
                   ) : (
-                    'Rechercher'
+                    "Rechercher"
                   )}
                 </Button>
               </div>
@@ -139,7 +149,7 @@ export default function MatchesPage() {
           )}
 
           {/* Contenu principal */}
-          <div className={`flex-1 ${showFilters ? 'lg:w-3/4' : 'w-full'}`}>
+          <div className={`flex-1 ${showFilters ? "lg:w-3/4" : "w-full"}`}>
             {/* Barre de contrôle */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 p-4 bg-card rounded-xl border">
               <div className="flex items-center gap-4">
@@ -154,23 +164,23 @@ export default function MatchesPage() {
                   ) : (
                     <Eye className="h-4 w-4" />
                   )}
-                  {showFilters ? 'Masquer' : 'Afficher'} filtres
+                  {showFilters ? "Masquer" : "Afficher"} filtres
                 </Button>
 
                 <div className="flex items-center gap-2">
                   <Button
-                    variant={viewMode === 'grid' ? 'default' : 'outline'}
+                    variant={viewMode === "grid" ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setViewMode('grid')}
+                    onClick={() => setViewMode("grid")}
                     className="gap-2"
                   >
                     <Grid className="h-4 w-4" />
                     Grille
                   </Button>
                   <Button
-                    variant={viewMode === 'list' ? 'default' : 'outline'}
+                    variant={viewMode === "list" ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setViewMode('list')}
+                    onClick={() => setViewMode("list")}
                     className="gap-2"
                   >
                     <List className="h-4 w-4" />
@@ -181,7 +191,8 @@ export default function MatchesPage() {
 
               <div className="flex items-center gap-4">
                 <Typography variant="body-sm" theme="muted">
-                  {filteredMatches.length} match{filteredMatches.length !== 1 ? 'es' : ''}
+                  {filteredMatches.length} match
+                  {filteredMatches.length !== 1 ? "es" : ""}
                 </Typography>
                 <Button
                   variant="outline"
@@ -190,7 +201,9 @@ export default function MatchesPage() {
                   disabled={isLoading}
                   className="gap-2"
                 >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                  />
                   Actualiser
                 </Button>
               </div>
@@ -228,8 +241,8 @@ export default function MatchesPage() {
             )}
 
             {/* Onglets par statut */}
-            <Tabs 
-              value={activeTab} 
+            <Tabs
+              value={activeTab}
               onValueChange={(v: any) => setActiveTab(v)}
               className="mb-8"
             >
@@ -265,10 +278,13 @@ export default function MatchesPage() {
                 {isLoading ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="h-64 bg-muted animate-pulse rounded-xl" />
+                      <div
+                        key={i}
+                        className="h-64 bg-muted animate-pulse rounded-xl"
+                      />
                     ))}
                   </div>
-                ) : viewMode === 'grid' ? (
+                ) : viewMode === "grid" ? (
                   <MatchesGrid matches={filteredMatches} />
                 ) : (
                   <MatchesList matches={filteredMatches} />
@@ -285,7 +301,7 @@ export default function MatchesPage() {
                       Aucun match n'est actuellement en cours.
                     </Typography>
                   </div>
-                ) : viewMode === 'grid' ? (
+                ) : viewMode === "grid" ? (
                   <MatchesGrid matches={matchesByStatus.live} />
                 ) : (
                   <MatchesList matches={matchesByStatus.live} />
@@ -302,7 +318,7 @@ export default function MatchesPage() {
                       Aucun match n'est programmé pour le moment.
                     </Typography>
                   </div>
-                ) : viewMode === 'grid' ? (
+                ) : viewMode === "grid" ? (
                   <MatchesGrid matches={matchesByStatus.upcoming} />
                 ) : (
                   <MatchesList matches={matchesByStatus.upcoming} />
@@ -319,7 +335,7 @@ export default function MatchesPage() {
                       Aucun match n'a été terminé récemment.
                     </Typography>
                   </div>
-                ) : viewMode === 'grid' ? (
+                ) : viewMode === "grid" ? (
                   <MatchesGrid matches={matchesByStatus.completed} />
                 ) : (
                   <MatchesList matches={matchesByStatus.completed} />
@@ -338,11 +354,11 @@ export default function MatchesPage() {
                 >
                   Précédent
                 </Button>
-                
+
                 <Typography variant="body-sm" theme="muted">
                   Page {stats.currentPage} sur {stats.totalPages}
                 </Typography>
-                
+
                 <Button
                   variant="outline"
                   onClick={nextPage}
@@ -357,5 +373,5 @@ export default function MatchesPage() {
         </div>
       </div>
     </motion.div>
-  )
+  );
 }

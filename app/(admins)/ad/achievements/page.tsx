@@ -137,27 +137,14 @@ export default function ArchivesPage() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statsList.map((stat, index) => (
-          <Card key={index} className="relative overflow-hidden">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Typography variant="h3" weight="bold" className="mb-1">
-                    {stat.value}
-                  </Typography>
-                  <Typography variant="body-sm" weight="medium" className="mb-1">
-                    {stat.label}
-                  </Typography>
-                  <Typography variant="caption2" theme="muted">
-                    {stat.description}
-                  </Typography>
-                </div>
-                <div className={`p-3 rounded-full ${stat.color.replace('text-', 'bg-')}/10`}>
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-20"></div>
-            </CardContent>
-          </Card>
+          <CardStats
+            key={index}
+            label={stat.label}
+            value={stat.value}
+            icon={stat.icon}
+            color={stat.color}
+            description={stat.description}
+          />
         ))}
       </div>
     );

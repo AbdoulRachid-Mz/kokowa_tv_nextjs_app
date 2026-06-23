@@ -21,7 +21,7 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BaseCardProps } from "./entity-cards";
+import { BaseCardProps, CardActionMenu } from "./entity-cards";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -149,7 +149,7 @@ export function ArchiveCard({
     >
       <div
         className={cn(
-          "p-3 flex w-full gap-3",
+          "p-2 flex w-full gap-3",
           isListView ? "flex-row items-center" : "flex-col",
         )}
       >
@@ -177,7 +177,18 @@ export function ArchiveCard({
                     onEdit={() => onEdit?.(archive)}
                     onView={() => onView?.(archive)}
                     onDelete={() => onDelete?.(archive)}
-                    onRestore={onRestore}
+                    extraActions={
+                      onRestore
+                        ? [
+                            {
+                              id: "restore",
+                              label: "Restaurer",
+                              icon: RotateCcw,
+                              onClick: onRestore,
+                            },
+                          ]
+                        : []
+                    }
                   />
                 </div>
               )}
@@ -209,7 +220,18 @@ export function ArchiveCard({
                 onEdit={() => onEdit?.(archive)}
                 onView={() => onView?.(archive)}
                 onDelete={() => onDelete?.(archive)}
-                onRestore={onRestore}
+                extraActions={
+                  onRestore
+                    ? [
+                        {
+                          id: "restore",
+                          label: "Restaurer",
+                          icon: RotateCcw,
+                          onClick: onRestore,
+                        },
+                      ]
+                    : []
+                }
               />
             </div>
           )}
@@ -268,55 +290,5 @@ export function ArchiveCard({
         )}
       </div>
     </Card>
-  );
-}
-
-function CardActionMenu({
-  onEdit,
-  onView,
-  onDelete,
-  onRestore,
-}: {
-  onEdit?: () => void;
-  onView?: () => void;
-  onDelete?: () => void;
-  onRestore?: () => void;
-}) {
-  if (!onEdit && !onView && !onDelete && !onRestore) return null;
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 bg-primary/20 text-primary rounded-full"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {onView && (
-          <DropdownMenuItem onClick={onView}>
-            <Eye className="h-4 w-4 mr-2" /> Voir
-          </DropdownMenuItem>
-        )}
-        {onEdit && (
-          <DropdownMenuItem onClick={onEdit}>
-            <Pencil className="h-4 w-4 mr-2" /> Modifier
-          </DropdownMenuItem>
-        )}
-        {onDelete && (
-          <DropdownMenuItem onClick={onDelete} className="text-destructive">
-            <Trash2 className="h-4 w-4 mr-2" /> Supprimer
-          </DropdownMenuItem>
-        )}
-        {onRestore && (
-          <DropdownMenuItem onClick={onRestore} className="text-success">
-            <RefreshCcw className="h-4 w-4 mr-2" /> Restaurer
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

@@ -28,7 +28,7 @@ export default function TeamsPage() {
     onView,
     onRefresh,
   } = useEntityList<TeamMember>({
-    entityType: 'teams',
+    entityType: "teams",
     defaultFilters: {
       is_active: "all",
       limit: "20",
@@ -58,7 +58,8 @@ export default function TeamsPage() {
       },
       {
         label: "Expertises",
-        value: Array.from(new Set(data.flatMap(m => m.expertise || []))).length,
+        value: Array.from(new Set(data.flatMap((m) => m.expertise || [])))
+          .length,
         icon: Briefcase,
         color: "text-orange-600",
       },

@@ -1,3 +1,4 @@
+// actions/mobile/regions.ts
 "use server";
 
 import { query } from "@/lib/db/neon-client";
@@ -5,6 +6,7 @@ import { Region } from "@/types";
 import { getParticipatedEditions } from "./editions";
 import { formatDateTime, formatDuration } from "@/utils/duration";
 import { enrichMatchData } from "@/utils/match-utils";
+import { generateAchievementDescription } from "@/lib/achievements";
 
 export async function getMobileRegions(filters?: {
   page?: number;
@@ -113,7 +115,7 @@ export async function getMobileRegionById(
         fighters: fighters,
         matches: organizeMatches(matches?.data?.matches?.all || []),
         transfers: transfers,
-        achievements: organizeAchievements(achievements),
+        achievements: achievements,
         stats: stats,
         summary: {
           totalFighters: fighters.length,
@@ -187,7 +189,7 @@ export async function getMobileRegionById2(
           editions: editions,
           fighters: fighters,
           transfers: transfers,
-          achievements: organizeAchievements(achievements),
+          achievements: achievements,
           stats: stats,
           summary: {
             totalFighters: fighters.length,
@@ -581,18 +583,31 @@ async function getRegionTransfers(regionId: number) {
 async function getRegionAchievements(regionId: number) {
   const sql = `
     SELECT 
-      fa.id,
-      fa.fighter_id as "fighterId",
-      f.nickname as "fighterNickname",
-      fa.edition_id as "editionId",
+      fa.title,
+      fa.position,
+      fa.type,
+      fa.description,
+      fa.medal_image as "medalImage",
+      
       e.theme as "editionTheme",
       e.year as "editionYear",
-      fa.position,
-      fa.title,
-      fa.description
+      e.edition_number as "editionNumber",
+      
+      c.name as "competitionName",
+      
+      r.name as "regionName",
+      r.flag_image as "regionFlagImage",
+      r.stadium_name as "stadiumName",
+      
+      f.first_name as "fighterFirstName",
+      f.last_name as "fighterLastName",
+      f.nickname as "fighterNickname"
+      
     FROM fighter_achievements fa
     JOIN fighters f ON fa.fighter_id = f.id
     JOIN competition_editions e ON fa.edition_id = e.id
+    LEFT JOIN competitions c ON e.competition_id = c.id
+    JOIN regions r ON f.region_id = r.id
     WHERE f.region_id = $1
     ORDER BY 
       CASE fa.position
@@ -607,7 +622,52 @@ async function getRegionAchievements(regionId: number) {
       e.year DESC
   `;
 
-  return await query(sql, [regionId]);
+  const achievements = await query(sql, [regionId]);
+  
+  // Add dynamic description and return only necessary fields
+  return achievements.map(achievement => {
+    const dynamic_description = generateAchievementDescription({
+      fighter: {
+        first_name: achievement.fighterFirstName,
+        last_name: achievement.fighterLastName,
+        nickname: achievement.fighterNickname,
+      } as any,
+      region: {
+        name: achievement.regionName,
+      } as any,
+      edition: {
+        year: achievement.editionYear,
+        edition_number: achievement.editionNumber,
+        stadium_name: achievement.stadiumName,
+        competition: {
+          name: achievement.competitionName,
+        },
+      } as any,
+      year: achievement.editionYear,
+      position: achievement.position,
+      type: achievement.type,
+      title: achievement.title,
+    });
+    
+    return {
+      // title: achievement.title,
+      position: achievement.position,
+      // type: achievement.type,
+      // description: achievement.description,
+      // medalImage: achievement.medalImage,
+      // editionTheme: achievement.editionTheme,
+      // editionYear: achievement.editionYear,
+      // competitionName: achievement.competitionName,
+      // regionName: achievement.regionName,
+      // regionFlagImage: achievement.regionFlagImage,
+      // stadiumName: achievement.stadiumName,
+      // fighterFirstName: achievement.fighterFirstName,
+      // fighterLastName: achievement.fighterLastName,
+      // fighterNickname: achievement.fighterNickname,
+      description: dynamic_description,
+      // dynamic_description,
+    };
+  });
 }
 
 function organizeMatches(matches: any[]) {
@@ -644,25 +704,9 @@ function organizeMatches(matches: any[]) {
 }
 
 function organizeAchievements(achievements: any[]) {
-  // Grouper par compétition/édition
-  const byCompetition: Record<string, any> = {};
-  achievements.forEach((achievement) => {
-    const key = `${achievement.editionTheme} ${achievement.editionYear}`;
-    if (!byCompetition[key]) {
-      byCompetition[key] = {
-        edition: {
-          theme: achievement.editionTheme,
-          year: achievement.editionYear,
-        },
-        achievements: [],
-      };
-    }
-    byCompetition[key].achievements.push(achievement);
-  });
-
+  // Return just the flat list of achievements
   return {
-    // all: achievements,
-    byCompetition: Object.values(byCompetition),
+    achievements: achievements,
   };
 }
 

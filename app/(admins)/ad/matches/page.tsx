@@ -1,73 +1,75 @@
 // app/ad/matches/page.tsx
-'use client';
+"use client";
 
-import { useEntities } from '@/hooks/use-entities';
-import { EntityList } from '@/components/shared/entity-list-2';
-import { Match, MatchFilters } from '@/types';
-import { MatchFilters as MatchFiltersComponent } from './match-filters';
-
-import { Button } from '@/components/ui/button';
-import { Calendar, Trophy, Users, Clock } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { MatchCard } from './match-card';
-import { MatchStats } from './match-stats';
+import { useEntities } from "@/hooks/use-entities";
+import { Match, MatchFilters } from "@/types";
+import { MatchFilters as MatchFiltersComponent } from "./match-filters";
+import { Button } from "@/components/ui/button";
+import { Calendar, Trophy, Users, Clock } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+// import { MatchCard } from './match-card';
+import { MatchStats } from "./match-stats";
+import { StatsCard } from "@/components/dashboard/stats-card";
+import { EntityList } from "@/components/shared/entity-list";
+import { useState } from "react";
+import { MatchCard } from "@/components/entities/entity-cards";
 
 export default function MatchesPage() {
   const entities = useEntities<Match, MatchFilters>({
-    entityType: 'matches',
+    entityType: "matches",
     initialFilters: {
       status: undefined,
     },
-    initialLimit: 24,
-    initialSortBy: 'match_date',
-    initialSortOrder: 'desc',
+    initialLimit: 20,
+    initialSortBy: "match_date",
+    initialSortOrder: "desc",
     withRelations: true,
   });
 
-  const {
-    total,
-    data,
-    isLoading,
-    filters,
-    updateFilter,
-    setSorting,
-  } = entities;
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "compact">("grid");
 
+  const { total, data, isLoading, filters, updateFilter, setSorting } =
+    entities;
 
   const stats = {
     total: total,
-    scheduled: data.filter(m => m.status === 'scheduled').length,
-    live: data.filter(m => m.status === 'live').length,
-    completed: data.filter(m => m.status === 'completed').length,
-    today: data.filter(m => {
-      const today = new Date().toISOString().split('T')[0];
-      return m.match_date?.startsWith(today);
+    scheduled: data.filter((m) => m.status === "scheduled").length,
+    live: data.filter((m) => m.status === "live").length,
+    completed: data.filter((m) => m.status === "completed").length,
+    today: data.filter((m) => {
+      const today = new Date().toISOString().split("T")[0];
+      const matchDate = new Date(m.match_date);
+      if (!isNaN(matchDate.getTime())) {
+        const matchDateStr = matchDate.toISOString().split("T")[0];
+        return matchDateStr === today;
+      }
+      return false;
     }).length,
   };
 
   // Filtres disponibles pour le composant EntityList
   const availableFilters = [
     {
-      key: 'status',
-      label: 'Statut',
+      key: "status",
+      label: "Statut",
       options: [
-        { value: 'all', label: 'Tous les statuts' },
-        { value: 'scheduled', label: 'Programmés' },
-        { value: 'live', label: 'En direct' },
-        { value: 'completed', label: 'Terminés' },
-        { value: 'cancelled', label: 'Annulés' },
-        { value: 'postponed', label: 'Reportés' },
-        { value: 'reclamation', label: 'Réclamation' },
+        { value: "all", label: "Tous les statuts" },
+        { value: "scheduled", label: "Programmés" },
+        { value: "live", label: "En direct" },
+        { value: "completed", label: "Terminés" },
+        { value: "cancelled", label: "Annulés" },
+        { value: "postponed", label: "Reportés" },
+        { value: "reclamation", label: "Réclamation" },
       ],
     },
     {
-      key: 'period',
-      label: 'Période',
+      key: "period",
+      label: "Période",
       options: [
-        { value: 'all', label: 'Toutes les périodes' },
-        { value: 'today', label: "Aujourd'hui" },
-        { value: 'week', label: 'Cette semaine' },
-        { value: 'month', label: 'Ce mois' },
+        { value: "all", label: "Toutes les périodes" },
+        { value: "today", label: "Aujourd'hui" },
+        { value: "week", label: "Cette semaine" },
+        { value: "month", label: "Ce mois" },
       ],
     },
   ];
@@ -75,89 +77,70 @@ export default function MatchesPage() {
   return (
     <div className="space-y-6">
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 ">
         <StatsCard
           title="Total des matchs"
           value={stats.total}
-          icon={<Trophy className="h-5 w-5" />}
+          icon={Trophy}
           color="blue"
         />
         <StatsCard
           title="En direct"
           value={stats.live}
-          icon={<Users className="h-5 w-5" />}
+          icon={Trophy}
           color="green"
         />
         <StatsCard
           title="Programmés"
           value={stats.scheduled}
-          icon={<Calendar className="h-5 w-5" />}
+          icon={Calendar}
           color="yellow"
         />
         <StatsCard
           title="Terminés"
           value={stats.completed}
-          icon={<Clock className="h-5 w-5" />}
+          icon={Clock}
           color="purple"
         />
       </div>
 
       {/* Composant de liste principal */}
       <EntityList
-        entities={entities}
         title="Matchs"
         description="Gérez tous les matchs de lutte traditionnelle"
         entityType="matches"
+        data={entities.data}
+        total={entities.total}
+        loading={entities.isLoading}
+        page={entities.page}
+        limit={entities.limit}
+        onPageChange={entities.setPage}
+        onLimitChange={entities.setLimit}
+        searchTerm={entities.searchTerm}
+        onSearchChange={entities.setSearchTerm}
+        viewMode={viewMode}
+        filters={entities.filters}
+        itemsPerView={{
+          mobile: viewMode === "grid" ? 1 : viewMode === "list" ? 1 : 2,
+          md: viewMode === "grid" ? 2 : viewMode === "list" ? 1 : 2,
+          lg: viewMode === "grid" ? 2 : viewMode === "list" ? 1 : 2,
+          xl: viewMode === "grid" ? 2 : viewMode === "list" ? 1 : 3,
+        }}
+        onFilterChange={(filters) => {
+          Object.entries(filters).forEach(([key, value]) => {
+            entities.updateFilter(
+              key as keyof MatchFilters,
+              value as MatchFilters[keyof MatchFilters],
+            );
+          });
+        }}
+        onAdd={() => {}}
+        onViewModeChange={setViewMode}
         renderCard={(match, viewMode) => (
-          <MatchCard match={match} viewMode={viewMode} />
-        )}
-        renderFilters={() => (
-          <MatchFiltersComponent
-            filters={filters}
-            onFilterChange={updateFilter}
-            onSortChange={setSorting}
-          />
-        )}
-        renderStats={() => (
-          <MatchStats stats={stats} />
+          <MatchCard item={match} viewMode={viewMode} />
         )}
         availableFilters={availableFilters}
-        showSelection={true}
-        showExport={true}
-        showAddButton={true}
       />
     </div>
-  );
-}
-
-// Composant pour les cartes de statistiques
-function StatsCard({ title, value, icon, color }: { 
-  title: string; 
-  value: number; 
-  icon: React.ReactNode; 
-  color: 'blue' | 'green' | 'yellow' | 'purple' | 'red' 
-}) {
-  const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400',
-    green: 'bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400',
-    yellow: 'bg-yellow-50 text-yellow-600 dark:bg-yellow-950 dark:text-yellow-400',
-    purple: 'bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400',
-    red: 'bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400',
-  };
-
-  return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold mt-2">{value}</p>
-          </div>
-          <div className={`p-3 rounded-full ${colorClasses[color]}`}>
-            {icon}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

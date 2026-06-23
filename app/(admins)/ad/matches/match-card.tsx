@@ -37,7 +37,7 @@ import { useRouter } from 'next/navigation';
 
 interface MatchCardProps {
   match: Match;
-  viewMode: 'grid' | 'list';
+  viewMode: 'grid' | 'list' | 'compact';
 }
 
 export function MatchCard({ match, viewMode }: MatchCardProps) {

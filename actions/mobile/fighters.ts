@@ -1,9 +1,11 @@
+// actions/mobile/fighters.ts
 "use server";
 
 import { query } from "@/lib/db/neon-client";
 import { getParticipatedEditions } from "./editions";
 import { formatDateTime, formatDuration } from "@/utils/duration";
 import { enrichMatchData } from "@/utils/match-utils";
+import { generateAchievementDescription } from "@/lib/achievements";
 
 export async function getMobileFighters(filters?: {
   page?: number;
@@ -335,25 +337,31 @@ async function getFighterRegion(regionId: number) {
 async function getFighterAchievements(fighterId: number) {
   const sql = `
     SELECT 
-      fa.id,
       fa.title,
-      fa.year,
       fa.position,
+      fa.type,
       fa.description,
       fa.medal_image as "medalImage",
-      fa.created_at as "createdAt",
       
-      ce.id as "editionId",
       ce.theme as "editionTheme",
       ce.year as "editionYear",
+      ce.edition_number as "editionNumber",
       
-      r.id as "regionId",
+      c.name as "competitionName",
+      
       r.name as "regionName",
-      r.code as "regionCode"
+      r.flag_image as "regionFlagImage",
+      r.stadium_name as "stadiumName",
+      
+      f.first_name as "fighterFirstName",
+      f.last_name as "fighterLastName",
+      f.nickname as "fighterNickname"
       
     FROM fighter_achievements fa
     JOIN competition_editions ce ON fa.edition_id = ce.id
+    LEFT JOIN competitions c ON ce.competition_id = c.id
     JOIN regions r ON fa.region_id = r.id
+    JOIN fighters f ON fa.fighter_id = f.id
     WHERE fa.fighter_id = $1
     ORDER BY fa.year DESC, 
       CASE fa.position 
@@ -367,7 +375,52 @@ async function getFighterAchievements(fighterId: number) {
       END
   `;
 
-  return await query(sql, [fighterId]);
+  const achievements = await query(sql, [fighterId]);
+  
+  // Add dynamic description and return only necessary fields
+  return achievements.map(achievement => {
+    const dynamic_description = generateAchievementDescription({
+      fighter: {
+        first_name: achievement.fighterFirstName,
+        last_name: achievement.fighterLastName,
+        nickname: achievement.fighterNickname,
+      } as any,
+      region: {
+        name: achievement.regionName,
+      } as any,
+      edition: {
+        year: achievement.editionYear,
+        edition_number: achievement.editionNumber,
+        stadium_name: achievement.stadiumName,
+        competition: {
+          name: achievement.competitionName,
+        },
+      } as any,
+      year: achievement.editionYear,
+      position: achievement.position,
+      type: achievement.type,
+      title: achievement.title,
+    });
+    
+    return {
+      // title: achievement.title,
+      position: achievement.position,
+      // type: achievement.type,
+      // description: achievement.description,
+      // medalImage: achievement.medalImage,
+      // editionTheme: achievement.editionTheme,
+      // editionYear: achievement.editionYear,
+      // competitionName: achievement.competitionName,
+      // regionName: achievement.regionName,
+      // regionFlagImage: achievement.regionFlagImage,
+      // stadiumName: achievement.stadiumName,
+      // fighterFirstName: achievement.fighterFirstName,
+      // fighterLastName: achievement.fighterLastName,
+      // fighterNickname: achievement.fighterNickname,
+      description: dynamic_description,
+      // dynamic_description,
+    };
+  });
 }
 
 async function getFighterTransfers(fighterId: number) {
