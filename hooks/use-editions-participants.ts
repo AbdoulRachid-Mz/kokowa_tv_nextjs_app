@@ -10,6 +10,20 @@ async function fetchApi(url: string) {
   return res.json();
 }
 
+export const editionQueryKeys = {
+  availableFighters: (editionId: number, filters: FighterFilters = {}) =>
+    ["available-fighters", editionId, filters] as const,
+
+  editionFighters: (editionId: number, filters: FighterFilters = {}) =>
+    ["edition-fighters", editionId, filters] as const,
+
+  availableRegions: (editionId: number, filters: RegionFilters = {}) =>
+    ["available-regions", editionId, filters] as const,
+
+  editionRegions: (editionId: number, filters: RegionFilters = {}) =>
+    ["edition-regions", editionId, filters] as const,
+};
+
 export function buildUrl(base: string, params: Record<string, any>) {
   const url = new URL(base, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
   Object.keys(params).forEach(key => {
@@ -21,9 +35,12 @@ export function buildUrl(base: string, params: Record<string, any>) {
 }
 
 // 1. Available Fighters (Infinite)
-export function useAvailableFightersInfinite(editionId: number, filters: FighterFilters = {}) {
+export function useAvailableFightersInfinite(
+  editionId: number,
+  filters: FighterFilters = {}
+) {
   return useInfiniteQuery({
-    queryKey: ['available-fighters', editionId, filters],
+    queryKey: editionQueryKeys.availableFighters(editionId, filters),
     queryFn: ({ pageParam = 1 }) => {
       const url = buildUrl('/api/fighters', {
         ...filters,
@@ -42,11 +59,13 @@ export function useAvailableFightersInfinite(editionId: number, filters: Fighter
     initialPageParam: 1,
   });
 }
-
-// 2. Edition Fighters (Infinite)
-export function useEditionFightersInfinite(editionId: number, filters: any = {}) {
+//Replace useEditionFightersInfinite to use the new editionQueryKeys
+export function useEditionFightersInfinite(
+  editionId: number,
+  filters: FighterFilters = {}
+) {
   return useInfiniteQuery({
-    queryKey: ['edition-fighters', editionId, filters],
+    queryKey: editionQueryKeys.editionFighters(editionId, filters),
     queryFn: ({ pageParam = 1 }) => {
       const url = buildUrl(`/api/editions/${editionId}/fighters/list`, {
         ...filters,
@@ -87,11 +106,10 @@ export function useAvailableRegionsInfinite(editionId: number, filters: RegionFi
     initialPageParam: 1,
   });
 }
-
 // 4. Edition Regions (Infinite)
-export function useEditionRegionsInfinite(editionId: number, filters: any = {}) {
+export function useEditionRegionsInfinite(editionId: number, filters: RegionFilters = {}) {
   return useInfiniteQuery({
-    queryKey: ['edition-regions', editionId, filters],
+    queryKey: editionQueryKeys.editionRegions(editionId, filters),
     queryFn: ({ pageParam = 1 }) => {
       const url = buildUrl(`/api/editions/${editionId}/regions/list`, {
         ...filters,

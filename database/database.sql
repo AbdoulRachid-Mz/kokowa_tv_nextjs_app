@@ -1,4 +1,57 @@
 -- =============================================
+-- ENUMS PRINCIPALES
+-- =============================================
+
+CREATE TYPE competition_status AS ENUM (
+    'upcoming',
+    'ongoing',
+    'completed',
+    'cancelled',
+    'postponed'
+);
+
+CREATE TYPE phase_type AS ENUM (
+    'qualification',
+    'group',
+    'knockout',
+    'quarterfinal',
+    'semifinal',
+    'final',
+    'third_place'
+);
+
+CREATE TYPE period_type AS ENUM (
+    'matin',
+    'soir'
+);
+
+CREATE TYPE match_status AS ENUM (
+    'scheduled',
+    'live',
+    'round_break',
+    'completed',
+    'cancelled',
+    'postponed',
+    'reclamation'
+);
+
+CREATE TYPE match_result AS ENUM (
+    'fighter1_win',
+    'fighter2_win',
+    'draw',
+    'cancelled',
+    'postponed'
+);
+
+CREATE TYPE user_role AS ENUM (
+    'admin',
+    'editor',
+    'user',
+    'moderator',
+    'fighter_manager'
+);
+
+-- =============================================
 -- TABLES PRINCIPALES
 -- =============================================
 CREATE TABLE IF NOT EXISTS users (

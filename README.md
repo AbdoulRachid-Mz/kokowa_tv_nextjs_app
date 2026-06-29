@@ -1,10 +1,10 @@
 # Kokowa TV
 
-Kokowa TV est une plateforme de gestion et de diffusion de contenu pour les compétitions de lutte.
+Kokowa TV est une plateforme de gestion et de diffusion de contenu pour les compétitions de lutte traditionnelle nigérienne.
 
 ## Stack Technique
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Langage**: TypeScript
 - **Base de données**: PostgreSQL (via Neon)
 - **Authentification**: Firebase Auth + Firebase App Check

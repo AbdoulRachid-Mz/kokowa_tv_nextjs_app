@@ -191,7 +191,7 @@ export interface Phase extends BaseEntity {
   edition_id: number;
   name: string;
   phase_order: number;
-  phase_type: 'qualification' | 'group' | 'knockout' | 'quarterfinal' | 'semifinal' | 'final';
+  phase_type: 'qualification' | 'group' | 'knockout' | 'quarterfinal' | 'semifinal' | 'final' | 'third_place';
   description?: string;
   start_date?: string;
   end_date?: string;

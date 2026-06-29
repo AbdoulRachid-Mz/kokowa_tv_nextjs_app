@@ -53,6 +53,8 @@ export const formatPhaseType = (type: string): string => {
       return 'Quart de finale';
     case 'semifinal':
       return 'Demi-finale';
+    case 'third_place':
+      return 'Troisième place';
     case 'final':
       return 'Finale';
     default:

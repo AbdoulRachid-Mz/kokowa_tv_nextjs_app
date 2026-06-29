@@ -21,8 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PhaseInput } from "@/validation/schemas";
 import { createPhase, updatePhase } from "@/actions/phases";
+import { createPhaseGroup } from "@/actions/phase-groups";
 import { CompetitionEdition } from "@/types";
 import { toast } from "sonner";
 
@@ -44,6 +46,9 @@ export function PhaseFormDialog({
   edition,
 }: PhaseFormDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [createGroupWithPhase, setCreateGroupWithPhase] = useState(true);
+  const [groupName, setGroupName] = useState("");
+  
   const [formData, setFormData] = useState<PhaseInput>({
     edition_id: editionId,
     name: "",
@@ -69,6 +74,9 @@ export function PhaseFormDialog({
         end_date: phase.end_date,
         is_completed: phase.is_completed,
       });
+      // Pour la modification, on ne crée pas de groupe
+      setCreateGroupWithPhase(false);
+      setGroupName(phase.name);
     } else {
       setFormData({
         edition_id: editionId,
@@ -81,8 +89,17 @@ export function PhaseFormDialog({
         end_date: undefined,
         is_completed: false,
       });
+      setCreateGroupWithPhase(true);
+      setGroupName("");
     }
-  }, [phase, editionId]);
+  }, [phase, editionId, edition]);
+
+  // Mettre à jour le nom du groupe lorsque le nom de la phase change
+  useEffect(() => {
+    if (createGroupWithPhase && !phase) {
+      setGroupName(formData.name);
+    }
+  }, [formData.name, createGroupWithPhase, phase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,23 +117,41 @@ export function PhaseFormDialog({
       formDataToSend.append("is_active", String(formData.is_active));
       formDataToSend.append("is_completed", String(formData.is_completed));
 
-      // Client-side actions must be invoked without await in event handlers
+      let phaseId: number;
+
       if (phase?.id) {
-        updatePhase(phase.id, formDataToSend).catch((err) => {
-          console.error("Erreur update:", err);
-          toast.error(
-            err instanceof Error
-              ? err.message
-              : "Erreur lors de la modification"
-          );
-        });
+        // Mode modification
+        await updatePhase(phase.id, formDataToSend);
+        toast.success("Phase modifiée avec succès");
+        phaseId = phase.id;
       } else {
-        createPhase(formDataToSend).catch((err) => {
-          console.error("Erreur create:", err);
-          toast.error(
-            err instanceof Error ? err.message : "Erreur lors de la création"
-          );
-        });
+        // Mode création
+        const result = await createPhase(formDataToSend);
+        if (!result.success) {
+          throw new Error(result.message || "Erreur lors de la création de la phase");
+        }
+        phaseId = result.id;
+        toast.success(result.message);
+      }
+
+      // Créer un groupe si demandé et en mode création
+      if (!phase?.id && createGroupWithPhase && phaseId) {
+        const groupFormData = new FormData();
+        groupFormData.append("phase_id", String(phaseId));
+        groupFormData.append("name", groupName || formData.name);
+        groupFormData.append("group_order", "1");
+        groupFormData.append("description", `Groupe principal de ${formData.name}`);
+        groupFormData.append("date", formData.start_date || "");
+        groupFormData.append("is_active", String(formData.is_active));
+        groupFormData.append("is_completed", String(formData.is_completed));
+
+        const groupResult = await createPhaseGroup(groupFormData, { create_sub_groups: 0 });
+        if (groupResult.success) {
+          toast.success(`Groupe "${groupName || formData.name}" créé avec succès`);
+        } else {
+          // On ne bloque pas si le groupe échoue, mais on avertit
+          toast.warning("Phase créée, mais le groupe n'a pas pu être créé");
+        }
       }
 
       onSuccess();
@@ -140,15 +175,17 @@ export function PhaseFormDialog({
     }));
   };
 
+  const isEditMode = !!phase?.id;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {phase?.id ? "Modifier la phase" : "Créer une nouvelle phase"}
+            {isEditMode ? "Modifier la phase" : "Créer une nouvelle phase"}
           </DialogTitle>
           <DialogDescription>
-            {phase?.id
+            {isEditMode
               ? "Modifiez les informations de cette phase."
               : "Ajoutez une nouvelle phase à cette édition."}
           </DialogDescription>
@@ -167,17 +204,6 @@ export function PhaseFormDialog({
               />
             </div>
 
-            {/* <div className="space-y-2">
-              <Label htmlFor="phase_order">Ordre *</Label>
-              <Input
-                id="phase_order"
-                type="number"
-                min="1"
-                value={formData.phase_order}
-                onChange={(e) => handleInputChange("phase_order", parseInt(e.target.value))}
-                required
-              />
-            </div> */}
             <div className="space-y-2">
               <Label htmlFor="phase_type">Type de phase *</Label>
               <Select
@@ -195,6 +221,7 @@ export function PhaseFormDialog({
                   <SelectItem value="knockout">Élimination directe</SelectItem>
                   <SelectItem value="quarterfinal">Quart de finale</SelectItem>
                   <SelectItem value="semifinal">Demi-finale</SelectItem>
+                  <SelectItem value="third_place">Troisième place</SelectItem>
                   <SelectItem value="final">Finale</SelectItem>
                 </SelectContent>
               </Select>
@@ -258,6 +285,104 @@ export function PhaseFormDialog({
             <Label htmlFor="is_completed">Phase terminée</Label>
           </div>
 
+          {/* Section création de groupe - uniquement en mode création */}
+          {!isEditMode && (
+            <div className="border-t pt-4 mt-2 space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="create_group"
+                  checked={createGroupWithPhase}
+                  onCheckedChange={(checked) => {
+                    setCreateGroupWithPhase(!!checked);
+                    if (checked) {
+                      setGroupName(formData.name);
+                    }
+                  }}
+                />
+                <Label htmlFor="create_group" className="cursor-pointer font-medium">
+                  Créer un groupe avec cette phase
+                </Label>
+              </div>
+
+              {createGroupWithPhase && (
+                <div className="pl-6 border-l-2 border-primary/30 space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="group_name">Nom du groupe</Label>
+                    <Input
+                      id="group_name"
+                      value={groupName}
+                      onChange={(e) => setGroupName(e.target.value)}
+                      placeholder="Nom du groupe"
+                    />
+                    <Typography variant="caption2" theme="muted">
+                      Par défaut, le nom du groupe sera le même que celui de la phase.
+                    </Typography>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="group_order">Ordre du groupe</Label>
+                      <Input
+                        id="group_order"
+                        type="number"
+                        min="1"
+                        value="1"
+                        disabled
+                        className="bg-muted"
+                      />
+                      <Typography variant="caption2" theme="muted">
+                        Le premier groupe sera créé avec l'ordre 1.
+                      </Typography>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="group_date">Date du groupe</Label>
+                      <Input
+                        id="group_date"
+                        type="date"
+                        value={formData.start_date || ""}
+                        disabled
+                        className="bg-muted"
+                      />
+                      <Typography variant="caption2" theme="muted">
+                        Utilise la date de début de la phase.
+                      </Typography>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="group_is_active"
+                        checked={formData.is_active}
+                        disabled
+                      />
+                      <Label htmlFor="group_is_active" className="text-muted-foreground">
+                        Actif
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="group_is_completed"
+                        checked={formData.is_completed}
+                        disabled
+                      />
+                      <Label htmlFor="group_is_completed" className="text-muted-foreground">
+                        Terminé
+                      </Label>
+                    </div>
+                  </div>
+
+                  <Typography variant="caption2" theme="muted" className="block">
+                    Les statuts du groupe suivent ceux de la phase.
+                  </Typography>
+                </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
             <Button
               type="button"
@@ -268,7 +393,14 @@ export function PhaseFormDialog({
               Annuler
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Enregistrement..." : phase?.id ? "Modifier" : "Créer"}
+              {loading ? (
+                <>
+                  <span className="inline-block animate-spin mr-2">⟳</span>
+                  {isEditMode ? "Modification..." : "Création..."}
+                </>
+              ) : (
+                isEditMode ? "Modifier" : "Créer"
+              )}
             </Button>
           </DialogFooter>
         </form>

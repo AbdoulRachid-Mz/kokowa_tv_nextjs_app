@@ -544,6 +544,12 @@ export async function createArticle(formData: FormData) {
       meta_description: formData.get("meta_description"),
     };
 
+    // S'assurer que le type est valide
+    const typeValue = formData.get("type") as string || "news";
+    // Valider que le type est dans la liste autorisée
+    const validTypes = ["news", "event", "announcement", "highlight", "interview", "analyse"];
+    const validatedType = validTypes.includes(typeValue) ? typeValue : "news";
+
     const cleanedData = {
       title: rawData.title as string,
       slug: rawData.slug as string,
@@ -551,6 +557,7 @@ export async function createArticle(formData: FormData) {
       content: rawData.content as string,
       featured_image: (rawData.featured_image as string) || undefined,
       author_id: Number(rawData.author_id),
+      type: validatedType as "news" | "event" | "announcement" | "highlight" | "interview" | "analyse",
       status: (rawData.status as "draft" | "published" | "archived") || "draft",
       language: (rawData.language as "fr" | "ha" | "en") || "fr",
       meta_title: (rawData.meta_title as string) || undefined,
@@ -561,10 +568,10 @@ export async function createArticle(formData: FormData) {
 
     const sql = `
       INSERT INTO articles (
-        title, slug, excerpt, content, featured_image, author_id, 
-        status, language, meta_title, meta_description,
+        title, slug, excerpt, content, featured_image, author_id,
+        type, status, language, meta_title, meta_description,
         published_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING id
     `;
 
@@ -580,6 +587,7 @@ export async function createArticle(formData: FormData) {
         ? null
         : validatedData.featured_image || null,
       validatedData.author_id,
+      validatedData.type,
       validatedData.status,
       validatedData.language,
       validatedData.meta_title || null,
@@ -597,6 +605,10 @@ export async function createArticle(formData: FormData) {
     };
   } catch (error) {
     console.error("Error in createArticle:", error);
+    // Afficher plus de détails sur l'erreur
+    if (error instanceof Error) {
+      throw new Error(`Erreur lors de la création de l'article: ${error.message}`);
+    }
     throw new Error("Erreur lors de la création de l'article");
   }
 }

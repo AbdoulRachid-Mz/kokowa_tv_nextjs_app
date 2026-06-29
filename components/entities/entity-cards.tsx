@@ -75,6 +75,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { formatPhaseType } from "@/utils/format-labels";
+
+
 
 // Common Card Props Pattern
 export interface BaseCardProps<T> {
@@ -1100,7 +1103,7 @@ export function PhaseCard({
                 theme="muted"
                 className="truncate font-mono"
               >
-                {phase.phase_type}
+                {formatPhaseType(phase.phase_type)}
               </Typography>
             </div>
           </div>

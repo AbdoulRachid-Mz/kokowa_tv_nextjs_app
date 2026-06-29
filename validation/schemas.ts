@@ -225,6 +225,7 @@ export const phaseSchema = z.object({
     "quarterfinal",
     "semifinal",
     "final",
+    "third_place",
   ]),
   description: z.string().optional(),
   is_active: z.boolean().default(false),
@@ -527,7 +528,7 @@ export const articleSchema = z.object({
     "announcement",
     "highlight",
     "interview",
-    "analyse",
+    "analyse", // Garder "analyse" sans accent pour la valeur
   ]),
 
   excerpt: z.string().optional(),
