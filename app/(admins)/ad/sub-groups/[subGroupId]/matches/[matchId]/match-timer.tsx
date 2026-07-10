@@ -13,7 +13,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Play, Pause, Timer, AlertCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface MatchTimerProps {
   matchId: number;
@@ -32,7 +32,7 @@ interface MatchTimerProps {
 }
 
 export function MatchTimer({
-  formattedTime: initialFormattedTime,
+  formattedTime,
   breakCount,
   isRunning,
   matchStatus,
@@ -46,15 +46,9 @@ export function MatchTimer({
   canResume,
 }: MatchTimerProps) {
   const [showStartDialog, setShowStartDialog] = useState(false);
-  const [displayTime, setDisplayTime] = useState(initialFormattedTime);
-
-  // Synchroniser le temps d'affichage avec le temps initial de la DB/RTDB au chargement
-  useEffect(() => {
-    setDisplayTime(initialFormattedTime);
-  }, [initialFormattedTime]);
 
   const handleStartClick = () => {
-    if (displayTime === "00:00:00") {
+    if (formattedTime === "00:00:00") {
       setShowStartDialog(true);
     } else {
       onStart();
@@ -72,10 +66,10 @@ export function MatchTimer({
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Affichage du temps */}
+          {/* Affichage du temps — directement depuis le timer local */}
           <div className="text-center">
             <Typography variant="h2" className="font-mono tracking-wider text-3xl font-bold">
-              {isRunning ? initialFormattedTime : displayTime}
+              {formattedTime}
             </Typography>
             <Typography variant="body-sm" theme="muted" className="mt-1">
               Durée du match

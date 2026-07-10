@@ -599,18 +599,18 @@ export function MatchCard({
                       className="object-cover"
                     />
                   <AvatarFallback>
-                    {match.fighter1.first_name[0]}
-                    {match.fighter1.last_name[0]}
+                    {match.fighter1?.first_name[0]}
+                    {match.fighter1?.last_name[0]}
                   </AvatarFallback>
                   </Avatar>
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                    {match.fighter1 ? `${match.fighter1.first_name[0]}${match.fighter1.last_name[0]}` : "?"}
+                    {match.fighter1 ? `${match.fighter1.first_name[0]}${match.fighter1?.last_name[0]}` : "?"}
                   </div>
                 )}
                 <div className="text-right flex-1">
                   <Typography variant="body-sm" weight="semibold" className="truncate">
-                    {match.fighter1 ? `${match.fighter1.first_name} ${match.fighter1.last_name}` : "TBD"}
+                    {match.fighter1 ? `${match.fighter1?.first_name} ${match.fighter1?.last_name}` : "TBD"}
                   </Typography>
                   {match.winner_fighter_id === match.fighter1_id && (
                     <Badge variant="default" className="mt-1 bg-green-500">
@@ -639,7 +639,7 @@ export function MatchCard({
               <div className="flex items-center gap-3 flex-1">
                 <div className="text-left flex-1">
                   <Typography variant="body-sm" weight="semibold" className="truncate">
-                    {match.fighter2 ? `${match.fighter2.first_name} ${match.fighter2.last_name}` : "TBD"}
+                    {match.fighter2 ? `${match.fighter2?.first_name} ${match.fighter2?.last_name}` : "TBD"}
                   </Typography>
                   {match.winner_fighter_id === match.fighter2_id && (
                     <Badge variant="default" className="mt-1 bg-green-500">
@@ -650,20 +650,20 @@ export function MatchCard({
                 {match.fighter2?.profile_image ? (
                   <Avatar className="w-10 h-10 border-2 border-background">
                     <Image
-                      src={match.fighter2.profile_image}
-                      alt={match.fighter2.first_name}
+                      src={match.fighter2?.profile_image}
+                      alt={match.fighter2?.first_name}
                       fill
                       sizes="40px"
                       className="object-cover"
                     />
                     <AvatarFallback>
-                      {match.fighter2.first_name[0]}
-                      {match.fighter2.last_name[0]}
+                      {match.fighter2?.first_name[0]}
+                      {match.fighter2?.last_name[0]}
                     </AvatarFallback>
                   </Avatar>
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                    {match.fighter2 ? `${match.fighter2.first_name[0]}${match.fighter2.last_name[0]}` : "?"}
+                    {match.fighter2 ? `${match.fighter2?.first_name[0]}${match?.fighter2?.last_name[0] || "?"}` : "?"}
                   </div>
                 )}
               </div>

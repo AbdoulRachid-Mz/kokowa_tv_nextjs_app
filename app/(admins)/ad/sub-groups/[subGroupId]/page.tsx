@@ -11,13 +11,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import { SubGroup, Match } from "@/types";
 import { Edit, Plus, Users, MapPin, Trophy, Clock, Swords, Award } from "lucide-react";
-import { MatchCard } from "./organisation/matches-card";
+import { MatchCard } from "@/components/entities/entity-cards";
 import { getSubGroupById } from "@/actions/sub-groups";
 import { SimpleMatchCard } from "@/components/matches/match-card";
 import { useEntityList } from "@/hooks/use-entity-list";
 import { CardStats } from "@/components/entities/card-stats";
 import { EntityList } from "@/components/shared/entity-list";
-import { DeleteButton } from "@/components/shared/delete-button";
+import { DeleteButton } from "@/components/shared/delete-button"; 
 
 export default function SubGroupDetailPage() {
   const { subGroupId } = useParams();
@@ -338,13 +338,13 @@ export default function SubGroupDetailPage() {
                 viewMode={matchesList.viewMode}
                 onViewModeChange={matchesList.setViewMode}
                 renderCard={(match, viewMode) => (
-                  <SimpleMatchCard
+                  <MatchCard
                     key={match.id}
-                    match={match}
-                    subGroupId={id}
-                    compact={viewMode === 'compact'}
-                    onDelete={handleDeleteMatch}
-                    onEdit={(m) => router.push(`/ad/matches/${m.id}/edit`)}
+                    item={match}
+                    viewMode={viewMode === 'compact' ? 'compact' : 'grid'}
+                    onDelete={() => handleDeleteMatch(match.id)}
+                    onView={() => router.push(`/ad/sub-groups/${id}/matches/${match.id}`)}
+                    onEdit={(m) => router.push(`/ad/sub-groups/${id}/matches/${m.id}/edit`)}
                   />
                 )}
               />
@@ -440,10 +440,10 @@ function OrganizationTab({
             <div className="space-y-2">
               <Info
                 label="Arbitre Principal"
-                value={`${subGroup.main_referee.first_name} ${subGroup.main_referee.last_name}`}
+                value={`${subGroup.main_referee?.first_name || "TBD"} ${subGroup.main_referee?.last_name || "TBD"}`}
               />
-              {subGroup.main_referee.nickname && (
-                <Info label="Surnom" value={subGroup.main_referee.nickname} />
+              {subGroup.main_referee?.nickname && (
+                <Info label="Surnom" value={subGroup.main_referee?.nickname || "TBD"} /> 
               )}
             </div>
           ) : (

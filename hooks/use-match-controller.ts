@@ -57,51 +57,68 @@ export function useMatchController({
     initialStatus: match?.status ?? "scheduled",
   });
 
-  // ✅ Synchroniser le timer avec les données serveur (via WebSocket)
+  // ─── Refs pour détecter les vrais changements (pas de faux re-renders) ───
+  const prevMatchStatusRef = useRef<string | null>(null);
+  const prevDurationRef = useRef<string | null>(null);
+  const timerRef = useRef(timer);
+  timerRef.current = timer; // toujours à jour, mais pas dans les deps
+
+  // ✅ Synchroniser le timer avec les données serveur (via WebSocket/polling)
+  // N'a PAS `timer` dans les deps → s'exécute uniquement quand les données match changent
   useEffect(() => {
     if (!match) return;
 
-    const durationInSeconds = parseDurationToSeconds(
-      match.total_duration ?? "00:00:00",
-    );
-    const currentDuration = timer.elapsed;
-    const durationDiff = Math.abs(currentDuration - durationInSeconds);
+    const t = timerRef.current;
+    const newStatus = match.status;
+    const newDuration = match.total_duration ?? "00:00:00";
+    const prevStatus = prevMatchStatusRef.current;
+    const prevDuration = prevDurationRef.current;
 
-    // Only sync time if timer is not running OR difference is extreme (>10s)
-    // Avoid jumps during active play to prevent disruption from minor clock differences
-    if (!timer.isRunning && durationDiff > 2) {
+    // Si rien n'a changé côté serveur, ne rien faire
+    if (newStatus === prevStatus && newDuration === prevDuration) return;
+
+    // Mémoriser les nouvelles valeurs
+    prevMatchStatusRef.current = newStatus;
+    prevDurationRef.current = newDuration;
+
+    const durationInSeconds = parseDurationToSeconds(newDuration);
+
+    // ─── 1. Sync du temps ───
+    // Si le timer n'est pas en train de tourner, on peut sync la durée depuis la DB
+    if (newStatus !== "live") {
+      const currentElapsed = t.getDuration();
+      if (Math.abs(currentElapsed - durationInSeconds) > 1) {
+        console.log(
+          `🔄 [Sync] Durée (paused): ${currentElapsed}s -> ${durationInSeconds}s`,
+        );
+        t.setTime(durationInSeconds);
+      }
+    } else if (prevStatus !== "live") {
+      // On passe en live : réinitialiser le point de départ avec la durée serveur
       console.log(
-        `🔄 [Sync] Synchronisation du timer (paused): ${currentDuration}s -> ${durationInSeconds}s`,
+        `🔄 [Sync] Durée (going live): base=${durationInSeconds}s`,
       );
-      timer.setTime(durationInSeconds);
-    } else if (timer.isRunning && durationDiff > 10) {
-      console.log(
-        `🔄 [Sync] Synchronisation du timer (live, large gap): ${currentDuration}s -> ${durationInSeconds}s`,
-      );
-      timer.setTime(durationInSeconds);
+      t.setTime(durationInSeconds);
     }
 
-    // Synchroniser le statut du timer avec le statut du match
-    if (match.status === "live" && !timer.isRunning) {
+    // ─── 2. Sync du statut du timer ───
+    if (newStatus === "live" && !t.isRunning) {
       console.log("🔄 [Sync] Démarrage du timer (match live)");
-      timer.start();
+      t.start();
     } else if (
-      (match.status === "round_break" || match.status === "reclamation") &&
-      timer.isRunning
+      (newStatus === "round_break" || newStatus === "reclamation") &&
+      t.isRunning
     ) {
-      console.log(`🔄 [Sync] Pause du timer (match ${match.status})`);
-      timer.pause();
-    } else if (match.status === "completed" && timer.isRunning) {
+      console.log(`🔄 [Sync] Pause du timer (match ${newStatus})`);
+      t.pause();
+    } else if (newStatus === "completed" && t.isRunning) {
       console.log("🔄 [Sync] Arrêt du timer (match terminé)");
-      timer.stop();
-    } else if (
-      match.status === "scheduled" &&
-      (timer.isRunning || timer.elapsed > 0)
-    ) {
+      t.stop();
+    } else if (newStatus === "scheduled") {
       console.log("🔄 [Sync] Reset du timer (match programmé)");
-      timer.reset();
+      t.reset();
     }
-  }, [match?.total_duration, match?.status, timer]);
+  }, [match?.total_duration, match?.status]);
 
   // ==========================
   // MUTATION

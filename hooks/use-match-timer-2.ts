@@ -1,4 +1,6 @@
-// hooks/use-match-timer.ts
+// hooks/use-match-timer-2.ts
+// Timer local ultra-stable : tout l'état mutable vit dans des refs.
+// Seul `elapsed` est un useState, mis à jour par un unique setInterval.
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -14,7 +16,7 @@ interface UseMatchTimerReturn {
   start: () => void;
   pause: () => number;
   resume: () => void;
-  stop: () => number; // returns final duration
+  stop: () => number;
   reset: () => void;
   getDuration: () => number;
   setTime: (seconds: number) => void;
@@ -24,135 +26,146 @@ export function useMatchTimer({
   initialDuration,
   initialStatus,
 }: UseMatchTimerOptions): UseMatchTimerReturn {
-  const [elapsed, setElapsed] = useState(initialDuration);
-  const [isRunning, setIsRunning] = useState(
-    initialStatus === 'live'
-  );
-
+  // ─── Refs for mutable timer internals (NO re-renders) ───
+  const accumulatedRef = useRef(initialDuration);   // seconds accumulated before current run
+  const startTsRef = useRef<number | null>(null);   // Date.now() when current run started
+  const runningRef = useRef(initialStatus === 'live');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimestampRef = useRef<number | null>(null);
-  const accumulatedRef = useRef(initialDuration);
-
-  // On mount only: sync from initial values
   const mountedRef = useRef(false);
-  useEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      accumulatedRef.current = initialDuration;
-      setElapsed(initialDuration);
-      if (initialStatus === 'live') {
-        startTimestampRef.current = Date.now();
-        startTicking();
-      }
+
+  // ─── Single reactive state: what the UI sees ───
+  const [elapsed, setElapsed] = useState(initialDuration);
+  const [isRunning, setIsRunning] = useState(initialStatus === 'live');
+
+  // ─── Compute current elapsed from refs (no state) ───
+  const computeElapsed = useCallback((): number => {
+    if (startTsRef.current !== null) {
+      const delta = Math.floor((Date.now() - startTsRef.current) / 1000);
+      return accumulatedRef.current + delta;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return accumulatedRef.current;
   }, []);
 
+  // ─── Start/stop the ticking interval ───
   const startTicking = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (intervalRef.current) return; // already ticking
     intervalRef.current = setInterval(() => {
-      if (startTimestampRef.current !== null) {
-        const now = Date.now();
-        const delta = Math.floor((now - startTimestampRef.current) / 1000);
-        setElapsed(accumulatedRef.current + delta);
-      }
-    }, 1000);
-  }, []);
+      setElapsed(computeElapsed());
+    }, 250); // 250ms for smooth display, computeElapsed is time-based so no drift
+  }, [computeElapsed]);
 
   const stopTicking = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    // Save accumulated
-    if (startTimestampRef.current !== null) {
-      const now = Date.now();
-      const delta = Math.floor((now - startTimestampRef.current) / 1000);
-      accumulatedRef.current = accumulatedRef.current + delta;
-      startTimestampRef.current = null;
+  }, []);
+
+  // ─── Freeze accumulated time (call when pausing/stopping) ───
+  const freezeAccumulated = useCallback(() => {
+    if (startTsRef.current !== null) {
+      const delta = Math.floor((Date.now() - startTsRef.current) / 1000);
+      accumulatedRef.current += delta;
+      startTsRef.current = null;
     }
   }, []);
 
+  // ─── Timer actions (stable callbacks) ───
+
   const start = useCallback(() => {
-    if (isRunning) return;
-    startTimestampRef.current = Date.now();
+    if (runningRef.current) return;
+    runningRef.current = true;
+    startTsRef.current = Date.now();
     setIsRunning(true);
     startTicking();
-  }, [isRunning, startTicking]);
+  }, [startTicking]);
 
-const pause = useCallback((): number => {
-  if (!isRunning) {
-    return accumulatedRef.current;
-  }
-
-  stopTicking();
-  setIsRunning(false);
-
-  const currentDuration = accumulatedRef.current;
-  setElapsed(currentDuration);
-
-  return currentDuration;
-}, [isRunning, stopTicking]);
+  const pause = useCallback((): number => {
+    if (!runningRef.current) return accumulatedRef.current;
+    freezeAccumulated();
+    stopTicking();
+    runningRef.current = false;
+    const dur = accumulatedRef.current;
+    setElapsed(dur);
+    setIsRunning(false);
+    return dur;
+  }, [freezeAccumulated, stopTicking]);
 
   const resume = useCallback(() => {
-    if (isRunning) return;
-    startTimestampRef.current = Date.now();
+    if (runningRef.current) return;
+    runningRef.current = true;
+    startTsRef.current = Date.now();
     setIsRunning(true);
     startTicking();
-  }, [isRunning, startTicking]);
+  }, [startTicking]);
 
   const stop = useCallback((): number => {
+    freezeAccumulated();
     stopTicking();
+    runningRef.current = false;
+    const dur = accumulatedRef.current;
+    setElapsed(dur);
     setIsRunning(false);
-    const finalDuration = accumulatedRef.current;
-    setElapsed(finalDuration);
-    return finalDuration;
-  }, [stopTicking]);
+    return dur;
+  }, [freezeAccumulated, stopTicking]);
 
   const reset = useCallback(() => {
     stopTicking();
-    setIsRunning(false);
+    runningRef.current = false;
     accumulatedRef.current = 0;
-    startTimestampRef.current = null;
+    startTsRef.current = null;
     setElapsed(0);
+    setIsRunning(false);
   }, [stopTicking]);
 
   const getDuration = useCallback((): number => {
-    if (isRunning && startTimestampRef.current !== null) {
-      const now = Date.now();
-      const delta = Math.floor((now - startTimestampRef.current) / 1000);
-      return accumulatedRef.current + delta;
-    }
-    return accumulatedRef.current;
-  }, [isRunning]);
+    return computeElapsed();
+  }, [computeElapsed]);
 
-  // Cleanup on unmount
+  const setTime = useCallback((seconds: number) => {
+    if (runningRef.current) {
+      // While running: update accumulated base and reset the start timestamp
+      accumulatedRef.current = seconds;
+      startTsRef.current = Date.now();
+    } else {
+      accumulatedRef.current = seconds;
+    }
+    setElapsed(seconds);
+  }, []);
+
+  // ─── Mount: bootstrap the timer once ───
+  useEffect(() => {
+    if (mountedRef.current) return;
+    mountedRef.current = true;
+
+    accumulatedRef.current = initialDuration;
+    setElapsed(initialDuration);
+
+    if (initialStatus === 'live') {
+      runningRef.current = true;
+      startTsRef.current = Date.now();
+      setIsRunning(true);
+      startTicking();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Cleanup ───
   useEffect(() => {
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      stopTicking();
     };
-  }, []);
+  }, [stopTicking]);
 
   return {
     elapsed,
     isRunning,
     start,
-    pause: () => pause(),
+    pause,
     resume,
     stop,
     reset,
     getDuration,
-    setTime: (seconds: number) => {
-      if (isRunning) {
-        // Stop current ticking to reset timestamp with new value
-        stopTicking();
-        accumulatedRef.current = seconds;
-        startTimestampRef.current = Date.now();
-        startTicking();
-      } else {
-        accumulatedRef.current = seconds;
-      }
-      setElapsed(seconds);
-    }
+    setTime,
   };
 }
