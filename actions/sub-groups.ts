@@ -3,7 +3,7 @@
 
 import { pool, query, queryOne } from "@/lib/db/neon-client";
 import { subGroupSchema } from "@/validation/schemas";
-import { revalidatePath, cacheTag, updateTag, cacheLife } from "next/cache";
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from "next/cache";
 import { emitSubGroupEvent } from "./realtime";
 import {
   SubGroup,
@@ -762,8 +762,8 @@ export async function createSubGroup(formData: FormData) {
 
     const id = result[0].id;
     revalidatePath(`/ad/phase-groups/${validatedData.group_id}`);
-    updateTag("sub-groups");
-    updateTag("phase-groups");
+    revalidateTag("sub-groups", {});
+    revalidateTag("phase-groups", {});
 
     // Émettre l'événement temps réel
     emitSubGroupEvent(id, "created", { id, ...validatedData });
@@ -846,8 +846,8 @@ export async function updateSubGroup(id: number, formData: FormData) {
 
     revalidatePath(`/ad/sub-groups/${id}`);
     revalidatePath(`/ad/phase-groups/${validatedData.group_id}`);
-    updateTag("sub-groups");
-    updateTag(`sub-group:${id}`);
+    revalidateTag("sub-groups", {});
+    revalidateTag(`sub-group:${id}`, {});
 
     // Émettre l'événement temps réel
     emitSubGroupEvent(id, "updated", { id, ...validatedData });
@@ -868,8 +868,8 @@ export async function deleteSubGroup(id: number) {
     await query(sql, [id]);
 
     revalidatePath(`/ad/phase-groups/${subGroup.group_id}`);
-    updateTag("sub-groups");
-    updateTag(`sub-group:${id}`);
+    revalidateTag("sub-groups", {});
+    revalidateTag(`sub-group:${id}`, {});
 
     // Émettre l'événement temps réel
     await emitSubGroupEvent(id, "deleted", { id });
@@ -892,8 +892,8 @@ export async function completeSubGroup(id: number) {
     if (subGroup?.group_id) {
       revalidatePath(`/ad/phase-groups/${subGroup.group_id}`);
     }
-    updateTag("sub-groups");
-    updateTag(`sub-group:${id}`);
+    revalidateTag("sub-groups", {});
+    revalidateTag(`sub-group:${id}`, {});
 
     emitSubGroupEvent(id, "updated", {
       id,

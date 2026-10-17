@@ -46,7 +46,7 @@ export default function PhaseGroupDetailPage() {
     const fetchGroup = async () => {
       try {
         const response = await fetch(
-          `/api/phase-groups/${groupId}?with_relations=false`
+          `/api/phase-groups/${groupId}?with_relations=true`
         );
         if (response.ok) {
           const data = await response.json();
@@ -207,18 +207,30 @@ export default function PhaseGroupDetailPage() {
             <Edit className="h-4 w-4 mr-2" />
             Modifier
           </Button>
-          <Button
-            onClick={() =>
-              router.push(`/ad/phase-groups/${group.id}/sub-groups/new`)
-            }
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle Rencontre
-          </Button>
-          <Button onClick={handleManageGroupMatches}>
-            <Swords className="h-4 w-4 mr-2" />
-            Gérer Matchs
-          </Button>
+          {group.phase?.phase_type && group.phase.phase_type !== "group" ? (
+            <Button
+              onClick={handleManageGroupMatches}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md gap-2"
+            >
+              <Swords className="h-4 w-4" />
+              Créer les Matchs (Élimination)
+            </Button>
+          ) : (
+            <>
+              <Button
+                onClick={() =>
+                  router.push(`/ad/phase-groups/${group.id}/sub-groups/new`)
+                }
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nouvelle Rencontre
+              </Button>
+              <Button onClick={handleManageGroupMatches} variant="outline">
+                <Swords className="h-4 w-4 mr-2" />
+                Gérer Matchs
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

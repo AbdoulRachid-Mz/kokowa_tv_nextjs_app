@@ -3,7 +3,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { coachSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from 'next/cache';
 import { Coach, CoachFilters, PaginatedResponse } from '@/types';
 
 export async function getCoaches(
@@ -202,7 +202,7 @@ export async function createCoach(validatedData: any) {
       revalidatePath(`/admin/regions/${validatedData.region_id}`);
     }
 
-    updateTag("coaches");
+    revalidateTag("coaches", {});
 
     return { 
       success: true, 
@@ -289,8 +289,8 @@ export async function updateCoach(id: number, formData: FormData) {
       }
     }
     
-    updateTag("coaches");
-    updateTag(`coach:${id}`);
+    revalidateTag("coaches", {});
+    revalidateTag(`coach:${id}`, {});
 
     return { 
       success: true, 
@@ -336,8 +336,8 @@ export async function deleteCoach(id: number) {
       revalidatePath(`/admin/regions/${existing.region_id}`);
     }
     
-    updateTag("coaches");
-    updateTag(`coach:${id}`);
+    revalidateTag("coaches", {});
+    revalidateTag(`coach:${id}`, {});
 
     return { 
       success: true, 

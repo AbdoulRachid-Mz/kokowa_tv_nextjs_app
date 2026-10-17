@@ -133,16 +133,16 @@ export function MiniRegionCard({
       className={cn(
         "overflow-hidden transition-all relative duration-300 group",
         isCliquable && "cursor-pointer active:scale-95 hover:border-primary",
-        getStatusBorder(status || region.color),
+        getStatusBorder(status || region?.color),
         className
       )}
-      style={status?.startsWith("#") ? { borderLeftColor: status } : region.color ? { borderLeftColor: region.color } : {}}
+      style={status?.startsWith("#") ? { borderLeftColor: status } : region?.color ? { borderLeftColor: region.color } : {}}
       onClick={handleMainAction}
     >
       <CardContent className="p-2 flex items-center gap-2">
         <div 
           className="w-9 h-9 rounded flex items-center justify-center text-white flex-shrink-0 shadow-sm font-bold text-xs"
-          style={{ backgroundColor: region.color || "#3b82f6" }}
+          style={{ backgroundColor: region?.color || "#3b82f6" }}
         >
           {region.code}
         </div>

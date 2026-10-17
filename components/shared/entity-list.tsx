@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Grid, List, Plus, RefreshCw, LayoutGrid } from "lucide-react";
+import { Search, Grid, List, Plus, RefreshCw, LayoutGrid, GalleryHorizontal } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -22,12 +22,20 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { EntityType, toPluralEntityType } from "@/lib/entity-utils";
+import { ViewMode } from "@/types";
 
 // Types génériques
-export interface EntityListProps<T> {
+export interface EntityListProps<T = any> {
   // Données et configuration
   title: string;
   description?: string;
@@ -35,6 +43,7 @@ export interface EntityListProps<T> {
   data: T[];
   total: number;
   loading?: boolean;
+  customHeader?: React.ReactNode;
 
   // Pagination
   page: number;
@@ -54,19 +63,19 @@ export interface EntityListProps<T> {
   onExport?: () => void;
 
   // Affichage
-  viewMode?: "grid" | "list" | "compact";
+  viewMode?: ViewMode;
   itemsPerView?: {
     mobile?: number;
     md?: number;
     lg?: number;
     xl?: number;
   };
-  onViewModeChange?: (mode: "grid" | "list" | "compact") => void;
+  onViewModeChange?: (mode: ViewMode) => void;
 
   // Renderers personnalisés
   renderCard: (
     item: T,
-    viewMode: "grid" | "list" | "compact",
+    viewMode: ViewMode,
   ) => React.ReactNode;
   renderStats?: () => React.ReactNode;
 
@@ -625,7 +634,7 @@ const getEntityFilters = (entityType: EntityType) => {
   return [...baseFilters, ...(entityFiltersMap[pluralType] || [])];
 };
 
-export function EntityList<T>({
+export function EntityList<T = any>({
   title,
   description,
   entityType,
@@ -654,6 +663,7 @@ export function EntityList<T>({
   renderCard,
   renderStats,
   availableFilters = [],
+  customHeader,
 }: EntityListProps<T>) {
   const totalPages = Math.ceil(total / limit) || 1;
 
@@ -677,57 +687,69 @@ export function EntityList<T>({
 
   return (
     <div className="space-y-4">
-      {/* En-tête avec titre et actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <Typography variant="body-lg" weight="bold" animated>
-            {title}
-          </Typography>
-          {description && (
-            <Typography variant="lead" theme="muted">
-              {description}
+      {/* En-tête avec titre et actions ou customHeader */}
+      {customHeader ? (
+        customHeader
+      ) : (
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <Typography variant="body-lg" weight="bold" animated>
+              {title}
             </Typography>
-          )}
-        </div>
+            {description && (
+              <Typography variant="lead" theme="muted">
+                {description}
+              </Typography>
+            )}
+          </div>
 
-        <div className="flex items-center gap-2">
-          {onViewModeChange && (
-            <div className="flex border rounded-lg p-1 bg-muted/50">
-              <Button
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => onViewModeChange("grid")}
-                className="h-8 w-8 p-0"
-                title="Grille"
-              >
-                <Grid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => onViewModeChange("list")}
-                className="h-8 w-8 p-0"
-                title="Liste"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "compact" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => onViewModeChange("compact")}
-                className="h-8 w-8 p-0"
-                title="Compact"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {onViewModeChange && (
+              <div className="flex border rounded-lg p-1 bg-muted/50">
+                <Button
+                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => onViewModeChange("grid")}
+                  className="h-8 w-8 p-0"
+                  title="Grille"
+                >
+                  <Grid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => onViewModeChange("list")}
+                  className="h-8 w-8 p-0"
+                  title="Liste"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "compact" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => onViewModeChange("compact")}
+                  className="h-8 w-8 p-0"
+                  title="Compact"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "carousel" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => onViewModeChange("carousel")}
+                  className="h-8 w-8 p-0"
+                  title="Carrousel"
+                >
+                  <GalleryHorizontal className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
 
-          {onRefresh && (
-            <Button variant="outline" size="sm" onClick={onRefresh}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          )}
+            {onRefresh && (
+              <Button variant="outline" size="sm" onClick={onRefresh}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            )}
 
           {onExport && (
             <Button variant="outline" size="sm" onClick={onExport}>
@@ -744,6 +766,7 @@ export function EntityList<T>({
           )}
         </div>
       </div>
+      )}
 
       {/* Statistiques */}
       {renderStats && renderStats()}
@@ -853,6 +876,25 @@ export function EntityList<T>({
                 Aucun {title.toLowerCase()} ne correspond à vos critères de
                 recherche.
               </Typography>
+            </div>
+          ) : viewMode === "carousel" ? (
+            <div className="relative px-2 py-1">
+              <Carousel className="w-full">
+                <CarouselContent className="-ml-3">
+                  {data.map((item, index) => (
+                    <CarouselItem
+                      key={(item as any).id || index}
+                      className="pl-3 basis-full sm:basis-1/2 lg:basis-1/3"
+                    >
+                      {renderCard(item, viewMode)}
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <div className="flex justify-end gap-2 mt-4">
+                  <CarouselPrevious className="static translate-y-0" />
+                  <CarouselNext className="static translate-y-0" />
+                </div>
+              </Carousel>
             </div>
           ) : (
             <div

@@ -2,6 +2,9 @@
 
 
 // Types de base avec timestamps
+export type ViewMode = "grid" | "list" | "compact" | "carousel";
+export type viewMode = ViewMode;
+
 export interface BaseEntity {
   id: number;
   created_at: string;

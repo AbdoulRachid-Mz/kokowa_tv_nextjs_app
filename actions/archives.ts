@@ -3,7 +3,7 @@
 "use server";
 
 import { query, queryOne } from "@/lib/db/neon-client";
-import { revalidatePath, cacheTag, updateTag, cacheLife } from "next/cache";
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from "next/cache";
 import {
   ArchiveFighterAchievementFilters,
   Fighter,
@@ -318,8 +318,8 @@ export async function restoreArchiveFighterAchievement(archiveId: number) {
 
     // Supprimer l’archive
     await query("DELETE FROM fighter_achievements WHERE id = $1", [archiveId]);
-    updateTag("archives");
-    updateTag(`archive:${archiveId}`);
+    revalidateTag("archives", {});
+    revalidateTag(`archive:${archiveId}`, {});
     revalidatePath("/ad/achievements");
     return {
       success: true,
@@ -369,8 +369,8 @@ export async function createArchiveFighterAchievement(validatedData: any) {
     ]);
 
     revalidatePath("/ad/achievements");
-    updateTag("archives");
-    updateTag(`archive:${result[0].id}`);
+    revalidateTag("archives", {});
+    revalidateTag(`archive:${result[0].id}`, {});
     
     return {
       success: true,
@@ -445,8 +445,8 @@ export async function updateArchiveFighterAchievement(
       id,
     ]);
 
-    updateTag("archives");
-    updateTag(`archive:${id}`);
+    revalidateTag("archives", {});
+    revalidateTag(`archive:${id}`, {});
     revalidatePath("/ad/achievements");
     return {
       success: true,
@@ -471,8 +471,8 @@ export async function deleteArchiveFighterAchievement(id: number) {
     }
 
     await query("DELETE FROM fighter_achievements WHERE id = $1", [id]);
-    updateTag("archives");
-    updateTag(`archive:${id}`);
+    revalidateTag("archives", {});
+    revalidateTag(`archive:${id}`, {});
     revalidatePath("/ad/achievements");
     return {
       success: true,

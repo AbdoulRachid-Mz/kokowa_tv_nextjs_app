@@ -21,7 +21,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
+
 
 interface CompetitionFormData {
   id?: number;
@@ -138,7 +139,7 @@ export default function CompetitionForm({
       // Gestion spécifique des erreurs de nom dupliqué
       if (response.status === 409 || result.error?.includes('existe déjà')) {
         setErrors({ name: 'Une compétition avec ce nom existe déjà' });
-        alert('Une compétition avec ce nom existe déjà');
+        toast.info('Une compétition avec ce nom existe déjà');
       } else {
         throw new Error(
           result.error ||
@@ -152,10 +153,11 @@ export default function CompetitionForm({
 
     if (result.success) {
       // Afficher un message de succès avec éventuellement un avertissement
+      toast.success(result.message);
       if (result.warning) {
-        alert(`${result.message}\n\nNote: ${result.warning}`);
+        toast.info(`${result.message}\n\nNote: ${result.warning}`);
       } else {
-        alert(result.message);
+        toast.info(result.message);
       }
       
       if (onSuccess) {
@@ -173,9 +175,9 @@ export default function CompetitionForm({
   } catch (error) {
     console.error("Erreur:", error);
     if (error instanceof Error) {
-      alert(error.message);
+      toast.error(error.message);
     } else {
-      alert(
+      toast.error(
         `Erreur lors de ${
           competition ? "la modification" : "la création"
         } de la compétition`

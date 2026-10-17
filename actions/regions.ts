@@ -4,7 +4,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { regionSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from 'next/cache';
 import { Region, RegionFilters, PaginatedResponse } from '@/types';
 
 export async function getRegions(
@@ -253,7 +253,7 @@ export async function createRegion(formData: FormData) {
 
     revalidatePath('/regions');
     revalidatePath('/ad/regions');
-    updateTag("regions");
+    revalidateTag("regions", {});
     
     return { 
       success: true, 
@@ -304,8 +304,8 @@ export async function updateRegion(id: number, formData: FormData) {
     revalidatePath('/ad/regions');
     revalidatePath(`/ad/regions/${id}`);
     
-    updateTag("regions");
-    updateTag(`region:${id}`);
+    revalidateTag("regions", {});
+    revalidateTag(`region:${id}`, {});
 
     return { 
       success: true, 
@@ -360,8 +360,8 @@ export async function deleteRegion(id: number) {
     revalidatePath(`/regions/${id}`);
     revalidatePath(`/ad/regions/${id}`);
     
-    updateTag("regions");
-    updateTag(`region:${id}`);
+    revalidateTag("regions", {});
+    revalidateTag(`region:${id}`, {});
 
     return { 
       success: true, 

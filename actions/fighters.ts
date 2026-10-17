@@ -3,7 +3,7 @@
 
 import { query, queryOne } from "@/lib/db/neon-client";
 import { fighterSchema } from "@/validation/schemas";
-import { revalidatePath, cacheTag, updateTag, cacheLife } from "next/cache";
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from "next/cache";
 import { emitFighterEvent } from "./realtime";
 import {
   ArchiveFighterAchievementFilters,
@@ -290,7 +290,7 @@ export async function createFighter(validatedData: any) {
       revalidatePath(`/admin/regions/${validatedData.region_id}`);
     }
 
-    updateTag("fighters");
+    revalidateTag("fighters", {});
 
     // Émission WS
     await emitFighterEvent(result[0].id, "fighter_created", {
@@ -396,15 +396,15 @@ export async function updateFighter(id: number, formData: FormData) {
     revalidatePath(`/fighters/${id}`);
     if (validatedData.region_id !== existing.region_id) {
       if (existing.region_id) {
-        updateTag(`region:${existing.region_id}`);
+        revalidateTag(`region:${existing.region_id}`, {});
       }
       if (validatedData.region_id) {
-        updateTag(`region:${validatedData.region_id}`);
+        revalidateTag(`region:${validatedData.region_id}`, {});
       }
     }
 
-    updateTag("fighters");
-    updateTag(`fighter:${id}`);
+    revalidateTag("fighters", {});
+    revalidateTag(`fighter:${id}`, {});
 
     // 🔥 Émission WS
     await emitFighterEvent(id, "fighter_updated", { id, ...validatedData });
@@ -459,14 +459,14 @@ export async function deleteFighter(id: number) {
 
     // Le trigger PostgreSQL met à jour automatiquement le compteur de la région
 
-    updateTag("/fighters");
-    updateTag("/admin/fighters");
+    revalidateTag("/fighters", {});
+    revalidateTag("/admin/fighters", {});
     if (existing.region_id) {
-      updateTag(`region:${existing.region_id}`);
+      revalidateTag(`region:${existing.region_id}`, {});
     }
 
-    updateTag("fighters");
-    updateTag(`fighter:${id}`);
+    revalidateTag("fighters", {});
+    revalidateTag(`fighter:${id}`, {});
 
     // 🔥 Émission WS
     await emitFighterEvent(id, "fighter_deleted", { id });

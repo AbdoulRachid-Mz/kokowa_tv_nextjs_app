@@ -1,5 +1,5 @@
 // // "use server"
-// import { updateTag, cacheLife } from 'next/cache';
+// import { revalidateTag, cacheLife } from 'next/cache';
 
 // /**
 //  * Invalidate cache by tag for a specific entity type and ID.
@@ -7,7 +7,7 @@
 //  * @param id The ID of the entity
 //  */
 // export const invalidateEntityCache = (type: string, id: number | string) => {
-//   updateTag(`${type}:${id}`);
+//   revalidateTag(`${type}:${id}`);
 // };
 
 // /**
@@ -15,7 +15,7 @@
 //  * @param type The type of the entity (e.g., 'editions', 'matches')
 //  */
 // export const invalidateCollectionCache = (type: string) => {
-//   updateTag(type);
+//   revalidateTag(type);
 // };
 
 

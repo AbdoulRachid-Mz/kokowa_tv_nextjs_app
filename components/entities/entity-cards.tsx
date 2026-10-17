@@ -30,6 +30,7 @@ import {
   PhaseGroup,
   TeamMember,
   Match,
+  ViewMode,
 } from "@/types";
 import {
   MapPin,
@@ -82,7 +83,7 @@ import { formatPhaseType } from "@/utils/format-labels";
 // Common Card Props Pattern
 export interface BaseCardProps<T> {
   item: T; // ← CHANGER de 'item' générique
-  viewMode?: "grid" | "list" | "compact";
+  viewMode?: ViewMode;
   status?: "default" | "success" | "warning" | "error" | "info" | string;
   isCliquable?: boolean;
   isMini?: boolean;
@@ -2148,7 +2149,7 @@ export const TransferCard = ({
 
 interface UserCardProps {
   user: User;
-  viewMode: "grid" | "list" | "compact";
+  viewMode: ViewMode;
   onEdit?: (user: User) => void;
   onView?: (user: User) => void;
   onDelete?: (user: User) => void;
@@ -2374,7 +2375,7 @@ export function UserCard({
 
 export const AdvertisementCard: React.FC<{
   advertisement: Advertisement;
-  viewMode: "grid" | "list" | "compact";
+  viewMode: ViewMode;
   onEdit?: (ad: Advertisement) => void;
   onView?: (ad: Advertisement) => void;
   onDelete?: (ad: Advertisement) => void;

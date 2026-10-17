@@ -3,7 +3,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { fighterCardSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from 'next/cache';
 import { FighterCard, FighterCardFilters, PaginatedResponse } from '@/types';
 
 export async function getFighterCards(

@@ -3,7 +3,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { videoSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag } from 'next/cache';
+import { revalidatePath, cacheTag, revalidateTag } from 'next/cache';
 import { Video, VideoFilters, PaginatedResponse } from '@/types';
 
 export async function getVideos(
@@ -205,7 +205,7 @@ export async function createVideo(formData: FormData) {
 
     revalidatePath('/videos');
     revalidatePath('/');
-    updateTag("videos");
+    revalidateTag("videos", {});
     return { 
       success: true, 
       id: result[0].id,
@@ -286,8 +286,8 @@ export async function updateVideo(id: number, formData: FormData) {
     revalidatePath(`/videos/${id}`);
     revalidatePath(`/videos/${validatedData.slug}`);
     revalidatePath('/');
-    updateTag("videos");
-    updateTag(`video:${id}`);
+    revalidateTag("videos", {});
+    revalidateTag(`video:${id}`, {});
     return { 
       success: true, 
       message: 'Vidéo modifiée avec succès' 
@@ -310,8 +310,8 @@ export async function deleteVideo(id: number) {
     
     revalidatePath('/videos');
     revalidatePath('/');
-    updateTag("videos");
-    updateTag(`video:${id}`);
+    revalidateTag("videos", {});
+    revalidateTag(`video:${id}`, {});
     return { 
       success: true, 
       message: 'Vidéo supprimée avec succès' 

@@ -319,7 +319,8 @@ async function checkAndUpdateGroupStatus(
     );
 
     const { total: subTotal, completed: subCompleted } = subGroupsRes.rows[0];
-    const allSubGroupsCompleted = subTotal === subCompleted;
+    const totalNum = parseInt(subTotal, 10);
+    const allSubGroupsCompleted = totalNum > 0 && subTotal === subCompleted;
 
     // Mettre à jour le groupe parent
     await client.query(

@@ -84,13 +84,16 @@ export default function EditionDetailPage() {
   const fightersList = useEntityList<Fighter>({
     entityType: 'fighters',
     apiPath: `/api/editions/${editionId}/fighters`,
-    defaultLimit: 10,
+    defaultLimit: 20,
+    defaultFilters: { edition_id: Number(editionId) },
   });
+  // console.log("fightersList.data:",fightersList.data);
 
   const regionsList = useEntityList<Region>({
     entityType: 'regions',
     apiPath: `/api/editions/${editionId}/regions`,
-    defaultLimit: 10
+    defaultFilters: { edition_id: Number(editionId) },
+    defaultLimit: 20,
   });
 
   const isFightersLoading = fightersList.loading;
@@ -535,11 +538,15 @@ export default function EditionDetailPage() {
             onAdd={handleAddPhase}
             onRefresh={phasesList.onRefresh}
             viewMode={phasesList.viewMode}
-            onViewModeChange={phasesList.setViewMode}
-            renderCard={(phase, viewMode) => (
+            onViewModeChange={(mode) => {
+              if (mode !== "carousel") {
+                phasesList.setViewMode(mode);
+              }
+            }}
+            renderCard={(phase: Phase, viewMode) => (
               <PhaseCard 
                 item={phase}
-                viewMode={viewMode}
+                viewMode={viewMode as "grid" | "list" | "compact"}
                 onView={handleViewPhase}
                 onEdit={handleEditPhase}
               />
@@ -568,11 +575,15 @@ export default function EditionDetailPage() {
             onAdd={handleAddFighter}
             onRefresh={fightersList.onRefresh}
             viewMode={fightersList.viewMode}
-            onViewModeChange={fightersList.setViewMode}
+            onViewModeChange={(mode) => {
+              if (mode !== "carousel") {
+                fightersList.setViewMode(mode);
+              }
+            }}
             renderCard={(item: Fighter, viewMode) => (
               <MiniFighterCard 
                 item={item}
-                viewMode={viewMode}
+                viewMode={viewMode as "grid" | "list" | "compact"}
                 onView={() => router.push(`/ad/fighters/${item.id}`)}
               />
             )}
@@ -599,12 +610,16 @@ export default function EditionDetailPage() {
             onAdd={handleAddPhase}
             onRefresh={regionsList.onRefresh}
             viewMode={regionsList.viewMode}
-            onViewModeChange={regionsList.setViewMode}
-            renderCard={(item: any, viewMode) => (
+            onViewModeChange={(mode) => {
+              if (mode !== "carousel") {
+                regionsList.setViewMode(mode);
+              }
+            }}
+            renderCard={(item: Region, viewMode) => (
               <MiniRegionCard 
-                item={item.region} 
-                viewMode={viewMode}
-                onView={() => router.push(`/ad/regions/${item.region.id}`)}
+                item={item} 
+                viewMode={viewMode as "grid" | "list" | "compact"}
+                onView={() => router.push(`/ad/regions/${item.id}`)}
               />
             )}
           />

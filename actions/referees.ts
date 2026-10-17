@@ -3,7 +3,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { refereeSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from 'next/cache';
 import { Referee, PaginatedResponse } from '@/types';
 
 export interface RefereeFilters {
@@ -674,7 +674,7 @@ export async function createReferee(formData: FormData) {
     ]);
 
     revalidatePath('/ad/referees');
-    updateTag("referees");
+    revalidateTag("referees", {});
     
     return { 
       success: true, 
@@ -750,8 +750,8 @@ export async function updateReferee(id: number, formData: FormData) {
     }
 
     revalidatePath('/ad/referees');
-    updateTag("referees");
-    updateTag(`referee:${id}`);
+    revalidateTag("referees", {});
+    revalidateTag(`referee:${id}`, {});
     
     return {
       success: true,
@@ -783,8 +783,8 @@ export async function deleteReferee(id: number) {
     }
 
     revalidatePath('/ad/referees');
-    updateTag("referees");
-    updateTag(`referee:${id}`);
+    revalidateTag("referees", {});
+    revalidateTag(`referee:${id}`, {});
     
     return {
       success: true,

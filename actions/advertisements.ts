@@ -2,7 +2,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { advertisementSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from 'next/cache';
 import { Advertisement, AdvertisementFilters, PaginatedResponse, AdvertisementStats } from '@/types';
 
 export async function getAdvertisements(
@@ -275,8 +275,8 @@ export async function createAdvertisement(formData: FormData) {
     revalidatePath("/admin/advertisements");
     revalidatePath("/");
 
-    updateTag("advertisements");
-    updateTag(`advertisement:${result[0].id}`);
+    revalidateTag("advertisements", {});
+    revalidateTag(`advertisement:${result[0].id}`, {});
 
     return { 
       success: true, 
@@ -368,8 +368,8 @@ export async function updateAdvertisement(id: number, formData: FormData) {
     revalidatePath(`/admin/advertisements/${id}`);
     revalidatePath('/');
     
-    updateTag("advertisements");
-    updateTag(`advertisement:${id}`);
+    revalidateTag("advertisements", {});
+    revalidateTag(`advertisement:${id}`, {});
     
     return { 
       success: true, 
@@ -394,8 +394,8 @@ export async function deleteAdvertisement(id: number) {
     const sql = 'DELETE FROM advertisements WHERE id = $1';
     await query(sql, [id]);
 
-    updateTag("advertisements");
-    updateTag(`advertisement:${id}`);
+    revalidateTag("advertisements", {});
+    revalidateTag(`advertisement:${id}`, {});
     revalidatePath('/ad/advertisements');
 
     return { 

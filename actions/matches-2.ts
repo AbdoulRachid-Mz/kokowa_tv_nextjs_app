@@ -2,7 +2,7 @@
 'use server';
 
 import { pool, query, queryOne } from '@/lib/db/neon-client';
-import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from 'next/cache';
 import { sendPushToTopic } from '@/lib/push';
 import { Match } from '@/types/match';
 import { PoolClient } from 'pg';
@@ -252,8 +252,10 @@ export async function updateMatch(
   // 🔥 Revalider les chemins
   revalidatePath(`/ad/sub-groups/${existingMatch.sub_group_id}/matches`);
   revalidatePath(`/ad/sub-groups/${existingMatch.sub_group_id}/matches/${matchId}`);
-  updateTag("matches");
-  updateTag(`match:${matchId}`);
+  revalidateTag("matches", {});
+  revalidateTag(`match:${matchId}`, {});
+  revalidateTag("sub-groups", {});
+  revalidateTag("phase-groups", {});
 
   // 🔥 Relire le match frais
   const freshMatch = await getMatchById(matchId);
@@ -526,8 +528,8 @@ export async function createMatch(
     // Le match ne sera créé dans RTDB que lors du passage à 'live' via updateMatch
     
     revalidatePath(`/ad/sub-groups/${subGroupId}/matches`);
-    updateTag("matches");
-    updateTag(`matches-subgroup:${subGroupId}`);
+    revalidateTag("matches", {});
+    revalidateTag(`matches-subgroup:${subGroupId}`, {});
 
     return {
       id: matchId,
@@ -577,8 +579,8 @@ export async function addFighterCard(
   });
 
   revalidatePath(`/ad/sub-groups/*/matches/${matchId}`);
-  updateTag("matches");
-  updateTag(`match:${matchId}`);
+  revalidateTag("matches", {});
+  revalidateTag(`match:${matchId}`, {});
 
   return result;
 }
@@ -599,8 +601,8 @@ export async function removeFighterCard(cardId: number) {
   await emitMatchEvent(card.match_id, 'card_removed', { cardId });
 
   revalidatePath(`/ad/sub-groups/*/matches/${card.match_id}`);
-  updateTag("matches");
-  updateTag(`match:${card.match_id}`);
+  revalidateTag("matches", {});
+  revalidateTag(`match:${card.match_id}`, {});
 
   return { success: true };
 }
@@ -695,8 +697,8 @@ export async function completeSubGroup(subGroupId: number) {
 
     revalidatePath(`/ad/sub-groups/${subGroupId}`);
     revalidatePath(`/ad/sub-groups/${subGroupId}/matches`);
-    updateTag("sub-groups");
-    updateTag(`sub-group:${subGroupId}`);
+    revalidateTag("sub-groups", {});
+    revalidateTag(`sub-group:${subGroupId}`, {});
     
     // 🔥 Émission WS
     await emitSubGroupEvent(subGroupId, 'subgroup_completed', { id: subGroupId });

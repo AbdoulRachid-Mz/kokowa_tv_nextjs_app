@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, Dispatch, SetStateAction } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getEntities } from '@/actions/entities';
 import { EntityType, toPluralEntityType } from '@/lib/entity-utils';
+import { ViewMode } from '@/types';
 
 export interface UseEntityListProps<T> {
   entityType: EntityType;
@@ -17,6 +18,39 @@ export interface UseEntityListProps<T> {
   apiPath?: string;
 }
 
+export interface UseEntityListResult<T> {
+  data: T[];
+  total: number;
+  loading: boolean;
+  error: any;
+  page: number;
+  limit: number;
+  searchTerm: string;
+  filters: any;
+  viewMode: ViewMode;
+  setPage: (newPage: number) => void;
+  setLimit: (newLimit: number) => void;
+  setSearchTerm: (newSearch: string) => void;
+  setFilters: (newFilters: any) => void;
+  setViewMode: Dispatch<SetStateAction<ViewMode>>;
+  onAdd: () => void;
+  onEdit: (item: T) => void;
+  onView: (item: T) => void;
+  onExport: () => Promise<void>;
+  onRefresh: () => void;
+  onResetFilters: () => void;
+  refetch: () => void;
+  totalPages: number;
+  hasData: boolean;
+  isEmpty: boolean;
+  canGoPrev: boolean;
+  canGoNext: boolean;
+  goToPrevPage: () => void;
+  goToNextPage: () => void;
+  goToFirstPage: () => void;
+  goToLastPage: () => void;
+}
+
 export function useEntityList<T = any>({
   entityType,
   defaultFilters = {},
@@ -26,7 +60,7 @@ export function useEntityList<T = any>({
   useDefaultData = false,
   autoFetch = true,
   apiPath,
-}: UseEntityListProps<T>) {
+}: UseEntityListProps<T>): UseEntityListResult<T> {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -35,23 +69,29 @@ export function useEntityList<T = any>({
   const [limit, setLimit] = useState(defaultLimit);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<any>(defaultFilters);
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact'>('grid');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
   // Memoiser les filtres pour éviter les re-renders inutiles
   const stableFilters = useMemo(() => filters, [JSON.stringify(filters)]);
+
+  // Mettre à jour les filtres si defaultFilters change
+  useEffect(() => {
+    setFilters(defaultFilters);
+  }, [JSON.stringify(defaultFilters)]);
 
   // Query key for TanStack Query
   const queryKey = useMemo(() => [
     'entities',
     entityType,
+    apiPath || '',
     page,
     limit,
     searchTerm,
     stableFilters,
     withRelations
-  ], [entityType, page, limit, searchTerm, stableFilters, withRelations]);
+  ], [entityType, apiPath, page, limit, searchTerm, stableFilters, withRelations]);
 
-  // Utiliser TanStack Query avec notre server action
+  // Utiliser TanStack Query avec notre server action ou apiPath
   const { data, isLoading: loading, error, refetch } = useQuery({
     queryKey,
     queryFn: async () => {
@@ -66,6 +106,33 @@ export function useEntityList<T = any>({
           },
         };
       }
+
+      if (apiPath) {
+        const queryParams = new URLSearchParams();
+        queryParams.set('page', String(page));
+        queryParams.set('limit', String(limit));
+        if (searchTerm) queryParams.set('search', searchTerm);
+        if (withRelations !== undefined) {
+          queryParams.set(
+            'with_relations',
+            typeof withRelations === 'boolean' ? String(withRelations) : JSON.stringify(withRelations)
+          );
+        }
+        if (stableFilters && typeof stableFilters === 'object') {
+          Object.entries(stableFilters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+              queryParams.set(key, String(value));
+            }
+          });
+        }
+        const res = await fetch(`${apiPath}?${queryParams.toString()}`);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Erreur lors du chargement des données');
+        }
+        return await res.json();
+      }
+
       return await getEntities<T>(entityType, {
         page,
         limit,
@@ -171,7 +238,7 @@ export function useEntityList<T = any>({
   }, [queryClient, queryKey]);
 
   // Valeurs dérivées
-  const currentData = data?.data || [];
+  const currentData: T[] = (data?.data as T[]) || [];
   const total = data?.pagination?.total || 0;
   const totalPages = data?.pagination?.totalPages || 1;
   const hasData = currentData.length > 0;

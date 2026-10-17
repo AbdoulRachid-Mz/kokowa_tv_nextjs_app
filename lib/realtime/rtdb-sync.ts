@@ -15,8 +15,8 @@ export async function syncMatchRealtime(
   try {
     const { payload, editionId, subGroupId } = await buildRealtimeMatchPayload(matchId);
     
-    // 🔥 On ne crée/met à jour dans RTDB que si le match est dans un état "actif" (live, break, reclamation)
-    const activeStatuses = ["live", "round_break", "reclamation"];
+    // 🔥 On met à jour dans RTDB si le match est actif ou vient de se terminer
+    const activeStatuses = ["live", "round_break", "reclamation", "completed", "cancelled"];
     if (!activeStatuses.includes(payload.status)) {
       console.log(`ℹ️ RTDB sync skipped: match ${matchId} is ${payload.status}`);
       return;

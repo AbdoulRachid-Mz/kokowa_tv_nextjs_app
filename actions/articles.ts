@@ -3,7 +3,7 @@
 
 import { query, queryOne } from "@/lib/db/neon-client";
 import { articleSchema } from "@/validation/schemas";
-import { revalidatePath, cacheTag, updateTag, cacheLife } from "next/cache";
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from "next/cache";
 import { Article, ArticleFilters, PaginatedResponse, ArticleType } from "@/types";
 
 export async function getArticles(
@@ -595,8 +595,8 @@ export async function createArticle(formData: FormData) {
       publishedAt,
     ]);
 
-    updateTag("articles");
-    updateTag(`article:${result[0].id}`);
+    revalidateTag("articles", {});
+    revalidateTag(`article:${result[0].id}`, {});
     revalidatePath("/ad/articles");
     return {
       success: true,
@@ -688,8 +688,8 @@ export async function updateArticle(id: number, formData: FormData) {
       id,
     ]);
 
-    updateTag("articles");
-    updateTag(`article:${id}`);
+    revalidateTag("articles", {});
+    revalidateTag(`article:${id}`, {});
     revalidatePath(`/ad/articles/${id}`);
     return {
       success: true,
@@ -711,8 +711,8 @@ export async function deleteArticle(id: number) {
     const sql = "DELETE FROM articles WHERE id = $1";
     await query(sql, [id]);
 
-    updateTag("articles");
-    updateTag(`article:${id}`);
+    revalidateTag("articles", {});
+    revalidateTag(`article:${id}`, {});
     revalidatePath("/ad/articles");
     return {
       success: true,

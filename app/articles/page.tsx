@@ -6,4 +6,4 @@ const ArticlesPages = () => {
   )
 }
 
-export default ArticlesPages
+export default ArticlesPages;

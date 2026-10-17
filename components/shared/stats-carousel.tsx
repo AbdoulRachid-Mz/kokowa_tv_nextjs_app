@@ -131,7 +131,7 @@ export function StatsCarousel({
             gap: `${gap}px`,
           }}
         >
-          {React.Children.map(renderItems(), (child, index) => (
+          {React.Children.map(renderItems() as any, (child, index) => (
             <CarouselItem
               key={index}
               style={{

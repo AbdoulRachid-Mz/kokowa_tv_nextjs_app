@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "pnpm build && pnpm start",
+    "startCommand": "bun run build && bun run start",
     "healthcheckPath": "/health"
   }
 }

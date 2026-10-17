@@ -3,7 +3,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { mediaSchema } from '@/validation/schemas';
-import { cacheTag, revalidatePath, updateTag, cacheLife } from 'next/cache';
+import { cacheTag, revalidatePath, revalidateTag, cacheLife } from 'next/cache';
 import { Media, MediaFilters, PaginatedResponse } from '@/types';
 
 export async function getMedia(
@@ -229,8 +229,8 @@ export async function createMedia(formData: FormData) {
       validatedData.entity_id || null,
     ]);
 
-    updateTag('media');
-    updateTag(`media:${result[0].id}`);
+    revalidateTag('media', {});
+    revalidateTag(`media:${result[0].id}`, {});
     return { 
       success: true, 
       id: result[0].id,
@@ -306,8 +306,8 @@ export async function updateMedia(id: number, formData: FormData) {
 
     revalidatePath('/media');
     revalidatePath(`/media/${id}`);
-    updateTag("media");
-    updateTag(`media:${id}`);
+    revalidateTag("media", {});
+    revalidateTag(`media:${id}`, {});
     return { 
       success: true, 
       message: 'Média modifié avec succès' 
@@ -328,8 +328,8 @@ export async function deleteMedia(id: number) {
     const sql = 'DELETE FROM media WHERE id = $1';
     await query(sql, [id]);
     
-    updateTag("media");
-    updateTag(`media:${id}`);
+    revalidateTag("media", {});
+    revalidateTag(`media:${id}`, {});
     return { 
       success: true, 
       message: 'Média supprimé avec succès' 

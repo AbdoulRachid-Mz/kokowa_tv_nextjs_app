@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, cacheTag, updateTag, cacheLife } from "next/cache";
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from "next/cache";
 import { 
   TeamMember, 
   TeamMemberFilters, 
@@ -180,7 +180,7 @@ export async function createTeamMember(data: TeamMemberInput) {
   );
 
   revalidatePath("/(admins)/ad/teams", "page");
-  updateTag("teams");
+  revalidateTag("teams", {});
   return res[0];
 }
 
@@ -211,8 +211,8 @@ export async function updateTeamMember(id: number, data: Partial<TeamMemberInput
 
   revalidatePath("/(admins)/ad/teams", "page");
   revalidatePath(`/(admins)/ad/teams/${id}`, "page");
-  updateTag("teams");
-  updateTag(`team:${id}`);
+  revalidateTag("teams", {});
+  revalidateTag(`team:${id}`, {});
   return res[0];
 }
 
@@ -222,8 +222,8 @@ export async function updateTeamMember(id: number, data: Partial<TeamMemberInput
 export async function deleteTeamMember(id: number) {
   await query(`DELETE FROM team_members WHERE id = $1`, [id]);
   revalidatePath("/(admins)/ad/teams", "page");
-  updateTag("teams");
-  updateTag(`team:${id}`);
+  revalidateTag("teams", {});
+  revalidateTag(`team:${id}`, {});
   return { success: true };
 }
 
@@ -263,10 +263,10 @@ export async function addTeamAchievement(data: TeamAchievementInput) {
   );
 
   revalidatePath(`/(admins)/ad/teams/${validatedData.team_member_id}`, "page");
-  updateTag("teams");
-  updateTag(`team:${validatedData.team_member_id}`);
-  updateTag("team-achievements");
-  updateTag(`team-achievements:${validatedData.team_member_id}`);
+  revalidateTag("teams", {});
+  revalidateTag(`team:${validatedData.team_member_id}`, {});
+  revalidateTag("team-achievements", {});
+  revalidateTag(`team-achievements:${validatedData.team_member_id}`, {});
   return res[0];
 }
 
@@ -294,10 +294,10 @@ export async function updateTeamAchievement(id: number, data: Partial<TeamAchiev
   
   if (res.length > 0) {
     revalidatePath(`/(admins)/ad/teams/${res[0].team_member_id}`, "page");
-    updateTag("teams");
-    updateTag(`team:${res[0].team_member_id}`);
-    updateTag("team-achievements");
-    updateTag(`team-achievements:${res[0].team_member_id}`);
+    revalidateTag("teams", {});
+    revalidateTag(`team:${res[0].team_member_id}`, {});
+    revalidateTag("team-achievements", {});
+    revalidateTag(`team-achievements:${res[0].team_member_id}`, {});
   }
   return res[0];
 }
@@ -309,10 +309,10 @@ export async function deleteTeamAchievement(id: number) {
   const res = await query<{ team_member_id: number }>(`DELETE FROM team_achievements WHERE id = $1 RETURNING team_member_id`, [id]);
   if (res.length > 0) {
     revalidatePath(`/(admins)/ad/teams/${res[0].team_member_id}`, "page");
-    updateTag("teams");
-    updateTag(`team:${res[0].team_member_id}`);
-    updateTag("team-achievements");
-    updateTag(`team-achievements:${res[0].team_member_id}`);
+    revalidateTag("teams", {});
+    revalidateTag(`team:${res[0].team_member_id}`, {});
+    revalidateTag("team-achievements", {});
+    revalidateTag(`team-achievements:${res[0].team_member_id}`, {});
   }
   return { success: true };
 }

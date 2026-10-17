@@ -7,7 +7,7 @@ import {
   editionFighterSchema,
   editionRegionSchema,
 } from "@/validation/schemas";
-import { revalidatePath, cacheTag, updateTag, revalidateTag, cacheLife } from "next/cache";
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from "next/cache";
 import { emitEditionEvent } from "./realtime";
 import {
   CompetitionEdition,
@@ -875,8 +875,8 @@ export async function createEdition(formData: FormData) {
 
         inserted = true;
 
-        updateTag("competitions");
-        updateTag(`competition:${cleanedData.competition_id}`);
+        revalidateTag("competitions", {});
+        revalidateTag(`competition:${cleanedData.competition_id}`, {});
 
         return {
           success: true,
@@ -898,8 +898,8 @@ export async function createEdition(formData: FormData) {
 }
 
 export async function updateEdition(id: number, formData: FormData) {
-  updateTag("editions");
-  updateTag(`edition:${id}`);
+  revalidateTag("editions", {});
+  revalidateTag(`edition:${id}`, {});
   try {
     const existing = await getEditionById(id, { with_relations: false });
     if (!existing) {
@@ -991,9 +991,9 @@ export async function deleteEdition(id: number) {
     await query(sql, [id]);
 
     revalidatePath("/editions");
-    updateTag(`competition:${existing.competition_id}`);
-    updateTag("editions");
-    updateTag(`edition:${id}`);
+    revalidateTag(`competition:${existing.competition_id}`, {});
+    revalidateTag("editions", {});
+    revalidateTag(`edition:${id}`, {});
     revalidatePath(`/editions/${id}`);
     return {
       success: true,
@@ -1015,6 +1015,7 @@ export interface EditionParticipantsFilters {
   with_fighter?: boolean;
   sort_by?: string;
   sort_order?: "asc" | "desc";
+  is_eliminated?: boolean;
 }
 
 // Récupérer les lutteurs participants d'une édition
@@ -1039,11 +1040,18 @@ export async function getEditionFighters(
       with_fighter = true,
       sort_by = "ranking",
       sort_order = "asc",
+      is_eliminated,
     } = options;
 
     let whereClause = "WHERE ef.edition_id = $1";
     const params: any[] = [editionId];
     const selectFields: string[] = ["ef.*"];
+
+    // Filtre is_eliminated
+    if (typeof is_eliminated === "boolean") {
+      params.push(is_eliminated);
+      whereClause += ` AND ef.is_eliminated = $${params.length}`;
+    }
 
     // Filtre de recherche
     if (search) {
@@ -1081,13 +1089,14 @@ export async function getEditionFighters(
           'ranking', f.ranking,
           'profile_image', f.profile_image,
           'is_active', f.is_active,
-          'is_champion', f.is_champion
+          'is_champion', f.is_champion,
+          'region_id', COALESCE(ef.region_id, f.region_id)
         ) as fighter
       `);
     }
 
     if (with_region) {
-      joinClause += " LEFT JOIN regions r ON f.region_id = r.id";
+      joinClause += " LEFT JOIN regions r ON COALESCE(ef.region_id, f.region_id) = r.id";
       selectFields.push(`
         JSON_BUILD_OBJECT(
           'id', r.id,

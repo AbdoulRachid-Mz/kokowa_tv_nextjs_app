@@ -2,7 +2,7 @@
 "use client";
 
 import { useEntities } from "@/hooks/use-entities";
-import { Match, MatchFilters } from "@/types";
+import { Match, MatchFilters, ViewMode } from "@/types";
 import { MatchFilters as MatchFiltersComponent } from "./match-filters";
 import { Button } from "@/components/ui/button";
 import { Calendar, Trophy, Users, Clock } from "lucide-react";
@@ -26,7 +26,7 @@ export default function MatchesPage() {
     withRelations: true,
   });
 
-  const [viewMode, setViewMode] = useState<"grid" | "list" | "compact">("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   const { total, data, isLoading, filters, updateFilter, setSorting } =
     entities;

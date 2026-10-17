@@ -3,7 +3,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { beltSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from 'next/cache';
 import { Belt, PaginatedResponse } from '@/types';
 import z from 'zod';
 
@@ -242,8 +242,8 @@ export async function createBelt(formData: FormData) {
       validatedData.is_active,
     ]);
 
-    updateTag("belts");
-    updateTag(`belt:${result[0].id}`);
+    revalidateTag("belts", {});
+    revalidateTag(`belt:${result[0].id}`, {});
     revalidatePath("/ad/belts");
     
     return { 
@@ -317,8 +317,8 @@ export async function updateBelt(id: number, formData: FormData) {
       id,
     ]);
 
-    updateTag("belts");
-    updateTag(`belt:${id}`);
+    revalidateTag("belts", {});
+    revalidateTag(`belt:${id}`, {});
     revalidatePath(`/ad/belts/${id}`);
     
     return { 
@@ -359,8 +359,8 @@ export async function deleteBelt(id: number) {
     const sql = 'DELETE FROM belt WHERE id = $1';
     await query(sql, [id]);
     
-    updateTag("belts");
-    updateTag(`belt:${id}`);
+    revalidateTag("belts", {});
+    revalidateTag(`belt:${id}`, {});
     revalidatePath(`/ad/belts`);
     
     return { 
@@ -390,8 +390,8 @@ export async function toggleBeltStatus(id: number, is_active: boolean) {
     
     const result = await query<Belt>(sql, [is_active, id]);
 
-    updateTag("belts");
-    updateTag(`belt:${id}`);
+    revalidateTag("belts", {});
+    revalidateTag(`belt:${id}`, {});
     revalidatePath(`/ad/belts`);
     
     return { 

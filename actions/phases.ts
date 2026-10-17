@@ -3,7 +3,7 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { phaseSchema } from '@/validation/schemas';
-import { revalidatePath, cacheTag, updateTag, cacheLife } from 'next/cache';
+import { revalidatePath, cacheTag, revalidateTag, cacheLife } from 'next/cache';
 import { Phase, PaginatedResponse, PhaseFilters } from '@/types';
 
 
@@ -452,8 +452,8 @@ export async function createPhase(formData: FormData) {
     revalidatePath('/ad/editions');
     revalidatePath(`/ad/editions/${cleanedData.edition_id}`);
     revalidatePath('/ad/phases');
-    updateTag("phases");
-    updateTag("editions");
+    revalidateTag("phases", {});
+    revalidateTag("editions", {});
     
     return { 
       success: true, 
@@ -532,8 +532,8 @@ export async function updatePhase(id: number, formData: FormData) {
     revalidatePath(`/editions/${validatedData.edition_id}`);
     revalidatePath(`/phases/${id}`);
     revalidatePath('/phases');
-    updateTag("phases");
-    updateTag(`phase:${id}`);
+    revalidateTag("phases", {});
+    revalidateTag(`phase:${id}`, {});
     return { 
       success: true, 
       message: 'Phase modifiée avec succès' 
@@ -569,8 +569,8 @@ export async function deletePhase(id: number) {
     revalidatePath('/editions');
     revalidatePath(`/editions/${existing.edition_id}`);
     revalidatePath('/phases');
-    updateTag("phases");
-    updateTag(`phase:${id}`);
+    revalidateTag("phases", {});
+    revalidateTag(`phase:${id}`, {});
     return { 
       success: true, 
       message: 'Phase supprimée avec succès' 
@@ -599,8 +599,8 @@ export async function togglePhaseStatus(id: number, isActive: boolean) {
     revalidatePath('/editions');
     revalidatePath(`/editions/${existing.edition_id}`);
     revalidatePath('/phases');
-    updateTag("phases");
-    updateTag(`phase:${id}`);
+    revalidateTag("phases", {});
+    revalidateTag(`phase:${id}`, {});
     return { 
       success: true, 
       message: `Phase ${isActive ? 'activée' : 'désactivée'} avec succès` 
