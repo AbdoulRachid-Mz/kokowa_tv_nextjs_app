@@ -30,43 +30,61 @@ export default function SignInPage() {
 
   const handleEmailSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
+    setError("");
 
     if (!formData.email || !formData.password) {
       setError("Veuillez remplir tous les champs");
       return;
     }
-    setIsLoading(false);
+
+    setIsLoading(true);
+
     try {
       const response = await firebaseSignInWithEmail(
         formData.email,
         formData.password
       );
-      toast.success("Connexion réussie");
-      setIsLoading(false);
+
       if (response.error) {
+        console.error("Échec de connexion email :", response.error);
+        setError(response.error.message);
         toast.error(response.error.message);
         return;
       }
+
+      toast.success("Connexion réussie");
       router.push("/");
     } catch (err: any) {
-      toast.error(err.message);
+      console.error("Erreur inattendue connexion :", err);
+      const msg = err?.message || "Une erreur inattendue est survenue";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
+    setError("");
+
     try {
       const response = await firebaseSignInWithGoogle();
       if (response.error) {
+        console.error("Échec de connexion Google :", response.error);
+        setError(response.error.message);
         toast.error(response.error.message);
         return;
       }
       toast.success("Connexion réussie");
-      setIsLoading(false);
       router.push("/");
     } catch (err: any) {
-      toast.error(err.message);
+      console.error("Erreur inattendue connexion Google :", err);
+      const msg = err?.message || "Une erreur inattendue est survenue lors de la connexion Google";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -92,7 +110,7 @@ export default function SignInPage() {
         <div className="mt-6">
           <button
             onClick={handleGoogleSignIn}
-            disabled={isLoading}
+            disabled={isLoading || loading}
             className="w-full flex justify-center items-center gap-3 py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -182,7 +200,7 @@ export default function SignInPage() {
           <div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={isLoading || loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? "Connexion..." : "Se connecter"}

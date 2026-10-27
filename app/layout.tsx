@@ -7,7 +7,7 @@ import { AppSettingsProvider } from "@/contexts/app-settings-context";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { MainLayout } from "@/components/layout/main-layout";
 import QueryProvider from "@/providers/query-provider";
-import { AppCheckProvider } from "@/components/providers/app-check-provider";
+import { AppCheckProvider } from "@/providers/app-check-provider";
 import localFont from 'next/font/local'
 import { Suspense } from "react";
 

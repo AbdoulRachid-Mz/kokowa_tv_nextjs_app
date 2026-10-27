@@ -5,13 +5,21 @@
     "resource-exhausted": "Limite de quota atteinte, veuillez réessayer plus tard.",
     "unavailable": "Le service est temporairement indisponible. Veuillez vérifier votre connexion."
   },
+  "appCheck": {
+    "app-check/fetch-token-error": "Impossible de récupérer le jeton de sécurité App Check. Veuillez réessayer.",
+    "app-check/invalid-recaptcha-site-key": "La configuration de la clé reCAPTCHA est invalide.",
+    "app-check/plugin-not-installed": "Le service de sécurité App Check n'est pas initialisé correctement."
+  },
   "createUserWithEmailAndPassword": {
     "auth/email-already-in-use": "Cette adresse e-mail est déjà utilisée.",
     "auth/invalid-email": "L'adresse e-mail n'est pas valide.",
     "auth/operation-not-allowed": "La création de compte par e-mail est désactivée.",
     "auth/weak-password": "Le mot de passe est trop faible. Veuillez choisir un mot de passe plus sécurisé.",
-    "auth/internal-error": "Une erreur interne est survenue lors de la création du compte. Veuillez réessayer.",
-    "auth/network-request-failed": "Impossible de contacter le serveur. Pas de connexion internet."
+    "auth/internal-error": "Une erreur interne Firebase est survenue. Veuillez réessayer.",
+    "auth/network-request-failed": "Impossible de contacter le serveur. Pas de connexion internet.",
+    "auth/firebase-app-check-token-is-invalid": "Échec de sécurité App Check (jeton de sécurité invalide ou non autorisé).",
+    "auth/app-check-token-required": "Un jeton de sécurité App Check est requis par Firebase.",
+    "auth/captcha-check-failed": "La vérification de sécurité reCAPTCHA a échoué."
   },
   "signInWithEmailAndPassword": {
     "auth/user-disabled": "Ce compte a été désactivé.",
@@ -21,12 +29,20 @@
     "auth/invalid-password": "Le mot de passe est incorrect.",
     "auth/network-request-failed": "Pas de connexion internet.",
     "auth/too-many-requests": "Trop de tentatives échouées. Votre compte a été temporairement bloqué. Veuillez réessayer plus tard.",
-    "auth/invalid-credential": "L'email ou le mot de passe est incorrect."
+    "auth/invalid-credential": "L'email ou le mot de passe est incorrect.",
+    "auth/firebase-app-check-token-is-invalid": "Échec de sécurité App Check (jeton de sécurité invalide ou non autorisé).",
+    "auth/app-check-token-required": "Un jeton de sécurité App Check est requis par Firebase.",
+    "auth/captcha-check-failed": "La vérification de sécurité reCAPTCHA a échoué.",
+    "auth/internal-error": "Une erreur interne Firebase est survenue. Veuillez réessayer."
   },
   "signInWithPopup": {
     "auth/popup-closed-by-user": "La fenêtre de connexion a été fermée avant la fin de l'opération.",
     "auth/cancelled-popup-request": "L'opération a été annulée car une seule fenêtre de connexion doit être ouverte à la fois.",
-    "auth/account-exists-with-different-credential": "Un compte existe déjà avec la même adresse e-mail mais avec un mode de connexion différent."
+    "auth/account-exists-with-different-credential": "Un compte existe déjà avec la même adresse e-mail mais avec un mode de connexion différent.",
+    "auth/firebase-app-check-token-is-invalid": "Échec de sécurité App Check (jeton de sécurité invalide ou non autorisé).",
+    "auth/app-check-token-required": "Un jeton de sécurité App Check est requis par Firebase.",
+    "auth/captcha-check-failed": "La vérification de sécurité reCAPTCHA a échoué.",
+    "auth/internal-error": "Une erreur interne Firebase est survenue. Veuillez réessayer."
   },
   "sendPasswordResetEmail": {
     "auth/invalid-email": "L'adresse e-mail n'est pas valide.",

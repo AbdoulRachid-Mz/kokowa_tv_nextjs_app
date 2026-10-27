@@ -1,94 +1,61 @@
 // lib/client/firebase-app-check.ts
-import app from "@/configs/firebase/config";
-import { initializeAppCheck, ReCaptchaV3Provider, getToken, AppCheck } from "firebase/app-check";
+import { initializeAppCheck, ReCaptchaV3Provider, getToken } from "firebase/app-check";
+import { app } from "@/configs/firebase/config"; // Ajustez le chemin vers votre config.ts si nécessaire
 
-declare global {
-  interface Window {
-    FIREBASE_APPCHECK_DEBUG_TOKEN?: string | boolean;
-  }
-}
+let appCheckInstance: any = null;
 
-// Instance d'App Check initialisée uniquement côté client (singleton)
-let appCheckInstance: AppCheck | null = null;
-let isInitializing = false;
-let appCheckDisabled = false;
+export function initAppCheck() {
+  if (typeof window === "undefined") return;
 
-/**
- * Initialise Firebase App Check côté client avec reCAPTCHA v3
- * Supporte le debug token en développement et un fallback transparent sans blocage.
- */
-export function initAppCheck(): AppCheck | null {
-  if (typeof window === "undefined" || appCheckDisabled) return null;
-  if (appCheckInstance) return appCheckInstance;
-  if (isInitializing) return null;
-
-  const siteKey =
-    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||
-    process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_KEY;
-
-  // Si aucune clé reCAPTCHA valide n'est configurée, désactiver proprement
-  if (!siteKey || siteKey.length < 10) {
-    if (process.env.NODE_ENV === "development") {
-      console.info("ℹ️ Firebase App Check non initialisé (clé reCAPTCHA absente ou incomplète). Mode bypass actif.");
-    }
-    appCheckDisabled = true;
-    return null;
+  const isEnabled = process.env.NEXT_PUBLIC_ENABLE_APP_CHECK === "true";
+  
+  if (!isEnabled) {
+    return;
   }
 
   try {
-    isInitializing = true;
-
-    // Configuration du mode debug en local (token spécifique ou génération automatique)
     if (process.env.NODE_ENV === "development") {
-      const debugToken =
-        process.env.NEXT_PUBLIC_FIREBASE_APP_CHECK_DEBUG_TOKEN ||
-        process.env.NEXT_PUBLIC_APP_CHECK_DEBUG_TOKEN;
-
-      window.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken || true;
+      if (process.env.NEXT_PUBLIC_FIREBASE_APP_CHECK_DEBUG_TOKEN) {
+        (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN = 
+          process.env.NEXT_PUBLIC_FIREBASE_APP_CHECK_DEBUG_TOKEN;
+      }
     }
 
-    appCheckInstance = initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(siteKey),
-      isTokenAutoRefreshEnabled: true, // Rafraîchissement automatique des jetons
-    });
+    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
-    if (process.env.NODE_ENV === "development") {
-      console.info("✅ Firebase App Check initialisé avec succès côté client.");
+    if (!siteKey) {
+      console.error("La clé reCAPTCHA (NEXT_PUBLIC_RECAPTCHA_SITE_KEY) est manquante.");
+      return;
     }
 
-    return appCheckInstance;
-  } catch (err: any) {
-    console.warn("⚠️ Initialisation Firebase App Check ignorée (fallback transparent) :", err?.message || err);
-    appCheckDisabled = true;
-    return null;
-  } finally {
-    isInitializing = false;
+    if (!appCheckInstance) {
+      appCheckInstance = initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(siteKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+    }
+  } catch (error) {
+    console.error("Erreur lors de l'initialisation d'App Check :", error);
   }
 }
 
 /**
- * Récupère le token App Check actif ou null si indisponible
+ * Fonction appelée par use-auth.ts pour récupérer le token App Check.
+ * Retourne null si App Check est désactivé ou non initialisé pour éviter de bloquer le sign-in/sign-up.
  */
 export async function getAppCheckToken(): Promise<string | null> {
-  const appCheck = initAppCheck();
-  if (!appCheck) return null;
+  if (typeof window === "undefined") return null;
+
+  const isEnabled = process.env.NEXT_PUBLIC_ENABLE_APP_CHECK === "true";
+  if (!isEnabled || !appCheckInstance) {
+    return null; 
+  }
 
   try {
-    const tokenResult = await getToken(appCheck, false);
-    const token = tokenResult?.token;
-
-    if (!token || token.length < 10) {
-      return null;
-    }
-
-    return token;
-  } catch (error: any) {
-    // Ne jamais bloquer les requêtes de l'UI en cas d'erreur de token
-    if (process.env.NODE_ENV === "development") {
-      console.warn("ℹ️ App Check indisponible (fallback transparent autorisé) :", error?.code || error?.message);
-    }
+    const appCheckTokenResponse = await getToken(appCheckInstance, false);
+    return appCheckTokenResponse.token;
+  } catch (error) {
+    console.error("Erreur lors de la récupération du token App Check :", error);
     return null;
   }
 }
-
-export default initAppCheck;

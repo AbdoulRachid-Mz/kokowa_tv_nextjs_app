@@ -61,6 +61,7 @@ export default function SignUpPage() {
       );
 
       if (error) {
+        console.error("Sign-up error:", error);
         setError(error.message);
         toast.error(error.message);
         return;
