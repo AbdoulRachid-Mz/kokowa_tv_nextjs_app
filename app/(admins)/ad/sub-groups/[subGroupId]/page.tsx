@@ -343,8 +343,8 @@ export default function SubGroupDetailPage() {
                     item={match}
                     viewMode={viewMode === 'compact' ? 'compact' : 'grid'}
                     onDelete={() => handleDeleteMatch(match.id)}
-                    onView={() => router.push(`/ad/sub-groups/${id}/matches/${match.id}`)}
-                    onEdit={(m) => router.push(`/ad/sub-groups/${id}/matches/${m.id}/edit`)}
+                    onView={() => router.push(`/ad/matches/${match.id}`)}
+                    onEdit={(m) => router.push(`/ad/matches/${m.id}/edit`)}
                   />
                 )}
               />

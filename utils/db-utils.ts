@@ -1,5 +1,5 @@
 // @/lib/utils/db-utils.ts
-import { query } from "@/lib/db/connection";
+import { query } from "@/lib/db/neon-client";
 
 export async function getNextAvailableOrder(
   table: string,

@@ -32,12 +32,27 @@ import { MatchStatistics } from "@/components/pages/matches/match-statistics";
 import { MatchTimeline } from "@/components/pages/matches/match-timeline";
 import { Match } from "@/types";
 import { useRealtimeMatch } from "@/hooks/realtime/use-realtime-match";
+import { MatchComments } from "@/components/pages/matches/match-comments";
+import { useInteractions } from "@/hooks/use-interactions";
+import { Heart } from "lucide-react";
 
 export default function MatchDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
   const matchId = parseInt(params.matchId as string);
+
+  // Hook d'interactions (like, bookmark, follow, share)
+  const {
+    liked,
+    bookmarked,
+    followed,
+    loading: interactionLoading,
+    handleLike,
+    handleBookmark,
+    handleFollow,
+    handleShare,
+  } = useInteractions("match", !isNaN(matchId) ? matchId : 0);
 
   // ─── Fallback PostgreSQL via React Query ────────────────────────
   const {
@@ -396,8 +411,7 @@ export default function MatchDetailPage() {
 
               {/* Commentaires */}
               <TabsContent value="comments" className="mt-6">
-                {/* <MatchComments matchId={matchId} /> */}
-                {"commentaires ici..."}
+                <MatchComments matchId={matchId} />
               </TabsContent>
             </Tabs>
           </div>
@@ -420,17 +434,40 @@ export default function MatchDetailPage() {
                       </span>
                     </div>
                   )}
-                  <Button className="w-full gap-2">
-                    <Bell className="h-4 w-4" />
-                    Suivre ce match
+                  <Button
+                    variant={followed ? "default" : "outline"}
+                    className="w-full gap-2"
+                    onClick={handleFollow}
+                    disabled={interactionLoading}
+                  >
+                    <Bell className={`h-4 w-4 ${followed ? "fill-current" : ""}`} />
+                    {followed ? "Match suivi" : "Suivre ce match"}
                   </Button>
-                  <Button variant="outline" className="w-full gap-2">
+                  <Button
+                    variant={liked ? "default" : "outline"}
+                    className="w-full gap-2"
+                    onClick={handleLike}
+                    disabled={interactionLoading}
+                  >
+                    <Heart className={`h-4 w-4 ${liked ? "fill-current text-red-500" : ""}`} />
+                    {liked ? "Aimé" : "J'aime"}
+                  </Button>
+                  <Button
+                    variant={bookmarked ? "default" : "outline"}
+                    className="w-full gap-2"
+                    onClick={handleBookmark}
+                    disabled={interactionLoading}
+                  >
+                    <Bookmark className={`h-4 w-4 ${bookmarked ? "fill-current" : ""}`} />
+                    {bookmarked ? "Sauvegardé" : "Sauvegarder"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => handleShare("copy")}
+                  >
                     <Share2 className="h-4 w-4" />
                     Partager
-                  </Button>
-                  <Button variant="outline" className="w-full gap-2">
-                    <Bookmark className="h-4 w-4" />
-                    Sauvegarder
                   </Button>
                   <Button
                     variant="outline"

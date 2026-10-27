@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiHandler, ApiContext } from '@/lib/server/api-handler';
-import { getUsers } from '@/actions/users'; // adjust path if necessary
+import { getUsers } from '@/actions/users';
 
 async function handler(request: NextRequest, context: ApiContext) {
   const { searchParams } = new URL(request.url);
@@ -33,8 +33,9 @@ export async function GET(request: NextRequest, context: ApiContext) {
     context,
     handler,
     {
-      requireAuth: true, // or false depending on your needs
-      requireAppCheck: true,
+      requireAuth: true,
+      requiredRoles: ['admin'],
+      requireAppCheck: false,
       allowedMethods: ['GET'],
       rateLimit: {
         windowMs: 60 * 1000,

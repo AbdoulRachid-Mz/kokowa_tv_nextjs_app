@@ -1,10 +1,10 @@
 // components/matches/match-detail-header.tsx
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Typography } from '@/components/ui/typography'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Match } from '@/types'
 import { 
   Target, 
@@ -14,58 +14,100 @@ import {
   Trophy, 
   Clock, 
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Timer
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import { useQuery } from '@tanstack/react-query'
 
 interface MatchDetailHeaderProps {
   match: Match
 }
 
 export function MatchDetailHeader({ match }: MatchDetailHeaderProps) {
+  // Récupérer match_duration depuis app_settings
+  const { data: appSettings } = useQuery({
+    queryKey: ['app-settings-public'],
+    queryFn: async () => {
+      const res = await fetch('/api/app-settings?all=true')
+      if (!res.ok) return null
+      return res.json()
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+
+  // Durée officielle en secondes (défaut : 300s = 5 minutes)
+  const officialDurationSeconds = Number(appSettings?.match_duration) || 300
+
+  // Chronomètre en temps réel si match en direct
+  const [countdown, setCountdown] = useState<number>(officialDurationSeconds)
+
+  useEffect(() => {
+    setCountdown(officialDurationSeconds)
+  }, [officialDurationSeconds])
+
+  useEffect(() => {
+    if (match.status !== 'live') return
+
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) return 0
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [match.status])
+
+  const formatTimer = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60)
+    const secs = totalSec % 60
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
+
   const getStatusInfo = (status: string) => {
     switch (status) {
       case 'live':
         return { 
           label: 'EN DIRECT', 
-          color: 'bg-red-100 text-red-800 border-red-200',
+          color: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-400',
           icon: <div className="h-3 w-3 bg-red-500 rounded-full animate-pulse" />
         }
       case 'round_break':
         return { 
           label: 'PAUSE', 
-          color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          color: 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-400',
           icon: <Clock className="h-4 w-4" />
         }
       case 'scheduled':
         return { 
           label: 'PROGRAMMÉ', 
-          color: 'bg-blue-100 text-blue-800 border-blue-200',
+          color: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400',
           icon: <Calendar className="h-4 w-4" />
         }
       case 'completed':
         return { 
           label: 'TERMINÉ', 
-          color: 'bg-green-100 text-green-800 border-green-200',
+          color: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-950/40 dark:text-green-400',
           icon: <Trophy className="h-4 w-4" />
         }
       case 'postponed':
         return { 
           label: 'REPORTÉ', 
-          color: 'bg-orange-100 text-orange-800 border-orange-200',
+          color: 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/40 dark:text-orange-400',
           icon: <AlertCircle className="h-4 w-4" />
         }
       case 'cancelled':
         return { 
           label: 'ANNULÉ', 
-          color: 'bg-gray-100 text-gray-800 border-gray-200',
+          color: 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-400',
           icon: <AlertCircle className="h-4 w-4" />
         }
       case 'reclamation':
         return { 
           label: 'RÉCLAMATION', 
-          color: 'bg-purple-100 text-purple-800 border-purple-200',
+          color: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-400',
           icon: <TrendingUp className="h-4 w-4" />
         }
       default:
@@ -92,9 +134,9 @@ export function MatchDetailHeader({ match }: MatchDetailHeaderProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          {/* Navigation et statut */}
+          {/* Navigation, statut et chronomètre en direct */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
                 {statusInfo.icon}
                 <Badge variant="outline" className={statusInfo.color}>
@@ -102,6 +144,19 @@ export function MatchDetailHeader({ match }: MatchDetailHeaderProps) {
                 </Badge>
               </div>
               
+              {/* Chronomètre officiel en temps réel pour le match live */}
+              {match.status === 'live' && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/30 rounded-full">
+                  <Timer className="h-4 w-4 text-red-600 animate-spin" />
+                  <span className="font-mono font-bold text-sm text-red-600 dark:text-red-400">
+                    {formatTimer(countdown)}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                    (officiel {Math.floor(officialDurationSeconds / 60)} min)
+                  </span>
+                </div>
+              )}
+
               {match.match_result && (
                 <Badge variant="secondary" className="gap-2">
                   <Trophy className="h-3 w-3" />
@@ -182,15 +237,27 @@ export function MatchDetailHeader({ match }: MatchDetailHeaderProps) {
               </div>
             )}
 
-            {match.total_duration && (
+            {match.total_duration ? (
               <div className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <Typography variant="body-sm" theme="muted">
-                    Durée
+                    Durée officielle
                   </Typography>
                   <Typography variant="body-base" weight="medium">
                     {match.total_duration}
+                  </Typography>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <Typography variant="body-sm" theme="muted">
+                    Règlement
+                  </Typography>
+                  <Typography variant="body-base" weight="medium">
+                    {Math.floor(officialDurationSeconds / 60)} minutes
                   </Typography>
                 </div>
               </div>

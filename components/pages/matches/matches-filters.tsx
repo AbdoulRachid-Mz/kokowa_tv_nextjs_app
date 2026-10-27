@@ -144,8 +144,8 @@ export function MatchesFilters({
                 Édition
               </Typography>
               <Select
-                value={selectedEdition?.toString()}
-                onValueChange={(value) => handleEditionChange(value ? parseInt(value) : undefined)}
+                value={selectedEdition ? String(selectedEdition) : "all"}
+                onValueChange={(value) => handleEditionChange(value && value !== "all" ? parseInt(value) : undefined)}
                 disabled={loading}
               >
                 <SelectTrigger>
@@ -168,8 +168,8 @@ export function MatchesFilters({
                 Phase
               </Typography>
               <Select
-                value={selectedPhase?.toString()}
-                onValueChange={(value) => handlePhaseChange(value ? parseInt(value) : undefined)}
+                value={selectedPhase ? String(selectedPhase) : "all"}
+                onValueChange={(value) => handlePhaseChange(value && value !== "all" ? parseInt(value) : undefined)}
                 disabled={loading || !selectedEdition}
               >
                 <SelectTrigger>
@@ -192,8 +192,8 @@ export function MatchesFilters({
                 Groupe
               </Typography>
               <Select
-                value={selectedGroup?.toString()}
-                onValueChange={(value) => handleGroupChange(value ? parseInt(value) : undefined)}
+                value={selectedGroup ? String(selectedGroup) : "all"}
+                onValueChange={(value) => handleGroupChange(value && value !== "all" ? parseInt(value) : undefined)}
                 disabled={loading || !selectedPhase}
               >
                 <SelectTrigger>
@@ -216,8 +216,8 @@ export function MatchesFilters({
                 Rencontre
               </Typography>
               <Select
-                value={selectedSubGroup?.toString()}
-                onValueChange={(value) => handleSubGroupChange(value ? parseInt(value) : undefined)}
+                value={selectedSubGroup ? String(selectedSubGroup) : "all"}
+                onValueChange={(value) => handleSubGroupChange(value && value !== "all" ? parseInt(value) : undefined)}
                 disabled={loading || !selectedGroup}
               >
                 <SelectTrigger>
@@ -240,8 +240,8 @@ export function MatchesFilters({
                 Statut
               </Typography>
               <Select
-                value={selectedStatus}
-                onValueChange={handleStatusChange}
+                value={selectedStatus || "all"}
+                onValueChange={(val) => handleStatusChange(val && val !== "all" ? val : undefined)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Tous les statuts" />

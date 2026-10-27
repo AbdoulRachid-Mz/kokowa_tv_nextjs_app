@@ -27,7 +27,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
     // Récupérer le token depuis les cookies ou headers
     const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
+    const token = cookieStore.get('token')?.value || cookieStore.get('firebase_session')?.value;
 
     if (!token) {
       return null;
@@ -36,7 +36,8 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     // Créer une requête simulée pour utiliser verifyFirebaseToken
     const mockRequest = new Request('http://localhost', {
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'Cookie': `firebase_session=${token}; token=${token}`
       }
     });
 

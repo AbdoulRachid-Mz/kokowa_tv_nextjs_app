@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createMobileMessage, getMobileMessages } from '@/actions/mobile/messages';
 import { MobileMessageFilters } from '@/types';
+import { verifyFirebaseToken } from '@/lib/server/auth-middleware';
 
 export async function GET(req: NextRequest) {
   try {
@@ -74,6 +75,41 @@ export async function POST(req: NextRequest) {
           },
         },
         { status: 415 }
+      );
+    }
+
+    // 🛡️ Vérification de sécurité : si un token Bearer est fourni, forcer l'authId de l'utilisateur vérifié
+    const authHeader = req.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const authResult = await verifyFirebaseToken(req);
+      if (authResult.user) {
+        body.authId = authResult.user.uid;
+      } else {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 401,
+              message: authResult.error || 'Token d\'authentification invalide',
+              timestamp: new Date().toISOString(),
+            },
+          },
+          { status: 401 }
+        );
+      }
+    }
+
+    if (!body.authId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 401,
+            message: 'Identifiant d\'authentification requis pour publier un message',
+            timestamp: new Date().toISOString(),
+          },
+        },
+        { status: 401 }
       );
     }
 

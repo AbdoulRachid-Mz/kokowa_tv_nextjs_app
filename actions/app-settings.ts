@@ -6,6 +6,16 @@ import { appSettingSchema, appSettingUpdateSchema } from '@/validation/schemas';
 import { revalidatePath } from 'next/cache';
 import { AppSetting, AppSettingFilters, PaginatedResponse, AppSettings } from '@/types';
 
+// Cache mémoire serveur pour éliminer la latence sur les lectures répétitives
+let cachedSettings: AppSettings | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export async function invalidateAppSettingsCache() {
+  cachedSettings = null;
+  cacheTimestamp = 0;
+}
+
 export async function getAppSettings(
   filters: AppSettingFilters = {}
 ): Promise<PaginatedResponse<AppSetting>> {
@@ -147,6 +157,10 @@ export async function getPublicAppSettings() {
 
 
 export async function getAllAppSettings(): Promise<AppSettings> {
+  // Vérifier le cache mémoire serveur
+  if (cachedSettings && Date.now() - cacheTimestamp < CACHE_TTL_MS) {
+    return cachedSettings;
+  }
   try {
     const sql = 'SELECT * FROM app_settings ORDER BY category, setting_key';
     const result = await query<AppSetting>(sql);
@@ -202,7 +216,8 @@ export async function getAllAppSettings(): Promise<AppSettings> {
 
     // ✅ Fusionner avec les valeurs par défaut
     const finalSettings = { ...defaultSettings, ...settings };
-
+    cachedSettings = finalSettings;
+    cacheTimestamp = Date.now();
     return finalSettings;
   } catch (error) {
     console.error('Error in getAllAppSettings:', error);
@@ -270,6 +285,7 @@ export async function createAppSetting(formData: FormData) {
       validatedData.is_editable,
     ]);
 
+    await invalidateAppSettingsCache();
     revalidatePath('/admin/settings');
     return {
       success: true,
@@ -314,6 +330,7 @@ export async function updateAppSetting(key: string, formData: FormData) {
       key,
     ]);
 
+    await invalidateAppSettingsCache();
     revalidatePath('/admin/settings');
     revalidatePath('/');
     return {
@@ -340,6 +357,7 @@ export async function deleteAppSetting(key: string) {
     const sql = 'DELETE FROM app_settings WHERE setting_key = $1';
     await query(sql, [key]);
 
+    await invalidateAppSettingsCache();
     revalidatePath('/admin/settings');
     return {
       success: true,

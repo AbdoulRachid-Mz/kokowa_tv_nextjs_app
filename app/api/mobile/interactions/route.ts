@@ -1,8 +1,8 @@
 import { createMobileInteraction, getMobileInteractions } from "@/actions/mobile/interactions";
 import { InteractionType } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
+import { verifyFirebaseToken } from "@/lib/server/auth-middleware";
 
-//Replace userId with authId in GET route filters to match the new interface field
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -49,10 +49,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Normalisation des types
-    data.userId = Number(data.userId);
-    data.entityId = Number(data.entityId);
+    // 🛡️ Vérification de sécurité : si un token Bearer est fourni, forcer l'authId de l'utilisateur vérifié
+    const authHeader = req.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const authResult = await verifyFirebaseToken(req);
+      if (authResult.user) {
+        data.authId = authResult.user.uid;
+      } else {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 401,
+              message: authResult.error || "Token d'authentification invalide",
+              timestamp: new Date().toISOString(),
+            },
+          },
+          { status: 401 }
+        );
+      }
+    }
 
+    // Normalisation des types
+    if (data.userId) data.userId = Number(data.userId);
+    if (data.entityId) data.entityId = Number(data.entityId);
 
     const result = await createMobileInteraction(data);
 
@@ -69,4 +89,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

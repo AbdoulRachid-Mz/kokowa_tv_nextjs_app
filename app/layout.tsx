@@ -7,6 +7,7 @@ import { AppSettingsProvider } from "@/contexts/app-settings-context";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { MainLayout } from "@/components/layout/main-layout";
 import QueryProvider from "@/providers/query-provider";
+import { AppCheckProvider } from "@/components/providers/app-check-provider";
 import localFont from 'next/font/local'
 import { Suspense } from "react";
 
@@ -97,24 +98,26 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <body className={`${inter.className} antialiased`}>
-        <QueryProvider>
-          <AuthProvider>
-            <AppSettingsProvider>
-              <ThemeProvider
-                attribute="class"
-                defaultTheme="system"
-                enableSystem
-                disableTransitionOnChange
-              >
-                <Suspense fallback={null}>
-                  <MainLayout>
-                    {children}
-                  </MainLayout>
-                </Suspense>
-              </ThemeProvider>
-            </AppSettingsProvider>
-          </AuthProvider>
-        </QueryProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AppCheckProvider>
+            <QueryProvider>
+              <AuthProvider>
+                <AppSettingsProvider>
+                  <Suspense fallback={null}>
+                    <MainLayout>
+                      {children}
+                    </MainLayout>
+                  </Suspense>
+                </AppSettingsProvider>
+              </AuthProvider>
+            </QueryProvider>
+          </AppCheckProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

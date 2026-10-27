@@ -39,7 +39,8 @@ export function useAuth() {
       if (syncResponse.ok) {
         const syncResult = await syncResponse.json();
         if (syncResult.success && syncResult.data) {
-          setUserDocument(syncResult.data.db);
+          const dbDoc = syncResult.data.db;
+          setUserDocument(dbDoc);
           setUser({
             uid: syncResult.data.firebase.uid,
             email: syncResult.data.firebase.email,
@@ -47,6 +48,7 @@ export function useAuth() {
             emailVerified: syncResult.data.firebase.emailVerified,
             phoneNumber: firebaseUser.phoneNumber,
             photoURL: firebaseUser.photoURL,
+            userDocument: dbDoc,
           });
           return;
         }
@@ -58,7 +60,8 @@ export function useAuth() {
       if (meResponse.ok) {
         const result = await meResponse.json();
         if (result.success && result.data) {
-          setUserDocument(result.data.db);
+          const dbDoc = result.data.db;
+          setUserDocument(dbDoc);
           setUser({
             uid: result.data.firebase.uid,
             email: result.data.firebase.email,
@@ -66,6 +69,7 @@ export function useAuth() {
             emailVerified: result.data.firebase.emailVerified,
             phoneNumber: firebaseUser.phoneNumber,
             photoURL: firebaseUser.photoURL,
+            userDocument: dbDoc,
           });
           return;
         }

@@ -2,11 +2,19 @@
 'use server';
 
 import { query, queryOne, QueryValue } from '@/lib/db/neon-client';
+import { hasRole } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import fs from 'fs';
 import path from 'path';
 
 // Types
+async function assertAdmin(): Promise<void> {
+  const isAdmin = await hasRole('admin');
+  if (!isAdmin) {
+    throw new Error('Accès refusé : privilèges administrateur requis.');
+  }
+}
+
 export interface TableColumn {
   name: string;
   type: string;
@@ -334,6 +342,7 @@ export async function getAllTablesWithRelations(): Promise<TableInfo[]> {
 
 // Fonction pour vider toutes les tables (truncate)
 export async function resetDatabase() {
+  await assertAdmin();
   try {
     const tableNames = await getAllTableNames();
     
@@ -362,6 +371,7 @@ export async function resetDatabase() {
 
 // Fonction pour supprimer toutes les tables (drop)
 export async function deleteAllTables() {
+  await assertAdmin();
   try {
     const tableNames = await getAllTableNames();
     
@@ -453,6 +463,7 @@ const BACKUPS_ROOT = path.join(process.cwd(), 'database/backups');
  * Organise les exports dans des dossiers par date
  */
 export async function exportTableData(tableName?: string, snapshotName?: string) {
+  await assertAdmin();
   try {
     const dateDir = snapshotName || new Date().toISOString().split('T')[0];
     const dataDir = path.join(BACKUPS_ROOT, dateDir);
@@ -519,6 +530,7 @@ export async function getAvailableBackups() {
  * Importe les données depuis les fichiers JSON vers la base de données
  */
 export async function importTableData(tableName?: string, snapshotName: string = 'latest') {
+  await assertAdmin();
   try {
     const dataDir = path.join(BACKUPS_ROOT, snapshotName);
     

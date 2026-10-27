@@ -1,5 +1,7 @@
 // @/lib/server/app-check.ts
-import * as admin from 'firebase-admin';
+import rawAdmin from 'firebase-admin';
+
+const admin: typeof rawAdmin = (rawAdmin as any)?.default || rawAdmin;
 
 export interface AppCheckResult {
   success: boolean;
@@ -16,16 +18,21 @@ export async function verifyAppCheckToken(token: string): Promise<AppCheckResult
     // Vérifier le token App Check
     const appCheckToken = await admin.appCheck().verifyToken(token);
     
-    // Vérifier que le token provient de notre app Firebase
-    const expectedAppId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
-    if (expectedAppId && appCheckToken.appId !== expectedAppId) {
-      console.error('App ID Firebase ne correspond pas:', {
-        expected: expectedAppId,
+    // Vérifier que le token provient d'une application autorisée (Web ou Mobile Flutter)
+    const allowedAppIds = [
+      process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+      process.env.FIREBASE_ANDROID_APP_ID,
+      process.env.FIREBASE_IOS_APP_ID,
+    ].filter(Boolean);
+
+    if (allowedAppIds.length > 0 && !allowedAppIds.includes(appCheckToken.appId)) {
+      console.error('App ID Firebase non reconnu:', {
+        allowed: allowedAppIds,
         received: appCheckToken.appId,
       });
       return {
         success: false,
-        error: 'Token App Check invalide',
+        error: 'Token App Check non autorisé',
       };
     }
     

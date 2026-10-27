@@ -66,7 +66,7 @@ export function SimpleMatchCard({
   };
 
   const handleCardClick = () => {
-    router.push(`/ad/sub-groups/${subGroupId}/matches/${match.id}`);
+    router.push(`/ad/matches/${match.id}`);
   };
 
   const handleEditClick = (e: React.MouseEvent) => {

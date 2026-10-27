@@ -1,6 +1,7 @@
 "use client";
 
-import type React from "react";
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   EnhancedDashboard,
   SidebarHeader,
@@ -29,10 +30,28 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuthContext();
+  const { user, userDocument, loading, isAdmin, isEditor, isModerator, isFighterManager } = useAuthContext();
   const { isActive } = useActiveRoute();
+  const router = useRouter();
 
-  if (loading) {
+  const allowedRoles = ["admin", "editor", "moderator", "fighter_manager"];
+  const userRole = userDocument?.role || user?.userDocument?.role;
+  const isAuthorized = Boolean(
+    (userRole && allowedRoles.includes(userRole)) ||
+    isAdmin || isEditor || isModerator || isFighterManager
+  );
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/auth/login?redirect=/ad");
+      } else if (!isAuthorized) {
+        router.push("/unauthorized");
+      }
+    }
+  }, [user, loading, isAuthorized, router]);
+
+  if (loading || !isAuthorized) {
     return <PageSkeleton type="dashboard" />;
   }
 
@@ -58,8 +77,8 @@ export default function AdminLayout({
       <SidebarHeader
         title="Administration"
         user={{
-          username: user?.displayName || "user",
-          level: user?.userDocument?.role || "user",
+          username: user?.displayName || userDocument?.username || "user",
+          level: userRole || "user",
         }}
       />
 

@@ -718,7 +718,9 @@ export interface MatchFilters extends BaseFilters {
   edition_id?: number;
   phase_id?: number;
   group_id?: number;
+  competition_id?: number;
   status?: 'scheduled' | 'live' | 'round_break' | 'completed' | 'cancelled' | 'postponed' | 'reclamation';
+  date?: string;
   date_from?: string;
   date_to?: string;
   is_active?: boolean;
@@ -726,7 +728,7 @@ export interface MatchFilters extends BaseFilters {
   with_fighters?: boolean;
   with_winner?: boolean;
   with_cards?: boolean;
-  period?: 'today' | 'week' | 'month'; // NOUVEAU
+  period?: 'today' | 'week' | 'month' | 'matin' | 'soir';
 }
 
 export interface EditionFighterFilters extends BaseFilters {

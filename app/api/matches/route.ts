@@ -7,14 +7,23 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
+    const subGroupParam = searchParams.get('sub_group_id') || searchParams.get('sub-group') || searchParams.get('sub_group');
+    const editionParam = searchParams.get('edition_id') || searchParams.get('edition');
+    const phaseParam = searchParams.get('phase_id') || searchParams.get('phase');
+    const groupParam = searchParams.get('group_id') || searchParams.get('group');
+    const competitionParam = searchParams.get('competition_id') || searchParams.get('competition');
+
     const filters: MatchFilters = {
-      sub_group_id: searchParams.get('sub_group_id') ? Number(searchParams.get('sub_group_id')) : undefined,
-      edition_id: searchParams.get('edition_id') ? Number(searchParams.get('edition_id')) : undefined,
-      phase_id: searchParams.get('phase_id') ? Number(searchParams.get('phase_id')) : undefined,
-      group_id: searchParams.get('group_id') ? Number(searchParams.get('group_id')) : undefined,
+      sub_group_id: subGroupParam ? Number(subGroupParam) : undefined,
+      edition_id: editionParam ? Number(editionParam) : undefined,
+      phase_id: phaseParam ? Number(phaseParam) : undefined,
+      group_id: groupParam ? Number(groupParam) : undefined,
+      competition_id: competitionParam ? Number(competitionParam) : undefined,
       status: (searchParams.get('status') as MatchFilters['status']) || undefined,
+      date: searchParams.get('date') || undefined,
       date_from: searchParams.get('date_from') || undefined,
       date_to: searchParams.get('date_to') || undefined,
+      period: (searchParams.get('period') as MatchFilters['period']) || undefined,
       search: searchParams.get('search') || undefined,
       is_active: searchParams.get('is_active') ? searchParams.get('is_active') === 'true' : undefined,
       page: searchParams.get('page') ? Number(searchParams.get('page')) : 1,

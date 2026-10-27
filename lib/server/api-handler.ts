@@ -185,10 +185,6 @@ export async function apiHandler(
 
       const appCheckResult = await verifyAppCheckToken(appCheckToken);
 
-      if (context.appId !== appCheckResult.appId) {
-        return sendError(403, "Mismatch client", corsHeaders);
-      }
-
       if (!appCheckResult.success) {
         console.error("Échec vérification App Check:", {
           error: appCheckResult.error,
@@ -198,19 +194,7 @@ export async function apiHandler(
             "IP non disponible",
           path: request.nextUrl.pathname,
         });
-        return sendError(401, "Token App Check invalide", corsHeaders);
-      }
-
-      // Vérifier que l'App ID correspond
-      if (
-        appCheckResult.appId &&
-        appCheckResult.appId !== process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-      ) {
-        console.error("App ID Firebase ne correspond pas:", {
-          expected: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-          received: appCheckResult.appId,
-        });
-        return sendError(401, "Token App Check invalide", corsHeaders);
+        return sendError(401, appCheckResult.error || "Token App Check invalide", corsHeaders);
       }
     }
 

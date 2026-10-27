@@ -40,7 +40,7 @@ export const publicMenuGroups: HeaderMenuGroup[] = [
     items: [
       { title: "Compétitions", url: "/competitions", icon: TrophyIcon, description: "Toutes les compétitions" },
       { title: "Editions", url: "/editions", icon: TrophyIcon, description: "Toutes les éditions" },
-      { title: "Matchs en direct", url: "/matches/live", icon: CalendarDays, description: "Matchs en direct" },
+      { title: "Matchs en direct", url: "/matches?live=true", icon: CalendarDays, description: "Matchs en direct" },
       { title: "Calendrier", url: "/matches", icon: Calendar, description: "Calendrier des matchs" },
     ]
   },

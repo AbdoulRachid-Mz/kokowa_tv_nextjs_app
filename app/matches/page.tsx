@@ -1,7 +1,8 @@
 // app/matches/page.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { MatchesHeader } from "@/components/pages/matches/matches-header";
 import { MatchesFilters } from "@/components/pages/matches/matches-filters";
@@ -12,30 +13,70 @@ import { Typography } from "@/components/ui/typography";
 import { useMatches } from "@/hooks/use-matches";
 import { useMatchFilters } from "@/hooks/use-match-filters";
 import {
-  Calendar,
   Grid,
   List,
   RefreshCw,
-  Filter,
   Eye,
   EyeOff,
+  ChevronLeft,
+  ChevronRight,
+  FilterX,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MatchesList } from "@/components/pages/matches/matches-list";
 import { MatchesStats } from "@/components/pages/matches/matches-stats";
+import { MatchFilters } from "@/types";
 
-export default function MatchesPage() {
+function MatchesContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(true);
   const [activeTab, setActiveTab] = useState<
     "all" | "live" | "upcoming" | "completed"
   >("all");
-  const [appliedFilters, setAppliedFilters] = useState<any>({});
 
-  // Gestion des filtres
-  const filterState = useMatchFilters();
+  // Extraire les filtres initiaux depuis l'URL (searchParams)
+  const initialUrlFilters = useMemo<MatchFilters>(() => {
+    const f: MatchFilters = {};
+    const status = searchParams.get("status");
+    const date = searchParams.get("date");
+    const period = searchParams.get("period");
+    const edition = searchParams.get("edition") || searchParams.get("edition_id");
+    const group = searchParams.get("group") || searchParams.get("group_id");
+    const subGroup =
+      searchParams.get("sub-group") ||
+      searchParams.get("sub_group") ||
+      searchParams.get("sub_group_id");
+    const phase = searchParams.get("phase") || searchParams.get("phase_id");
+    const competition =
+      searchParams.get("competition") || searchParams.get("competition_id");
+    const page = searchParams.get("page");
 
-  // Gestion des matches avec filtres - utiliser appliedFilters
+    if (status) f.status = status as MatchFilters["status"];
+    if (date) f.date = date;
+    if (period) f.period = period as MatchFilters["period"];
+    if (edition) f.edition_id = Number(edition);
+    if (group) f.group_id = Number(group);
+    if (subGroup) f.sub_group_id = Number(subGroup);
+    if (phase) f.phase_id = Number(phase);
+    if (competition) f.competition_id = Number(competition);
+    if (page) f.page = Number(page);
+
+    return f;
+  }, [searchParams]);
+
+  // Hook de gestion des filtres UI
+  const filterState = useMatchFilters({
+    initialEditionId: initialUrlFilters.edition_id,
+    initialPhaseId: initialUrlFilters.phase_id,
+    initialGroupId: initialUrlFilters.group_id,
+  });
+
+  const [appliedFilters, setAppliedFilters] = useState<MatchFilters>(initialUrlFilters);
+
+  // Hook des matches avec autoFetch TOUJOURS à true pour garantir le chargement initial immédiat
   const {
     matches,
     matchesByStatus,
@@ -50,19 +91,51 @@ export default function MatchesPage() {
   } = useMatches({
     initialFilters: appliedFilters,
     priorityOrder: true,
-    autoFetch: Object.keys(appliedFilters).length > 0, // Ne pas auto-fetch si pas de filtres
+    autoFetch: true, // Corrigé : Ne jamais laisser false au chargement initial
   });
 
-  // Appliquer les filtres avec un délai pour éviter les requêtes multiples
+  // Synchroniser les filtres du composant de filtre avec appliedFilters et updateFilters
   useEffect(() => {
     const timer = setTimeout(() => {
-      setAppliedFilters(filterState.buildFilters);
-    }, 300); // Délai de 300ms pour éviter les requêtes multiples
+      const built = filterState.buildFilters;
+      const merged: MatchFilters = {
+        ...initialUrlFilters,
+        ...built,
+      };
+      setAppliedFilters(merged);
+      updateFilters(merged);
+    }, 250);
 
     return () => clearTimeout(timer);
-  }, [filterState.buildFilters]);
+  }, [filterState.buildFilters, initialUrlFilters, updateFilters]);
 
-  // Gestion des erreurs
+  // Déclencher manuellement la recherche
+  const handleSearch = useCallback(() => {
+    const built = filterState.buildFilters;
+    const merged: MatchFilters = {
+      ...initialUrlFilters,
+      ...built,
+    };
+    setAppliedFilters(merged);
+    updateFilters(merged);
+  }, [filterState.buildFilters, initialUrlFilters, updateFilters]);
+
+  // Filtrer les matches selon l'onglet actif
+  const getFilteredMatches = () => {
+    switch (activeTab) {
+      case "live":
+        return matchesByStatus.live;
+      case "upcoming":
+        return matchesByStatus.upcoming;
+      case "completed":
+        return matchesByStatus.completed;
+      default:
+        return matches;
+    }
+  };
+
+  const filteredMatches = getFilteredMatches();
+
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -81,27 +154,6 @@ export default function MatchesPage() {
       </div>
     );
   }
-
-  // Filtrer les matches selon l'onglet actif
-  const getFilteredMatches = () => {
-    switch (activeTab) {
-      case "live":
-        return matchesByStatus.live;
-      case "upcoming":
-        return matchesByStatus.upcoming;
-      case "completed":
-        return matchesByStatus.completed;
-      default:
-        return matches;
-    }
-  };
-
-  const filteredMatches = getFilteredMatches();
-
-  // Fonction pour déclencher manuellement une recherche
-  const handleSearch = useCallback(() => {
-    setAppliedFilters(filterState.buildFilters);
-  }, [filterState.buildFilters]);
 
   return (
     <motion.div
@@ -129,13 +181,12 @@ export default function MatchesPage() {
             >
               <div className="sticky top-6">
                 <MatchesFilters {...filterState} />
-                {/* Bouton de recherche */}
                 <Button
                   className="w-full mt-4"
                   onClick={handleSearch}
-                  disabled={filterState.loading}
+                  disabled={filterState.loading || isLoading}
                 >
-                  {filterState.loading ? (
+                  {filterState.loading || isLoading ? (
                     <>
                       <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                       Chargement...
@@ -210,33 +261,50 @@ export default function MatchesPage() {
             </div>
 
             {/* Affichage des filtres actifs */}
-            {Object.keys(appliedFilters).length > 0 && (
-              <div className="mb-6 p-4 bg-muted/30 rounded-lg">
-                <Typography variant="body-sm" weight="medium" className="mb-2">
-                  Filtres appliqués:
-                </Typography>
-                <div className="flex flex-wrap gap-2">
+            {Object.keys(appliedFilters).filter((k) => appliedFilters[k as keyof MatchFilters] !== undefined && k !== "page" && k !== "limit").length > 0 && (
+              <div className="mb-6 p-4 bg-muted/30 rounded-lg flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Typography variant="body-sm" weight="medium" className="mr-2">
+                    Filtres actifs :
+                  </Typography>
+                  {appliedFilters.competition_id && (
+                    <Badge variant="secondary">Compétition #{appliedFilters.competition_id}</Badge>
+                  )}
                   {appliedFilters.edition_id && (
-                    <Badge variant="secondary">
-                      Édition: {appliedFilters.edition_id}
-                    </Badge>
+                    <Badge variant="secondary">Édition #{appliedFilters.edition_id}</Badge>
                   )}
                   {appliedFilters.phase_id && (
-                    <Badge variant="secondary">
-                      Phase: {appliedFilters.phase_id}
-                    </Badge>
+                    <Badge variant="secondary">Phase #{appliedFilters.phase_id}</Badge>
                   )}
                   {appliedFilters.group_id && (
-                    <Badge variant="secondary">
-                      Groupe: {appliedFilters.group_id}
-                    </Badge>
+                    <Badge variant="secondary">Groupe #{appliedFilters.group_id}</Badge>
+                  )}
+                  {appliedFilters.sub_group_id && (
+                    <Badge variant="secondary">Rencontre #{appliedFilters.sub_group_id}</Badge>
                   )}
                   {appliedFilters.status && (
-                    <Badge variant="secondary">
-                      Statut: {appliedFilters.status}
-                    </Badge>
+                    <Badge variant="secondary">Statut : {appliedFilters.status}</Badge>
+                  )}
+                  {appliedFilters.date && (
+                    <Badge variant="secondary">Date : {appliedFilters.date}</Badge>
+                  )}
+                  {appliedFilters.period && (
+                    <Badge variant="secondary">Période : {appliedFilters.period}</Badge>
                   )}
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    filterState.resetAll();
+                    setAppliedFilters({});
+                    updateFilters({});
+                  }}
+                  className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1"
+                >
+                  <FilterX className="h-3 w-3" />
+                  Effacer tout
+                </Button>
               </div>
             )}
 
@@ -292,7 +360,16 @@ export default function MatchesPage() {
               </TabsContent>
 
               <TabsContent value="live" className="mt-6">
-                {matchesByStatus.live.length === 0 ? (
+                {isLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-64 bg-muted animate-pulse rounded-xl"
+                      />
+                    ))}
+                  </div>
+                ) : matchesByStatus.live.length === 0 ? (
                   <div className="text-center py-12">
                     <Typography variant="h4" className="mb-4">
                       Aucun match en direct
@@ -309,7 +386,16 @@ export default function MatchesPage() {
               </TabsContent>
 
               <TabsContent value="upcoming" className="mt-6">
-                {matchesByStatus.upcoming.length === 0 ? (
+                {isLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-64 bg-muted animate-pulse rounded-xl"
+                      />
+                    ))}
+                  </div>
+                ) : matchesByStatus.upcoming.length === 0 ? (
                   <div className="text-center py-12">
                     <Typography variant="h4" className="mb-4">
                       Aucun match à venir
@@ -326,7 +412,16 @@ export default function MatchesPage() {
               </TabsContent>
 
               <TabsContent value="completed" className="mt-6">
-                {matchesByStatus.completed.length === 0 ? (
+                {isLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-64 bg-muted animate-pulse rounded-xl"
+                      />
+                    ))}
+                  </div>
+                ) : matchesByStatus.completed.length === 0 ? (
                   <div className="text-center py-12">
                     <Typography variant="h4" className="mb-4">
                       Aucun match terminé
@@ -343,21 +438,44 @@ export default function MatchesPage() {
               </TabsContent>
             </Tabs>
 
-            {/* Pagination */}
+            {/* Pagination fonctionnelle */}
             {stats.totalPages > 1 && (
-              <div className="flex justify-between items-center mt-8 pt-6 border-t">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-8 pt-6 border-t">
                 <Button
                   variant="outline"
                   onClick={prevPage}
                   disabled={!stats.hasPrev || isLoading}
                   className="gap-2"
                 >
+                  <ChevronLeft className="h-4 w-4" />
                   Précédent
                 </Button>
 
-                <Typography variant="body-sm" theme="muted">
-                  Page {stats.currentPage} sur {stats.totalPages}
-                </Typography>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(stats.totalPages, 5) }).map((_, idx) => {
+                    let pageNum = idx + 1;
+                    if (stats.totalPages > 5 && stats.currentPage > 3) {
+                      pageNum = stats.currentPage - 3 + idx;
+                      if (pageNum > stats.totalPages) pageNum = stats.totalPages - (4 - idx);
+                    }
+                    if (pageNum < 1) pageNum = 1;
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={stats.currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => goToPage(pageNum)}
+                        disabled={isLoading}
+                        className="h-8 w-8 p-0"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                  <Typography variant="body-sm" theme="muted" className="ml-2">
+                    sur {stats.totalPages}
+                  </Typography>
+                </div>
 
                 <Button
                   variant="outline"
@@ -366,6 +484,7 @@ export default function MatchesPage() {
                   className="gap-2"
                 >
                   Suivant
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
@@ -373,5 +492,22 @@ export default function MatchesPage() {
         </div>
       </div>
     </motion.div>
+  );
+}
+
+export default function MatchesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto px-4 py-12 text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary mb-4" />
+          <Typography variant="body-base" theme="muted">
+            Chargement des matches...
+          </Typography>
+        </div>
+      }
+    >
+      <MatchesContent />
+    </Suspense>
   );
 }

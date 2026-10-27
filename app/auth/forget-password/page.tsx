@@ -42,7 +42,7 @@ export default function ForgetPasswordPage() {
   };
 
   const handleBackToSignIn = () => {
-    router.push("/auth/signin");
+    router.push("/auth/sign-in");
   };
 
   return (

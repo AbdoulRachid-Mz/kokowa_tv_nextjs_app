@@ -2,9 +2,23 @@
 'use server';
 
 import { query, queryOne } from '@/lib/db/neon-client';
+import { hasRole } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { User, UserFilters, PaginatedResponse, CreateUserData, UpdateUserData } from '@/types';
 import { userSchema } from '@/validation/schemas';
+
+export async function sanitizeUser<T extends Record<string, any>>(user: T | null): Promise<T | null> {
+  if (!user) return null;
+  const { password_hash, ...safe } = user;
+  return safe as T;
+}
+
+async function assertAdmin(): Promise<void> {
+  const isAdmin = await hasRole('admin');
+  if (!isAdmin) {
+    throw new Error('Action non autorisée : privilèges administrateur requis');
+  }
+}
 
 export async function getUsers(
   filters: UserFilters = {}
@@ -503,7 +517,10 @@ export async function createUser(userData: CreateUserData) {
       validatedData.username,
       validatedData.email,
       validatedData.password_hash,
-      validatedData.role,
+      // Seul un admin peut attribuer un rôle élevé
+      (validatedData.role && validatedData.role !== 'user' && !(await hasRole('admin')))
+        ? 'user'
+        : (validatedData.role || 'user'),
       validatedData.first_name || null,
       validatedData.last_name || null,
       validatedData.profile_picture || null,
@@ -556,7 +573,10 @@ export async function updateUser(id: number, userData: UpdateUserData) {
     await query(sql, [
       userData.username || existing.username,
       userData.email || existing.email,
-      userData.role || existing.role,
+      // Seul un admin peut modifier le rôle d'un utilisateur
+      (userData.role && userData.role !== existing.role && !(await hasRole('admin')))
+        ? existing.role
+        : (userData.role || existing.role),
       userData.first_name ?? existing.first_name ?? null,
       (userData.last_name ?? existing.last_name) ?? null,
       (userData.profile_picture || existing.profile_picture) ?? null,
@@ -586,6 +606,7 @@ export async function updateUser(id: number, userData: UpdateUserData) {
 }
 
 export async function deleteUser(id: number) {
+  await assertAdmin();
   try {
     const existing = await getUserById(id);
     if (!existing) {
@@ -716,6 +737,7 @@ export async function getUsersForSelect() {
 }
 
 export async function changeUserRole(id: number, newRole: string) {
+  await assertAdmin();
   try {
     const validRoles = ['admin', 'editor', 'user', 'moderator', 'fighter_manager'];
     if (!validRoles.includes(newRole)) {

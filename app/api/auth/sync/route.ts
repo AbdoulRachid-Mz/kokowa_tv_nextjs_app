@@ -9,15 +9,16 @@ export const POST = (request: NextRequest, context: ApiContext) =>
     context,
     async (req, ctx) => {
       const body = await request.json().catch(() => ({}));
-      const { uid, email, displayName, photoURL, emailVerified } = body || {};
+      const { displayName, photoURL } = body || {};
 
+      // Sécurité : l'UID et l'email proviennent obligatoirement du token Firebase vérifié
       const firebaseUser = ctx.firebaseUser!;
       const dbUser = await getOrCreateUserFromFirebase({
-        uid: uid ?? firebaseUser.uid,
-        email: email ?? firebaseUser.email,
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
         displayName: displayName ?? firebaseUser.name,
         photoURL: photoURL ?? firebaseUser.picture,
-        emailVerified: emailVerified ?? firebaseUser.email_verified ?? false,
+        emailVerified: firebaseUser.email_verified ?? false,
       });
 
       return Response.json({

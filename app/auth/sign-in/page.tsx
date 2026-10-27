@@ -80,7 +80,7 @@ export default function SignInPage() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Ou{" "}
             <Link
-              href="/auth/signup"
+              href="/auth/sign-up"
               className="font-medium text-orange-600 hover:text-orange-500"
             >
               créez un nouveau compte

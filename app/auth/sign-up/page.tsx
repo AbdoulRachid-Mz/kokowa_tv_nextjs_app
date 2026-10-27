@@ -111,7 +111,7 @@ export default function SignUpPage() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Ou{" "}
             <Link
-              href="/auth/signin"
+              href="/auth/sign-in"
               className="font-medium text-orange-600 hover:text-orange-500"
             >
               connectez-vous à votre compte

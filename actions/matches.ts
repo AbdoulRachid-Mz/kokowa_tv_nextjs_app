@@ -29,9 +29,12 @@ export async function getMatches(
       edition_id,
       phase_id,
       group_id,
+      competition_id,
       status,
+      date,
       date_from,
       date_to,
+      period,
       search = '',
       page = 1,
       limit = 20,
@@ -59,6 +62,12 @@ export async function getMatches(
       paramIndex++;
     }
 
+    if (date) {
+      whereConditions.push(`DATE(m.match_date) = DATE($${paramIndex})`);
+      params.push(date);
+      paramIndex++;
+    }
+
     if (date_from) {
       whereConditions.push(`m.match_date >= $${paramIndex}`);
       params.push(date_from);
@@ -78,7 +87,7 @@ export async function getMatches(
     }
 
     // Jointures hiérarchiques pour les filtres
-    if (edition_id || phase_id || group_id || with_sub_group) {
+    if (competition_id || edition_id || phase_id || group_id || period || with_sub_group) {
       joinClauses.push(`
         LEFT JOIN sub_groups sg ON m.sub_group_id = sg.id
         LEFT JOIN phase_groups pg ON sg.group_id = pg.id
@@ -88,6 +97,12 @@ export async function getMatches(
     }
 
     // Filtres hiérarchiques
+    if (competition_id) {
+      whereConditions.push(`ce.competition_id = $${paramIndex}`);
+      params.push(competition_id);
+      paramIndex++;
+    }
+
     if (edition_id) {
       whereConditions.push(`ce.id = $${paramIndex}`);
       params.push(edition_id);
@@ -104,6 +119,20 @@ export async function getMatches(
       whereConditions.push(`pg.id = $${paramIndex}`);
       params.push(group_id);
       paramIndex++;
+    }
+
+    if (period) {
+      if (period === 'matin' || period === 'soir') {
+        whereConditions.push(`sg.period = $${paramIndex}`);
+        params.push(period);
+        paramIndex++;
+      } else if (period === 'today') {
+        whereConditions.push(`DATE(m.match_date) = CURRENT_DATE`);
+      } else if (period === 'week') {
+        whereConditions.push(`m.match_date >= CURRENT_DATE - INTERVAL '7 days'`);
+      } else if (period === 'month') {
+        whereConditions.push(`m.match_date >= CURRENT_DATE - INTERVAL '30 days'`);
+      }
     }
 
     // Jointures pour les relations
@@ -905,32 +934,56 @@ export async function createMatch(
   try {
     await client.query('BEGIN');
 
-    // 🔢 Déterminer numéro
-    let matchNumber = data.match_number;
-
-    if (!matchNumber) {
-      const maxResult = await client.query(
-        `
-        SELECT COALESCE(MAX(match_number), 0) as max
-        FROM matches
-        WHERE sub_group_id = $1
-        `,
-        [subGroupId]
-      );
-
-      matchNumber = (maxResult.rows[0]?.max || 0) + 1;
-    }
-
-    // Récupérer l'édition pour déterminer les états initiaux des lutteurs
-    const editionInfo = await client.query(`
-      SELECT p.edition_id
+    // Récupérer le groupe, la phase et l'édition associés au sous-groupe
+    const phaseGroupInfo = await client.query(`
+      SELECT sg.group_id, p.id as phase_id, p.phase_type, p.edition_id
       FROM sub_groups sg
       JOIN phase_groups pg ON sg.group_id = pg.id
       JOIN phases p ON pg.phase_id = p.id
       WHERE sg.id = $1
     `, [subGroupId]);
 
-    const editionId = editionInfo.rows[0]?.edition_id;
+    const groupRow = phaseGroupInfo.rows[0];
+    const groupId = groupRow?.group_id;
+    const phaseType = groupRow?.phase_type;
+    const editionId = groupRow?.edition_id;
+
+    // Déterminer si la phase est éliminatoire
+    const isEliminationPhase = Boolean(
+      phaseType && ['knockout', 'quarterfinal', 'semifinal', 'final', 'third_place'].includes(phaseType)
+    );
+
+    // 🔢 Déterminer numéro
+    let matchNumber = data.match_number;
+
+    if (!matchNumber) {
+      if (isEliminationPhase && groupId) {
+        // En phase éliminatoire, incrémenter le numéro de match par groupe global au lieu du sous-groupe
+        const maxResult = await client.query(
+          `
+          SELECT COALESCE(MAX(m.match_number), 0) as max
+          FROM matches m
+          JOIN sub_groups sg ON m.sub_group_id = sg.id
+          WHERE sg.group_id = $1
+          `,
+          [groupId]
+        );
+
+        matchNumber = (maxResult.rows[0]?.max || 0) + 1;
+      } else {
+        // En phase normale (poules), incrémenter par sous-groupe (rencontre)
+        const maxResult = await client.query(
+          `
+          SELECT COALESCE(MAX(match_number), 0) as max
+          FROM matches
+          WHERE sub_group_id = $1
+          `,
+          [subGroupId]
+        );
+
+        matchNumber = (maxResult.rows[0]?.max || 0) + 1;
+      }
+    }
 
     // Déterminer les états initiaux des lutteurs
     let fighter1_initial_state: 'eliminated' | 'not_eliminated' = 'not_eliminated';

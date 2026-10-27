@@ -85,7 +85,7 @@ export default function ResetPasswordPage() {
 
       // Redirect to sign-in page after 3 seconds
       setTimeout(() => {
-        router.push("/auth/signin");
+        router.push("/auth/sign-in");
       }, 3000);
     } catch (err: any) {
       toast.error("Réinitialisation de mot de passe échouée");
