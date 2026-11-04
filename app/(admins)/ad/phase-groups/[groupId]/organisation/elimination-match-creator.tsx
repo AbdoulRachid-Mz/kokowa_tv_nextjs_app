@@ -14,18 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Fighter, Region } from "@/types";
+import { Fighter, Region, Referee } from "@/types";
 import {
   Swords,
   Search,
-  Filter,
   Check,
   X,
-  User,
-  Shield,
   Loader2,
   Sparkles,
   Clock,
+  AlertTriangle,
+  UserCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -36,11 +35,15 @@ export interface EliminationFighter extends Fighter {
 
 interface EliminationMatchCreatorProps {
   availableFighters: EliminationFighter[];
+  allEditionFighters?: EliminationFighter[];
   regions: Region[];
+  referees?: Referee[];
   onCreateMatch: (
-    fighter1Id: number,
-    fighter2Id: number,
-    period: "matin" | "soir"
+    fighter1Id: number | null,
+    fighter2Id: number | null,
+    period: "matin" | "soir",
+    isExceptional?: boolean,
+    refereeId?: number | null
   ) => Promise<void>;
   isCreating: boolean;
   onCancel?: () => void;
@@ -48,7 +51,9 @@ interface EliminationMatchCreatorProps {
 
 export function EliminationMatchCreator({
   availableFighters,
+  allEditionFighters = [],
   regions,
+  referees = [],
   onCreateMatch,
   isCreating,
   onCancel,
@@ -56,6 +61,8 @@ export function EliminationMatchCreator({
   const [fighter1Id, setFighter1Id] = useState<number | null>(null);
   const [fighter2Id, setFighter2Id] = useState<number | null>(null);
   const [period, setPeriod] = useState<"matin" | "soir">("matin");
+  const [isExceptional, setIsExceptional] = useState(false);
+  const [selectedRefereeId, setSelectedRefereeId] = useState<string>("none");
 
   // Filtres de recherche pour le Lutteur 1
   const [search1, setSearch1] = useState("");
@@ -65,21 +72,30 @@ export function EliminationMatchCreator({
   const [search2, setSearch2] = useState("");
   const [selectedRegion2, setSelectedRegion2] = useState<string>("all");
 
+  // Source des lutteurs selon le mode (normal = non éliminés & non engagés, exceptionnel = tous)
+  const fightersPool = useMemo(() => {
+    if (isExceptional && allEditionFighters.length > 0) {
+      return allEditionFighters;
+    }
+    return availableFighters;
+  }, [isExceptional, allEditionFighters, availableFighters]);
+
   // Lutteurs filtrés pour la sélection 1
   const filteredFighters1 = useMemo(() => {
-    return availableFighters.filter((f) => {
-      // Ne peut pas sélectionner le lutteur déjà sélectionné en 2
+    return fightersPool.filter((f) => {
       if (fighter2Id && f.id === fighter2Id) return false;
 
-      // Filtre région
       if (selectedRegion1 !== "all") {
         const fighterRegionId = f.region_id ?? f.region?.id;
-        if (fighterRegionId === undefined || fighterRegionId === null || String(fighterRegionId) !== String(selectedRegion1)) {
+        if (
+          fighterRegionId === undefined ||
+          fighterRegionId === null ||
+          String(fighterRegionId) !== String(selectedRegion1)
+        ) {
           return false;
         }
       }
 
-      // Filtre texte (nom, prénom, surnom)
       if (search1.trim()) {
         const query = search1.toLowerCase().trim();
         const fullName = `${f.first_name} ${f.last_name}`.toLowerCase();
@@ -89,23 +105,24 @@ export function EliminationMatchCreator({
 
       return true;
     });
-  }, [availableFighters, fighter2Id, selectedRegion1, search1]);
+  }, [fightersPool, fighter2Id, selectedRegion1, search1]);
 
   // Lutteurs filtrés pour la sélection 2
   const filteredFighters2 = useMemo(() => {
-    return availableFighters.filter((f) => {
-      // Ne peut pas sélectionner le lutteur déjà sélectionné en 1
+    return fightersPool.filter((f) => {
       if (fighter1Id && f.id === fighter1Id) return false;
 
-      // Filtre région
       if (selectedRegion2 !== "all") {
         const fighterRegionId = f.region_id ?? f.region?.id;
-        if (fighterRegionId === undefined || fighterRegionId === null || String(fighterRegionId) !== String(selectedRegion2)) {
+        if (
+          fighterRegionId === undefined ||
+          fighterRegionId === null ||
+          String(fighterRegionId) !== String(selectedRegion2)
+        ) {
           return false;
         }
       }
 
-      // Filtre texte (nom, prénom, surnom)
       if (search2.trim()) {
         const query = search2.toLowerCase().trim();
         const fullName = `${f.first_name} ${f.last_name}`.toLowerCase();
@@ -115,24 +132,36 @@ export function EliminationMatchCreator({
 
       return true;
     });
-  }, [availableFighters, fighter1Id, selectedRegion2, search2]);
+  }, [fightersPool, fighter1Id, selectedRegion2, search2]);
 
   const fighter1 = useMemo(
-    () => availableFighters.find((f) => f.id === fighter1Id),
-    [availableFighters, fighter1Id]
+    () => fightersPool.find((f) => f.id === fighter1Id),
+    [fightersPool, fighter1Id]
   );
 
   const fighter2 = useMemo(
-    () => availableFighters.find((f) => f.id === fighter2Id),
-    [availableFighters, fighter2Id]
+    () => fightersPool.find((f) => f.id === fighter2Id),
+    [fightersPool, fighter2Id]
   );
 
   const handleCreate = async () => {
-    if (!fighter1Id || !fighter2Id) return;
-    await onCreateMatch(fighter1Id, fighter2Id, period);
+    // Règle Lot 2 : Au moins un lutteur requis (1 ou 2, mais pas 0)
+    if (!fighter1Id && !fighter2Id) return;
+    const refereeIdNum = selectedRefereeId !== "none" ? parseInt(selectedRefereeId) : null;
+
+    await onCreateMatch(
+      fighter1Id,
+      fighter2Id,
+      period,
+      isExceptional,
+      refereeIdNum
+    );
+
     setFighter1Id(null);
     setFighter2Id(null);
   };
+
+  const hasAtLeastOneFighter = !!(fighter1Id || fighter2Id);
 
   return (
     <Card className="border-2 border-primary/20 shadow-md">
@@ -143,17 +172,37 @@ export function EliminationMatchCreator({
               <Swords className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle className="text-lg">Créer un Combat d'Élimination</CardTitle>
+              <CardTitle className="text-lg">
+                {isExceptional ? "Ajouter un Match Exceptionnel (3e place / repêchage)" : "Créer un Combat d'Élimination"}
+              </CardTitle>
               <Typography variant="body-sm" theme="muted">
-                Sélectionnez deux lutteurs invaincus pour créer automatiquement le match et sa rencontre.
+                {isExceptional
+                  ? "Autorise la sélection de lutteurs déjà engagés ou éliminés pour les matchs de classement."
+                  : "Sélectionnez un ou deux lutteurs pour programmer le combat."}
               </Typography>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant={isExceptional ? "destructive" : "outline"}
+              size="sm"
+              onClick={() => {
+                setIsExceptional(!isExceptional);
+                setFighter1Id(null);
+                setFighter2Id(null);
+              }}
+              className="text-xs gap-1.5 h-8"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {isExceptional ? "Mode Normal" : "Match Exceptionnel"}
+            </Button>
+
             <Badge variant="outline" className="gap-1">
               <Sparkles className="h-3 w-3 text-yellow-500" />
-              {availableFighters.length} lutteur(s) disponible(s)
+              {fightersPool.length} lutteur(s)
             </Badge>
+
             {onCancel && (
               <Button variant="ghost" size="sm" onClick={onCancel}>
                 Annuler
@@ -163,88 +212,111 @@ export function EliminationMatchCreator({
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 sm:p-6 space-y-6">
-        {/* Sélecteur de Période du sous-groupe (Matin / Soir) */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-lg border bg-muted/30">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-primary" />
-            <div>
-              <span className="text-xs font-semibold block">Période de la rencontre</span>
-              <span className="text-[11px] text-muted-foreground">Sélectionnez la période du combat (Matin ou Soir)</span>
+      <CardContent className="p-4 space-y-4">
+        {/* Paramètres : Période & Arbitre de la rencontre */}
+        <div className="p-3 bg-muted/30 rounded-lg border flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs font-semibold">Période du match :</span>
+            <div className="flex items-center gap-1 bg-background p-1 rounded-md border">
+              <Button
+                variant={period === "matin" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setPeriod("matin")}
+                className="h-7 text-xs px-2.5"
+              >
+                🌅 Matin
+              </Button>
+              <Button
+                variant={period === "soir" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setPeriod("soir")}
+                className="h-7 text-xs px-2.5"
+              >
+                🌙 Soir
+              </Button>
             </div>
           </div>
-          <Select value={period} onValueChange={(val: "matin" | "soir") => setPeriod(val)}>
-            <SelectTrigger className="w-full sm:w-[150px] h-8 text-xs bg-background">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="matin">🌅 Matin</SelectItem>
-              <SelectItem value="soir">🌙 Soir</SelectItem>
-            </SelectContent>
-          </Select>
+
+          {/* Sélecteur d'arbitre de la rencontre */}
+          {referees.length > 0 && (
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <UserCheck className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-semibold">Arbitre de la rencontre :</span>
+              <Select
+                value={selectedRefereeId}
+                onValueChange={setSelectedRefereeId}
+              >
+                <SelectTrigger className="h-8 text-xs w-[200px]">
+                  <SelectValue placeholder="Choisir un arbitre" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucun arbitre (facultatif)</SelectItem>
+                  {referees
+                    .filter((r) => r.is_active)
+                    .map((r) => (
+                      <SelectItem key={r.id} value={r.id.toString()}>
+                        {r.first_name} {r.last_name}
+                        {r.nickname ? ` (${r.nickname})` : ""}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
-        {/* Sélecteurs des deux combattants */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
-          {/* SÉLECTION LUTTEUR 1 */}
-          <div className="space-y-3 p-4 rounded-xl border bg-card/60 relative">
-            <div className="flex justify-between items-center">
+        {/* Sélection des 2 Lutteurs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Lutteur 1 */}
+          <div className="space-y-3 p-3 rounded-xl border-2 border-blue-500/20 bg-blue-50/10">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
+                <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
                   1
                 </span>
-                <Typography variant="h6" weight="bold">
-                  Premier Lutteur
-                </Typography>
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                  Premier Lutteur {fighter1Id ? "" : "(Optionnel si lutteur 2 choisi)"}
+                </span>
               </div>
               {fighter1 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setFighter1Id(null)}
-                  className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500"
                 >
-                  <X className="h-3 w-3 mr-1" /> Changer
+                  <X className="h-4 w-4" />
                 </Button>
               )}
             </div>
 
-            {/* Lutteur 1 Sélectionné */}
             {fighter1 ? (
-              <div className="p-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-4">
-                <Avatar className="h-14 w-14 border-2 border-blue-500 shadow-sm">
-                  <AvatarImage src={fighter1.profile_image} />
-                  <AvatarFallback className="font-bold">
-                    {fighter1.first_name?.[0]}
-                    {fighter1.last_name?.[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <Typography variant="body-base" weight="bold" className="truncate">
-                    {fighter1.first_name} {fighter1.last_name}
-                  </Typography>
-                  {fighter1.nickname && (
-                    <Typography variant="caption1" theme="muted" className="italic">
-                      "{fighter1.nickname}"
+              <div className="p-3 bg-background rounded-lg border flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10 border">
+                    <AvatarImage src={fighter1.profile_image} />
+                    <AvatarFallback>
+                      {fighter1.first_name?.[0]}
+                      {fighter1.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <Typography variant="body-sm" weight="bold">
+                      {fighter1.first_name} {fighter1.last_name}
                     </Typography>
-                  )}
-                  <div className="flex items-center gap-2 mt-1">
                     {fighter1.region && (
                       <Badge
                         variant="outline"
-                        className="text-xs"
-                        style={{
-                          borderColor: fighter1.region.color || "#3b82f6",
-                          color: fighter1.region.color || "inherit",
-                        }}
+                        className="text-[10px] mt-0.5"
                       >
                         {fighter1.region.name}
                       </Badge>
                     )}
-                    {fighter1.ranking !== undefined && (
-                      <span className="text-xs text-muted-foreground">
-                        Rang #{fighter1.ranking}
-                      </span>
+                    {fighter1.is_eliminated && (
+                      <Badge variant="destructive" className="text-[10px] ml-1">
+                        Éliminé (Repêché)
+                      </Badge>
                     )}
                   </div>
                 </div>
@@ -253,27 +325,26 @@ export function EliminationMatchCreator({
                 </div>
               </div>
             ) : (
-              /* Recherche & Choix Lutteur 1 */
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row gap-2">
+              <div className="space-y-2">
+                <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
-                      placeholder="Nom, prénom ou surnom..."
+                      placeholder="Nom ou surnom..."
                       value={search1}
                       onChange={(e) => setSearch1(e.target.value)}
-                      className="pl-8 text-sm"
+                      className="pl-8 text-xs h-8"
                     />
                   </div>
                   <Select
                     value={selectedRegion1}
                     onValueChange={setSelectedRegion1}
                   >
-                    <SelectTrigger className="w-full sm:w-[150px] text-xs">
+                    <SelectTrigger className="w-[120px] text-xs h-8">
                       <SelectValue placeholder="Région" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Toutes régions</SelectItem>
+                      <SelectItem value="all">Toutes</SelectItem>
                       {regions.map((r) => (
                         <SelectItem key={r.id} value={r.id.toString()}>
                           {r.name}
@@ -283,44 +354,42 @@ export function EliminationMatchCreator({
                   </Select>
                 </div>
 
-                <div className="max-h-[220px] overflow-y-auto space-y-1.5 pr-1 border rounded-lg p-1.5 bg-background">
+                <div className="max-h-[180px] overflow-y-auto space-y-1 border rounded-lg p-1 bg-background">
                   {filteredFighters1.length > 0 ? (
                     filteredFighters1.map((f) => (
                       <div
                         key={f.id}
                         onClick={() => setFighter1Id(f.id)}
-                        className="p-2 rounded-md hover:bg-muted/80 cursor-pointer flex items-center justify-between transition-colors border border-transparent hover:border-border"
+                        className="p-1.5 rounded-md hover:bg-muted/80 cursor-pointer flex items-center justify-between text-xs transition-colors"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Avatar className="h-8 w-8">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Avatar className="h-7 w-7">
                             <AvatarImage src={f.profile_image} />
-                            <AvatarFallback className="text-xs">
+                            <AvatarFallback className="text-[10px]">
                               {f.first_name?.[0]}
                               {f.last_name?.[0]}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold truncate">
-                              {f.first_name} {f.last_name}
-                              {f.nickname && (
-                                <span className="font-normal italic text-muted-foreground ml-1">
-                                  "{f.nickname}"
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-[11px] text-muted-foreground">
-                              {f.region?.name || "Région inconnue"}
+                          <div className="truncate">
+                            <span className="font-semibold">{f.first_name} {f.last_name}</span>
+                            <span className="text-muted-foreground text-[10px] ml-1">
+                              ({f.region?.name || "Sans région"})
                             </span>
+                            {f.is_eliminated && (
+                              <Badge variant="outline" className="text-[9px] text-red-500 ml-1 h-3.5 px-1">
+                                Éliminé
+                              </Badge>
+                            )}
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs">
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2">
                           Choisir
                         </Button>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-6 text-xs text-muted-foreground">
-                      Aucun lutteur disponible pour ces critères
+                    <div className="text-center py-4 text-xs text-muted-foreground">
+                      Aucun lutteur disponible
                     </div>
                   )}
                 </div>
@@ -328,65 +397,55 @@ export function EliminationMatchCreator({
             )}
           </div>
 
-          {/* SÉLECTION LUTTEUR 2 */}
-          <div className="space-y-3 p-4 rounded-xl border bg-card/60 relative">
-            <div className="flex justify-between items-center">
+          {/* Lutteur 2 */}
+          <div className="space-y-3 p-3 rounded-xl border-2 border-red-500/20 bg-red-50/10">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold">
+                <span className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-xs font-bold">
                   2
                 </span>
-                <Typography variant="h6" weight="bold">
-                  Deuxième Lutteur
-                </Typography>
+                <span className="text-xs font-bold uppercase tracking-wider text-red-700 dark:text-red-400">
+                  Deuxième Lutteur {fighter2Id ? "" : "(Optionnel si lutteur 1 choisi)"}
+                </span>
               </div>
               {fighter2 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setFighter2Id(null)}
-                  className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500"
                 >
-                  <X className="h-3 w-3 mr-1" /> Changer
+                  <X className="h-4 w-4" />
                 </Button>
               )}
             </div>
 
-            {/* Lutteur 2 Sélectionné */}
             {fighter2 ? (
-              <div className="p-3 bg-red-50/60 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-4">
-                <Avatar className="h-14 w-14 border-2 border-red-500 shadow-sm">
-                  <AvatarImage src={fighter2.profile_image} />
-                  <AvatarFallback className="font-bold">
-                    {fighter2.first_name?.[0]}
-                    {fighter2.last_name?.[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <Typography variant="body-base" weight="bold" className="truncate">
-                    {fighter2.first_name} {fighter2.last_name}
-                  </Typography>
-                  {fighter2.nickname && (
-                    <Typography variant="caption1" theme="muted" className="italic">
-                      "{fighter2.nickname}"
+              <div className="p-3 bg-background rounded-lg border flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10 border">
+                    <AvatarImage src={fighter2.profile_image} />
+                    <AvatarFallback>
+                      {fighter2.first_name?.[0]}
+                      {fighter2.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <Typography variant="body-sm" weight="bold">
+                      {fighter2.first_name} {fighter2.last_name}
                     </Typography>
-                  )}
-                  <div className="flex items-center gap-2 mt-1">
                     {fighter2.region && (
                       <Badge
                         variant="outline"
-                        className="text-xs"
-                        style={{
-                          borderColor: fighter2.region.color || "#ef4444",
-                          color: fighter2.region.color || "inherit",
-                        }}
+                        className="text-[10px] mt-0.5"
                       >
                         {fighter2.region.name}
                       </Badge>
                     )}
-                    {fighter2.ranking !== undefined && (
-                      <span className="text-xs text-muted-foreground">
-                        Rang #{fighter2.ranking}
-                      </span>
+                    {fighter2.is_eliminated && (
+                      <Badge variant="destructive" className="text-[10px] ml-1">
+                        Éliminé (Repêché)
+                      </Badge>
                     )}
                   </div>
                 </div>
@@ -395,27 +454,26 @@ export function EliminationMatchCreator({
                 </div>
               </div>
             ) : (
-              /* Recherche & Choix Lutteur 2 */
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row gap-2">
+              <div className="space-y-2">
+                <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
-                      placeholder="Nom, prénom ou surnom..."
+                      placeholder="Nom ou surnom..."
                       value={search2}
                       onChange={(e) => setSearch2(e.target.value)}
-                      className="pl-8 text-sm"
+                      className="pl-8 text-xs h-8"
                     />
                   </div>
                   <Select
                     value={selectedRegion2}
                     onValueChange={setSelectedRegion2}
                   >
-                    <SelectTrigger className="w-full sm:w-[150px] text-xs">
+                    <SelectTrigger className="w-[120px] text-xs h-8">
                       <SelectValue placeholder="Région" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Toutes régions</SelectItem>
+                      <SelectItem value="all">Toutes</SelectItem>
                       {regions.map((r) => (
                         <SelectItem key={r.id} value={r.id.toString()}>
                           {r.name}
@@ -425,44 +483,42 @@ export function EliminationMatchCreator({
                   </Select>
                 </div>
 
-                <div className="max-h-[220px] overflow-y-auto space-y-1.5 pr-1 border rounded-lg p-1.5 bg-background">
+                <div className="max-h-[180px] overflow-y-auto space-y-1 border rounded-lg p-1 bg-background">
                   {filteredFighters2.length > 0 ? (
                     filteredFighters2.map((f) => (
                       <div
                         key={f.id}
                         onClick={() => setFighter2Id(f.id)}
-                        className="p-2 rounded-md hover:bg-muted/80 cursor-pointer flex items-center justify-between transition-colors border border-transparent hover:border-border"
+                        className="p-1.5 rounded-md hover:bg-muted/80 cursor-pointer flex items-center justify-between text-xs transition-colors"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Avatar className="h-8 w-8">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Avatar className="h-7 w-7">
                             <AvatarImage src={f.profile_image} />
-                            <AvatarFallback className="text-xs">
+                            <AvatarFallback className="text-[10px]">
                               {f.first_name?.[0]}
                               {f.last_name?.[0]}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold truncate">
-                              {f.first_name} {f.last_name}
-                              {f.nickname && (
-                                <span className="font-normal italic text-muted-foreground ml-1">
-                                  "{f.nickname}"
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-[11px] text-muted-foreground">
-                              {f.region?.name || "Région inconnue"}
+                          <div className="truncate">
+                            <span className="font-semibold">{f.first_name} {f.last_name}</span>
+                            <span className="text-muted-foreground text-[10px] ml-1">
+                              ({f.region?.name || "Sans région"})
                             </span>
+                            {f.is_eliminated && (
+                              <Badge variant="outline" className="text-[9px] text-red-500 ml-1 h-3.5 px-1">
+                                Éliminé
+                              </Badge>
+                            )}
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-7 text-xs">
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2">
                           Choisir
                         </Button>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-6 text-xs text-muted-foreground">
-                      Aucun lutteur disponible pour ces critères
+                    <div className="text-center py-4 text-xs text-muted-foreground">
+                      Aucun lutteur disponible
                     </div>
                   )}
                 </div>
@@ -471,32 +527,35 @@ export function EliminationMatchCreator({
           </div>
         </div>
 
-        {/* Aperçu du Duel & Bouton de Création */}
-        {fighter1 && fighter2 && (
-          <div className="p-4 rounded-xl border-2 border-primary/30 bg-primary/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="font-bold text-sm text-primary">Aperçu :</span>
-              <span className="text-sm font-semibold">
-                {fighter1.first_name} ({fighter1.region?.name})
-              </span>
-              <Badge variant="destructive" className="font-bold">
-                VS
-              </Badge>
-              <span className="text-sm font-semibold">
-                {fighter2.first_name} ({fighter2.region?.name})
-              </span>
+        {/* Bouton de validation si au moins un lutteur est sélectionné */}
+        {hasAtLeastOneFighter && (
+          <div className="p-3 rounded-xl border bg-primary/5 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-xs font-semibold">
+              {fighter1 && fighter2 ? (
+                <span>
+                  Combat : <b>{fighter1.first_name}</b> vs <b>{fighter2.first_name}</b>
+                </span>
+              ) : fighter1 ? (
+                <span>
+                  Match individuel : <b>{fighter1.first_name} {fighter1.last_name}</b> (adversaire à définir)
+                </span>
+              ) : (
+                <span>
+                  Match individuel : <b>{fighter2?.first_name} {fighter2?.last_name}</b> (adversaire à définir)
+                </span>
+              )}
             </div>
 
             <Button
               onClick={handleCreate}
               disabled={isCreating}
               className="gap-2 font-semibold shadow-md w-full sm:w-auto"
-              size="lg"
+              size="sm"
             >
               {isCreating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Création en cours...
+                  Création...
                 </>
               ) : (
                 <>

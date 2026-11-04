@@ -14,9 +14,7 @@ export const POST = (request: NextRequest, context: ApiContext) =>
       return Response.json({ success: true });
     },
     {
-      requireAuth: false,
-      requireAppCheck: true,
-      allowedMethods: ['POST'],
+      requireAuth: false,      allowedMethods: ['POST'],
       rateLimit: { windowMs: 60000, max: 10 },
     }
   );

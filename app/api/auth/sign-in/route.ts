@@ -65,9 +65,7 @@ export const POST = (request: NextRequest, context: ApiContext) =>
       });
     },
     {
-      requireAuth: false,
-      requireAppCheck: false,
-      allowedMethods: ['POST'],
+      requireAuth: false,      allowedMethods: ['POST'],
       rateLimit: { windowMs: 60000, max: 10 },
     }
   );

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "../firebase-admin";
 import { cookies } from "next/headers";
+import { createHash } from "crypto";
 
 export interface AuthUser {
   uid: string;
@@ -12,6 +13,76 @@ export interface AuthUser {
   role?: string;
   permissions?: string[];
   [key: string]: any;
+}
+
+// ─── Cache mémoire borné et mutualisé pour Firebase Auth ─────────────────────
+interface CachedAuthUser {
+  user: AuthUser;
+  expiresAt: number; // Date.now() + TTL (borné par l'expiration réelle du token)
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __kokowa_auth_cache: Map<string, CachedAuthUser> | undefined;
+}
+
+const AUTH_CACHE: Map<string, CachedAuthUser> =
+  globalThis.__kokowa_auth_cache ?? (globalThis.__kokowa_auth_cache = new Map());
+
+const MAX_CACHE_SIZE = 500;
+const MAX_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes max pour respecter le compromis de révocation
+
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex").substring(0, 32);
+}
+
+function getCachedAuth(tokenHash: string): AuthUser | null {
+  const cached = AUTH_CACHE.get(tokenHash);
+  if (!cached) return null;
+  if (Date.now() >= cached.expiresAt) {
+    AUTH_CACHE.delete(tokenHash);
+    return null;
+  }
+  return cached.user;
+}
+
+function setCachedAuth(tokenHash: string, user: AuthUser, tokenExpInSeconds?: number): void {
+  // Nettoyage si le cache dépasse la taille maximale (LRU-like basique)
+  if (AUTH_CACHE.size >= MAX_CACHE_SIZE) {
+    const now = Date.now();
+    for (const [key, value] of AUTH_CACHE.entries()) {
+      if (now >= value.expiresAt) {
+        AUTH_CACHE.delete(key);
+      }
+    }
+    // Si toujours saturé, supprimer les premières clés
+    if (AUTH_CACHE.size >= MAX_CACHE_SIZE) {
+      const keysToDelete = Array.from(AUTH_CACHE.keys()).slice(0, 50);
+      keysToDelete.forEach((k) => AUTH_CACHE.delete(k));
+    }
+  }
+
+  const now = Date.now();
+  let ttlMs = MAX_CACHE_TTL_MS;
+  if (tokenExpInSeconds) {
+    const remainingTokenMs = tokenExpInSeconds * 1000 - now;
+    if (remainingTokenMs > 0 && remainingTokenMs < ttlMs) {
+      ttlMs = remainingTokenMs;
+    }
+  }
+
+  AUTH_CACHE.set(tokenHash, {
+    user,
+    expiresAt: now + ttlMs,
+  });
+}
+
+/**
+ * Invalide un token du cache local (ex: lors de la déconnexion)
+ */
+export function invalidateAuthCache(token: string): void {
+  const tokenHash = hashToken(token);
+  AUTH_CACHE.delete(tokenHash);
 }
 
 /**
@@ -55,6 +126,13 @@ export async function verifyFirebaseToken(request: NextRequest): Promise<{
       return { user: null, error: "Jeton d'authentification manquant" };
     }
 
+    // 3. Vérification du cache mémoire (clé basée sur l'empreinte SHA-256 du token)
+    const tokenHash = hashToken(token);
+    const cachedUser = getCachedAuth(tokenHash);
+    if (cachedUser) {
+      return { user: cachedUser };
+    }
+
     if (!adminAuth) {
       console.error("❌ Firebase Admin non initialisé sur le serveur");
       return { user: null, error: "Erreur de configuration serveur" };
@@ -64,8 +142,10 @@ export async function verifyFirebaseToken(request: NextRequest): Promise<{
 
     if (isBearerHeader) {
       // Pour les headers Bearer, valider DIRECTEMENT en tant que Firebase ID Token
+      // checkRevoked=false permet d'éviter un round-trip réseau systématique vers Firebase.
+      // Le cache local court (max 2 min) garantit la réactivité en cas de révocation.
       try {
-        decodedToken = await adminAuth.verifyIdToken(token, true);
+        decodedToken = await adminAuth.verifyIdToken(token, false);
       } catch (idError: any) {
         if (idError.code === "auth/id-token-expired") {
           return { user: null, error: "Token expiré" };
@@ -78,11 +158,11 @@ export async function verifyFirebaseToken(request: NextRequest): Promise<{
     } else {
       // Pour les cookies, valider en tant que Session Cookie Firebase
       try {
-        decodedToken = await adminAuth.verifySessionCookie(token, true);
+        decodedToken = await adminAuth.verifySessionCookie(token, false);
       } catch (sessionError: any) {
         // Fallback gracieux si le cookie contient exceptionnellement un ID Token
         try {
-          decodedToken = await adminAuth.verifyIdToken(token, true);
+          decodedToken = await adminAuth.verifyIdToken(token, false);
         } catch {
           if (sessionError.code === "auth/session-cookie-expired") {
             return { user: null, error: "Session expirée" };
@@ -111,6 +191,9 @@ export async function verifyFirebaseToken(request: NextRequest): Promise<{
       role: userRole,
       permissions: decodedToken.permissions || [],
     };
+
+    // Mettre en cache pour les prochaines requêtes (max 2 min ou expiration réelle)
+    setCachedAuth(tokenHash, user, decodedToken.exp);
 
     return { user };
   } catch (error: any) {

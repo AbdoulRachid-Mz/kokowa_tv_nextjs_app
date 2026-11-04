@@ -7,7 +7,6 @@ import { AppSettingsProvider } from "@/contexts/app-settings-context";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { MainLayout } from "@/components/layout/main-layout";
 import QueryProvider from "@/providers/query-provider";
-import { AppCheckProvider } from "@/providers/app-check-provider";
 import localFont from 'next/font/local'
 import { Suspense } from "react";
 
@@ -104,19 +103,17 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AppCheckProvider>
-            <QueryProvider>
-              <AuthProvider>
-                <AppSettingsProvider>
-                  <Suspense fallback={null}>
-                    <MainLayout>
-                      {children}
-                    </MainLayout>
-                  </Suspense>
-                </AppSettingsProvider>
-              </AuthProvider>
-            </QueryProvider>
-          </AppCheckProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <AppSettingsProvider>
+                <Suspense fallback={null}>
+                  <MainLayout>
+                    {children}
+                  </MainLayout>
+                </Suspense>
+              </AppSettingsProvider>
+            </AuthProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

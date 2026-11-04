@@ -16,7 +16,6 @@ export async function GET(request: NextRequest, context: ApiContext) {
       });
     },
     {
-      requireAppCheck: false, // Désactiver App Check pour le test
       rateLimit: { windowMs: 60000, max: 30 }, // 30 requêtes/minute
     }
   )(request, context);

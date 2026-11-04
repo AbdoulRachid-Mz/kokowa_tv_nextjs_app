@@ -1,3 +1,4 @@
+// app/(admins)/ad/matches/[matchId]/page.tsx
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -39,6 +40,7 @@ import { MatchTimer } from "./match-timer";
 import { addFighterCard, updateMatch, getMatchById } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
 import { FloatingMatchScore } from "./floating-match-score";
+import { SubGroupRefereeManager } from "./sub-group-referee-manager";
 import { useRealtimeMatch } from "@/hooks/realtime/use-realtime-match";
 import { forceSyncMatch } from "@/actions/realtime";
 
@@ -684,6 +686,11 @@ export default function StandaloneMatchDetailPage() {
             canStart={canStart}
             canPause={canPause}
             canResume={canResume}
+          />
+
+          <SubGroupRefereeManager
+            subGroup={subGroup ?? undefined}
+            currentMatchNumber={mergedMatch?.match_number}
           />
 
           <MediaManager

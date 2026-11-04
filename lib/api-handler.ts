@@ -37,8 +37,7 @@ export async function apiHandler(
     allowedMethods: allowed,
     rateLimit: options.rateLimit,
     skipAppIdValidation: options.skipAppIdValidation ?? true,
-  });
-}
+  });}
 
 // Helper pour les handlers sans authentification (utilisé par l'API mobile et endpoints publics)
 export function publicHandler(
@@ -47,21 +46,22 @@ export function publicHandler(
 ) {
   let allowedMethods: string[] = [];
   let rateLimit: { windowMs: number; max: number } | undefined = undefined;
+  let skipAppIdValidation: boolean = false;
 
   if (Array.isArray(methodsOrOptions)) {
     allowedMethods = methodsOrOptions;
   } else if (methodsOrOptions && typeof methodsOrOptions === 'object') {
     allowedMethods = methodsOrOptions.allowedMethods || methodsOrOptions.methods || [];
     rateLimit = methodsOrOptions.rateLimit;
+    skipAppIdValidation = methodsOrOptions.skipAppIdValidation ?? false;
   }
 
   return async (request: NextRequest, context: ApiContext): Promise<Response> => {
     return serverApiHandler(request, context, handler, {
       requireAuth: false,
-      requireAppCheck: false,
       allowedMethods,
       rateLimit,
-      skipAppIdValidation: true,
+      skipAppIdValidation,
     });
   };
 }
@@ -75,7 +75,7 @@ export function withAuth(
     return serverApiHandler(request, context, handler, {
       requireAuth: true,
       requiredRoles: requiredPermissions,
-      skipAppIdValidation: true,
+      skipAppIdValidation: false,
     });
   };
 }

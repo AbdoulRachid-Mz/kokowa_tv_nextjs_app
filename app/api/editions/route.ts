@@ -8,8 +8,7 @@ import {
 } from "@/actions/editions";
 import { competitionEditionSchema } from "@/validation/schemas";
 
-// GET /api/editions
-// app/api/editions/route.ts - CORRIGÉ
+// app/api/editions/route.ts 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

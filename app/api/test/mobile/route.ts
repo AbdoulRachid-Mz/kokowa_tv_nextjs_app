@@ -1,11 +1,10 @@
 // app/api/test/mobile/route.ts
 import { NextRequest } from 'next/server';
-import { apiHandler, ApiContext, publicHandler, withAuth } from '@/lib/server/api-handler';
+import { apiHandler, ApiContext, withAuth } from '@/lib/server/api-handler';
 
 // Configuration spéciale pour mobile
 const MOBILE_CONFIG = {
   skipAppIdValidation: false, // Vérifier l'App ID
-  requireAppCheck: true,       // Vérifier App Check
 };
 
 // ========== 1. API PUBLIQUE MOBILE ==========
@@ -26,7 +25,6 @@ export async function GET(request: NextRequest, context: ApiContext) {
     },
     {
       requireAuth: false,
-      requireAppCheck: true,
       skipAppIdValidation: false,
       rateLimit: { windowMs: 60000, max: 60 }, // Plus permissif pour mobile
     }
@@ -53,7 +51,6 @@ export async function POST(request: NextRequest, context: ApiContext) {
     },
     {
       requireAuth: true,
-      requireAppCheck: true,
       rateLimit: { windowMs: 60000, max: 120 },
     }
   );

@@ -1253,21 +1253,32 @@ export async function updateLiveMatchData(id: number, updates: {
 export async function createEliminationMatch(
   groupId: number,
   data: {
-    fighter1_id: number;
-    fighter2_id: number;
+    fighter1_id?: number | null;
+    fighter2_id?: number | null;
     match_number?: number;
     notes?: string;
     period?: "matin" | "soir";
+    is_exceptional?: boolean;
+    referee_id?: number | null;
   }
 ) {
   try {
-    const { fighter1_id, fighter2_id, match_number, notes, period = "matin" } = data;
+    const {
+      fighter1_id,
+      fighter2_id,
+      match_number,
+      notes,
+      period = "matin",
+      is_exceptional = false,
+      referee_id,
+    } = data;
 
-    if (!fighter1_id || !fighter2_id) {
-      throw new Error("Les deux lutteurs sont requis pour un match d'élimination");
+    // A. Validation : au moins un lutteur requis
+    if (!fighter1_id && !fighter2_id) {
+      throw new Error("Au moins un lutteur doit être sélectionné pour créer un match");
     }
 
-    if (fighter1_id === fighter2_id) {
+    if (fighter1_id && fighter2_id && fighter1_id === fighter2_id) {
       throw new Error("Un lutteur ne peut pas combattre contre lui-même");
     }
 
@@ -1296,7 +1307,11 @@ export async function createEliminationMatch(
 
     const { edition_id } = groupRes;
 
-    // 2. Vérifier les deux lutteurs dans edition_fighters (non éliminés)
+    // 2. Vérifier les lutteurs sélectionnés dans edition_fighters
+    const requestedFighterIds = [fighter1_id, fighter2_id].filter(
+      (id): id is number => typeof id === "number" && id > 0
+    );
+
     const fightersSql = `
       SELECT ef.fighter_id, ef.region_id, ef.is_eliminated,
              f.first_name, f.last_name, f.nickname,
@@ -1304,7 +1319,7 @@ export async function createEliminationMatch(
       FROM edition_fighters ef
       JOIN fighters f ON ef.fighter_id = f.id
       LEFT JOIN regions r ON ef.region_id = r.id
-      WHERE ef.edition_id = $1 AND ef.fighter_id IN ($2, $3)
+      WHERE ef.edition_id = $1 AND ef.fighter_id = ANY($2::int[])
     `;
     const fightersRes = await query<{
       fighter_id: number;
@@ -1315,105 +1330,176 @@ export async function createEliminationMatch(
       nickname: string | null;
       region_name: string;
       region_code: string;
-    }>(fightersSql, [edition_id, fighter1_id, fighter2_id]);
+    }>(fightersSql, [edition_id, requestedFighterIds]);
 
-    if (fightersRes.length < 2) {
+    if (fightersRes.length !== requestedFighterIds.length) {
       throw new Error("Un ou plusieurs lutteurs sélectionnés ne participent pas à cette édition");
     }
 
-    const f1 = fightersRes.find((f) => f.fighter_id === fighter1_id);
-    const f2 = fightersRes.find((f) => f.fighter_id === fighter2_id);
+    const f1 = fighter1_id ? fightersRes.find((f) => f.fighter_id === fighter1_id) : null;
+    const f2 = fighter2_id ? fightersRes.find((f) => f.fighter_id === fighter2_id) : null;
 
-    if (!f1 || !f2) {
-      throw new Error("Lutteurs introuvables");
-    }
-
-    if (f1.is_eliminated) {
-      throw new Error(`Le lutteur ${f1.first_name} ${f1.last_name} a déjà été terrassé / éliminé`);
-    }
-
-    if (f2.is_eliminated) {
-      throw new Error(`Le lutteur ${f2.first_name} ${f2.last_name} a déjà été terrassé / éliminé`);
-    }
-
-    // 3. Vérifier qu'aucun des deux lutteurs n'a déjà un match dans ce groupe
-    const existingGroupMatchesSql = `
-      SELECT m.id, m.match_number, m.fighter1_id, m.fighter2_id
-      FROM matches m
-      JOIN sub_groups sg ON m.sub_group_id = sg.id
-      WHERE sg.group_id = $1
-        AND (m.fighter1_id IN ($2, $3) OR m.fighter2_id IN ($2, $3))
-        AND m.status != 'cancelled'
-    `;
-    const existingGroupMatches = await query(existingGroupMatchesSql, [
-      groupId,
-      fighter1_id,
-      fighter2_id,
-    ]);
-
-    if (existingGroupMatches.length > 0) {
-      throw new Error(
-        "L'un des lutteurs sélectionnés a déjà un combat prévu ou terminé dans ce tour"
-      );
-    }
-
-    // 4. Trouver ou créer le sous-groupe (rencontre) pour ces 2 régions
-    let subGroupId: number;
-    const findSubGroupSql = `
-      SELECT id, name FROM sub_groups
-      WHERE group_id = $1
-        AND (
-          (region1_id = $2 AND region2_id = $3) OR
-          (region1_id = $3 AND region2_id = $2)
-        )
-      LIMIT 1
-    `;
-    const existingSubGroup = await queryOne<{ id: number; name: string }>(
-      findSubGroupSql,
-      [groupId, f1.region_id, f2.region_id]
-    );
-
-    if (existingSubGroup) {
-      subGroupId = existingSubGroup.id;
-      if (period) {
-        await query(`UPDATE sub_groups SET period = $1 WHERE id = $2`, [period, subGroupId]);
+    // En mode normal (non exceptionnel), vérifier que les lutteurs ne sont pas éliminés
+    if (!is_exceptional) {
+      if (f1 && f1.is_eliminated) {
+        throw new Error(`Le lutteur ${f1.first_name} ${f1.last_name} a déjà été terrassé / éliminé`);
       }
-    } else {
-      // Créer un sous-groupe automatiquement
-      const subGroupName = `${f1.region_name || 'Région 1'} vs ${f2.region_name || 'Région 2'}`;
-      const insertSubGroupSql = `
-        INSERT INTO sub_groups (
-          group_id, name, sub_group_order, region1_id, region2_id,
-          status, is_active, is_completed, period
-        )
-        VALUES (
-          $1,
-          $2,
-          (SELECT COALESCE(MAX(sub_group_order), 0) + 1 FROM sub_groups WHERE group_id = $1),
-          $3,
-          $4,
-          'upcoming',
-          TRUE,
-          FALSE,
-          $5
-        )
-        RETURNING id
+      if (f2 && f2.is_eliminated) {
+        throw new Error(`Le lutteur ${f2.first_name} ${f2.last_name} a déjà été terrassé / éliminé`);
+      }
+    }
+
+    // 3. Vérifier la participation dans le groupe
+    // En mode normal : interdire les doublons dans le tour
+    // En mode exceptionnel : autoriser les lutteurs même s'ils ont déjà un match (ex: 3e place)
+    if (!is_exceptional && requestedFighterIds.length > 0) {
+      const existingGroupMatchesSql = `
+        SELECT m.id, m.match_number, m.fighter1_id, m.fighter2_id
+        FROM matches m
+        JOIN sub_groups sg ON m.sub_group_id = sg.id
+        WHERE sg.group_id = $1
+          AND (m.fighter1_id = ANY($2::int[]) OR m.fighter2_id = ANY($2::int[]))
+          AND m.status != 'cancelled'
       `;
-      const createdSubGroup = await queryOne<{ id: number }>(insertSubGroupSql, [
+      const existingGroupMatches = await query(existingGroupMatchesSql, [
         groupId,
-        subGroupName,
-        f1.region_id,
-        f2.region_id,
-        period,
+        requestedFighterIds,
       ]);
 
-      if (!createdSubGroup) {
-        throw new Error("Erreur lors de la création automatique du sous-groupe");
+      if (existingGroupMatches.length > 0) {
+        throw new Error(
+          "L'un des lutteurs sélectionnés a déjà un combat prévu ou terminé dans ce tour. Utilisez le mode 'Match exceptionnel' si vous organisez un match de classement."
+        );
       }
-      subGroupId = createdSubGroup.id;
     }
 
-    // 5. Déterminer le match_number
+    // 4. Trouver ou créer le sous-groupe (rencontre) pour ces régions
+    let subGroupId: number;
+    const region1Id = f1?.region_id ?? f2?.region_id ?? null;
+    const region2Id = f1 && f2 ? f2.region_id : null;
+
+    if (region1Id && region2Id) {
+      const findSubGroupSql = `
+        SELECT id, name, main_referee_id FROM sub_groups
+        WHERE group_id = $1
+          AND (
+            (region1_id = $2 AND region2_id = $3) OR
+            (region1_id = $3 AND region2_id = $2)
+          )
+        LIMIT 1
+      `;
+      const existingSubGroup = await queryOne<{ id: number; name: string; main_referee_id: number | null }>(
+        findSubGroupSql,
+        [groupId, region1Id, region2Id]
+      );
+
+      if (existingSubGroup) {
+        subGroupId = existingSubGroup.id;
+        const updates: string[] = [];
+        const params: any[] = [];
+
+        if (period) {
+          params.push(period);
+          updates.push(`period = $${params.length}`);
+        }
+        if (referee_id !== undefined && referee_id !== null) {
+          params.push(referee_id);
+          updates.push(`main_referee_id = $${params.length}`);
+        }
+        if (updates.length > 0) {
+          params.push(subGroupId);
+          await query(`UPDATE sub_groups SET ${updates.join(", ")} WHERE id = $${params.length}`, params);
+        }
+      } else {
+        const subGroupName = `${f1?.region_name || 'Région 1'} vs ${f2?.region_name || 'Région 2'}`;
+        const insertSubGroupSql = `
+          INSERT INTO sub_groups (
+            group_id, name, sub_group_order, region1_id, region2_id,
+            status, is_active, is_completed, period, main_referee_id
+          )
+          VALUES (
+            $1,
+            $2,
+            (SELECT COALESCE(MAX(sub_group_order), 0) + 1 FROM sub_groups WHERE group_id = $1),
+            $3,
+            $4,
+            'upcoming',
+            TRUE,
+            FALSE,
+            $5,
+            $6
+          )
+          RETURNING id
+        `;
+        const createdSubGroup = await queryOne<{ id: number }>(insertSubGroupSql, [
+          groupId,
+          subGroupName,
+          region1Id,
+          region2Id,
+          period,
+          referee_id || null,
+        ]);
+
+        if (!createdSubGroup) {
+          throw new Error("Erreur lors de la création automatique du sous-groupe");
+        }
+        subGroupId = createdSubGroup.id;
+      }
+    } else {
+      // 1 seul lutteur présent : sous-groupe régional individuel
+      const singleRegion = f1?.region_name || f2?.region_name || "Individuel";
+      const findSingleSubGroupSql = `
+        SELECT id, name, main_referee_id FROM sub_groups
+        WHERE group_id = $1
+          AND region1_id = $2 AND region2_id IS NULL
+        LIMIT 1
+      `;
+      const existingSubGroup = await queryOne<{ id: number; name: string; main_referee_id: number | null }>(
+        findSingleSubGroupSql,
+        [groupId, region1Id]
+      );
+
+      if (existingSubGroup) {
+        subGroupId = existingSubGroup.id;
+        if (referee_id) {
+          await query(`UPDATE sub_groups SET main_referee_id = $1 WHERE id = $2`, [referee_id, subGroupId]);
+        }
+      } else {
+        const subGroupName = `${singleRegion} (Tour)`;
+        const insertSubGroupSql = `
+          INSERT INTO sub_groups (
+            group_id, name, sub_group_order, region1_id, region2_id,
+            status, is_active, is_completed, period, main_referee_id
+          )
+          VALUES (
+            $1,
+            $2,
+            (SELECT COALESCE(MAX(sub_group_order), 0) + 1 FROM sub_groups WHERE group_id = $1),
+            $3,
+            NULL,
+            'upcoming',
+            TRUE,
+            FALSE,
+            $4,
+            $5
+          )
+          RETURNING id
+        `;
+        const createdSubGroup = await queryOne<{ id: number }>(insertSubGroupSql, [
+          groupId,
+          subGroupName,
+          region1Id,
+          period,
+          referee_id || null,
+        ]);
+        if (!createdSubGroup) {
+          throw new Error("Erreur lors de la création du sous-groupe");
+        }
+        subGroupId = createdSubGroup.id;
+      }
+    }
+
+    // 5. Déterminer le match_number par groupe
     let nextMatchNumber = match_number;
     if (!nextMatchNumber) {
       const maxNumberRes = await queryOne<{ max_num: number }>(
@@ -1430,14 +1516,20 @@ export async function createEliminationMatch(
       ? new Date(groupRes.group_date).toISOString()
       : new Date().toISOString();
 
-    // 6. Insérer le match
+    // 6. Insérer le match (avec notes enrichies si exceptionnel)
+    const combinedNotes = is_exceptional
+      ? [notes, "[Match exceptionnel]"].filter(Boolean).join(" ")
+      : notes || null;
+
     const insertMatchSql = `
       INSERT INTO matches (
         sub_group_id, match_number, match_date, fighter1_id, fighter2_id,
         fighter1_initial_state, fighter2_initial_state, status, is_active, notes
       )
       VALUES (
-        $1, $2, $3, $4, $5, 'not_eliminated', 'not_eliminated', 'scheduled', TRUE, $6
+        $1, $2, $3, $4, $5,
+        $6, $7,
+        'scheduled', TRUE, $8
       )
       RETURNING id
     `;
@@ -1445,9 +1537,11 @@ export async function createEliminationMatch(
       subGroupId,
       nextMatchNumber,
       matchDate,
-      fighter1_id,
-      fighter2_id,
-      notes || null,
+      fighter1_id || null,
+      fighter2_id || null,
+      f1?.is_eliminated ? 'eliminated' : 'not_eliminated',
+      f2?.is_eliminated ? 'eliminated' : 'not_eliminated',
+      combinedNotes,
     ]);
 
     if (!createdMatch) {

@@ -29,6 +29,9 @@ import { getPhaseGroupById } from "@/actions/phase-groups";
 import { getMatches, createEliminationMatch } from "@/actions/matches";
 import { updateMatch } from "@/actions/matches-2";
 import { getEditionFighters, getEditionRegions } from "@/actions/editions";
+import { getReferees } from "@/actions/referees";
+import { assignSubGroupReferee } from "@/actions/sub-group-referee";
+import { Referee } from "@/types";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -168,6 +171,45 @@ export default function EliminationMatchOrganisationPage() {
     enabled: !!editionId,
   });
 
+  // 3b. Charger tous les combattants de l'édition (y compris éliminés pour mode exceptionnel)
+  const { data: allEditionFightersData } = useQuery({
+    queryKey: ["edition-all-fighters", editionId],
+    queryFn: async () => {
+      if (!editionId) return [];
+      const response = await getEditionFighters(editionId, {
+        limit: 300,
+        with_fighter: true,
+        with_region: true,
+      });
+      const list: EliminationFighter[] = [];
+      if (response.data) {
+        response.data.forEach((item: any) => {
+          if (item.fighter) {
+            const region = item.region || item.fighter.region;
+            const regionId = region?.id ?? item.region_id ?? item.fighter.region_id;
+            list.push({
+              ...item.fighter,
+              region_id: regionId,
+              region: region ? { ...region, id: regionId } : undefined,
+              is_eliminated: item.is_eliminated,
+            });
+          }
+        });
+      }
+      return list;
+    },
+    enabled: !!editionId,
+  });
+
+  // 3c. Charger tous les arbitres actifs pour assignation au sous-groupe
+  const { data: refereesData } = useQuery({
+    queryKey: ["referees-active"],
+    queryFn: async () => {
+      const response = await getReferees({ is_active: true, limit: 100 });
+      return response.data || [];
+    },
+  });
+
   // 4. Charger les régions de l'édition pour les filtres
   const { data: regionsData } = useQuery({
     queryKey: ["edition-regions", editionId],
@@ -278,9 +320,11 @@ export default function EliminationMatchOrganisationPage() {
 
   // Création d'un match d'élimination unique
   const handleCreateMatch = async (
-    fighter1Id: number,
-    fighter2Id: number,
-    period: "matin" | "soir" = "matin"
+    fighter1Id: number | null,
+    fighter2Id: number | null,
+    period: "matin" | "soir" = "matin",
+    isExceptional: boolean = false,
+    refereeId?: number | null
   ) => {
     try {
       setIsCreating(true);
@@ -288,6 +332,8 @@ export default function EliminationMatchOrganisationPage() {
         fighter1_id: fighter1Id,
         fighter2_id: fighter2Id,
         period,
+        is_exceptional: isExceptional,
+        referee_id: refereeId,
       });
 
       toast.success("Match créé avec succès !");
@@ -315,9 +361,11 @@ export default function EliminationMatchOrganisationPage() {
   // Création multiple des matchs d'élimination
   const handleCreateBulkMatches = async (
     matchesToCreate: {
-      fighter1Id: number;
-      fighter2Id: number;
+      fighter1Id: number | null;
+      fighter2Id: number | null;
       period?: "matin" | "soir";
+      refereeId?: number | null;
+      isExceptional?: boolean;
     }[]
   ) => {
     try {
@@ -328,6 +376,8 @@ export default function EliminationMatchOrganisationPage() {
           fighter1_id: m.fighter1Id,
           fighter2_id: m.fighter2Id,
           period: m.period || "matin",
+          is_exceptional: m.isExceptional,
+          referee_id: m.refereeId,
         });
         successCount++;
       }
@@ -588,14 +638,18 @@ export default function EliminationMatchOrganisationPage() {
         {creationMode === "bulk" ? (
           <EliminationBulkMatchCreator
             availableFighters={availableFighters}
+            allEditionFighters={allEditionFightersData || []}
             regions={allRegions}
+            referees={refereesData || []}
             onCreateMatches={handleCreateBulkMatches}
             isCreating={isCreating}
           />
         ) : (
           <EliminationMatchCreator
             availableFighters={availableFighters}
+            allEditionFighters={allEditionFightersData || []}
             regions={allRegions}
+            referees={refereesData || []}
             onCreateMatch={handleCreateMatch}
             isCreating={isCreating}
           />

@@ -23,9 +23,7 @@ export async function GET(request: NextRequest, context: ApiContext) {
       });
     },
     {
-      requireAuth: false, // Optionnel
-      requireAppCheck: true,
-      rateLimit: { windowMs: 60000, max: 100 },
+      requireAuth: false, // Optionnel      rateLimit: { windowMs: 60000, max: 100 },
     }
   );
 }

@@ -1,15 +1,38 @@
 // @/lib/server/api-handler.ts
 import { NextRequest, NextResponse } from "next/server";
 import { verifyFirebaseToken, AuthUser } from "./auth-middleware";
-import { verifyAppCheckToken, isDebugMode } from "./app-check";
 import { RateLimiter } from "./rate-limit";
-import { RedisStore } from "./rate-limit-redis"; // Nouveau
+import { RedisStore } from "./rate-limit-redis";
+
+// ─── Singletons Rate Limiter (serverless-safe via globalThis) ────────────────
+declare global {
+  // eslint-disable-next-line no-var
+  var __kokowa_default_redis_store: RedisStore | undefined;
+  // eslint-disable-next-line no-var
+  var __kokowa_default_rate_limiter: RateLimiter | undefined;
+}
+
+function getDefaultRateLimiter(): RateLimiter {
+  if (!globalThis.__kokowa_default_rate_limiter) {
+    const store =
+      process.env.NODE_ENV === "production" && process.env.REDIS_URL
+        ? (globalThis.__kokowa_default_redis_store ??= new RedisStore(process.env.REDIS_URL))
+        : undefined;
+
+    globalThis.__kokowa_default_rate_limiter = new RateLimiter({
+      windowMs: 60 * 1000,
+      max: 60,
+      store,
+    });
+  }
+  return globalThis.__kokowa_default_rate_limiter;
+}
 
 // Configuration CORS avec validation dynamique
 const BASE_CORS_HEADERS = {
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
   "Access-Control-Allow-Headers":
-    "Content-Type, Authorization, X-Firebase-AppCheck, X-App-Id, X-Requested-With",
+    "Content-Type, Authorization, X-App-Id, X-Requested-With",
   "Access-Control-Max-Age": "86400",
   "Access-Control-Allow-Credentials": "true",
   // Headers de sécurité supplémentaires
@@ -61,7 +84,6 @@ export interface ApiContext {
 
 export interface ApiHandlerOptions {
   requireAuth?: boolean;
-  requireAppCheck?: boolean;
   requiredRoles?: string[];
   allowedMethods?: string[];
   rateLimit?: {
@@ -77,9 +99,12 @@ export async function apiHandler(
   handler: (request: NextRequest, context: ApiContext) => Promise<Response>,
   options: ApiHandlerOptions = {},
 ): Promise<Response> {
+  const t0 = performance.now();
+  const shouldLogPerf =
+    process.env.API_PERF_LOG === "true" || process.env.NODE_ENV === "development";
+
   const {
     requireAuth = false,
-    requireAppCheck = false,
     requiredRoles = [],
     allowedMethods = [],
     rateLimit,
@@ -110,6 +135,8 @@ export async function apiHandler(
     );
   }
 
+  const tCors = performance.now();
+
   try {
     // 1. Vérification App ID
     const appId = request.headers.get("x-app-id");
@@ -130,16 +157,19 @@ export async function apiHandler(
     }
 
     context.appId = appId || undefined;
+    const tAppId = performance.now();
 
-    // 2. Rate limiting avec Redis en production
-    const rateLimiter = new RateLimiter({
-      windowMs: rateLimit?.windowMs || 60 * 1000,
-      max: rateLimit?.max || 60,
-      store:
-        process.env.NODE_ENV === "production" && process.env.REDIS_URL
-          ? new RedisStore(process.env.REDIS_URL)
-          : undefined,
-    });
+    // 2. Rate limiting avec Redis en production (instance mutualisée)
+    const rateLimiter = rateLimit
+      ? new RateLimiter({
+          windowMs: rateLimit.windowMs,
+          max: rateLimit.max,
+          store:
+            process.env.NODE_ENV === "production" && process.env.REDIS_URL
+              ? new RedisStore(process.env.REDIS_URL)
+              : undefined,
+        })
+      : getDefaultRateLimiter();
 
     let rateLimitResult;
 
@@ -174,31 +204,10 @@ export async function apiHandler(
         },
       );
     }
+    const tRateLimit = performance.now();
 
-    // 3. Vérification App Check (sauf en mode debug)
-    if (requireAppCheck && !isDebugMode()) {
-      const appCheckToken = request.headers.get("x-firebase-appcheck");
-
-      if (!appCheckToken) {
-        return sendError(401, "Token App Check requis", corsHeaders);
-      }
-
-      const appCheckResult = await verifyAppCheckToken(appCheckToken);
-
-      if (!appCheckResult.success) {
-        console.error("Échec vérification App Check:", {
-          error: appCheckResult.error,
-          ip:
-            request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-            request.headers.get("x-real-ip") ||
-            "IP non disponible",
-          path: request.nextUrl.pathname,
-        });
-        return sendError(401, appCheckResult.error || "Token App Check invalide", corsHeaders);
-      }
-    }
-
-    // 4. Vérification Firebase Auth
+    // 3. Vérification Firebase Auth (avec cache mémoire court cryptographique)
+    let tAuth = tRateLimit;
     if (requireAuth) {
       const authResult = await verifyFirebaseToken(request);
 
@@ -228,9 +237,10 @@ export async function apiHandler(
       }
 
       context.firebaseUser = authResult.user;
+      tAuth = performance.now();
     }
 
-    // 5. Vérification CSRF pour les méthodes non-idempotentes (web seulement)
+    // 4. Vérification CSRF pour les méthodes non-idempotentes (web seulement)
     if (
       appId === "web-client" &&
       ["POST", "PUT", "PATCH", "DELETE"].includes(request.method)
@@ -250,10 +260,23 @@ export async function apiHandler(
       }
     }
 
-    // 6. Exécuter le handler
+    // 5. Exécuter le handler métier
+    const tBeforeHandler = performance.now();
     const response = await handler(request, context);
+    const tAfterHandler = performance.now();
 
-    // 7. Ajouter les headers de sécurité et rate limiting
+    // Mesure et logs de performance
+    if (shouldLogPerf) {
+      const totalMs = Math.round(tAfterHandler - t0);
+      const handlerMs = Math.round(tAfterHandler - tBeforeHandler);
+      const authMs = Math.round(tAuth - tRateLimit);
+      const rlMs = Math.round(tRateLimit - tAppId);
+      console.log(
+        `⚡ [API-PERF] ${request.method} ${request.nextUrl.pathname} — Total: ${totalMs}ms (Handler: ${handlerMs}ms, Auth: ${authMs}ms, RateLimit: ${rlMs}ms)`
+      );
+    }
+
+    // 6. Ajouter les headers de sécurité et rate limiting
     const responseHeaders = new Headers(response.headers);
     Object.entries({
       ...corsHeaders,
@@ -344,7 +367,6 @@ export function publicHandler(
   ): Promise<Response> => {
     return apiHandler(request, context, handler, {
       requireAuth: false,
-      requireAppCheck: false,
       ...options,
     });
   };

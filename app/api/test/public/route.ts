@@ -28,7 +28,6 @@ export async function GET(request: NextRequest, context: ApiContext) {
       });
     },
     {
-      requireAppCheck: false,
       rateLimit: { windowMs: 60000, max: 30 },
     }
   )(request, context);

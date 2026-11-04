@@ -34,9 +34,7 @@ export async function GET(request: NextRequest, context: ApiContext) {
     handler,
     {
       requireAuth: true,
-      requiredRoles: ['admin'],
-      requireAppCheck: false,
-      allowedMethods: ['GET'],
+      requiredRoles: ['admin'],      allowedMethods: ['GET'],
       rateLimit: {
         windowMs: 60 * 1000,
         max: 60,

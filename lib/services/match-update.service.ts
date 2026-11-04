@@ -7,6 +7,7 @@ import { emitMatchEvent } from "@/actions/realtime";
 import { getMatchById } from "@/actions/matches-2";
 import { syncEditionLiveMatch } from "../realtime/rtdb-sync";
 import { RealtimeLiveMatchInfo } from "@/types/realtime";
+import { syncMatchOfficialAchievements } from "@/actions/achievements";
 
 export interface MatchUpdate {
   sub_group_id?: number;

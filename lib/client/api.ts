@@ -1,7 +1,6 @@
 // @/lib/client/api.ts
 
-import axios, { AxiosRequestConfig, AxiosError } from "axios";
-import { getAppCheckToken } from "./firebase-app-check";
+import axios, { AxiosRequestConfig } from "axios";
 import { getAuth } from "firebase/auth";
 
 const API_BASE_URL =
@@ -22,30 +21,21 @@ interface ApiResponse<T = any> {
 class ApiService {
   private static instance: ApiService;
   private token: string | null = null;
-  private appCheckToken: string | null = null;
   private tokenExpiry: number = 0;
-  private appCheckTokenExpiry: number = 0;
 
-   private constructor() {
+  private constructor() {
     // Request interceptor
     this.axiosInstance.interceptors.request.use(async (config) => {
-      const [authToken, appCheckToken] = await Promise.all([
-        this.getValidToken(),
-        this.getValidAppCheckToken(),
-      ]);
+      const authToken = await this.getValidToken();
 
       if (!config.headers) {
         config.headers = new axios.AxiosHeaders();
       }
-      
+
       (config.headers as any)["x-app-id"] = APP_ID;
 
       if (authToken) {
         config.headers["Authorization"] = `Bearer ${authToken}`;
-      }
-
-      if (appCheckToken) {
-        config.headers["X-Firebase-AppCheck"] = appCheckToken;
       }
 
       const isFormData = config.data instanceof FormData;
@@ -133,28 +123,11 @@ class ApiService {
     return this.token;
   }
 
-  private async getValidAppCheckToken(): Promise<string | null> {
-    // App Check token expire après 1 heure
-    if (!this.appCheckToken || Date.now() >= this.appCheckTokenExpiry) {
-      try {
-        const token = await getAppCheckToken();
-        this.appCheckToken = token;
-        this.appCheckTokenExpiry = Date.now() + 55 * 60 * 1000; // 55 minutes
-        return token;
-      } catch (error) {
-        console.error("Erreur rafraîchissement App Check token:", error);
-        return null;
-      }
-    }
-    return this.appCheckToken;
-  }
-
   // Create axios instance with baseURL and timeout
   private axiosInstance = axios.create({
     baseURL: API_BASE_URL,
     timeout: 30000, // 30 seconds
   });
-
 
   private async request<T = any>(config: AxiosRequestConfig): Promise<T> {
     try {
