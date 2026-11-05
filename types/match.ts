@@ -8,7 +8,6 @@ export type CardType = 'yellow' | 'red';
 export interface Match {
   id: number;
   sub_group_id: number;
-  referee_id?: number | null;
   match_number: number;
   match_date: string | null;
   start_time: string | null;
