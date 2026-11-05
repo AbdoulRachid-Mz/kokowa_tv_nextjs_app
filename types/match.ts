@@ -1,4 +1,4 @@
-import { Fighter, SubGroup } from ".";
+import { Fighter, SubGroup, Referee } from ".";
 
 // types/match.ts
 export type MatchStatus = 'scheduled' | 'live' | 'round_break' | 'completed' | 'cancelled' | 'postponed' | 'reclamation';
@@ -8,6 +8,7 @@ export type CardType = 'yellow' | 'red';
 export interface Match {
   id: number;
   sub_group_id: number;
+  referee_id?: number | null;
   match_number: number;
   match_date: string | null;
   start_time: string | null;
@@ -17,6 +18,7 @@ export interface Match {
   fighter2_id: number | null;
   fighter1_initial_state?: 'eliminated' | 'not_eliminated';
   fighter2_initial_state?: 'eliminated' | 'not_eliminated';
+  referee_id?: number | null;
   
   winner_fighter_id: number | null;
   loser_fighter_id: number | null;
@@ -42,6 +44,7 @@ export interface Match {
   loser_fighter?: Fighter;
   cards?: FighterCard[];
   sub_group?: SubGroup;
+  referee?: Referee;
 }
 
 export interface FighterCard {

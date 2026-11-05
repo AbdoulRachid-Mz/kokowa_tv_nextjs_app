@@ -160,6 +160,7 @@ export async function getMatchById(matchId: number): Promise<Match | null> {
       LEFT JOIN fighters f2 ON m.fighter2_id = f2.id
       LEFT JOIN fighters wf ON m.winner_fighter_id = wf.id
       LEFT JOIN fighters lf ON m.loser_fighter_id = lf.id
+      LEFT JOIN referees ref ON m.referee_id = ref.id
       WHERE m.id = $1
     `;
 

@@ -45,7 +45,19 @@ export async function getMatches(
     let whereConditions: string[] = ['1=1'];
     let joinClauses: string[] = [];
     const params: any[] = [];
-    const selectFields: string[] = ['m.*'];
+    const selectFields: string[] = [
+      'm.*',
+      `CASE WHEN mref.id IS NOT NULL THEN
+        JSON_BUILD_OBJECT(
+          'id', mref.id,
+          'first_name', mref.first_name,
+          'last_name', mref.last_name,
+          'nickname', mref.nickname,
+          'profile_image', mref.profile_image
+        )
+      ELSE NULL END as referee`
+    ];
+    joinClauses.push('LEFT JOIN referees mref ON m.referee_id = mref.id');
 
     let paramIndex = 1;
 
@@ -378,6 +390,15 @@ export async function getMatchById(id: number, options: {
       sql = `
         SELECT 
           m.*,
+          CASE WHEN mref.id IS NOT NULL THEN
+            JSON_BUILD_OBJECT(
+              'id', mref.id,
+              'first_name', mref.first_name,
+              'last_name', mref.last_name,
+              'nickname', mref.nickname,
+              'profile_image', mref.profile_image
+            )
+          ELSE NULL END as referee,
           ${with_sub_group ? `
           JSON_BUILD_OBJECT(
             'id', sg.id,
@@ -531,6 +552,7 @@ export async function getMatchById(id: number, options: {
         ${with_sub_group && with_belts ? 'LEFT JOIN belt b1 ON sg.belt_region1 = b1.id' : ''}
         ${with_sub_group && with_belts ? 'LEFT JOIN belt b2 ON sg.belt_region2 = b2.id' : ''}
         ${with_sub_group && with_referee ? 'LEFT JOIN referees ref ON sg.main_referee_id = ref.id' : ''}
+        LEFT JOIN referees mref ON m.referee_id = mref.id
         ${with_fighters ? 'LEFT JOIN fighters f1 ON m.fighter1_id = f1.id' : ''}
         ${with_fighters ? 'LEFT JOIN fighters f2 ON m.fighter2_id = f2.id' : ''}
         ${with_winner_loser ? 'LEFT JOIN fighters wf ON m.winner_fighter_id = wf.id' : ''}
@@ -1375,8 +1397,10 @@ export async function createEliminationMatch(
 
     // 4. Trouver ou créer le sous-groupe (rencontre) pour ces régions
     let subGroupId: number;
+    let existingSubGroupMainRefereeId: number | null = null;
     const region1Id = f1?.region_id ?? f2?.region_id ?? null;
     const region2Id = f1 && f2 ? f2.region_id : null;
+    const isGroupPhase = groupRes.phase_type === 'group';
 
     if (region1Id && region2Id) {
       const findSubGroupSql = `
@@ -1395,20 +1419,27 @@ export async function createEliminationMatch(
 
       if (existingSubGroup) {
         subGroupId = existingSubGroup.id;
+        existingSubGroupMainRefereeId = existingSubGroup.main_referee_id;
         const updates: string[] = [];
         const params: any[] = [];
 
         if (period) {
           params.push(period);
-          updates.push(`period = $${params.length}`);
+          updates.push(`period = ${params.length}`);
         }
-        if (referee_id !== undefined && referee_id !== null) {
+        // Pour les phases 'group' uniquement, l'arbitre est synchronisé sur le sous-groupe
+        if (isGroupPhase && referee_id !== undefined && referee_id !== null) {
           params.push(referee_id);
-          updates.push(`main_referee_id = $${params.length}`);
+          updates.push(`main_referee_id = ${params.length}`);
+          existingSubGroupMainRefereeId = referee_id;
         }
         if (updates.length > 0) {
           params.push(subGroupId);
-          await query(`UPDATE sub_groups SET ${updates.join(", ")} WHERE id = $${params.length}`, params);
+          await query(`UPDATE sub_groups SET ${updates.join(", ")} WHERE id = ${params.length}`, params);
+        }
+        // Si phase group et nouvel arbitre, synchroniser tous les matchs existants du sous-groupe
+        if (isGroupPhase && referee_id) {
+          await query(`UPDATE matches SET referee_id = $1 WHERE sub_group_id = $2`, [referee_id, subGroupId]);
         }
       } else {
         const subGroupName = `${f1?.region_name || 'Région 1'} vs ${f2?.region_name || 'Région 2'}`;
@@ -1431,19 +1462,22 @@ export async function createEliminationMatch(
           )
           RETURNING id
         `;
+        // main_referee_id n'est affecté au sous-groupe que pour les phases 'group'
+        const subGroupRefereeToSet = isGroupPhase ? (referee_id || null) : null;
         const createdSubGroup = await queryOne<{ id: number }>(insertSubGroupSql, [
           groupId,
           subGroupName,
           region1Id,
           region2Id,
           period,
-          referee_id || null,
+          subGroupRefereeToSet,
         ]);
 
         if (!createdSubGroup) {
           throw new Error("Erreur lors de la création automatique du sous-groupe");
         }
         subGroupId = createdSubGroup.id;
+        existingSubGroupMainRefereeId = subGroupRefereeToSet;
       }
     } else {
       // 1 seul lutteur présent : sous-groupe régional individuel
@@ -1461,8 +1495,11 @@ export async function createEliminationMatch(
 
       if (existingSubGroup) {
         subGroupId = existingSubGroup.id;
-        if (referee_id) {
+        existingSubGroupMainRefereeId = existingSubGroup.main_referee_id;
+        if (isGroupPhase && referee_id) {
           await query(`UPDATE sub_groups SET main_referee_id = $1 WHERE id = $2`, [referee_id, subGroupId]);
+          await query(`UPDATE matches SET referee_id = $1 WHERE sub_group_id = $2`, [referee_id, subGroupId]);
+          existingSubGroupMainRefereeId = referee_id;
         }
       } else {
         const subGroupName = `${singleRegion} (Tour)`;
@@ -1485,17 +1522,19 @@ export async function createEliminationMatch(
           )
           RETURNING id
         `;
+        const subGroupRefereeToSet = isGroupPhase ? (referee_id || null) : null;
         const createdSubGroup = await queryOne<{ id: number }>(insertSubGroupSql, [
           groupId,
           subGroupName,
           region1Id,
           period,
-          referee_id || null,
+          subGroupRefereeToSet,
         ]);
         if (!createdSubGroup) {
           throw new Error("Erreur lors de la création du sous-groupe");
         }
         subGroupId = createdSubGroup.id;
+        existingSubGroupMainRefereeId = subGroupRefereeToSet;
       }
     }
 
@@ -1516,7 +1555,10 @@ export async function createEliminationMatch(
       ? new Date(groupRes.group_date).toISOString()
       : new Date().toISOString();
 
-    // 6. Insérer le match (avec notes enrichies si exceptionnel)
+    // 6. Insérer le match avec son propre referee_id
+    // Si phase group et aucun arbitre spécifié, hériter de l'arbitre du sous-groupe
+    const matchRefereeId = referee_id ?? (isGroupPhase ? existingSubGroupMainRefereeId : null) ?? null;
+
     const combinedNotes = is_exceptional
       ? [notes, "[Match exceptionnel]"].filter(Boolean).join(" ")
       : notes || null;
@@ -1524,12 +1566,12 @@ export async function createEliminationMatch(
     const insertMatchSql = `
       INSERT INTO matches (
         sub_group_id, match_number, match_date, fighter1_id, fighter2_id,
-        fighter1_initial_state, fighter2_initial_state, status, is_active, notes
+        fighter1_initial_state, fighter2_initial_state, status, is_active, notes, referee_id
       )
       VALUES (
         $1, $2, $3, $4, $5,
         $6, $7,
-        'scheduled', TRUE, $8
+        'scheduled', TRUE, $8, $9
       )
       RETURNING id
     `;
@@ -1542,6 +1584,7 @@ export async function createEliminationMatch(
       f1?.is_eliminated ? 'eliminated' : 'not_eliminated',
       f2?.is_eliminated ? 'eliminated' : 'not_eliminated',
       combinedNotes,
+      matchRefereeId,
     ]);
 
     if (!createdMatch) {

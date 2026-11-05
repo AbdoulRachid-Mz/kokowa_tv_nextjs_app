@@ -71,7 +71,7 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
       SELECT COUNT(DISTINCT r.id) as total
       FROM referees r
       LEFT JOIN sub_groups sg ON r.id = sg.main_referee_id
-      LEFT JOIN matches m ON sg.id = m.sub_group_id
+      LEFT JOIN matches m ON (m.referee_id = r.id OR (m.referee_id IS NULL AND sg.id = m.sub_group_id))
       ${whereClause}
     `;
 
@@ -109,7 +109,7 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
         ${selectFields.join(', ')}
       FROM referees r
       LEFT JOIN sub_groups sg ON r.id = sg.main_referee_id
-      LEFT JOIN matches m ON sg.id = m.sub_group_id
+      LEFT JOIN matches m ON (m.referee_id = r.id OR (m.referee_id IS NULL AND sg.id = m.sub_group_id))
       ${whereClause}
       GROUP BY r.id
       ${orderByClause}
@@ -162,11 +162,8 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
 async function getRefereeCounts(refereeId: number) {
   const sql = `
     SELECT 
-      COUNT(DISTINCT sg.id) as "subGroupsCount",
-      COUNT(DISTINCT m.id) as "matchesCount"
-    FROM sub_groups sg
-    LEFT JOIN matches m ON sg.id = m.sub_group_id
-    WHERE sg.referee_id = $1
+      (SELECT COUNT(DISTINCT sg.id) FROM sub_groups sg WHERE sg.main_referee_id = $1) as "subGroupsCount",
+      (SELECT COUNT(DISTINCT m.id) FROM matches m LEFT JOIN sub_groups sg ON m.sub_group_id = sg.id WHERE m.referee_id = $1 OR (m.referee_id IS NULL AND sg.main_referee_id = $1)) as "matchesCount"
   `;
   const result = await query<{ subGroupsCount: string, matchesCount: string }>(sql, [refereeId]);
   return {
@@ -643,12 +640,12 @@ async function getRefereeStatistics(refereeId: number) {
   const subGroupsResult = await query<{ count: string }>(subGroupsSql, [refereeId]);
   const subGroupsCount = parseInt(subGroupsResult[0]?.count || '0');
 
-  // Compter les matchs arbitrés (via les sous-groupes)
+  // Compter les matchs arbitrés (directs ou via les sous-groupes)
   const matchesSql = `
-    SELECT COUNT(*) as count
+    SELECT COUNT(DISTINCT m.id) as count
     FROM matches m
-    JOIN sub_groups sg ON m.sub_group_id = sg.id
-    WHERE sg.main_referee_id = $1
+    LEFT JOIN sub_groups sg ON m.sub_group_id = sg.id
+    WHERE m.referee_id = $1 OR (m.referee_id IS NULL AND sg.main_referee_id = $1)
   `;
 
   const matchesResult = await query<{ count: string }>(matchesSql, [refereeId]);
@@ -658,10 +655,10 @@ async function getRefereeStatistics(refereeId: number) {
   const matchTypesSql = `
     SELECT 
       m.status,
-      COUNT(*) as count
+      COUNT(DISTINCT m.id) as count
     FROM matches m
-    JOIN sub_groups sg ON m.sub_group_id = sg.id
-    WHERE sg.main_referee_id = $1
+    LEFT JOIN sub_groups sg ON m.sub_group_id = sg.id
+    WHERE m.referee_id = $1 OR (m.referee_id IS NULL AND sg.main_referee_id = $1)
     GROUP BY m.status
     ORDER BY count DESC
   `;

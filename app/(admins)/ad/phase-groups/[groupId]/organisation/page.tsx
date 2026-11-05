@@ -349,6 +349,9 @@ export default function EliminationMatchOrganisationPage() {
         queryClient.invalidateQueries({
           queryKey: ["edition-active-fighters", editionId],
         }),
+        queryClient.invalidateQueries({
+          queryKey: ["active-referees"],
+        }),
       ]);
     } catch (error: any) {
       console.error("Erreur création match élimination:", error);
@@ -641,6 +644,7 @@ export default function EliminationMatchOrganisationPage() {
             allEditionFighters={allEditionFightersData || []}
             regions={allRegions}
             referees={refereesData || []}
+            phaseType={group?.phase?.phase_type || null}
             onCreateMatches={handleCreateBulkMatches}
             isCreating={isCreating}
           />
@@ -650,6 +654,7 @@ export default function EliminationMatchOrganisationPage() {
             allEditionFighters={allEditionFightersData || []}
             regions={allRegions}
             referees={refereesData || []}
+            phaseType={group?.phase?.phase_type || null}
             onCreateMatch={handleCreateMatch}
             isCreating={isCreating}
           />

@@ -690,7 +690,9 @@ export default function StandaloneMatchDetailPage() {
 
           <SubGroupRefereeManager
             subGroup={subGroup ?? undefined}
+            match={mergedMatch ?? undefined}
             currentMatchNumber={mergedMatch?.match_number}
+            phaseType={phaseType}
           />
 
           <MediaManager

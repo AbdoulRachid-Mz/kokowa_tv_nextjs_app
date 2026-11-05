@@ -844,6 +844,21 @@ export async function updateSubGroup(id: number, formData: FormData) {
       id,
     ]);
 
+    // Règle métier Kokowa TV : si phase 'group', synchroniser matches.referee_id avec main_referee_id
+    const phaseCheck = await queryOne<{ phase_type: string }>(
+      `SELECT p.phase_type FROM sub_groups sg
+       JOIN phase_groups pg ON sg.group_id = pg.id
+       JOIN phases p ON pg.phase_id = p.id
+       WHERE sg.id = $1`,
+      [id]
+    );
+    if (phaseCheck?.phase_type === 'group') {
+      await query(
+        `UPDATE matches SET referee_id = $1, updated_at = CURRENT_TIMESTAMP WHERE sub_group_id = $2`,
+        [validatedData.main_referee_id || null, id]
+      );
+    }
+
     revalidatePath(`/ad/sub-groups/${id}`);
     revalidatePath(`/ad/phase-groups/${validatedData.group_id}`);
     revalidateTag("sub-groups", {});

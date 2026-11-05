@@ -256,7 +256,9 @@ async function getMatchDetails(matchId: number) {
       b2.color as "belt2Color",
       
       -- Arbitre
-      ref.id as "refereeId",
+      COALESCE(m.referee_id, sg.main_referee_id) as "refereeId",
+      m.referee_id as "matchRefereeId",
+      sg.main_referee_id as "mainRefereeId",
       ref.first_name as "refereeFirstName",
       ref.last_name as "refereeLastName",
       ref.profile_image as "refereeProfileImage",
@@ -292,7 +294,7 @@ async function getMatchDetails(matchId: number) {
     LEFT JOIN regions r2 ON sg.region2_id = r2.id
     LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
     LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
-    LEFT JOIN referees ref ON sg.main_referee_id = ref.id
+    LEFT JOIN referees ref ON COALESCE(m.referee_id, sg.main_referee_id) = ref.id
     LEFT JOIN fighters f1 ON m.fighter1_id = f1.id
     LEFT JOIN fighters f2 ON m.fighter2_id = f2.id
     LEFT JOIN regions f1r ON f1.region_id = f1r.id

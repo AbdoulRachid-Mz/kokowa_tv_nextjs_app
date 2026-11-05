@@ -23,8 +23,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Referee, SubGroup } from "@/types";
-import { assignSubGroupReferee } from "@/actions/sub-group-referee";
+import { Match, Referee, SubGroup } from "@/types";
+import { assignMatchReferee, assignSubGroupReferee } from "@/actions/sub-group-referee";
 import { getReferees } from "@/actions/referees";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserCheck, AlertCircle, Loader2 } from "lucide-react";
@@ -32,17 +32,31 @@ import { toast } from "sonner";
 
 interface SubGroupRefereeManagerProps {
   subGroup?: SubGroup;
+  match?: Match;
   currentMatchNumber?: number;
+  phaseType?: string | null;
 }
 
 export function SubGroupRefereeManager({
   subGroup,
+  match,
   currentMatchNumber,
+  phaseType,
 }: SubGroupRefereeManagerProps) {
   const queryClient = useQueryClient();
   const [selectedRefereeId, setSelectedRefereeId] = useState<string>("none");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingRefereeId, setPendingRefereeId] = useState<number | null>(null);
+
+  // Déterminer si nous sommes en phase poule (group) ou éliminatoire / autre
+  const isGroupPhase = phaseType === "group";
+
+  // Arbitre actif :
+  // - Pour les phases group : arbitre du sous-groupe (ou du match)
+  // - Pour les autres phases : arbitre individuel du match (avec fallback sous-groupe si non défini)
+  const effectiveRefereeId = isGroupPhase
+    ? (subGroup?.main_referee_id ?? match?.referee_id ?? null)
+    : (match?.referee_id ?? subGroup?.main_referee_id ?? null);
 
   // Charger la liste des arbitres actifs
   const { data: referees = [], isLoading: isLoadingReferees } = useQuery({
@@ -53,16 +67,27 @@ export function SubGroupRefereeManager({
     },
   });
 
-  // Mutation pour changer l'arbitre du sous-groupe
+  // Mutation pour changer l'arbitre
   const assignMutation = useMutation({
     mutationFn: async (refereeId: number | null) => {
-      if (!subGroup?.id) throw new Error("Sous-groupe non trouvé");
-      return await assignSubGroupReferee(subGroup.id, refereeId);
+      if (isGroupPhase) {
+        if (!subGroup?.id) throw new Error("Sous-groupe non trouvé");
+        return await assignSubGroupReferee(subGroup.id, refereeId);
+      } else {
+        if (!match?.id) throw new Error("Match non trouvé");
+        return await assignMatchReferee(match.id, refereeId);
+      }
     },
     onSuccess: (data) => {
       toast.success(data.message);
-      queryClient.invalidateQueries({ queryKey: ["sub-group", subGroup?.id] });
+      if (subGroup?.id) {
+        queryClient.invalidateQueries({ queryKey: ["sub-group", subGroup.id] });
+      }
+      if (match?.id) {
+        queryClient.invalidateQueries({ queryKey: ["match", match.id] });
+      }
       queryClient.invalidateQueries({ queryKey: ["match"] });
+      queryClient.invalidateQueries({ queryKey: ["phase-group-matches"] });
       setIsConfirmOpen(false);
       setPendingRefereeId(null);
     },
@@ -73,13 +98,13 @@ export function SubGroupRefereeManager({
     },
   });
 
-  if (!subGroup) return null;
+  if (!subGroup && !match) return null;
 
-  const currentReferee = referees.find((r) => r.id === subGroup.main_referee_id);
+  const currentReferee = referees.find((r) => r.id === effectiveRefereeId);
   const currentRefereeName = currentReferee
     ? `${currentReferee.first_name} ${currentReferee.last_name}${currentReferee.nickname ? ` (${currentReferee.nickname})` : ""}`
-    : subGroup.main_referee_id
-    ? `Arbitre #${subGroup.main_referee_id}`
+    : effectiveRefereeId
+    ? `Arbitre #${effectiveRefereeId}`
     : "Aucun arbitre désigné";
 
   const handleSelectChange = (value: string) => {
@@ -103,36 +128,49 @@ export function SubGroupRefereeManager({
                 <UserCheck className="h-4 w-4" />
               </div>
               <CardTitle className="text-sm font-semibold">
-                Arbitre de la rencontre
+                {isGroupPhase ? "Arbitre de la rencontre (Poule)" : "Arbitre du combat"}
               </CardTitle>
             </div>
-            <Badge variant="outline" className="text-[10px]">
-              {subGroup.name}
-            </Badge>
+            <div className="flex items-center gap-1.5">
+              <Badge variant="outline" className="text-[10px]">
+                {isGroupPhase ? "Affectation par rencontre" : "Affectation par match"}
+              </Badge>
+              {subGroup?.name && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {subGroup.name}
+                </Badge>
+              )}
+            </div>
           </div>
         </CardHeader>
 
         <CardContent className="p-3.5 pt-1 space-y-3">
           <div className="p-2.5 rounded-lg bg-muted/40 border text-xs space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Arbitre actuel :</span>
+              <span className="text-muted-foreground">Arbitre assigné :</span>
               <span className="font-semibold">{currentRefereeName}</span>
             </div>
             <Typography variant="caption2" theme="muted" className="block text-[11px] leading-relaxed pt-1">
-              ⚠️ <b>Architecture Kokowa TV</b> : L'arbitre est affecté à la rencontre globale ({subGroup.name}). Tout changement s'appliquera à tous les combats de cette rencontre.
+              {isGroupPhase ? (
+                <>
+                  ⚠️ <b>Phase de poule</b> : L'arbitre est affecté au sous-groupe (<code>{subGroup?.name}</code>). Tout changement s'appliquera automatiquement à <b>tous les matchs</b> de cette rencontre.
+                </>
+              ) : (
+                <>
+                  ℹ️ <b>Phase éliminatoire</b> : L'arbitre est affecté <b>directement à ce match</b>. La modification de cet arbitre ne modifie pas les autres matchs du même groupe.
+                </>
+              )}
             </Typography>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-foreground">
-              Modifier l'arbitre principal de la rencontre :
+              {isGroupPhase
+                ? "Modifier l'arbitre principal de la rencontre :"
+                : "Modifier l'arbitre de ce combat :"}
             </label>
             <Select
-              value={
-                subGroup.main_referee_id
-                  ? subGroup.main_referee_id.toString()
-                  : "none"
-              }
+              value={effectiveRefereeId ? effectiveRefereeId.toString() : "none"}
               onValueChange={handleSelectChange}
               disabled={assignMutation.isPending || isLoadingReferees}
             >
@@ -153,21 +191,36 @@ export function SubGroupRefereeManager({
         </CardContent>
       </Card>
 
-      {/* Dialogue de confirmation explicite : impact sur l'ensemble de la rencontre */}
+      {/* Dialogue de confirmation explicite avec message adapté selon la phase */}
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-500" />
-              Changement de l'arbitre de la rencontre
+              <AlertCircle className={`h-5 w-5 ${isGroupPhase ? "text-amber-500" : "text-primary"}`} />
+              {isGroupPhase
+                ? "Changement de l'arbitre de la rencontre"
+                : `Affectation de l'arbitre du match #${currentMatchNumber || ""}`}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2 text-sm pt-2">
-              <p>
-                Vous êtes sur le point de modifier l'arbitre principal du sous-groupe <b>{subGroup.name}</b>.
-              </p>
-              <p className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-md text-amber-800 dark:text-amber-300 text-xs font-medium">
-                Conformément aux règles de la lutte traditionnelle au Niger, ce changement concerne <b>l'ensemble des combats de cette rencontre</b> et pas uniquement le combat #{currentMatchNumber || ""}.
-              </p>
+              {isGroupPhase ? (
+                <>
+                  <p>
+                    Vous êtes sur le point de modifier l'arbitre principal du sous-groupe <b>{subGroup?.name}</b>.
+                  </p>
+                  <p className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-md text-amber-800 dark:text-amber-300 text-xs font-medium">
+                    En phase de poule, ce changement concerne <b>l'ensemble des combats de cette rencontre</b> et pas uniquement le combat #{currentMatchNumber || ""}.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>
+                    Vous affectez un nouvel arbitre pour le <b>combat #{currentMatchNumber || ""}</b>.
+                  </p>
+                  <p className="p-2.5 bg-primary/10 border border-primary/20 rounded-md text-primary text-xs font-medium">
+                    Cette affectation s'applique <b>uniquement à ce match</b> et ne modifie pas les autres combats du groupe.
+                  </p>
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -189,7 +242,7 @@ export function SubGroupRefereeManager({
               {assignMutation.isPending && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
-              Confirmer pour toute la rencontre
+              {isGroupPhase ? "Confirmer pour toute la rencontre" : "Confirmer pour ce match"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

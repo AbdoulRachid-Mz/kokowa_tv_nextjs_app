@@ -274,6 +274,7 @@ export interface SubGroup extends BaseEntity {
 // Match
 export interface Match extends BaseEntity {
   sub_group_id: number;
+  referee_id?: number | null;
   match_number?: number;
   match_date: string;
   start_time?: string;
@@ -311,6 +312,7 @@ export interface Match extends BaseEntity {
   winner_fighter?: Fighter;
   loser_fighter?: Fighter;
   cards?: FighterCard[];
+  referee?: Referee;
 }
 
 // Carton de match

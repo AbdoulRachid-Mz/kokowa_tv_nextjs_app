@@ -767,12 +767,12 @@ export async function updateReferee(id: number, formData: FormData) {
 export async function deleteReferee(id: number) {
   try {
     // Vérifier si l'arbitre est utilisé dans des sous-groupes
-    const checkSql = 'SELECT COUNT(*) as count FROM sub_groups WHERE main_referee_id = $1';
+    const checkSql = 'SELECT ((SELECT COUNT(*) FROM sub_groups WHERE main_referee_id = $1) + (SELECT COUNT(*) FROM matches WHERE referee_id = $1)) as count';
     const checkResult = await query<{ count: string }>(checkSql, [id]);
     const isUsed = parseInt(checkResult[0]?.count || '0') > 0;
 
     if (isUsed) {
-      throw new Error('Cet arbitre est encore assigné à des sous-groupes. Veuillez d\'abord le retirer des sous-groupes.');
+      throw new Error('Cet arbitre est encore assigné à des rencontres ou des matchs. Veuillez d\'abord retirer ses assignations.');
     }
 
     const sql = 'DELETE FROM referees WHERE id = $1 RETURNING id';

@@ -20,6 +20,7 @@ export interface MatchUpdate {
   fighter2_id?: number | null;
   fighter1_initial_state?: "eliminated" | "not_eliminated";
   fighter2_initial_state?: "eliminated" | "not_eliminated";
+  referee_id?: number | null;
   winner_fighter_id?: number | null;
   loser_fighter_id?: number | null;
   match_result?:
@@ -628,6 +629,7 @@ async function updateMatchInTransaction(
     "video_url",
     "live_stream_url",
     "notes",
+    "referee_id",
   ];
 
   for (const [key, value] of Object.entries(updates)) {

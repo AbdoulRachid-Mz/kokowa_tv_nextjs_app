@@ -38,6 +38,7 @@ interface EliminationMatchCreatorProps {
   allEditionFighters?: EliminationFighter[];
   regions: Region[];
   referees?: Referee[];
+  phaseType?: string | null;
   onCreateMatch: (
     fighter1Id: number | null,
     fighter2Id: number | null,
@@ -54,6 +55,7 @@ export function EliminationMatchCreator({
   allEditionFighters = [],
   regions,
   referees = [],
+  phaseType,
   onCreateMatch,
   isCreating,
   onCancel,
@@ -242,7 +244,7 @@ export function EliminationMatchCreator({
           {referees.length > 0 && (
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <UserCheck className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs font-semibold">Arbitre de la rencontre :</span>
+              <span className="text-xs font-semibold">{phaseType === "group" ? "Arbitre de la rencontre :" : "Arbitre du combat :"}</span>
               <Select
                 value={selectedRefereeId}
                 onValueChange={setSelectedRefereeId}
