@@ -105,6 +105,10 @@ Tous en `CREATE INDEX IF NOT EXISTS` (idempotents), sans `CONCURRENTLY` (transac
 - **Aucun secret copié/affiché, aucune rotation effectuée** (action hors dépôt).
 - Actions requises : révocation/rotation de la clé dans GCP IAM, suppression du fichier de l'historique (`git filter-repo`/BFG), ajout au `.gitignore`, chargement via variables d'environnement/secret manager, vérification des logs d'accès.
 
+### 6.1b Vulnérabilité SQL corrigée pendant cet audit
+- `actions/mobile/app-settings.ts` : `getAppSettings()` construisait la clause `WHERE` par interpolation directe des clés **et des valeurs** utilisateur (`${k} = '${v}'`) → injection SQL. Corrigé : liste blanche stricte des colonnes (`setting_key`, `category`, `is_public`, `is_editable`) + requêtes paramétrées. Les autres fonctions du même fichier utilisaient la colonne inexistante `key` (schéma : `setting_key`/`setting_value`) → corrigées pour correspondre au schéma réel.
+- `actions/database.ts` : `getTableRowCount()` interpolait un nom de table après filtrage regex ; ajout d'une vérification d'existence dans `information_schema.tables`.
+
 ### 6.2 Contrôles préservés
 - Firebase Auth (`verifyFirebaseToken`) actif sur les routes authentifiées.
 - Rate limiting (`RedisStore` mutualisé via `globalThis`, fallback mémoire) actif.
@@ -116,6 +120,7 @@ Tous en `CREATE INDEX IF NOT EXISTS` (idempotents), sans `CONCURRENTLY` (transac
 
 1. **Payloads volumineux** : `latest_edition` (64 Ko) et `edition_by_id` (63 Ko) renvoient toute la hiérarchie en un seul payload. Le contrat Flutter l'exige ; la pagination par sous-groupe nécessiterait un changement de contrat (hors scope). p95 editions reste 343 ms sur 64 Ko (sérialisation + réseau).
 2. **Cache HTTP** : les en-têtes `Cache-Control` n'ont pas été ajoutés aux routes (LOT F partiel) car la plupart des endpoints sont personnalisés (`userId`, favoris). Le mécanisme est en place dans `api-handler` (`cacheControl` option) et peut être activé par endpoint stable sans risque. Recommandation : `public, s-maxage=60, stale-while-revalidate=300` sur `regions`, `competitions`, `editions/latest`, `teams`, `settings`.
+3. **XSS potentiel (web)** : `article.content` et `competition.description` sont rendus via `dangerouslySetInnerHTML` sans assainissement (composants `article-content.tsx`, `article-reader.tsx`, `competition-detail-page.tsx`). Contenu a priori administrateur ; recommander DOMPurify à l'affichage ou à la sauvegarde si des comptes non fiables peuvent éditer.
 3. **RBAC cache** : TTL 30 s en mémoire par instance serverless ; invalidation à la déconnexion non implémentée (acceptable, refus non cachés).
 4. **Indexes** : migration `010` fournie mais **non appliquée** au cluster de production (action DBA).
 5. **Mesures** : réalisées sur PostgreSQL local (pas Neon de prod) ; les gains relatifs (nombre de requêtes, parallélisation) sont transférables, les latences absolues dépendent du réseau Neon.

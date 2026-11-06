@@ -49,3 +49,6 @@ front-end.rar
 
 /services/service-account.json
 /services/google-services.json
+/services/google-services*.json
+/database/*firebase-adminsdk*.json
+database/*firebase-adminsdk*.json

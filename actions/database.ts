@@ -130,6 +130,15 @@ export async function getTableRowCount(tableName: string): Promise<number> {
   try {
     // Utiliser une requête préparée avec un nom de table validé
     const validTableName = tableName.replace(/[^a-zA-Z0-9_]/g, '');
+    // Garde-fou : on ne compte que les tables réellement présentes dans le schéma
+    // (évite l'énumération arbitraire et l'injection d'identifiant).
+    const exists = await query<{ exists: boolean }>(
+      `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1) AS exists`,
+      [validTableName],
+    );
+    if (!exists[0]?.exists) {
+      throw new Error(`Table inconnue : ${validTableName}`);
+    }
     const sql = `SELECT COUNT(*) as count FROM ${validTableName}`;
     const result = await query<{ count: string }>(sql);
     return parseInt(result[0]?.count ?? '0');
