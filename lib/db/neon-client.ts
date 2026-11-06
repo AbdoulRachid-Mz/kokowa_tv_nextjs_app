@@ -20,10 +20,6 @@ if (!neonConfig.webSocketConstructor) {
   neonConfig.webSocketConstructor = ws;
 }
 
-// Réutiliser la connexion HTTP entre les invocations serverless (Vercel) :
-// évite de recréer la connexion Neon à chaque cold start.
-neonConfig.fetchConnectionCache = true;
-
 // Parser INTERVAL (OID 1186) en chaîne pour éviter les problèmes de sérialisation PostgresInterval dans Next.js
 neonTypes.setTypeParser(1186, (val) => val);
 try {
@@ -64,13 +60,13 @@ const sanitizedConnectionString = getSanitizedConnectionString(
   process.env.DATABASE_URL,
 );
 
-// `DB_DRIVER=pg` permet de pointer vers un PostgreSQL local en développement/test.
-// Auto-détection : si l'URL contient "-pooler" (pooler Neon/PgBouncer) ou
-// "pgbouncer", on utilise le driver `pg` (TCP) qui est plus adapté au pooler.
-const dbDriver = (process.env.DB_DRIVER || "").toLowerCase();
-const useNodePg =
-  ["pg", "node", "node-pg"].includes(dbDriver) ||
-  /pooler|pgbouncer/i.test(process.env.DATABASE_URL || "");
+// `DB_DRIVER=pg` permet de pointer vers un PostgreSQL local (dev) ou vers le
+// pooler Neon (prod) avec le driver TCP `pg`. Par défaut (non défini), on
+// utilise le driver serverless `@neondatabase/serverless` (WebSocket/HTTPS),
+// compatible avec les environnements où le port 5432 est bloqué.
+const useNodePg = ["pg", "node", "node-pg"].includes(
+  (process.env.DB_DRIVER || "").toLowerCase(),
+);
 
 class NeonClient {
   private static instance: PgPool;
