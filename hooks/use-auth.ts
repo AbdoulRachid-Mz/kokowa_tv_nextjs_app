@@ -17,7 +17,7 @@ export function useAuth() {
       const headers: Record<string, string> = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'x-app-id': process.env.NEXT_PUBLIC_APP_ID || 'web-client',
+        'x-app-id': process.env.NEXT_PRIVATE_APP_ID!,
       };
 
       // First call /api/auth/sync to ensure user exists in DB and update last_login
@@ -101,7 +101,7 @@ export function useAuth() {
     try {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'x-app-id': process.env.NEXT_PUBLIC_APP_ID || 'web-client',
+        'x-app-id': process.env.NEXT_PRIVATE_APP_ID!,
       };
       await fetch('/api/auth/sign-out', { method: 'POST', headers });
     } catch (error) {
