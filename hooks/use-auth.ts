@@ -5,6 +5,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { UserDocument, UserInterface } from '@/types/user';
 import { auth } from '@/configs/firebase/config';
 
+const APP_ID = process.env.NEXT_PRIVATE_APP_ID;
+
 export function useAuth() {
   const [user, setUser] = useState<UserInterface | null>(null);
   const [userDocument, setUserDocument] = useState<UserDocument | null>(null);
@@ -17,7 +19,7 @@ export function useAuth() {
       const headers: Record<string, string> = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'x-app-id': process.env.NEXT_PRIVATE_APP_ID!,
+        'x-app-id': APP_ID!,
       };
 
       // First call /api/auth/sync to ensure user exists in DB and update last_login
@@ -101,7 +103,7 @@ export function useAuth() {
     try {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'x-app-id': process.env.NEXT_PRIVATE_APP_ID!,
+        'x-app-id': APP_ID!,
       };
       await fetch('/api/auth/sign-out', { method: 'POST', headers });
     } catch (error) {
