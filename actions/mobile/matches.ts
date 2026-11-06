@@ -2,7 +2,7 @@
 "use server";
 
 import { query } from "@/lib/db/neon-client";
-import { enrichMatchData, getCardsForMatch } from "@/utils/match-utils";
+import { enrichMatchData, getCardsForMatches } from "@/utils/match-utils";
 
 export async function getMobileMatchesBySubGroup(
   subGroupId: number,
@@ -13,11 +13,11 @@ export async function getMobileMatchesBySubGroup(
     const limit = filters?.limit || 20;
     const offset = (page - 1) * limit;
 
-    // Vérifier que le sous-groupe existe
-    const existsSql = "SELECT id FROM sub_groups WHERE id = $1";
-    const existsResult = await query(existsSql, [subGroupId]);
+    // Les informations du sous-groupe servent aussi d'existence check :
+    // une seule requête au lieu de deux.
+    const subGroupInfo = await getSubGroupInfo(subGroupId);
 
-    if (existsResult.length === 0) {
+    if (!subGroupInfo) {
       return {
         success: false,
         error: {
@@ -28,19 +28,28 @@ export async function getMobileMatchesBySubGroup(
       };
     }
 
-    // Récupérer les informations du sous-groupe
-    const subGroupInfo = await getSubGroupInfo(subGroupId);
-
-    // Compter le total des matchs (hors live/round_break si on veut paginer uniquement les autres,
-    // mais généralement on pagine tout ou on sépare. Ici on va paginer tous les matchs non-live)
-    const countSql = `
-      SELECT COUNT(*) as total 
+    // Un seul GROUP BY status fournit à la fois le total paginable et le résumé.
+    const statsSql = `
+      SELECT status, COUNT(*) as count 
       FROM matches 
       WHERE sub_group_id = $1 
-      AND status NOT IN ('live', 'round_break')
+      GROUP BY status
     `;
-    const countResult = await query<{ total: string }>(countSql, [subGroupId]);
-    const total = parseInt(countResult[0]?.total || "0");
+    const statsResult = await query<{ status: string; count: string }>(
+      statsSql,
+      [subGroupId],
+    );
+    const stats: Record<string, number> = {};
+    statsResult.forEach((row) => {
+      if (row.status !== null && row.status !== undefined) {
+        stats[row.status] = parseInt(row.count);
+      }
+    });
+    const total = Object.entries(stats).reduce(
+      (sum, [status, count]) =>
+        status === "live" || status === "round_break" ? sum : sum + count,
+      0,
+    );
 
     // Récupérer le match en direct (s'il existe) - Toujours récupéré à part
     const liveMatchSql = `
@@ -61,9 +70,6 @@ export async function getMobileMatchesBySubGroup(
       LIMIT 1
     `;
     const liveMatchResult = await query(liveMatchSql, [subGroupId]);
-    const liveMatch = liveMatchResult[0]
-      ? await enrichMatchData(liveMatchResult[0])
-      : null;
 
     // Récupérer les autres matchs paginés
     const otherMatchesSql = `
@@ -89,25 +95,22 @@ export async function getMobileMatchesBySubGroup(
       limit,
       offset,
     ]);
-    const otherMatches = await Promise.all(
-      otherMatchesResult.map((m) => enrichMatchData(m)),
+
+    // UNE seule requête cartons pour le live + la page courante.
+    const allMatches = [
+      ...(liveMatchResult[0] ? [liveMatchResult[0]] : []),
+      ...otherMatchesResult,
+    ];
+    const cardsByMatch = await getCardsForMatches(
+      allMatches.map((m) => Number(m.id)),
     );
 
-    // Grouper les matchs par statut pour le résumé
-    const statsSql = `
-      SELECT status, COUNT(*) as count 
-      FROM matches 
-      WHERE sub_group_id = $1 
-      GROUP BY status
-    `;
-    const statsResult = await query<{ status: string; count: string }>(
-      statsSql,
-      [subGroupId],
+    const liveMatch = liveMatchResult[0]
+      ? await enrichMatchData(liveMatchResult[0], cardsByMatch)
+      : null;
+    const otherMatches = await Promise.all(
+      otherMatchesResult.map((m) => enrichMatchData(m, cardsByMatch)),
     );
-    const stats: Record<string, number> = {};
-    statsResult.forEach((row) => {
-      stats[row.status] = parseInt(row.count);
-    });
 
     const totalPages = Math.ceil(total / limit);
 

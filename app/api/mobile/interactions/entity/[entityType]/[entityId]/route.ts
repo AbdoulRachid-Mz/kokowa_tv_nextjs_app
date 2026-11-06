@@ -1,11 +1,12 @@
+import { withLightInstrumentation } from "@/lib/server/api-handler";
 import { NextRequest, NextResponse } from 'next/server';
 import { getMobileEntityInteractions } from '@/actions/mobile/interactions';
 import { EntityType, InteractionType } from '@/types';
 
-export async function GET(
+export const GET = withLightInstrumentation(async (
   request: NextRequest,
   context: { params: Promise<{ entityType: string; entityId: string }> }
-) {
+) => {
   try {
     const { entityType, entityId } = await context.params;
     const entityIdNum = Number(entityId);
@@ -47,4 +48,4 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});

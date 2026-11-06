@@ -67,9 +67,7 @@ export async function getMobileMessages(
       FROM messages m
       ${whereClause}
     `;
-    const countRes = await query<{ total: string }>(countSql, params);
-    const total = Number(countRes[0]?.total || 0);
-    const totalPages = Math.ceil(total / limit);
+    const countParams = params.slice();
 
     // 📥 DATA (TEXT ONLY)
     const dataSql = `
@@ -95,7 +93,14 @@ export async function getMobileMessages(
     `;
 
     params.push(limit, offset);
-    const messages = await query(dataSql, params);
+
+    // COUNT et page sont indépendants : une seule vague.
+    const [countRes, messages] = await Promise.all([
+      query<{ total: string }>(countSql, countParams),
+      query(dataSql, params),
+    ]);
+    const total = Number(countRes[0]?.total || 0);
+    const totalPages = Math.ceil(total / limit);
 
     return {
       success: true,

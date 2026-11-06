@@ -4,7 +4,7 @@
 import { query } from "@/lib/db/neon-client";
 import { getParticipatedEditions } from "./editions";
 import { formatDateTime, formatDuration } from "@/utils/duration";
-import { enrichMatchData } from "@/utils/match-utils";
+import { enrichMatchData, getCardsForMatches } from "@/utils/match-utils";
 import { generateAchievementDescription } from "@/lib/achievements";
 
 export async function getMobileFighters(filters?: {
@@ -111,8 +111,8 @@ export async function getMobileFighters(filters?: {
       ${countWhereClause}
     `;
 
-    const countResult = await query(countSql, params.slice(0, paramIndex - 1));
-    const total = parseInt(countResult[0]?.total || "0");
+    // Count total / page / global stats sont indépendants : une seule vague.
+    const countPromise = query(countSql, params.slice(0, paramIndex - 1));
 
     // Determine ORDER BY
     let orderBy = "";
@@ -160,11 +160,6 @@ export async function getMobileFighters(filters?: {
     const queryParams = userId
       ? [...params, userId, limit, offset]
       : [...params, limit, offset];
-    const fighters = await query(sql, queryParams);
-
-    const fightersWithDecodedSocialLinks = fighters.map((fighter) => ({
-      ...fighter,
-    }));
 
     // Calculate global stats
     const statsSql = `
@@ -177,7 +172,18 @@ export async function getMobileFighters(filters?: {
       WHERE birth_date IS NOT NULL
     `;
 
-    const statsResult = await query(statsSql);
+    const [countResult, fighters, statsResult] = await Promise.all([
+      countPromise,
+      query(sql, queryParams),
+      query(statsSql),
+    ]);
+
+    const total = parseInt(countResult[0]?.total || "0");
+
+    const fightersWithDecodedSocialLinks = fighters.map((fighter) => ({
+      ...fighter,
+    }));
+
     const stats = {
       total: parseInt(statsResult[0]?.total || "0"),
       actifs: parseInt(statsResult[0]?.actifs || "0"),
@@ -222,12 +228,10 @@ export async function getMobileFighters(filters?: {
 
 export async function getMobileFighterById(fighterId: number, userId?: number) {
   try {
-    // Vérifier que le lutteur existe
-    const existsSql =
-      "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
-    const existsResult = await query(existsSql, [fighterId]);
+    // Récupérer les informations de base du lutteur (sert aussi d'existence check)
+    const fighterInfo = await getFighterInfo(fighterId, userId);
 
-    if (existsResult.length === 0) {
+    if (!fighterInfo) {
       return {
         success: false,
         error: {
@@ -238,17 +242,16 @@ export async function getMobileFighterById(fighterId: number, userId?: number) {
       };
     }
 
-    // Récupérer les informations de base du lutteur avec likes et favoris
-    const fighterInfo = await getFighterInfo(fighterId, userId);
-
-    // Récupérer les données associées
-    const achievements = await getFighterAchievements(fighterId);
-    const transfers = await getFighterTransfers(fighterId);
-    const cards = await getFighterCards(fighterId);
-    const region = await getFighterRegion(fighterInfo.regionId);
-    const stats = await calculateFighterStats(fighterId);
-    // NOUVEAU: Récupérer les éditions auxquelles le lutteur a participé
-    const editions = await getParticipatedEditions(fighterId, "fighter");
+    // Les données associées sont indépendantes : une seule vague de requêtes.
+    const [achievements, transfers, cards, region, stats, editions] =
+      await Promise.all([
+        getFighterAchievements(fighterId),
+        getFighterTransfers(fighterId),
+        getFighterCards(fighterId),
+        getFighterRegion(fighterInfo.regionId),
+        calculateFighterStats(fighterId),
+        getParticipatedEditions(fighterId, "fighter"),
+      ]);
 
     return {
       success: true,
@@ -310,7 +313,7 @@ async function getFighterInfo(fighterId: number, userId?: number) {
       
     FROM fighters f
     LEFT JOIN regions r ON f.region_id = r.id
-    WHERE f.id = $1
+    WHERE f.id = $1 AND f.is_active = true
   `;
 
   const result = await query(sql, [fighterId]);
@@ -578,52 +581,42 @@ async function getAllMatchesForFighter(
 
   params.push(limit, offset);
   const matches = await query(sql, params);
-  const enrichedMatches = [];
-  for (const match of matches) {
-    const enriched = await enrichMatchData(match);
-    enrichedMatches.push(enriched);
-  }
-  return enrichedMatches;
+
+  // UNE seule requête cartons pour toute la page.
+  const cardsByMatch = await getCardsForMatches(
+    matches.map((match: any) => Number(match.id)),
+  );
+  return Promise.all(
+    matches.map((match: any) => enrichMatchData(match, cardsByMatch)),
+  );
 }
 
 async function calculateFighterStats(fighterId: number) {
-  // Compter les matchs
-  const matchesSql = `
+  // UNE seule requête : matchs, cartons et temps de combat.
+  const statsSql = `
     SELECT 
       COUNT(*) as "totalMatches",
-      SUM(CASE WHEN winner_fighter_id = $1 THEN 1 ELSE 0 END) as "wins",
-      SUM(CASE WHEN winner_fighter_id != $1 AND winner_fighter_id IS NOT NULL THEN 1 ELSE 0 END) as "losses"
+      COALESCE(SUM(CASE WHEN winner_fighter_id = $1 THEN 1 ELSE 0 END), 0) as "wins",
+      COALESCE(SUM(CASE WHEN winner_fighter_id != $1 AND winner_fighter_id IS NOT NULL THEN 1 ELSE 0 END), 0) as "losses",
+      COALESCE(SUM(EXTRACT(EPOCH FROM total_duration)) FILTER (WHERE total_duration IS NOT NULL), 0) as "totalSeconds",
+      (
+        SELECT COUNT(*) FROM fighter_cards fc
+        WHERE fc.fighter_id = $1 AND fc.is_cancelled = FALSE
+      ) as "totalCards",
+      (
+        SELECT COALESCE(SUM(CASE WHEN fc.card_type = 'yellow' THEN 1 ELSE 0 END), 0)
+        FROM fighter_cards fc
+        WHERE fc.fighter_id = $1 AND fc.is_cancelled = FALSE
+      ) as "yellowCards"
     FROM matches 
     WHERE (fighter1_id = $1 OR fighter2_id = $1) 
     AND status = 'completed'
   `;
 
-  const matchResult = await query(matchesSql, [fighterId]);
-  const matchStats = matchResult[0];
+  const statsResult = await query(statsSql, [fighterId]);
+  const matchStats = statsResult[0] || {};
 
-  // Compter les cartons
-  const cardsSql = `
-    SELECT 
-      COUNT(*) as "totalCards",
-      SUM(CASE WHEN card_type = 'yellow' THEN 1 ELSE 0 END) as "yellowCards",
-      SUM(CASE WHEN card_type = 'red' THEN 1 ELSE 0 END) as "redCards"
-    FROM fighter_cards 
-    WHERE fighter_id = $1 AND is_cancelled = FALSE
-  `;
-
-  const cardsResult = await query(cardsSql, [fighterId]);
-  const cardStats = cardsResult[0];
-
-  // Calculer le temps total de combat
-  const timeSql = `
-    SELECT SUM(EXTRACT(EPOCH FROM total_duration)) as "totalSeconds" 
-    FROM matches 
-    WHERE (fighter1_id = $1 OR fighter2_id = $1) 
-    AND status = 'completed' AND total_duration IS NOT NULL
-  `;
-
-  const timeResult = await query(timeSql, [fighterId]);
-  const totalSeconds = parseInt(timeResult[0]?.totalSeconds || "0");
+  const totalSeconds = parseInt(matchStats.totalSeconds || "0");
 
   const totalMinutes = Math.floor(totalSeconds / 60);
   const hours = Math.floor(totalMinutes / 60);
@@ -639,8 +632,8 @@ async function calculateFighterStats(fighterId: number) {
     wins: wins,
     losses: parseInt(matchStats.losses || "0"),
     winRate: Math.round(winRate * 10) / 10,
-    yellowCards: parseInt(cardStats.yellowCards || "0"),
-    totalCards: parseInt(cardStats.totalCards || "0"),
+    yellowCards: parseInt(matchStats.yellowCards || "0"),
+    totalCards: parseInt(matchStats.totalCards || "0"),
     totalFightTime: {
       hours: hours,
       minutes: minutes,
@@ -668,10 +661,17 @@ export async function getMobileFighterMatches(
     const offset = (page - 1) * limit;
     const all = filters?.all || false;
 
-    // Vérifier que le lutteur existe
-    const existsSql =
-      "SELECT id FROM fighters WHERE id = $1 AND is_active = true";
-    const existsResult = await query(existsSql, [fighterId]);
+    // Existence du lutteur et éditions participantes sont indépendantes :
+    // une seule vague.
+    const needsEditions = !editionId && !all;
+    const [existsResult, participatedEditions] = await Promise.all([
+      query("SELECT id FROM fighters WHERE id = $1 AND is_active = true", [
+        fighterId,
+      ]),
+      needsEditions
+        ? getParticipatedEditions(fighterId, "fighter")
+        : Promise.resolve([] as any[]),
+    ]);
 
     if (existsResult.length === 0) {
       return {
@@ -686,14 +686,11 @@ export async function getMobileFighterMatches(
 
     // Déterminer l'édition à utiliser
     let finalEditionId = editionId;
-    if (!finalEditionId && !all) {
-      const participatedEditions = await getParticipatedEditions(fighterId, "fighter");
-      if (participatedEditions.length > 0) {
-        finalEditionId = participatedEditions[0].id;
-      }
+    if (needsEditions && participatedEditions.length > 0) {
+      finalEditionId = participatedEditions[0].id;
     }
 
-    // Compter le total des matchs
+    // Un seul GROUP BY status fournit le total et le résumé.
     let countWhereClause = "(m.fighter1_id = $1 OR m.fighter2_id = $1)";
     const countParams: any[] = [fighterId];
     let paramIndex = 2;
@@ -703,26 +700,6 @@ export async function getMobileFighterMatches(
       paramIndex++;
     }
 
-    const countSql = `
-      SELECT COUNT(*) as total 
-      FROM matches m
-      JOIN sub_groups sg ON m.sub_group_id = sg.id
-      JOIN phase_groups pg ON sg.group_id = pg.id
-      JOIN phases p ON pg.phase_id = p.id
-      WHERE ${countWhereClause}
-    `;
-    const countResult = await query<{ total: string }>(countSql, countParams);
-    const total = parseInt(countResult[0]?.total || "0");
-
-    // Récupérer les matchs paginés
-    const matches = await getAllMatchesForFighter(
-      fighterId,
-      finalEditionId,
-      limit,
-      offset,
-    );
-
-    // Grouper par statut pour le résumé
     const statsSql = `
       SELECT m.status, COUNT(*) as count 
       FROM matches m
@@ -732,13 +709,19 @@ export async function getMobileFighterMatches(
       WHERE ${countWhereClause}
       GROUP BY m.status
     `;
-    const statsResult = await query<{ status: string; count: string }>(
-      statsSql,
-      countParams,
-    );
+
+    // Stats et page de matchs sont indépendantes : une seule vague.
+    const [statsResult, matches] = await Promise.all([
+      query<{ status: string; count: string }>(statsSql, countParams),
+      getAllMatchesForFighter(fighterId, finalEditionId, limit, offset),
+    ]);
+
     const stats: Record<string, number> = {};
+    let total = 0;
     statsResult.forEach((row) => {
-      stats[row.status] = parseInt(row.count);
+      const count = parseInt(row.count);
+      stats[row.status] = count;
+      total += count;
     });
 
     const totalPages = Math.ceil(total / limit);

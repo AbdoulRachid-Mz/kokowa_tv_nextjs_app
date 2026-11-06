@@ -1,3 +1,4 @@
+import { withLightInstrumentation } from "@/lib/server/api-handler";
 // app/api/mobile/interactions/user/[userId]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getMobileInteractions, getMobileUserInteractions } from '@/actions/mobile/interactions';
@@ -7,10 +8,10 @@ interface Props {
   params: Promise<{ userId: string }>
 }
 
-export async function GET(
+export const GET = withLightInstrumentation(async (
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
-) {
+) => {
   try {
     const { userId } = await params;
 
@@ -59,4 +60,4 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});

@@ -27,10 +27,8 @@ export async function getMobileTeamMembers() {
       WHERE tm.is_active = TRUE
       ORDER BY tm.position_order ASC, tm.joined_date ASC
     `;
-    
-    const members = await query<any>(membersSql);
 
-    // 2. Récupérer les statistiques globales
+    // 2. Statistiques globales (indépendantes des membres)
     const statsSql = `
       SELECT 
         COUNT(*) as total_members,
@@ -44,8 +42,12 @@ export async function getMobileTeamMembers() {
       FROM team_members
       WHERE is_active = TRUE
     `;
-    
-    const statsResult = await queryOne<any>(statsSql);
+
+    // Une seule vague.
+    const [members, statsResult] = await Promise.all([
+      query<any>(membersSql),
+      queryOne<any>(statsSql),
+    ]);
 
     return {
       success: true,
@@ -87,16 +89,18 @@ export async function getMobileTeamMemberDetails(id: number) {
   if (isNaN(id)) return { success: false, error: "ID invalide" };
   
   try {
-    const member = await queryOne<TeamMember>(`SELECT * FROM team_members WHERE id = $1`, [id]);
+    const [member, achievements] = await Promise.all([
+      queryOne<TeamMember>(`SELECT * FROM team_members WHERE id = $1`, [id]),
+      query<TeamAchievement>(
+        `SELECT * FROM team_achievements 
+         WHERE team_member_id = $1 
+         ORDER BY achievement_date DESC`,
+        [id],
+      ),
+    ]);
     if (!member) {
       return { success: false, error: "Member not found" };
     }
-
-    const achievements = await query<TeamAchievement>(`
-      SELECT * FROM team_achievements 
-      WHERE team_member_id = $1 
-      ORDER BY achievement_date DESC
-    `, [id]);
 
     return {
       success: true,

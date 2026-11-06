@@ -1,8 +1,9 @@
+import { withLightInstrumentation } from "@/lib/server/api-handler";
 // api/mobile/interactions/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { getMobileInteractionById } from '@/actions/mobile/interactions';
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withLightInstrumentation(async (request: Request, { params }: { params: Promise<{ id: string }> }) => {
   try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);
@@ -44,4 +45,4 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       { status: 500 }
     );
   }
-}
+});

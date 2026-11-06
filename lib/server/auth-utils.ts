@@ -114,14 +114,53 @@ export async function getCompleteUserData(uid: string, firebaseUser?: any): Prom
   }
 }
 
+declare global {
+  // eslint-disable-next-line no-var
+  var __kokowa_rbac_cache:
+    | Map<string, { user: UserDocument; expires: number }>
+    | undefined;
+}
+
+function getRbacCacheTtlMs(): number {
+  const raw = Number(process.env.RBAC_CACHE_TTL_MS);
+  if (Number.isFinite(raw) && raw >= 0) return raw;
+  return 30_000;
+}
+
+function getRbacCache() {
+  return (globalThis.__kokowa_rbac_cache ??= new Map());
+}
+
 /**
- * Vérifie si un utilisateur a les permissions nécessaires
+ * Vérifie si un utilisateur a les permissions nécessaires.
+ *
+ * Un cache mémoire court (30 s par défaut, `RBAC_CACHE_TTL_MS`) évite une
+ * requête SQL `users` à chaque requête protégée. Seuls les succès sont mis en
+ * cache ; un refus n'est jamais mémorisé, pour ne pas bloquer un utilisateur
+ * dont le rôle vient d'être attribué.
+ *
+ * Contrepartie assumée : une rétrogradation de rôle peut mettre jusqu'à
+ * `RBAC_CACHE_TTL_MS` à être prise en compte.
  */
 export async function checkUserPermissions(
   uid: string,
   requiredRoles: string[]
 ): Promise<{ hasPermission: boolean; user?: UserDocument }> {
   try {
+    const ttl = getRbacCacheTtlMs();
+    const cacheKey = `${uid}:${[...requiredRoles].sort().join(",")}`;
+    const now = Date.now();
+
+    if (ttl > 0) {
+      const cached = getRbacCache().get(cacheKey);
+      if (cached && cached.expires > now) {
+        return {
+          hasPermission: requiredRoles.includes(cached.user.role),
+          user: cached.user,
+        };
+      }
+    }
+
     const user = await getUserByFirebaseUid(uid);
     if (!user) {
       return { hasPermission: false };
@@ -130,6 +169,10 @@ export async function checkUserPermissions(
     // Pour l'instant, on vérifie seulement le rôle
     // Tu peux étendre cette logique avec un système de permissions plus complexe
     const hasPermission = requiredRoles.includes(user.role);
+
+    if (hasPermission && ttl > 0) {
+      getRbacCache().set(cacheKey, { user, expires: now + ttl });
+    }
 
     return { hasPermission, user };
   } catch (error) {

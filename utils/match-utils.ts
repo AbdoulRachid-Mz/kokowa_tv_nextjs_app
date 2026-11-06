@@ -17,9 +17,58 @@ export async function getCardsForMatch(matchId: number) {
   return await query(sql, [matchId]);
 }
 
-export async function enrichMatchData(match: any) {
-  // Retrieve all cards for this match
-  const cards = await getCardsForMatch(match.id);
+export type MatchCard = {
+  id?: number;
+  fighterId: number;
+  cardType?: string;
+  minuteGiven: string | null;
+};
+
+/**
+ * Charge les cartons de plusieurs matchs en UNE requête.
+ * Utilisé pour supprimer le N+1 de `enrichMatchData`.
+ */
+export async function getCardsForMatches(
+  matchIds: number[],
+): Promise<Map<number, MatchCard[]>> {
+  const cardsByMatch = new Map<number, MatchCard[]>();
+  if (!matchIds.length) return cardsByMatch;
+
+  const sql = `
+    SELECT 
+      fc.id,
+      fc.match_id as "matchId",
+      fc.fighter_id as "fighterId",
+      fc.card_type as "cardType",
+      fc.minute_given as "minuteGiven"
+    FROM fighter_cards fc
+    WHERE fc.match_id = ANY($1::int[])
+    ORDER BY fc.match_id, fc.minute_given
+  `;
+
+  const rows = await query<any>(sql, [matchIds]);
+
+  for (const row of rows) {
+    const matchId = Number(row.matchId);
+    const list = cardsByMatch.get(matchId);
+    if (list) {
+      list.push(row);
+    } else {
+      cardsByMatch.set(matchId, [row]);
+    }
+  }
+
+  return cardsByMatch;
+}
+
+export async function enrichMatchData(
+  match: any,
+  cardsByMatch?: Map<number, MatchCard[]>,
+) {
+  // Retrieve all cards for this match (or reuse a preloaded batch).
+  const cards = cardsByMatch
+    ? (cardsByMatch.get(Number(match.id)) ?? [])
+    : await getCardsForMatch(match.id);
 
   // Format totalDuration (handles INTERVAL objects, strings, and numeric values)
   let formattedDuration = "00:00:00";

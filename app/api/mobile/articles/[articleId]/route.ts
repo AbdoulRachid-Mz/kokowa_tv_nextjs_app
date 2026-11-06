@@ -1,12 +1,13 @@
+import { withLightInstrumentation } from "@/lib/server/api-handler";
 // @/api/mobile/articles/[articleId]
 import { getArticleById } from "@/actions/mobile/articles";
 import { getUserIdFromAuthId } from "@/actions/users";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(
+export const GET = withLightInstrumentation(async (
   request: NextRequest,
   { params }: { params: Promise<{ articleId: string }> }
-) {
+) => {
   const { articleId } = await params;
   const articleIdNum = Number(articleId);
   const searchParams = request.nextUrl.searchParams;
@@ -31,4 +32,4 @@ export async function GET(
   return NextResponse.json(result, {
     status: result.success ? 200 : result.error?.code || 500,
   });
-}
+});

@@ -21,9 +21,13 @@ export async function getMobileCompetitions(withEditions: boolean = false) {
     const competitions = await query(sql);
 
     // Si on demande les éditions avec les compétitions
-    if (withEditions) {
+    if (withEditions && competitions.length > 0) {
+      const editionsByCompetition = await getEditionsForCompetitions(
+        competitions.map((competition: any) => Number(competition.id)),
+      );
       for (const competition of competitions) {
-        competition.editions = await getEditionsForCompetition(competition.id);
+        competition.editions =
+          editionsByCompetition.get(Number(competition.id)) ?? [];
       }
     }
 
@@ -107,8 +111,24 @@ export async function getMobileCompetitionById(id: number, withEditions: boolean
 
 // Fonction auxiliaire pour récupérer les éditions d'une compétition
 async function getEditionsForCompetition(competitionId: number) {
+  const editionsByCompetition = await getEditionsForCompetitions([competitionId]);
+  return editionsByCompetition.get(competitionId) ?? [];
+}
+
+/**
+ * Charge les éditions de plusieurs compétitions en UNE requête.
+ * L'ordre (année DESC, numéro DESC) est conservé à l'intérieur de chaque
+ * compétition, comme avec l'ancienne boucle.
+ */
+async function getEditionsForCompetitions(
+  competitionIds: number[],
+): Promise<Map<number, any[]>> {
+  const result = new Map<number, any[]>();
+  if (!competitionIds.length) return result;
+
   const sql = `
     SELECT 
+      ce.competition_id as "competitionId",
       ce.id,
       ce.edition_number as "editionNumber",
       ce.year,
@@ -122,9 +142,22 @@ async function getEditionsForCompetition(competitionId: number) {
     FROM competition_editions ce
     LEFT JOIN regions r ON ce.region_id = r.id
     LEFT JOIN fighters f ON ce.winner_fighter_id = f.id
-    WHERE ce.competition_id = $1
-    ORDER BY ce.year DESC, ce.edition_number DESC
+    WHERE ce.competition_id = ANY($1::int[])
+    ORDER BY ce.competition_id, ce.year DESC, ce.edition_number DESC
   `;
 
-  return await query(sql, [competitionId]);
+  const rows = await query(sql, [competitionIds]);
+
+  for (const row of rows) {
+    const competitionId = Number(row.competitionId);
+    delete row.competitionId;
+    const list = result.get(competitionId);
+    if (list) {
+      list.push(row);
+    } else {
+      result.set(competitionId, [row]);
+    }
+  }
+
+  return result;
 }

@@ -67,9 +67,6 @@ export async function getArticles(filters?: {
       ${whereClause}
     `;
 
-    const countResult = await query(countSql, params);
-    const total = parseInt(countResult[0]?.total || "0");
-
     // Build selection fields with likes
     const selectFields = `
       a.id,
@@ -109,9 +106,15 @@ export async function getArticles(filters?: {
       OFFSET $${paramIndex + 1}
     `;
 
+    const countParams = params.slice();
     params.push(limit, offset);
 
-    const articles = await query(articlesSql, params);
+    // COUNT et page sont indépendants : une seule vague.
+    const [countResult, articles] = await Promise.all([
+      query<{ total: string }>(countSql, countParams),
+      query(articlesSql, params),
+    ]);
+    const total = parseInt(countResult[0]?.total || "0");
 
     // Calculate pagination
     const totalPages = Math.ceil(total / limit);
@@ -147,20 +150,6 @@ export async function getArticles(filters?: {
 
 export async function getArticleById(articleId: number, userId?: number) {
   try {
-    const existsSql = "SELECT id FROM articles WHERE id = $1";
-    const existsResult = await query(existsSql, [articleId]);
-
-    if (existsResult.length === 0) {
-      return {
-        success: false,
-        error: {
-          code: 404,
-          message: "Article non trouvé",
-          timestamp: new Date().toISOString(),
-        },
-      };
-    }
-
     const selectFields = `
       a.id,
       a.title,
@@ -199,7 +188,22 @@ export async function getArticleById(articleId: number, userId?: number) {
       WHERE a.id = $1
     `;
 
-    const result = await query(articleSql, [articleId]);
+    const mediaSql = `
+      SELECT 
+        id,
+        file_path as "filePath",
+        file_type as "fileType",
+        mime_type as "mimeType"
+      FROM media
+      WHERE entity_type = 'article' AND entity_id = $1
+      ORDER BY is_featured DESC, created_at ASC
+    `;
+
+    // Article et médias sont indépendants : une seule vague.
+    const [result, mediaRows] = await Promise.all([
+      query(articleSql, [articleId]),
+      query(mediaSql, [articleId]),
+    ]);
     const article = result[0];
 
     if (!article) {
@@ -212,18 +216,6 @@ export async function getArticleById(articleId: number, userId?: number) {
         },
       };
     }
-
-    const mediaSql = `
-      SELECT 
-        id,
-        file_path as "filePath",
-        file_type as "fileType",
-        mime_type as "mimeType"
-      FROM media
-      WHERE entity_type = 'article' AND entity_id = $1
-      ORDER BY is_featured DESC, created_at ASC
-    `;
-    const mediaRows = await query(mediaSql, [articleId]);
 
     const images: string[] = [];
     const videos: string[] = [];

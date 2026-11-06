@@ -74,8 +74,7 @@ export async function getMobileInteractions(
       FROM interactions i
       ${whereClause}
     `;
-    const countRes = await query<{ total: string }>(countSql, params);
-    const total = Number(countRes[0]?.total || 0);
+    const countParams = params.slice();
 
     // 📦 DATA : récupération DES ENTITÉS
     const dataSql = `
@@ -105,7 +104,13 @@ export async function getMobileInteractions(
     `;
 
     params.push(limit, offset);
-    const results = await query(dataSql, params);
+
+    // COUNT et page sont indépendants : une seule vague.
+    const [countRes, results] = await Promise.all([
+      query<{ total: string }>(countSql, countParams),
+      query(dataSql, params),
+    ]);
+    const total = Number(countRes[0]?.total || 0);
 
     // �️ Groupement par entity_type
     const grouped: Record<string, any[]> = {
@@ -174,21 +179,6 @@ export async function getMobileInteractions(
 
 export async function getMobileInteractionById(id: number, withUser: boolean = true) {
   try {
-    // Vérifier si l'interaction existe
-    const existsSql = 'SELECT id FROM interactions WHERE id = $1';
-    const existsResult = await query(existsSql, [id]);
-
-    if (existsResult.length === 0) {
-      return {
-        success: false,
-        error: {
-          code: 404,
-          message: 'Interaction non trouvée',
-          timestamp: new Date().toISOString()
-        }
-      };
-    }
-
     // Construire les champs de sélection
     const selectFields = [
       'i.id',
@@ -221,6 +211,17 @@ export async function getMobileInteractionById(id: number, withUser: boolean = t
 
     const result = await query(interactionSql, [id]);
     const interaction = result[0];
+
+    if (!interaction) {
+      return {
+        success: false,
+        error: {
+          code: 404,
+          message: 'Interaction non trouvée',
+          timestamp: new Date().toISOString()
+        }
+      };
+    }
 
     return {
       success: true,

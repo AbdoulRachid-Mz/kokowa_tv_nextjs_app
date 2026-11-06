@@ -66,16 +66,21 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    // Obtenir le total
+    // Obtenir le total. Les jointures sub_groups/matches n'affectaient pas
+    // COUNT(DISTINCT r.id) : on les retire pour éviter un fan-out inutile.
     const countSql = `
-      SELECT COUNT(DISTINCT r.id) as total
+      SELECT COUNT(*) as total
       FROM referees r
-      LEFT JOIN sub_groups sg ON r.id = sg.main_referee_id
-      LEFT JOIN matches m ON (m.referee_id = r.id OR (m.referee_id IS NULL AND sg.id = m.sub_group_id))
       ${whereClause}
     `;
 
-    const countResult = await query<{ total: string }>(countSql, params);
+    const needsActiveCount = filters.isActive === undefined;
+    const [countResult, activeCount] = await Promise.all([
+      query<{ total: string }>(countSql, params),
+      needsActiveCount
+        ? countActiveReferees(filters)
+        : Promise.resolve(0),
+    ]);
     const total = parseInt(countResult[0]?.total || '0');
 
     // Construire les champs de sélection
@@ -90,7 +95,12 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
       'r.experience_years as "experienceYears"',
       'r.is_active as "isActive"',
       'r.social_links as "socialLinks"',
-      'COUNT(DISTINCT m.id) as "matchesCount"'
+      `(SELECT COUNT(DISTINCT m.id)
+        FROM matches m
+        LEFT JOIN sub_groups sg ON m.sub_group_id = sg.id
+        WHERE m.referee_id = r.id
+           OR (m.referee_id IS NULL AND sg.main_referee_id = r.id)
+      ) as "matchesCount"`
     ];
 
     // Déterminer le tri
@@ -108,10 +118,7 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
       SELECT 
         ${selectFields.join(', ')}
       FROM referees r
-      LEFT JOIN sub_groups sg ON r.id = sg.main_referee_id
-      LEFT JOIN matches m ON (m.referee_id = r.id OR (m.referee_id IS NULL AND sg.id = m.sub_group_id))
       ${whereClause}
-      GROUP BY r.id
       ${orderByClause}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
@@ -137,8 +144,8 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
         },
         summary: {
           total,
-          active: filters.isActive === undefined 
-            ? await countActiveReferees(filters)
+          active: filters.isActive === undefined
+            ? activeCount
             : filters.isActive ? total : 0
         },
         timestamp: new Date().toISOString()
@@ -184,21 +191,6 @@ export async function getMobileRefereeById(id: number, options: {
       withStatistics = false 
     } = options;
 
-    // Vérifier si l'arbitre existe
-    const existsSql = 'SELECT id FROM referees WHERE id = $1';
-    const existsResult = await query(existsSql, [id]);
-
-    if (existsResult.length === 0) {
-      return {
-        success: false,
-        error: {
-          code: 404,
-          message: 'Arbitre non trouvé',
-          timestamp: new Date().toISOString()
-        }
-      };
-    }
-
     // Construire les champs de sélection
     const selectFields = [
       'r.id',
@@ -220,7 +212,13 @@ export async function getMobileRefereeById(id: number, options: {
       WHERE r.id = $1
     `;
 
-    const result = await query(refereeSql, [id]);
+    // La requête arbitre sert d'existence check ; les compteurs sont
+    // indépendants et partent dans la même vague.
+    const needsCounts = withSubGroups || withStatistics;
+    const [result, counts] = await Promise.all([
+      query(refereeSql, [id]),
+      needsCounts ? getRefereeCounts(id) : Promise.resolve(null),
+    ]);
     const referee = result[0];
 
     if (!referee) {
@@ -235,8 +233,7 @@ export async function getMobileRefereeById(id: number, options: {
     }
 
     // Récupérer les compteurs si demandé
-    if (withSubGroups || withStatistics) {
-      const counts = await getRefereeCounts(id);
+    if (needsCounts && counts) {
       referee.subGroupsCount = counts.subGroupsCount;
       referee.matchesCount = counts.matchesCount;
     }

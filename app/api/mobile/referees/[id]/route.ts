@@ -1,3 +1,4 @@
+import { withLightInstrumentation } from "@/lib/server/api-handler";
 // app/api/mobile/referees/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { 
@@ -10,10 +11,10 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-export async function GET(
+export const GET = withLightInstrumentation(async (
   request: NextRequest,
   { params }: Props
-) {
+) => {
   try {
     const { id } = await params;
     const idNum = Number(id);
@@ -54,7 +55,7 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});
 
 export async function PUT(
   request: NextRequest,

@@ -2,6 +2,7 @@
 
 import { query } from "@/lib/db/neon-client";
 import { formatDateTime, formatDuration } from "@/utils/duration";
+import { getCardsForMatches } from "@/utils/match-utils";
 
 export async function getMobileEditionById(editionId: number) {
   try {
@@ -171,9 +172,9 @@ async function getEditionInfo(editionId: number) {
   return edition;
 }
 
-// Modifions d'abord la fonction getPhasesWithGroupsAndSubgroups
+// Récupère phases -> groupes -> sous-groupes -> matchs -> cartons en un nombre
+// constant de requêtes (au lieu d'une requête par nœud).
 async function getPhasesWithGroupsAndSubgroups(editionId: number) {
-  // Récupérer les phases
   const phasesSql = `
     SELECT 
       p.id,
@@ -190,52 +191,56 @@ async function getPhasesWithGroupsAndSubgroups(editionId: number) {
   `;
 
   const phases = await query(phasesSql, [editionId]);
+  if (!phases.length) return phases;
 
-  // Pour chaque phase, récupérer les groupes et sous-groupes
-  for (const phase of phases) {
-    phase.groups = await getGroupsWithSubgroups(phase.id, phase.phaseType);
-  }
+  const phaseIds = phases.map((phase: any) => phase.id);
+  const phaseTypeById = new Map<number, string>(
+    phases.map((phase: any) => [Number(phase.id), String(phase.phaseType)]),
+  );
 
-  return phases;
-}
-
-// Modifions getGroupsWithSubgroups pour passer le phaseType
-async function getGroupsWithSubgroups(phaseId: number, phaseType: string) {
-  // Fetch groups
   const groupsSql = `
     SELECT 
       pg.id,
+      pg.phase_id as "phaseId",
       pg.name,
       pg.group_order as "groupOrder",
       pg.is_active as "isActive",
       pg.date as "date",
       pg.is_completed as "isCompleted"
     FROM phase_groups pg
-    WHERE pg.phase_id = $1
-    ORDER BY pg.group_order
+    WHERE pg.phase_id = ANY($1::int[])
+    ORDER BY pg.phase_id, pg.group_order
   `;
 
-  const groups = await query(groupsSql, [phaseId]);
+  const groups = await query(groupsSql, [phaseIds]);
 
-  // For each group, fetch subgroups with matches if phase type is not 'group'
+  const groupsByPhase = new Map<number, any[]>();
+  const groupIdToPhaseId = new Map<number, number>();
+
   for (const group of groups) {
-    if (phaseType !== "group") {
-      // Pour les phases knockout, quarterfinal, semifinal, final, qualification
-      group.subGroups = await getSubgroupsWithMatchesForGroup(group.id);
+    const phaseId = Number(group.phaseId);
+    groupIdToPhaseId.set(Number(group.id), phaseId);
+    delete group.phaseId;
+    const list = groupsByPhase.get(phaseId);
+    if (list) {
+      list.push(group);
     } else {
-      // Pour les phases de type 'group', garder le comportement original
-      group.subGroups = await getSubgroupsForGroup(group.id);
+      groupsByPhase.set(phaseId, [group]);
     }
   }
 
-  return groups;
-}
+  for (const phase of phases) {
+    (phase as any).groups = groupsByPhase.get(Number(phase.id)) ?? [];
+  }
 
-// Nouvelle fonction pour récupérer les sous-groupes avec leurs matches
-async function getSubgroupsWithMatchesForGroup(groupId: number) {
-  const sql = `
+  if (!groups.length) return phases;
+
+  const groupIds = groups.map((group: any) => group.id);
+
+  const subgroupsSql = `
     SELECT 
       sg.id,
+      sg.group_id as "groupId",
       sg.name,
       sg.sub_group_order as "subGroupOrder",
       sg.period,
@@ -258,42 +263,151 @@ async function getSubgroupsWithMatchesForGroup(groupId: number) {
     LEFT JOIN regions r2 ON sg.region2_id = r2.id
     LEFT JOIN belt b1 ON sg.belt_region1 = b1.id
     LEFT JOIN belt b2 ON sg.belt_region2 = b2.id
-    WHERE sg.group_id = $1
-    ORDER BY sg.sub_group_order
+    WHERE sg.group_id = ANY($1::int[])
+    ORDER BY sg.group_id, sg.sub_group_order
   `;
 
-  const subGroups = await query(sql, [groupId]);
+  const subgroups = await query(subgroupsSql, [groupIds]);
 
-  // Pour chaque sous-groupe, récupérer les matches
-  for (const subGroup of subGroups) {
-    subGroup.matches = await getMatchesForSubGroup(subGroup.id);
+  const subgroupsByGroup = new Map<number, any[]>();
+  const subgroupsWithMatches: any[] = [];
 
-    // Format scores
-    subGroup.scores = {
-      region1: subGroup.scoreRegion1,
-      region2: subGroup.scoreRegion2,
-      nulls: subGroup.nulls,
-    };
-    subGroup.matchStatus = subGroup.status;
+  for (const subGroup of subgroups) {
+    const groupId = Number(subGroup.groupId);
+    const phaseId = groupIdToPhaseId.get(groupId);
+    const phaseType = phaseId ? phaseTypeById.get(phaseId) : undefined;
+    const isGroupPhase = phaseType === "group";
+
+    // Propriété interne retirée avant la réponse (contrat inchangé).
+    delete subGroup.groupId;
+
+    if (!isGroupPhase) {
+      subgroupsWithMatches.push(subGroup);
+    }
+
+    const list = subgroupsByGroup.get(groupId);
+    if (list) {
+      list.push(subGroup);
+    } else {
+      subgroupsByGroup.set(groupId, [subGroup]);
+    }
   }
 
-  return subGroups;
-}
+  let matchesBySubGroup = new Map<number, any[]>();
+  let cardsByMatch = new Map<number, any[]>();
 
-// Helper function to retrieve all cards for a match
-async function getCardsForMatch(matchId: number) {
-  const sql = `
-    SELECT id, fighter_id as "fighterId", minute_given as "minuteGiven"
-    FROM fighter_cards
-    WHERE match_id = $1
-  `;
-  return await query(sql, [matchId]);
+  if (subgroupsWithMatches.length) {
+    const subGroupIds = subgroupsWithMatches.map((sg) => sg.id);
+    const matchesSql = `
+      SELECT 
+        m.id,
+        m.sub_group_id as "subGroupId",
+        m.match_number as "matchNumber",
+        m.match_date as "matchDate",
+        m.start_time2 as "startTime",
+        m.status,
+        m.total_duration as "totalDuration",
+        m.break_count as "breakCount",
+        m.video_url as "videoUrl",
+        m.live_stream_url as "liveStreamUrl",
+        m.notes,
+        
+        -- Fighter 1
+        m.fighter1_id as "fighter1Id",
+        f1.first_name as "fighter1FirstName",
+        f1.last_name as "fighter1LastName",
+        f1.nickname as "fighter1Nickname",
+        f1.profile_image as "fighter1ProfileImage",
+        m.fighter1_initial_state as "fighter1InitialState",
+        r1.name as "fighter1RegionName",
+        r1.flag_image as "fighter1RegionFlagImage",
+        
+        -- Fighter 2
+        m.fighter2_id as "fighter2Id",
+        f2.first_name as "fighter2FirstName",
+        f2.last_name as "fighter2LastName",
+        f2.nickname as "fighter2Nickname",
+        f2.profile_image as "fighter2ProfileImage",
+        r2.name as "fighter2RegionName",
+        r2.flag_image as "fighter2RegionFlagImage",
+        m.fighter2_initial_state as "fighter2InitialState",
+        
+        -- Winner
+        m.winner_fighter_id as "winnerFighterId",
+        m.loser_fighter_id as "loserFighterId"
+      FROM matches m
+      JOIN fighters f1 ON m.fighter1_id = f1.id
+      JOIN fighters f2 ON m.fighter2_id = f2.id
+      JOIN regions r1 ON f1.region_id = r1.id
+      JOIN regions r2 ON f2.region_id = r2.id
+      WHERE m.sub_group_id = ANY($1::int[])
+      ORDER BY m.sub_group_id, m.match_number ASC
+    `;
+
+    const matches = await query(matchesSql, [subGroupIds]);
+
+    for (const match of matches) {
+      const subGroupId = Number(match.subGroupId);
+      delete match.subGroupId;
+      const list = matchesBySubGroup.get(subGroupId);
+      if (list) {
+        list.push(match);
+      } else {
+        matchesBySubGroup.set(subGroupId, [match]);
+      }
+    }
+
+    if (matches.length) {
+      cardsByMatch = await getCardsForMatches(matches.map((match) => match.id));
+    }
+  } else {
+    matchesBySubGroup = new Map();
+  }
+
+  for (const group of groups) {
+    const phaseId = groupIdToPhaseId.get(Number(group.id));
+    const phaseType = phaseId ? phaseTypeById.get(phaseId) : undefined;
+    const groupSubGroups = subgroupsByGroup.get(Number(group.id)) ?? [];
+
+    if (phaseType === "group") {
+      group.subGroups = groupSubGroups.map((sg) => ({
+        ...sg,
+        scores: {
+          region1: sg.scoreRegion1,
+          region2: sg.scoreRegion2,
+          nulls: sg.nulls,
+        },
+        matchStatus: sg.status,
+      }));
+    } else {
+      group.subGroups = groupSubGroups.map((sg) => {
+        const matches = matchesBySubGroup.get(Number(sg.id)) ?? [];
+        return {
+          ...sg,
+          matches: matches.map((match) => enrichMatchData(match, cardsByMatch)),
+          scores: {
+            region1: sg.scoreRegion1,
+            region2: sg.scoreRegion2,
+            nulls: sg.nulls,
+          },
+          matchStatus: sg.status,
+        };
+      });
+    }
+  }
+
+  return phases;
 }
 
 // Match data enrichment function following the required format
-async function enrichMatchData(match: any) {
-  // Retrieve all cards for this match
-  const cards = await getCardsForMatch(match.id);
+function enrichMatchData(
+  match: any,
+  cardsByMatch?: Map<number, any[]>,
+) {
+  // Retrieve all cards for this match (or reuse the batch preloaded by the caller).
+  const cards = cardsByMatch
+    ? (cardsByMatch.get(Number(match.id)) ?? [])
+    : [];
 
   // Format totalDuration (handles INTERVAL objects, strings, and numeric values)
   let formattedDuration = "00:00:00";

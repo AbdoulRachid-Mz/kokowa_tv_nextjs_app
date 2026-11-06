@@ -1,3 +1,4 @@
+import { withLightInstrumentation } from "@/lib/server/api-handler";
 // app/api/mobile/referees/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { 
@@ -5,7 +6,7 @@ import {
   createMobileReferee 
 } from '@/actions/mobile/referees';
 
-export async function GET(request: NextRequest) {
+export const GET = withLightInstrumentation(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
 
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,10 +1,11 @@
+import { withLightInstrumentation } from "@/lib/server/api-handler";
 // @/api/mobile/articles
 import { getArticles } from "@/actions/mobile/articles";
 import { getUserIdFromAuthId } from "@/actions/users";
 import { ArticleType } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
+export const GET = withLightInstrumentation(async (request: NextRequest) => {
   const searchParams = request.nextUrl.searchParams;
 
   // Parse query parameters
@@ -79,4 +80,4 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(result, {
     status: result.success ? 200 : result.error?.code || 500,
   });
-}
+});

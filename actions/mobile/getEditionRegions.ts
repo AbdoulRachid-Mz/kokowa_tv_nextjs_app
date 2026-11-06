@@ -6,11 +6,10 @@ import { enrichMatchData, getCardsForMatch } from "@/utils/match-utils";
 
 export async function getMobileEditionRegions(editionId: number) {
   try {
-    // Vérifier que l'édition existe
-    const existsSql = "SELECT id FROM competition_editions WHERE id = $1";
-    const existsResult = await query(existsSql, [editionId]);
+    // Les informations de l'édition servent aussi d'existence check.
+    const editionInfo = await getEditionInfo(editionId);
 
-    if (existsResult.length === 0) {
+    if (!editionInfo) {
       return {
         success: false,
         error: {
@@ -21,14 +20,11 @@ export async function getMobileEditionRegions(editionId: number) {
       };
     }
 
-    // Récupérer les informations de base de l'édition avec les totaux
-    const editionInfo = await getEditionInfo(editionId);
-
-    // Récupérer les régions participantes avec leurs statistiques calculées en SQL
-    const regions = await getRegionsWithStats(editionId);
-
-    // Récupérer les lutteurs de l'édition avec leurs statistiques
-    const fighters = await getFightersForEdition(editionId);
+    // Régions et lutteurs sont indépendants : une seule vague.
+    const [regions, fighters] = await Promise.all([
+      getRegionsWithStats(editionId),
+      getFightersForEdition(editionId),
+    ]);
 
     // Classer les régions
     const rankedRegions = rankRegions(regions);

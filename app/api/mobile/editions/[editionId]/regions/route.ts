@@ -1,12 +1,13 @@
+import { withLightInstrumentation } from "@/lib/server/api-handler";
 // @/api/mobile/editions/editionId/regions
 // import { getEditionRegions } from '@/actions/mobile/getEditionRegions';
 import { getMobileEditionRegions } from '@/actions/mobile/getEditionRegions';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(
+export const GET = withLightInstrumentation(async (
   request: NextRequest,
   { params }: { params: Promise<{ editionId: string }> }
-) {
+) => {
   const { editionId } = await params;
   const editionIdNum = Number(editionId);
 
@@ -19,4 +20,4 @@ export async function GET(
 
   const result = await getMobileEditionRegions(editionIdNum);
   return NextResponse.json(result, { status: result.success ? 200 : result.error?.code || 500 });
-}
+});

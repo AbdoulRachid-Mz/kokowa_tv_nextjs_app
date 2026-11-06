@@ -1,9 +1,10 @@
+import { withLightInstrumentation } from "@/lib/server/api-handler";
 // app/api/mobile/settings/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getAppSettings } from '@/actions/mobile/app-settings';
 import { AppSettingFilters } from '@/types';
 
-export async function GET(req: NextRequest) {
+export const GET = withLightInstrumentation(async (req: NextRequest) => {
   const searchParams = req.nextUrl.searchParams;
   const filters: AppSettingFilters = {
     search: searchParams.get('search') || undefined,
@@ -23,4 +24,4 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

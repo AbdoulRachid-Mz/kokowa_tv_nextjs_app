@@ -1,7 +1,18 @@
 // lib/db/neon-client.ts
-import { Pool, neonConfig, types } from "@neondatabase/serverless";
+import {
+  Pool as NeonPool,
+  neonConfig,
+  types as neonTypes,
+} from "@neondatabase/serverless";
+import { Pool as NodePgPool, types as nodePgTypes } from "pg";
 import type { Pool as PgPool } from "pg";
 import ws from "ws";
+import {
+  getSlowQueryThresholdMs,
+  isPerfLogEnabled,
+  recordSql,
+  sqlSnippet,
+} from "@/lib/server/perf-context";
 
 // Configuration du WebSocket constructor pour l'environnement Node.js / Bun
 // Permet de passer par le port 443 (WSS/HTTPS) et contourner le blocage du port standard 5432
@@ -10,7 +21,13 @@ if (!neonConfig.webSocketConstructor) {
 }
 
 // Parser INTERVAL (OID 1186) en chaîne pour éviter les problèmes de sérialisation PostgresInterval dans Next.js
-types.setTypeParser(1186, (val) => val);
+neonTypes.setTypeParser(1186, (val) => val);
+try {
+  // Le driver `pg` est utilisé uniquement en dev/test (DB_DRIVER=pg).
+  nodePgTypes.setTypeParser(1186, (val) => val);
+} catch {
+  // ignore : le driver pg n'est pas disponible dans certains runtimes edge
+}
 
 /**
  * Nettoie la chaîne de connexion pour éliminer les paramètres sslmode hérités
@@ -25,29 +42,54 @@ function getSanitizedConnectionString(rawUrl?: string): string | undefined {
     return url.toString();
   } catch {
     // Si l'URL n'est pas standard, retirer par regex sécurisée
-    return rawUrl.replace(/[?&]sslmode=[^&]+/g, "").replace(/\?&/, "?").replace(/\?$/, "");
+    return rawUrl
+      .replace(/[?&]sslmode=[^&]+/g, "")
+      .replace(/\?&/, "?")
+      .replace(/\?$/, "");
   }
 }
 
-const sanitizedConnectionString = getSanitizedConnectionString(process.env.DATABASE_URL);
+function envInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const value = Number.parseInt(raw, 10);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+const sanitizedConnectionString = getSanitizedConnectionString(
+  process.env.DATABASE_URL,
+);
+
+// `DB_DRIVER=pg` permet de pointer vers un PostgreSQL local en développement/test.
+const useNodePg = ["pg", "node", "node-pg"].includes(
+  (process.env.DB_DRIVER || "").toLowerCase(),
+);
 
 class NeonClient {
-  private static instance: Pool;
+  private static instance: PgPool;
 
-  static getInstance(): Pool {
-    const globalForNeon = globalThis as unknown as { neonPool?: Pool };
+  static getInstance(): PgPool {
+    const globalForNeon = globalThis as unknown as { neonPool?: PgPool };
 
     if (globalForNeon.neonPool) {
       return globalForNeon.neonPool;
     }
 
     if (!NeonClient.instance) {
-      NeonClient.instance = new Pool({
+      const config = {
         connectionString: sanitizedConnectionString,
-        max: process.env.NODE_ENV === "production" ? 15 : 8,
-        idleTimeoutMillis: 15000,
-        connectionTimeoutMillis: 15000,
-      });
+        max: envInt(
+          "DB_POOL_MAX",
+          process.env.NODE_ENV === "production" ? 15 : 8,
+        ),
+        idleTimeoutMillis: envInt("DB_IDLE_TIMEOUT_MS", 15000),
+        // Échouer vite plutôt que de laisser une requête attendre 15 s.
+        connectionTimeoutMillis: envInt("DB_CONNECTION_TIMEOUT_MS", 10000),
+      };
+
+      NeonClient.instance = (
+        useNodePg ? new NodePgPool(config) : new NeonPool(config)
+      ) as unknown as PgPool;
 
       // Gestion centralisée des erreurs du pool
       NeonClient.instance.on("error", (err: any) => {
@@ -65,7 +107,7 @@ class NeonClient {
   }
 }
 
-export const pool: PgPool = NeonClient.getInstance() as unknown as PgPool;
+export const pool: PgPool = NeonClient.getInstance();
 
 export type QueryValue = string | number | boolean | Date | null | any[];
 
@@ -102,12 +144,39 @@ function isTransientError(error: any): boolean {
   );
 }
 
-// Fonction utilitaire avec retry résilient, backoff exponentiel et jitter
+/**
+ * Une requête est considérée comme lecture seule si elle ne peut pas modifier
+ * de données. En cas de doute (WITH contenant un DML, appel de fonction
+ * inconnue, etc.), on renvoie `false` : mieux vaut ne pas réessayer que de
+ * dupliquer une écriture.
+ */
+export function isReadOnlyQuery(sql: string): boolean {
+  const normalized = sql
+    .replace(/--[^\n]*/g, " ")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .trim();
+
+  if (/^(select|show|explain|values)\b/i.test(normalized)) return true;
+
+  if (/^with\b/i.test(normalized)) {
+    // Un CTE peut contenir INSERT/UPDATE/DELETE/MERGE : pas de retry.
+    return !/\b(insert|update|delete|merge)\b/i.test(normalized);
+  }
+
+  return false;
+}
+
+function getRetryAttempts(): number {
+  return envInt("DB_RETRY_ATTEMPTS", 2);
+}
+
+// Fonction utilitaire avec retry résilient, backoff exponentiel et jitter.
+// N'est appelée que pour les requêtes classées lecture seule.
 async function executeWithRetry<T>(
   fn: () => Promise<T>,
-  retries = 3,
+  retries = getRetryAttempts(),
   baseDelay = 400,
-  attempt = 1
+  attempt = 1,
 ): Promise<T> {
   try {
     return await fn();
@@ -119,10 +188,10 @@ async function executeWithRetry<T>(
 
     // Calcul du délai avec backoff exponentiel et jitter aléatoire
     const jitter = Math.floor(Math.random() * 100);
-    const delay = baseDelay * Math.pow(2, attempt - 1) + jitter;
+    const delay = Math.min(800, baseDelay * Math.pow(2, attempt - 1)) + jitter;
 
     console.warn(
-      `⚠️ Erreur connexion Neon transitoire (${error.code || error.message}). Nouvelle tentative (${attempt}/3) dans ${delay}ms...`
+      `⚠️ Erreur connexion Neon transitoire (${error.code || "network"}). Nouvelle tentative (${attempt}/${getRetryAttempts()}) dans ${delay}ms...`,
     );
 
     await new Promise((resolve) => setTimeout(resolve, delay));
@@ -130,19 +199,62 @@ async function executeWithRetry<T>(
   }
 }
 
+export interface QueryOptions {
+  /**
+   * Force ou interdit le retry. Par défaut, seules les lectures sont
+   * réessayées. Ne jamais mettre `true` sur une écriture non idempotente.
+   */
+  retryable?: boolean;
+}
+
 export async function query<T = any>(
   sql: string,
-  params: QueryValue[] = []
+  params: QueryValue[] = [],
+  options: QueryOptions = {},
 ): Promise<T[]> {
+  const canRetry = options.retryable ?? isReadOnlyQuery(sql);
+  const startedAt = performance.now();
+
   try {
-    const result = await executeWithRetry(() => pool.query(sql, params));
+    const result = canRetry
+      ? await executeWithRetry(() => pool.query(sql, params))
+      : await pool.query(sql, params);
+
+    const durationMs = performance.now() - startedAt;
+    recordSql(durationMs, sql);
+
+    if (durationMs >= getSlowQueryThresholdMs()) {
+      console.warn(
+        `[db-perf][slow-query] ${JSON.stringify({
+          ms: Math.round(durationMs),
+          query: sqlSnippet(sql),
+          rows: result.rowCount ?? result.rows?.length ?? 0,
+          retryable: canRetry,
+        })}`,
+      );
+    } else if (isPerfLogEnabled() && process.env.NODE_ENV !== "test") {
+      console.debug(
+        `[db-perf] ${JSON.stringify({
+          ms: Math.round(durationMs),
+          query: sqlSnippet(sql),
+          rows: result.rowCount ?? result.rows?.length ?? 0,
+        })}`,
+      );
+    }
+
     return result.rows as T[];
   } catch (error: any) {
-    // Journalisation structurée sans fuite de secrets
+    recordSql(performance.now() - startedAt, sql);
+
+    // Journalisation structurée sans fuite de secrets ni de PII :
+    // on n'écrit ni les paramètres, ni la requête complète, ni le message brut
+    // (qui peut contenir une valeur dupliquée, un e-mail, etc.).
     console.error("❌ Erreur Neon Query:", {
-      message: error.message,
-      code: error.code,
-      querySnippet: sql.trim().split("\n")[0].substring(0, 100),
+      code: error?.code,
+      constraint: error?.constraint,
+      table: error?.table,
+      query: sqlSnippet(sql),
+      retryable: canRetry,
     });
     throw new Error("Erreur lors de l’exécution de la requête PostgreSQL");
   }
@@ -150,20 +262,36 @@ export async function query<T = any>(
 
 export async function queryOne<T = any>(
   sql: string,
-  params: QueryValue[] = []
+  params: QueryValue[] = [],
+  options: QueryOptions = {},
 ): Promise<T | null> {
-  const result = await query<T>(sql, params);
+  const result = await query<T>(sql, params, options);
   return result[0] || null;
 }
 
 export async function testDatabaseConnection(): Promise<boolean> {
   try {
+    const startedAt = performance.now();
     const result = await pool.query("SELECT NOW() as current_time");
+    recordSql(performance.now() - startedAt, "SELECT NOW()");
     return !!result.rows[0];
   } catch (error) {
     console.error("❌ Échec test connexion Neon:", (error as Error).message);
     return false;
   }
+}
+
+export function getPoolStats() {
+  const stats = pool as unknown as {
+    totalCount?: number;
+    idleCount?: number;
+    waitingCount?: number;
+  };
+  return {
+    total: stats.totalCount ?? null,
+    idle: stats.idleCount ?? null,
+    waiting: stats.waitingCount ?? null,
+  };
 }
 
 export async function closePool(): Promise<void> {

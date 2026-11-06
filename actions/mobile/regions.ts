@@ -5,7 +5,7 @@ import { query } from "@/lib/db/neon-client";
 import { Region } from "@/types";
 import { getParticipatedEditions } from "./editions";
 import { formatDateTime, formatDuration } from "@/utils/duration";
-import { enrichMatchData } from "@/utils/match-utils";
+import { enrichMatchData, getCardsForMatches } from "@/utils/match-utils";
 import { generateAchievementDescription } from "@/lib/achievements";
 
 export async function getMobileRegions(filters?: {
@@ -19,14 +19,11 @@ export async function getMobileRegions(filters?: {
     const offset = (page - 1) * limit;
     const userId = filters?.userId;
 
-    // Compter le total
+    // Compter le total et charger la page sont indépendants : une seule vague.
     const countSql = `
       SELECT COUNT(*) as total
       FROM regions
     `;
-
-    const countResult = await query<{ total: string }>(countSql);
-    const total = parseInt(countResult[0]?.total || "0");
 
     const sql = `
       SELECT 
@@ -41,7 +38,11 @@ export async function getMobileRegions(filters?: {
     `;
 
     const params = [limit, offset];
-    const regions = await query<Region>(sql, params);
+    const [countResult, regions] = await Promise.all([
+      query<{ total: string }>(countSql),
+      query<Region>(sql, params),
+    ]);
+    const total = parseInt(countResult[0]?.total || "0");
 
     // Calculer la pagination
     const totalPages = Math.ceil(total / limit);
@@ -97,11 +98,13 @@ export async function getMobileRegionById(
       };
     }
 
-    // Récupérer toutes les données de la région
-    const fighters = await getRegionFighters(regionId);
-    const matches = await getRegionMatches(regionId, editionId);
-    const transfers = await getRegionTransfers(regionId);
-    const achievements = await getRegionAchievements(regionId);
+    // Récupérer toutes les données de la région, en une seule vague.
+    const [fighters, matches, transfers, achievements] = await Promise.all([
+      getRegionFighters(regionId),
+      getRegionMatches(regionId, editionId),
+      getRegionTransfers(regionId),
+      getRegionAchievements(regionId),
+    ]);
     const stats = calculateRegionStats(
       fighters,
       matches?.data?.matches?.all || [],
@@ -174,11 +177,13 @@ export async function getMobileRegionById2(
       };
     }
 
-    // Récupérer toutes les données de la région
-    const fighters = await getRegionFighters(regionId);
-    const editions = await getParticipatedEditions(regionId, "region");
-    const transfers = await getRegionTransfers(regionId);
-    const achievements = await getRegionAchievements(regionId);
+    // Récupérer toutes les données de la région, en une seule vague.
+    const [fighters, editions, transfers, achievements] = await Promise.all([
+      getRegionFighters(regionId),
+      getParticipatedEditions(regionId, "region"),
+      getRegionTransfers(regionId),
+      getRegionAchievements(regionId),
+    ]);
     const stats = calculateRegionStats(fighters, [], achievements);
 
     return {
@@ -367,7 +372,8 @@ export async function getRegionMatches(
       }
     }
 
-    // Compter le total des matchs
+    // Un seul GROUP BY status fournit total + résumé ; il est indépendant de
+    // la page de matchs, donc une seule vague.
     let countWhereClause = "(f1.region_id = $1 OR f2.region_id = $1)";
     const countParams: any[] = [regionId];
     let paramIndex = 2;
@@ -377,28 +383,6 @@ export async function getRegionMatches(
       paramIndex++;
     }
 
-    const countSql = `
-      SELECT COUNT(*) as total 
-      FROM matches m
-      JOIN fighters f1 ON m.fighter1_id = f1.id
-      JOIN fighters f2 ON m.fighter2_id = f2.id
-      JOIN sub_groups sg ON m.sub_group_id = sg.id
-      JOIN phase_groups pg ON sg.group_id = pg.id
-      JOIN phases p ON pg.phase_id = p.id
-      WHERE ${countWhereClause}
-    `;
-    const countResult = await query<{ total: string }>(countSql, countParams);
-    const total = parseInt(countResult[0]?.total || "0");
-
-    // Récupérer tous les matchs de la région paginés
-    const matches = await getAllMatchesForRegion(
-      regionId,
-      finalEditionId,
-      limit,
-      offset,
-    );
-
-    // Grouper par statut pour le résumé
     const statsSql = `
       SELECT m.status, COUNT(*) as count 
       FROM matches m
@@ -410,13 +394,17 @@ export async function getRegionMatches(
       WHERE ${countWhereClause}
       GROUP BY m.status
     `;
-    const statsResult = await query<{ status: string; count: string }>(
-      statsSql,
-      countParams,
-    );
+    const [statsResult, matches] = await Promise.all([
+      query<{ status: string; count: string }>(statsSql, countParams),
+      getAllMatchesForRegion(regionId, finalEditionId, limit, offset),
+    ]);
+
     const stats: Record<string, number> = {};
+    let total = 0;
     statsResult.forEach((row) => {
-      stats[row.status] = parseInt(row.count);
+      const count = parseInt(row.count);
+      stats[row.status] = count;
+      total += count;
     });
 
     const totalPages = Math.ceil(total / limit);
@@ -543,12 +531,14 @@ async function getAllMatchesForRegion(
 
   params.push(limit, offset);
   const matches = await query(sql, params);
-  const enrichedMatches = [];
-  for (const match of matches) {
-    const enriched = await enrichMatchData(match);
-    enrichedMatches.push(enriched);
-  }
-  return enrichedMatches;
+
+  // UNE seule requête cartons pour toute la page.
+  const cardsByMatch = await getCardsForMatches(
+    matches.map((match: any) => Number(match.id)),
+  );
+  return Promise.all(
+    matches.map((match: any) => enrichMatchData(match, cardsByMatch)),
+  );
 }
 
 async function getRegionTransfers(regionId: number) {

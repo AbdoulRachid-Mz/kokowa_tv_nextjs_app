@@ -1,9 +1,10 @@
+import { withLightInstrumentation } from "@/lib/server/api-handler";
 import { createMobileInteraction, getMobileInteractions } from "@/actions/mobile/interactions";
 import { InteractionType } from "@/types";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyFirebaseToken } from "@/lib/server/auth-middleware";
 
-export async function GET(req: NextRequest) {
+export const GET = withLightInstrumentation(async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url);
     const filters = {
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 export async function POST(req: NextRequest) {
   try {

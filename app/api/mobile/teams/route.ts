@@ -1,7 +1,8 @@
+import { withLightInstrumentation } from "@/lib/server/api-handler";
 import { NextResponse } from "next/server";
 import { getMobileTeamMembers } from "@/actions/mobile/teams";
 
-export async function GET() {
+export const GET = withLightInstrumentation(async () => {
   try {
     const result = await getMobileTeamMembers();
     
@@ -18,4 +19,4 @@ export async function GET() {
       data: null 
     }, { status: 500 });
   }
-}
+});

@@ -122,7 +122,18 @@ async function getAllTransfers(
   sql += ` ORDER BY ft.transfer_date DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
   params.push(limit, offset);
 
-  const transfers = await query(sql, params);
+  // Le total ne dépend pas de la page : une seule vague.
+  let countSql = `SELECT COUNT(*) as total FROM fighter_transfers ft WHERE 1=1`;
+  const countParams: any[] = [];
+  if (status) {
+    countSql += ` AND ft.status = $${countParams.length + 1}`;
+    countParams.push(status);
+  }
+
+  const [transfers, countResult] = await Promise.all([
+    query(sql, params),
+    query<{ total: string }>(countSql, countParams),
+  ]);
 
   // Formater les transferts selon le modèle
   const formattedTransfers = transfers.map((t: any) => ({
@@ -162,13 +173,6 @@ async function getAllTransfers(
   }));
 
   // Compter le total pour la pagination
-  let countSql = `SELECT COUNT(*) as total FROM fighter_transfers ft WHERE 1=1`;
-  const countParams: any[] = [];
-  if (status) {
-    countSql += ` AND ft.status = $${countParams.length + 1}`;
-    countParams.push(status);
-  }
-  const countResult = await query(countSql, countParams);
   const total = parseInt(countResult[0]?.total || "0");
 
   return {
@@ -197,22 +201,6 @@ async function getTransfersByFighter(
   offset: number = 0,
   search?: string,
 ) {
-  // D'abord vérifier que le lutteur existe
-  const fighterExists = await query("SELECT id FROM fighters WHERE id = $1", [
-    fighterId,
-  ]);
-
-  if (fighterExists.length === 0) {
-    return {
-      success: false,
-      error: {
-        code: 404,
-        message: "Lutteur non trouvé",
-        timestamp: new Date().toISOString(),
-      },
-    };
-  }
-
   let sql = `
     SELECT 
       ft.id,
@@ -275,13 +263,24 @@ async function getTransfersByFighter(
 
   params.push(limit, offset);
 
-  const transfers = await query(sql, params);
+  // Page, total et infos lutteur sont indépendants : une seule vague.
+  const [transfers, total, fighterInfo] = await Promise.all([
+    query(sql, params),
+    getTotalTransfersByFighter(fighterId, status, search),
+    getFighterInfo(fighterId),
+  ]);
 
-  // Compter le total pour la pagination
-  const total = await getTotalTransfersByFighter(fighterId, status, search);
-
-  // Récupérer les infos du lutteur
-  const fighterInfo = await getFighterInfo(fighterId);
+  // La fiche lutteur sert d'existence check.
+  if (!fighterInfo) {
+    return {
+      success: false,
+      error: {
+        code: 404,
+        message: "Lutteur non trouvé",
+        timestamp: new Date().toISOString(),
+      },
+    };
+  }
 
   return {
     success: true,
@@ -312,22 +311,6 @@ async function getTransfersByRegion(
   offset: number = 0,
   search?: string,
 ) {
-  // D'abord vérifier que la région existe
-  const regionExists = await query("SELECT id FROM regions WHERE id = $1", [
-    regionId,
-  ]);
-
-  if (regionExists.length === 0) {
-    return {
-      success: false,
-      error: {
-        code: 404,
-        message: "Région non trouvée",
-        timestamp: new Date().toISOString(),
-      },
-    };
-  }
-
   let sql = `
     SELECT 
       ft.id,
@@ -385,13 +368,24 @@ async function getTransfersByRegion(
 
   params.push(limit, offset);
 
-  const transfers = await query(sql, params);
+  // Page, total et infos région sont indépendants : une seule vague.
+  const [transfers, total, regionInfo] = await Promise.all([
+    query(sql, params),
+    getTotalTransfersByRegion(regionId, status, search),
+    getRegionInfo(regionId),
+  ]);
 
-  // Compter le total pour la pagination
-  const total = await getTotalTransfersByRegion(regionId, status, search);
-
-  // Récupérer les infos de la région
-  const regionInfo = await getRegionInfo(regionId);
+  // La fiche région sert d'existence check.
+  if (!regionInfo) {
+    return {
+      success: false,
+      error: {
+        code: 404,
+        message: "Région non trouvée",
+        timestamp: new Date().toISOString(),
+      },
+    };
+  }
 
   return {
     success: true,

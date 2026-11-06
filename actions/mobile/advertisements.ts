@@ -107,8 +107,6 @@ export async function getMobileAdvertisements(filters?: {
              LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(limit, offset);
 
-    const advertisements = await query(sql, params);
-
     // Count total for pagination metadata
     let countSql = `SELECT COUNT(*) as total FROM advertisements a WHERE 1=1`;
     const countParams: any[] = [];
@@ -163,7 +161,11 @@ export async function getMobileAdvertisements(filters?: {
                    AND (a.end_date IS NULL OR a.end_date >= CURRENT_TIMESTAMP)`;
     }
 
-    const countResult = await query(countSql, countParams);
+    // Page et total sont indépendants : une seule vague.
+    const [advertisements, countResult] = await Promise.all([
+      query(sql, params),
+      query<{ total: string }>(countSql, countParams),
+    ]);
     const total = Number(countResult[0]?.total || 0);
 
     return {
@@ -195,17 +197,16 @@ export async function getMobileAdvertisements(filters?: {
 
 export async function getMobileAdvertisementById(adId: number, userId?: number) {
   try {
-    // Vérifier que la publicité existe et est active
-    const existsSql = `
-      SELECT id 
-      FROM advertisements 
-      WHERE id = $1 
-        AND is_active = true
-        `;
-        // AND (start_date IS NULL OR start_date <= CURRENT_TIMESTAMP)
-        // AND (end_date IS NULL OR end_date >= CURRENT_TIMESTAMP)
-        const existsResult = await query(existsSql, [adId]);
-    
+    // Vérifier que la publicité existe et est active, et incrémenter les
+    // impressions en une seule requête atomique.
+    const existsResult = await query(
+      `UPDATE advertisements
+       SET impression_count = impression_count + 1
+       WHERE id = $1 AND is_active = true
+       RETURNING id`,
+      [adId]
+    );
+
     if (existsResult.length === 0) {
       return {
         success: false,
@@ -216,12 +217,6 @@ export async function getMobileAdvertisementById(adId: number, userId?: number) 
         }
       };
     }
-
-    // Incrémenter le compteur d'impressions
-    await query(
-      `UPDATE advertisements SET impression_count = impression_count + 1 WHERE id = $1`,
-      [adId]
-    );
 
     // Récupérer les détails de la publicité
     const sql = `
