@@ -65,9 +65,12 @@ const sanitizedConnectionString = getSanitizedConnectionString(
 );
 
 // `DB_DRIVER=pg` permet de pointer vers un PostgreSQL local en développement/test.
-const useNodePg = ["pg", "node", "node-pg"].includes(
-  (process.env.DB_DRIVER || "").toLowerCase(),
-);
+// Auto-détection : si l'URL contient "-pooler" (pooler Neon/PgBouncer) ou
+// "pgbouncer", on utilise le driver `pg` (TCP) qui est plus adapté au pooler.
+const dbDriver = (process.env.DB_DRIVER || "").toLowerCase();
+const useNodePg =
+  ["pg", "node", "node-pg"].includes(dbDriver) ||
+  /pooler|pgbouncer/i.test(process.env.DATABASE_URL || "");
 
 class NeonClient {
   private static instance: PgPool;
