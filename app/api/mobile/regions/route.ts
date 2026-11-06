@@ -31,5 +31,5 @@ export const GET = publicHandler(
       );
     }
   },
-  ['GET']
+  { allowedMethods: ['GET'], cacheControl: 'public, s-maxage=60, stale-while-revalidate=300' }
 );

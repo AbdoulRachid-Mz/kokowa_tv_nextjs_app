@@ -376,7 +376,7 @@ export async function apiHandler(
         }
       }
 
-      if (process.env.API_SERVER_TIMING === "true") {
+      if (process.env.API_SERVER_TIMING !== "false") {
         const timing = buildPerfLog(perf, response.status);
         responseHeaders.set(
           "server-timing",

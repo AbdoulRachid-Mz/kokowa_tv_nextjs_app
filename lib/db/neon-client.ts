@@ -20,6 +20,10 @@ if (!neonConfig.webSocketConstructor) {
   neonConfig.webSocketConstructor = ws;
 }
 
+// Réutiliser la connexion HTTP entre les invocations serverless (Vercel) :
+// évite de recréer la connexion Neon à chaque cold start.
+neonConfig.fetchConnectionCache = true;
+
 // Parser INTERVAL (OID 1186) en chaîne pour éviter les problèmes de sérialisation PostgresInterval dans Next.js
 neonTypes.setTypeParser(1186, (val) => val);
 try {

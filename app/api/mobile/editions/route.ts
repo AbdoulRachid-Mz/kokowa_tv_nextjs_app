@@ -12,4 +12,4 @@ export const GET = publicHandler(async (request: NextRequest) => {
   }
 
   return Response.json(result);
-}, ['GET']);
+}, { allowedMethods: ['GET'], cacheControl: 'public, s-maxage=60, stale-while-revalidate=300' });

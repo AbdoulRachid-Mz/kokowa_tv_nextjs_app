@@ -20,6 +20,7 @@ export interface ApiHandlerOptions {
     max: number;
   };
   skipAppIdValidation?: boolean;
+  cacheControl?: string;
 }
 
 export async function apiHandler(
@@ -37,6 +38,7 @@ export async function apiHandler(
     allowedMethods: allowed,
     rateLimit: options.rateLimit,
     skipAppIdValidation: options.skipAppIdValidation ?? true,
+    cacheControl: options.cacheControl,
   });}
 
 // Helper pour les handlers sans authentification (utilisé par l'API mobile et endpoints publics)
@@ -47,6 +49,7 @@ export function publicHandler(
   let allowedMethods: string[] = [];
   let rateLimit: { windowMs: number; max: number } | undefined = undefined;
   let skipAppIdValidation: boolean = false;
+  let cacheControl: string | undefined = undefined;
 
   if (Array.isArray(methodsOrOptions)) {
     allowedMethods = methodsOrOptions;
@@ -54,6 +57,7 @@ export function publicHandler(
     allowedMethods = methodsOrOptions.allowedMethods || methodsOrOptions.methods || [];
     rateLimit = methodsOrOptions.rateLimit;
     skipAppIdValidation = methodsOrOptions.skipAppIdValidation ?? false;
+    cacheControl = methodsOrOptions.cacheControl;
   }
 
   return async (request: NextRequest, context: ApiContext): Promise<Response> => {
@@ -62,6 +66,7 @@ export function publicHandler(
       allowedMethods,
       rateLimit,
       skipAppIdValidation,
+      cacheControl,
     });
   };
 }
