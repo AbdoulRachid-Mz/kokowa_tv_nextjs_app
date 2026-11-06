@@ -5,7 +5,7 @@ import { getAuth } from "firebase/auth";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "";
-const APP_ID = process.env.NEXT_PUBLIC_APP_ID || "web-client"; // 'web-client' ou 'mobile-client'
+const APP_ID = process.env.NEXT_PRIVATE_APP_ID;
 
 interface ApiResponse<T = any> {
   success?: boolean;
