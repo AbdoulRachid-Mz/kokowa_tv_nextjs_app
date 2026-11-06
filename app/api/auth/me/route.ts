@@ -25,7 +25,8 @@ export const GET = (request: NextRequest, context: ApiContext) =>
       });
     },
     {
-      requireAuth: true,      allowedMethods: ['GET'],
+      requireAuth: true,
+      skipAppIdValidation: true,      allowedMethods: ['GET'],
       rateLimit: { windowMs: 60000, max: 30 },
     }
   );
