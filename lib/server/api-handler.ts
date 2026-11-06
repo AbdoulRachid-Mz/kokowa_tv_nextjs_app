@@ -228,9 +228,23 @@ export async function apiHandler(
       let rateLimitResult;
 
       try {
-        rateLimitResult = await rateLimiter.check(request);
+        // Garde-fou : ne jamais laisser le rate limiter bloquer la requête
+        // pendant plusieurs secondes si Redis (Upstash) est lent/indisponible.
+        // Au-delà du seuil, on laisse passer (fail open) et on journalise.
+        const RATE_LIMIT_TIMEOUT_MS = Number(
+          process.env.RATE_LIMIT_TIMEOUT_MS || 300,
+        );
+        rateLimitResult = await Promise.race([
+          rateLimiter.check(request),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("rate-limit-timeout")),
+              RATE_LIMIT_TIMEOUT_MS,
+            ),
+          ),
+        ]);
       } catch (error) {
-        console.error("Rate limit error:", error);
+        console.error("Rate limit error/timeout:", error);
 
         // fallback safe
         rateLimitResult = {
