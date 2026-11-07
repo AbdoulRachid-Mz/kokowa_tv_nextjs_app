@@ -1,0 +1,64 @@
+{
+    success,
+    message,
+    data: {
+        competition: [{ // ici on prend uniquement les type (tous les enty_type) competition uniquement
+        "firstName": "Mahamadou",
+        "lastName": "Issaka",
+        "nickname": "Le Lion",
+        "profileImage": "...", 
+        "achieveId": 1,
+        "type": "competition",
+        "position": "1st",
+        "title": "Champion national",
+        "description": "...",
+        "medalImage": "...",
+        "matchId": 45,
+        "fighter": 12           
+        },
+        {
+
+        "name": "Tahoua",
+        "flagImage": "...",
+        "achieveId": 2,
+            "type": "champion",
+            "position": "1st",
+            "title": "Région championne",
+            "description": "...",
+            "medalImage": "...",
+            "matchId": null,
+            "year": 2026
+        },
+        ],
+        others: [
+            // ici on les autres type qui ne sont de type competition
+            {
+        "firstName": "Mahamadou",
+        "lastName": "Issaka",
+        "nickname": "Le Lion",
+        "profileImage": "...", 
+        "achieveId": 1,
+        "type": "competition",
+        "position": "1st",
+        "title": "Champion national",
+        "description": "...",
+        "medalImage": "...",
+        "matchId": 45,
+        "fighter": 12           
+        },
+        {
+        "name": "Tahoua",
+        "flagImage": "...",
+        "achieveId": 2,
+            "type": "champion",
+            "position": "1st",
+            "title": "Région championne",
+            "description": "...",
+            "medalImage": "...",
+            "matchId": null,
+            "year": 2026
+        },
+        ]
+
+    }
+}

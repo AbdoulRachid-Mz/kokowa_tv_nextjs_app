@@ -20,46 +20,43 @@ export interface MobileAchievementFilters {
   limit?: number;
 }
 
-interface Achievement {
-  id: number;
+interface CompetitionAchievement {
+  achieveId: number;
   type: string;
   position: string | null;
   title: string | null;
   description: string | null;
   medalImage: string | null;
   matchId: number | null;
+
+  // Informations du bénéficiaire lutteur
+  fighter?: number;
+  firstName?: string | null;
+  lastName?: string | null;
+  nickname?: string | null;
+  profileImage?: string | null;
+
+  // Informations du bénéficiaire région
+  region?: number;
+  name?: string | null;
+  flagImage?: string | null;
+
+  year?: number | null;
 }
 
-interface FighterAchievement extends Achievement {
-  fighter: number;
-}
-
-interface RegionAchievement extends Achievement {
-  year: number | null;
-}
-
-interface OtherAchievement extends Achievement {
+interface OtherAchievement {
+  achieveId: number;
+  type: string;
+  position: string | null;
+  title: string | null;
+  description: string | null;
+  medalImage: string | null;
+  matchId: number | null;
   year: number | null;
   actor: {
     name: string | null;
     role: string | null;
   };
-}
-
-interface MobileFighterWithAchievements {
-  id: number;
-  firstName: string | null;
-  lastName: string | null;
-  nickname: string | null;
-  profileImage: string | null;
-  achievements: FighterAchievement[];
-}
-
-interface MobileRegionWithAchievements {
-  id: number;
-  name: string | null;
-  flagImage: string | null;
-  achievements: RegionAchievement[];
 }
 
 export async function getMobileAchievements(
@@ -98,7 +95,7 @@ export async function getMobileAchievements(
 
     const sql = `
       SELECT
-        fa.id,
+        fa.id AS "achieveId",
         fa.entity_type AS "entityType",
         fa.type,
         fa.position,
@@ -109,10 +106,10 @@ export async function getMobileAchievements(
         fa.match_id AS "matchId",
 
         fa.fighter_id AS "fighterId",
-        f.first_name AS "fighterFirstName",
-        f.last_name AS "fighterLastName",
-        f.nickname AS "fighterNickname",
-        f.profile_image AS "fighterProfileImage",
+        f.first_name AS "firstName",
+        f.last_name AS "lastName",
+        f.nickname AS "nickname",
+        f.profile_image AS "profileImage",
 
         fa.region_id AS "regionId",
         r.name AS "regionName",
@@ -123,11 +120,14 @@ export async function getMobileAchievements(
 
         ce.year AS "editionYear",
         ce.edition_number AS "editionNumber"
+
       FROM fighter_achievements fa
       JOIN competition_editions ce ON fa.edition_id = ce.id
       LEFT JOIN fighters f ON fa.fighter_id = f.id
       LEFT JOIN regions r ON fa.region_id = r.id
+
       ${where}
+
       ORDER BY
         ce.year DESC,
         ce.edition_number DESC,
@@ -145,13 +145,12 @@ export async function getMobileAchievements(
 
     const rows = await query(sql, params);
 
-    const fightersMap = new Map<number, MobileFighterWithAchievements>();
-    const regionsMap = new Map<number, MobileRegionWithAchievements>();
+    const competition: CompetitionAchievement[] = [];
     const others: OtherAchievement[] = [];
 
     for (const row of rows) {
-      const achievement: Achievement = {
-        id: row.id,
+      const achievement = {
+        achieveId: row.achieveId,
         type: row.type,
         position: row.position,
         title: row.title,
@@ -160,43 +159,33 @@ export async function getMobileAchievements(
         matchId: row.matchId,
       };
 
+      // Les palmarès des lutteurs et des régions appartiennent
+      // tous à la catégorie competition.
       if (row.entityType === "fighter") {
         if (!row.fighterId) continue;
 
-        if (!fightersMap.has(row.fighterId)) {
-          fightersMap.set(row.fighterId, {
-            id: row.fighterId,
-            firstName: row.fighterFirstName,
-            lastName: row.fighterLastName,
-            nickname: row.fighterNickname,
-            profileImage: row.fighterProfileImage,
-            achievements: [],
-          });
-        }
-
-        fightersMap.get(row.fighterId)!.achievements.push({
+        competition.push({
           ...achievement,
           fighter: row.fighterId,
+          firstName: row.firstName,
+          lastName: row.lastName,
+          nickname: row.nickname,
+          profileImage: row.profileImage,
         });
 
       } else if (row.entityType === "region") {
         if (!row.regionId) continue;
 
-        if (!regionsMap.has(row.regionId)) {
-          regionsMap.set(row.regionId, {
-            id: row.regionId,
-            name: row.regionName,
-            flagImage: row.regionFlagImage,
-            achievements: [],
-          });
-        }
-
-        regionsMap.get(row.regionId)!.achievements.push({
+        competition.push({
           ...achievement,
+          region: row.regionId,
+          name: row.regionName,
+          flagImage: row.regionFlagImage,
           year: row.year,
         });
 
-      } else if (row.entityType === "others") {
+      } else {
+        // Tous les autres entity_type sont classés dans others.
         others.push({
           ...achievement,
           year: row.year,
@@ -208,25 +197,20 @@ export async function getMobileAchievements(
       }
     }
 
-    const sortAchievements = <T extends Achievement>(items: T[]) => {
-      return items.sort(
+    // Tri par position à l'intérieur de l'ordre chronologique des éditions.
+    // Le tri SQL garantit déjà l'ordre des éditions.
+    const sortByPosition = <T extends { position: string | null }>(
+      items: T[],
+    ) =>
+      items.sort(
         (a, b) =>
           (POSITION_ORDER[a.position || ""] ?? 99) -
           (POSITION_ORDER[b.position || ""] ?? 99),
       );
-    };
 
-    const fighters = Array.from(fightersMap.values()).map((fighter) => ({
-      ...fighter,
-      achievements: sortAchievements(fighter.achievements),
-    }));
+    const sortedCompetition = sortByPosition(competition);
+    const sortedOthers = sortByPosition(others);
 
-    const regions = Array.from(regionsMap.values()).map((region) => ({
-      ...region,
-      achievements: sortAchievements(region.achievements),
-    }));
-
-    // Appliquer la limite après regroupement et tri.
     const limit =
       typeof filters?.limit === "number" && filters.limit > 0
         ? Math.floor(filters.limit)
@@ -239,9 +223,8 @@ export async function getMobileAchievements(
       success: true,
       message: "Palmarès récupérés avec succès",
       data: {
-        fighters: applyLimit(fighters),
-        regions: applyLimit(regions),
-        others: applyLimit(sortAchievements(others)),
+        competition: applyLimit(sortedCompetition),
+        others: applyLimit(sortedOthers),
       },
     };
   } catch (error) {
