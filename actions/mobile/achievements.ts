@@ -14,6 +14,7 @@ const POSITION_ORDER: Record<string, number> = {
 
 export interface MobileAchievementFilters {
   entityType?: "fighter" | "region" | "others" | "all";
+  type?: string;
   editionId?: number;
   year?: number;
   position?: string;
@@ -52,8 +53,16 @@ interface OtherAchievement {
   description: string | null;
   medalImage: string | null;
   matchId: number | null;
-  year: number | null;
-  actor: {
+  year?: number | null;
+  fighter?: number;
+  firstName?: string | null;
+  lastName?: string | null;
+  nickname?: string | null;
+  profileImage?: string | null;
+  region?: number;
+  name?: string | null;
+  flagImage?: string | null;
+  actor?: {
     name: string | null;
     role: string | null;
   };
@@ -87,6 +96,11 @@ export async function getMobileAchievements(
     if (filters?.position) {
       conditions.push(`fa.position = $${idx++}`);
       params.push(filters.position);
+    }
+
+    if (filters?.type) {
+      conditions.push(`fa.type = $${idx++}`);
+      params.push(filters.type);
     }
 
     const where = conditions.length
@@ -159,41 +173,44 @@ export async function getMobileAchievements(
         matchId: row.matchId,
       };
 
-      // Les palmarès des lutteurs et des régions appartiennent
-      // tous à la catégorie competition.
-      if (row.entityType === "fighter") {
-        if (!row.fighterId) continue;
+      // Bénéficiaire selon entity_type.
+      const fighterInfo =
+        row.entityType === "fighter" && row.fighterId
+          ? {
+              fighter: row.fighterId,
+              firstName: row.firstName,
+              lastName: row.lastName,
+              nickname: row.nickname,
+              profileImage: row.profileImage,
+            }
+          : {};
+      const regionInfo =
+        row.entityType === "region" && row.regionId
+          ? {
+              region: row.regionId,
+              name: row.regionName,
+              flagImage: row.regionFlagImage,
+              year: row.year,
+            }
+          : {};
+      const otherInfo =
+        row.entityType === "others"
+          ? {
+              year: row.year,
+              actor: {
+                name: row.otherActorName,
+                role: row.otherActorRole,
+              },
+            }
+          : {};
 
-        competition.push({
-          ...achievement,
-          fighter: row.fighterId,
-          firstName: row.firstName,
-          lastName: row.lastName,
-          nickname: row.nickname,
-          profileImage: row.profileImage,
-        });
+      const enriched = { ...achievement, ...fighterInfo, ...regionInfo, ...otherInfo };
 
-      } else if (row.entityType === "region") {
-        if (!row.regionId) continue;
-
-        competition.push({
-          ...achievement,
-          region: row.regionId,
-          name: row.regionName,
-          flagImage: row.regionFlagImage,
-          year: row.year,
-        });
-
+      // Répartition par type : competition vs autres (dance, walki, etc.).
+      if (row.type === "competition") {
+        competition.push(enriched as CompetitionAchievement);
       } else {
-        // Tous les autres entity_type sont classés dans others.
-        others.push({
-          ...achievement,
-          year: row.year,
-          actor: {
-            name: row.otherActorName,
-            role: row.otherActorRole,
-          },
-        });
+        others.push(enriched as OtherAchievement);
       }
     }
 

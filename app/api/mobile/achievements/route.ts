@@ -9,6 +9,7 @@ export const GET = publicHandler(
       const { searchParams } = new URL(request.url);
       const filters = {
         entityType: (searchParams.get('entityType') as any) || undefined,
+        type: searchParams.get('type') || undefined,
         editionId: searchParams.get('editionId')
           ? Number(searchParams.get('editionId'))
           : undefined,
