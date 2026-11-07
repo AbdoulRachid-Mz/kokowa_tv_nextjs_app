@@ -189,8 +189,15 @@ export async function getMobileMatchById(matchId: number) {
       };
     }
 
+    const match = result[0];
+    const editionId = match.editionId || match.edition_id || match["editionId"];
+
+    // Statistiques groupées des deux lutteurs dans le contexte de l'édition
+    const fighterIds = [match.fighter1_id || match.fighter1Id, match.fighter2_id || match.fighter2Id].filter(Boolean);
+    const statsMap = await getFighterStatsForEdition(fighterIds, editionId);
+
     // Enrichir les données du match
-    const enrichedMatch = await enrichMatchData(result[0]);
+    const enrichedMatch = await enrichMatchData(match, undefined, statsMap);
 
     return {
       success: true,
@@ -496,4 +503,58 @@ async function getBreakCount(matchId: number) {
   const sql = 'SELECT break_count as "breakCount" FROM matches WHERE id = $1';
   const result = await query(sql, [matchId]);
   return result[0]?.breakCount || 0;
+}
+// Statistiques groupées des lutteurs dans le contexte d'une édition.
+// Retourne une Map fighterId -> { isInRace, totalMatches, wins }.
+// Les chutes (falls) ne sont pas historiquement tracées dans le schéma :
+// on retourne 0 (pas de valeur inventée).
+export async function getFighterStatsForEdition(
+  fighterIds: number[],
+  editionId: number,
+): Promise<Map<number, { isInRace: boolean | null; totalMatches: number; wins: number; winRatio: number }>> {
+  const map = new Map<number, { isInRace: boolean | null; totalMatches: number; wins: number; winRatio: number }>();
+  if (!fighterIds.length || !editionId) return map;
+
+  const sql = `
+    SELECT
+      f.id as "fighterId",
+      COALESCE(ef.is_eliminated, false) as "isEliminated",
+      COUNT(DISTINCT CASE WHEN m.status = 'completed' THEN m.id END) as "totalMatches",
+      COUNT(DISTINCT CASE WHEN m.status = 'completed' AND (
+        (m.fighter1_id = f.id AND m.match_result = 'fighter1_win') OR
+        (m.fighter2_id = f.id AND m.match_result = 'fighter2_win')
+      ) THEN m.id END) as "wins"
+    FROM fighters f
+    LEFT JOIN edition_fighters ef
+      ON ef.fighter_id = f.id AND ef.edition_id = $1
+    LEFT JOIN matches m
+      ON (m.fighter1_id = f.id OR m.fighter2_id = f.id)
+      AND m.sub_group_id IN (
+        SELECT sg.id FROM sub_groups sg
+        JOIN phase_groups pg ON sg.group_id = pg.id
+        JOIN phases ph ON pg.phase_id = ph.id
+        WHERE ph.edition_id = $1
+      )
+    WHERE f.id = ANY($2::int[])
+    GROUP BY f.id, ef.is_eliminated
+  `;
+
+  const rows = await query(sql, [editionId, fighterIds]);
+  for (const row of rows) {
+    const total = Number(row.totalMatches || 0);
+    const wins = Number(row.wins || 0);
+    map.set(Number(row.fighterId), {
+      isInRace: row.isEliminated === null ? null : !Boolean(row.isEliminated),
+      totalMatches: total,
+      wins,
+      winRatio: total > 0 ? Math.round((wins / total) * 100) : 0,
+    });
+  }
+  // Ensure all requested fighters are present (even if no rows)
+  for (const id of fighterIds) {
+    if (!map.has(id)) {
+      map.set(id, { isInRace: null, totalMatches: 0, wins: 0, winRatio: 0 });
+    }
+  }
+  return map;
 }

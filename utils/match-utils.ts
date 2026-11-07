@@ -64,6 +64,7 @@ export async function getCardsForMatches(
 export async function enrichMatchData(
   match: any,
   cardsByMatch?: Map<number, MatchCard[]>,
+  fighterStats?: Map<number, { isInRace: boolean | null; totalMatches: number; wins: number; winRatio: number }>,
 ) {
   // Retrieve all cards for this match (or reuse a preloaded batch).
   const cards = cardsByMatch
@@ -113,9 +114,14 @@ export async function enrichMatchData(
     formattedStartTime = new Date(`${dateStr}T${timeStr}`).toISOString();
   }
 
+  const f1Id = match.fighter1Id || match.fighter1_id;
+  const f2Id = match.fighter2Id || match.fighter2_id;
+  const f1Stats = fighterStats?.get(Number(f1Id));
+  const f2Stats = fighterStats?.get(Number(f2Id));
+
   // Structure fighter 1 data
   const fighter1 = {
-    id: match.fighter1Id || match.fighter1_id,
+    id: f1Id,
     firstName: match.fighter1FirstName || match.fighter1_first_name,
     lastName: match.fighter1LastName || match.fighter1_last_name,
     nickname: match.fighter1Nickname || match.fighter1_nickname || "",
@@ -123,11 +129,16 @@ export async function enrichMatchData(
     regionName: match.fighter1RegionName || match.fighter1_region_name,
     initialState:
       match.fighter1InitialState || match.fighter1_initial_state || null,
+    // Statistiques dans le contexte de l'édition
+    falls: 0, // non tracé dans le schéma actuel
+    isInRace: f1Stats?.isInRace ?? null,
+    totalMatches: f1Stats?.totalMatches ?? 0,
+    winRatio: f1Stats?.winRatio ?? 0,
   };
 
   // Structure fighter 2 data
   const fighter2 = {
-    id: match.fighter2Id || match.fighter2_id,
+    id: f2Id,
     firstName: match.fighter2FirstName || match.fighter2_first_name,
     lastName: match.fighter2LastName || match.fighter2_last_name,
     nickname: match.fighter2Nickname || match.fighter2_nickname || "",
@@ -135,6 +146,10 @@ export async function enrichMatchData(
     regionName: match.fighter2RegionName || match.fighter2_region_name,
     initialState:
       match.fighter2InitialState || match.fighter2_initial_state || null,
+    falls: 0,
+    isInRace: f2Stats?.isInRace ?? null,
+    totalMatches: f2Stats?.totalMatches ?? 0,
+    winRatio: f2Stats?.winRatio ?? 0,
   };
 
   // Build and return the formatted match object
