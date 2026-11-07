@@ -196,29 +196,12 @@ export default function StandaloneMatchDetailPage() {
   } = useMatchController({
     matchId: parsedMatchId,
     subGroupId: parsedSubGroupId,
-    remoteMatch: realtimeMatchData as any,
   });
 
-  // Fusion des données locales et temps réel (normalisation camelCase -> snake_case)
+  // Fusion des données locales et temps réel
   const activeMatch = match ?? fetchedMatch;
-  const realtimeNormalized = realtimeMatchData
-    ? {
-        status: realtimeMatchData.status,
-        break_count: realtimeMatchData.breakCount,
-        total_duration: realtimeMatchData.totalDuration,
-        start_time2: realtimeMatchData.startTime,
-        fighter1_id: realtimeMatchData.fighter1Id,
-        fighter2_id: realtimeMatchData.fighter2Id,
-        winner_fighter_id: realtimeMatchData.winnerId,
-        loser_fighter_id: realtimeMatchData.loserId,
-        match_result: realtimeMatchData.matchResult,
-        audience_count: realtimeMatchData.audienceCount,
-        video_url: realtimeMatchData.videoUrl,
-        live_stream_url: realtimeMatchData.liveStreamUrl,
-      }
-    : null;
-  const mergedMatch = realtimeNormalized
-    ? ({ ...activeMatch, ...realtimeNormalized } as Match)
+  const mergedMatch = realtimeMatchData
+    ? ({ ...activeMatch, ...realtimeMatchData } as Match)
     : activeMatch;
   const isConnected = !isMatchListening;
 
@@ -570,7 +553,7 @@ export default function StandaloneMatchDetailPage() {
                 ).length || 0
               }
               isSubGroupCompleted={subGroup?.is_completed || false}
-              matchStatus={mergedMatch?.status ?? ""}
+              matchStatus={match?.status ?? mergedMatch?.status ?? ""}
               canSetWinner={canSetWinner}
               canSetDraw={canSetDraw}
               onCompleteWithWinner={() => {
@@ -626,7 +609,7 @@ export default function StandaloneMatchDetailPage() {
                 ).length || 0
               }
               isSubGroupCompleted={subGroup?.is_completed || false}
-              matchStatus={mergedMatch?.status ?? ""}
+              matchStatus={match?.status ?? mergedMatch?.status ?? ""}
               canSetWinner={canSetWinner}
               canSetDraw={canSetDraw}
               onCompleteWithWinner={() => {
@@ -692,7 +675,7 @@ export default function StandaloneMatchDetailPage() {
             formattedTime={formattedTime}
             breakCount={breakCount}
             isRunning={isRunning}
-            matchStatus={mergedMatch?.status ?? ""}
+            matchStatus={match?.status ?? mergedMatch?.status ?? ""}
             isSubGroupCompleted={subGroup?.is_completed || false}
             areBothFightersAssigned={
               !!(mergedMatch?.fighter1_id && mergedMatch?.fighter2_id)
