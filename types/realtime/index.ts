@@ -71,6 +71,8 @@ export interface RealtimeMatchDocument {
   
   startTime: string | null;
 
+  totalDuration: string | null;
+
    allCards?: RealtimeCard[]; 
 
   updatedAt: number;

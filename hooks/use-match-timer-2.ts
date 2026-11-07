@@ -20,6 +20,7 @@ interface UseMatchTimerReturn {
   reset: () => void;
   getDuration: () => number;
   setTime: (seconds: number) => void;
+  sync: (seconds: number, running: boolean) => void;
 }
 
 export function useMatchTimer({
@@ -133,6 +134,23 @@ export function useMatchTimer({
     setElapsed(seconds);
   }, []);
 
+  const sync = useCallback((seconds: number, running: boolean) => {
+    stopTicking();
+    accumulatedRef.current = seconds;
+    if (running) {
+      runningRef.current = true;
+      startTsRef.current = Date.now();
+      setIsRunning(true);
+      setElapsed(seconds);
+      startTicking();
+    } else {
+      runningRef.current = false;
+      startTsRef.current = null;
+      setIsRunning(false);
+      setElapsed(seconds);
+    }
+  }, [stopTicking, startTicking]);
+
   // ─── Mount: bootstrap the timer once ───
   useEffect(() => {
     if (mountedRef.current) return;
@@ -167,5 +185,6 @@ export function useMatchTimer({
     reset,
     getDuration,
     setTime,
+    sync,
   };
 }

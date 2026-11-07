@@ -16,9 +16,17 @@ export async function syncMatchRealtime(
     const { payload, editionId, subGroupId } = await buildRealtimeMatchPayload(matchId);
     
     // 🔥 On met à jour dans RTDB si le match est actif ou vient de se terminer
-    const activeStatuses = ["live", "round_break", "reclamation", "completed", "cancelled"];
-    if (!activeStatuses.includes(payload.status)) {
-      console.log(`ℹ️ RTDB sync skipped: match ${matchId} is ${payload.status}`);
+    if (payload.status === "scheduled") {
+      try {
+        const db = getAdminRTDB();
+        const ref = db.ref(
+          `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}/matches/${matchId}`,
+        );
+        await ref.remove();
+        console.log(`RTDB: match ${matchId} retire du temps reel (status scheduled)`);
+      } catch (err) {
+        console.error("RTDB remove error:", err);
+      }
       return;
     }
 

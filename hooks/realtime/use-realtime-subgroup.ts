@@ -40,7 +40,7 @@ export function useRealtimeSubGroup(
       }
     );
 
-    return () => off(subGroupRef, "value", unsubscribe);
+    return () => unsubscribe();
   }, [editionId, subGroupId]);
 
   const hasLiveMatch = (data?.summary?.live ?? 0) > 0;

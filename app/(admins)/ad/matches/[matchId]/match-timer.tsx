@@ -29,6 +29,7 @@ interface MatchTimerProps {
   canStart: boolean;
   canPause: boolean;
   canResume: boolean;
+  isUpdating?: boolean;
 }
 
 export function MatchTimer({
@@ -44,6 +45,7 @@ export function MatchTimer({
   canStart,
   canPause,
   canResume,
+  isUpdating = false,
 }: MatchTimerProps) {
   const [showStartDialog, setShowStartDialog] = useState(false);
 
@@ -91,8 +93,7 @@ export function MatchTimer({
                 onClick={handleStartClick}
                 size="lg"
                 className="gap-2 w-full"
-                disabled={!canStart || isSubGroupCompleted}
-              >
+                disabled={!canStart || isSubGroupCompleted || isUpdating}              >
                 <Play className="h-5 w-5" />
                 Démarrer
               </Button>
@@ -104,7 +105,7 @@ export function MatchTimer({
                 variant="destructive"
                 size="lg"
                 className="gap-2 w-full"
-                disabled={!canPause || isSubGroupCompleted}
+                disabled={!canPause || isSubGroupCompleted || isUpdating}
               >
                 <Pause className="h-5 w-5" />
                 Pause
@@ -116,7 +117,7 @@ export function MatchTimer({
                 onClick={onResume}
                 size="lg"
                 className="gap-2 w-full"
-                disabled={!canResume || isSubGroupCompleted}
+                disabled={!canResume || isSubGroupCompleted || isUpdating}
               >
                 <Play className="h-5 w-5" />
                 Reprendre

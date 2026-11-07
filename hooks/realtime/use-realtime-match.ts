@@ -22,6 +22,7 @@ export function useRealtimeMatch(
     }
 
     setIsLoading(true);
+    setData(null);
     const path = `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}/matches/${matchId}`;
     const matchRef = ref(database, path);
 
@@ -43,7 +44,7 @@ export function useRealtimeMatch(
       },
     );
 
-    return () => off(matchRef, "value", unsubscribe);
+    return () => unsubscribe();
   }, [editionId, subGroupId, matchId]);
 
   return { data, isLoading, error };

@@ -2,25 +2,29 @@
 "use client";
 
 import { useEffect, useCallback, useRef, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useMatchTimer } from "./use-match-timer-2";
 import { getMatchById, updateMatch } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
 import { updateSubGroup } from "@/actions/sub-groups";
 import { sendMatchPush } from "@/actions/matches";
+import type { RealtimeMatchDocument } from "@/types/realtime";
 
 interface UseMatchControllerProps {
   matchId: number;
   subGroupId?: number;
+  remoteMatch?: RealtimeMatchDocument | null;
 }
 
 export function useMatchController({
   matchId,
   subGroupId,
+  remoteMatch,
 }: UseMatchControllerProps) {
   const queryClient = useQueryClient();
   const isUpdatingRef = useRef(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<number | false>(false);
 
   // ==========================
@@ -36,122 +40,122 @@ export function useMatchController({
     queryFn: () => getMatchById(matchId),
     enabled: !!matchId,
     refetchInterval: pollingInterval,
-    refetchOnWindowFocus: false,
-    staleTime: 0, // Toujours stale pour les matchs live
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
-  // Désactiver le polling complètement - WebSocket fait le travail
+  // Polling uniquement quand le match est live (fallback si RTDB indisponible)
+  const remoteStatus = remoteMatch?.status ?? match?.status ?? "scheduled";
   useEffect(() => {
-    // Plus de polling agressif, on utilise WebSocket
-    setPollingInterval(false);
-  }, [match?.status]);
+    setPollingInterval(remoteStatus === "live" ? 30000 : false);
+  }, [remoteStatus]);
 
   // ==========================
   // TIMER (ISOLÉ)
   // ==========================
 
   const timer = useMatchTimer({
-    initialDuration: parseDurationToSeconds(
-      match?.total_duration ?? "00:00:00",
-    ),
-    initialStatus: match?.status ?? "scheduled",
+    initialDuration: 0,
+    initialStatus: "scheduled",
   });
 
-  // ─── Refs pour détecter les vrais changements (pas de faux re-renders) ───
-  const prevMatchStatusRef = useRef<string | null>(null);
-  const prevDurationRef = useRef<string | null>(null);
+  // ─── Refs pour détecter les vrais changements ───
+  const prevSyncKeyRef = useRef<string>("");
   const timerRef = useRef(timer);
   timerRef.current = timer; // toujours à jour, mais pas dans les deps
 
-  // ✅ Synchroniser le timer avec les données serveur (via WebSocket/polling)
-  // N'a PAS `timer` dans les deps → s'exécute uniquement quand les données match changent
+  const queueRef = useRef<Promise<unknown>>(Promise.resolve());
+
+  // Valeurs effectives (DB + RTDB)
+  const effectiveStatus = (remoteMatch?.status ?? match?.status ?? "scheduled") as string;
+  const effectiveTotalDuration =
+    remoteMatch?.totalDuration ?? (match as any)?.total_duration ?? null;
+  const effectiveStartTs =
+    remoteMatch?.startTime ?? (match as any)?.start_time2 ?? null;
+  const effectiveBreakCount =
+    remoteMatch?.breakCount ?? (match as any)?.break_count ?? 0;
+
+  function parseDur(s: any): number {
+    if (!s) return 0;
+    if (typeof s === "string") {
+      const parts = s.split(":").map(Number);
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+    }
+    return 0;
+  }
+
+  function computeBase(): number {
+    const stored = parseDur(effectiveTotalDuration);
+    if (effectiveStatus === "live" && effectiveStartTs) {
+      const startMs = new Date(effectiveStartTs).getTime();
+      if (Number.isFinite(startMs)) {
+        const delta = Math.floor((Date.now() - startMs) / 1000);
+        if (delta >= 0 && delta < 24 * 3600) return stored + delta;
+      }
+    }
+    return stored;
+  }
+
+  // ✅ Synchroniser le timer avec les données serveur (DB + RTDB)
   useEffect(() => {
-    if (!match) return;
+    if (!match && !remoteMatch) return;
 
     const t = timerRef.current;
-    const newStatus = match.status;
-    const newDuration = match.total_duration ?? "00:00:00";
-    const prevStatus = prevMatchStatusRef.current;
-    const prevDuration = prevDurationRef.current;
+    const key = `${effectiveStatus}|${effectiveTotalDuration}|${effectiveStartTs}`;
+    if (key === prevSyncKeyRef.current) return;
+    prevSyncKeyRef.current = key;
 
-    // Si rien n'a changé côté serveur, ne rien faire
-    if (newStatus === prevStatus && newDuration === prevDuration) return;
+    const base = computeBase();
+    const running = effectiveStatus === "live";
 
-    // Mémoriser les nouvelles valeurs
-    prevMatchStatusRef.current = newStatus;
-    prevDurationRef.current = newDuration;
-
-    const durationInSeconds = parseDurationToSeconds(newDuration);
-
-    // ─── 1. Sync du temps ───
-    // Si le timer n'est pas en train de tourner, on peut sync la durée depuis la DB
-    if (newStatus !== "live") {
-      const currentElapsed = t.getDuration();
-      if (Math.abs(currentElapsed - durationInSeconds) > 1) {
-        console.log(
-          `🔄 [Sync] Durée (paused): ${currentElapsed}s -> ${durationInSeconds}s`,
-        );
-        t.setTime(durationInSeconds);
+    if (effectiveStatus === "live") {
+      if (Math.abs(t.getDuration() - base) > 2 || !t.isRunning) {
+        t.sync(base, true);
       }
-    } else if (prevStatus !== "live") {
-      // On passe en live : réinitialiser le point de départ avec la durée serveur
-      console.log(
-        `🔄 [Sync] Durée (going live): base=${durationInSeconds}s`,
-      );
-      t.setTime(durationInSeconds);
+    } else {
+      if (Math.abs(t.getDuration() - base) > 1 || t.isRunning) {
+        t.sync(base, false);
+      }
     }
-
-    // ─── 2. Sync du statut du timer ───
-    if (newStatus === "live" && !t.isRunning) {
-      console.log("🔄 [Sync] Démarrage du timer (match live)");
-      t.start();
-    } else if (
-      (newStatus === "round_break" || newStatus === "reclamation") &&
-      t.isRunning
-    ) {
-      console.log(`🔄 [Sync] Pause du timer (match ${newStatus})`);
-      t.pause();
-    } else if (newStatus === "completed" && t.isRunning) {
-      console.log("🔄 [Sync] Arrêt du timer (match terminé)");
-      t.stop();
-    } else if (newStatus === "scheduled") {
-      console.log("🔄 [Sync] Reset du timer (match programmé)");
-      t.reset();
-    }
-  }, [match?.total_duration, match?.status]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveStatus, effectiveTotalDuration, effectiveStartTs, match?.id, remoteMatch?.updatedAt]);
 
   // ==========================
-  // MUTATION
+  // PERSISTENCE SÉRIALISÉE
   // ==========================
 
-  const updateMutation = useMutation({
-    mutationFn: async (updates: MatchUpdate) => {
-      if (isUpdatingRef.current) {
-        console.log("🔄 Mise à jour déjà en cours, ignorée");
-        return;
-      }
-
-      isUpdatingRef.current = true;
-      try {
-        return await updateMatch(matchId, updates);
-      } finally {
-        isUpdatingRef.current = false;
-      }
+  const persist = useCallback(
+    (updates: MatchUpdate) => {
+      const p = queueRef.current.then(async () => {
+        isUpdatingRef.current = true;
+        setIsUpdating(true);
+        try {
+          const res = await updateMatch(matchId, updates);
+          queryClient.invalidateQueries({ queryKey: ["match", matchId] });
+          return res;
+        } catch (e) {
+          console.error("updateMatch error:", e);
+          toast.error("Erreur lors de la synchronisation");
+          queryClient.invalidateQueries({ queryKey: ["match", matchId] });
+          throw e;
+        } finally {
+          isUpdatingRef.current = false;
+          setIsUpdating(false);
+        }
+      });
+      queueRef.current = p.catch(() => undefined);
+      return p;
     },
+    [matchId, queryClient],
+  );
 
-    onSuccess: () => {
-      // Invalider le cache - WebSocket s'occupera du reste
-      queryClient.invalidateQueries({ queryKey: ["match", matchId] });
-    },
-
-    onError: () => {
-      toast.error("Erreur lors de la synchronisation");
-    },
-  });
-
-  // sub_group mutation
+  // ==========================
+  // SUB-GROUP MUTATION
+  // ==========================
   const updateSubGroupMutation = useMutation({
     mutationFn: async (updates: { video_url?: string; status?: string }) => {
+      if (!subGroupId) return;
       const formData = new FormData();
       if (updates.video_url !== undefined) {
         formData.append("video_url", updates.video_url || "");
@@ -159,7 +163,8 @@ export function useMatchController({
       if (updates.status !== undefined) {
         formData.append("status", updates.status || "");
       }
-      const response = await updateSubGroup(subGroupId!, formData);
+      const { updateSubGroup } = await import("@/actions/sub-groups");
+      const response = await updateSubGroup(subGroupId, formData);
       return response;
     },
     onSuccess: () => {
@@ -173,66 +178,73 @@ export function useMatchController({
 
   const startMatch = useCallback(() => {
     if (!match || isUpdatingRef.current) return;
-
-    timer.start();
+    if (match.status === "live") return;
 
     const now = new Date();
     const timeString = now.toTimeString().slice(0, 8);
     const timestamp2 = now.toISOString();
 
-    updateMutation.mutate({
+    const current = timer.getDuration();
+    timer.sync(current, true);
+
+    persist({
       status: "live",
       start_time: timeString,
       start_time2: timestamp2,
+      total_duration: formatSecondsToDuration(current),
     });
 
-    //push topic
     sendMatchPush(
       matchId,
       `Match entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} debute !`,
-    );
-  }, [match, timer, updateMutation]);
+    ).catch(() => {});
+  }, [match, timer, persist, matchId]);
 
   const pauseMatch = useCallback(() => {
     if (!match || isUpdatingRef.current) return;
+    if (match.status !== "live") return;
 
     const currentDuration = timer.pause();
+    timer.sync(currentDuration, false);
 
-    updateMutation.mutate({
+    persist({
       status: "round_break",
       total_duration: formatSecondsToDuration(currentDuration),
       break_count: (match.break_count ?? 0) + 1,
     });
-  }, [match, timer, updateMutation]);
+  }, [match, timer, persist]);
 
-  // reclamation
   const reclamation = useCallback(() => {
     if (!match) return;
-    timer.pause();
-
     const currentDuration = timer.pause();
-    updateMutation.mutate({
+    timer.sync(currentDuration, false);
+
+    persist({
       status: "reclamation",
       total_duration: formatSecondsToDuration(currentDuration),
     });
-  }, [match, timer, updateMutation]);
+  }, [match, timer, persist]);
 
   const resumeMatch = useCallback(() => {
-    timer.resume();
+    if (!match || isUpdatingRef.current) return;
+    if (match.status !== "round_break" && match.status !== "reclamation") return;
 
-    updateMutation.mutate({
+    const current = timer.getDuration();
+    timer.sync(current, true);
+
+    persist({
       status: "live",
+      start_time2: new Date().toISOString(),
     });
-  }, [timer, updateMutation]);
+  }, [match, timer, persist]);
 
-  // ✅ VERSION AMÉLIORÉE - Gère les cas où un lutteur est absent
   const completeMatch = useCallback(
     (winnerId: number, loserId?: number) => {
       if (!match || isUpdatingRef.current) return;
 
       const finalDuration = timer.stop();
+      timer.sync(finalDuration, false);
 
-      // ✅ Vérifier si le vainqueur était déjà éliminé initialement
       const isWinnerFighter1 = winnerId === match.fighter1_id;
       const winnerInitialState = isWinnerFighter1
         ? match.fighter1_initial_state
@@ -246,25 +258,20 @@ export function useMatchController({
         end_time: new Date().toTimeString().slice(0, 8),
       };
 
-      // Déterminer le résultat du match
       if (loserId && loserId !== -1) {
-        // Victoire normale avec les deux lutteurs
         updates.loser_fighter_id = loserId;
         updates.match_result =
           winnerId === match.fighter1_id ? "fighter1_win" : "fighter2_win";
 
-        // Vérifier si le vainqueur était déjà éliminé (cas rare)
         if (winnerInitialState === "eliminated") {
           updates.notes = match.notes
             ? `${match.notes}\n⚠️ Attention: Le vainqueur était déjà éliminé avant le match!`
             : "⚠️ Attention: Le vainqueur était déjà éliminé avant le match!";
         }
       } else {
-        // Victoire par forfait (lutteur absent)
-        // ✅ NE PAS définir loser_fighter_id du tout
         updates.match_result =
           winnerId === match.fighter1_id ? "fighter1_win" : "fighter2_win";
-        updates.loser_fighter_id = null; // 🔥 Important: mettre à null, pas -1
+        updates.loser_fighter_id = null;
 
         const winnerName =
           winnerId === match.fighter1_id
@@ -277,17 +284,18 @@ export function useMatchController({
           : forfaitNote;
       }
 
-      updateMutation.mutate(updates);
+      persist(updates);
     },
-    [match, timer, updateMutation],
+    [match, timer, persist],
   );
 
   const setDraw = useCallback(() => {
     if (!match || isUpdatingRef.current) return;
 
     const finalDuration = timer.stop();
+    timer.sync(finalDuration, false);
 
-    updateMutation.mutate({
+    persist({
       status: "completed",
       match_result: "draw",
       winner_fighter_id: null,
@@ -296,15 +304,19 @@ export function useMatchController({
       break_count: match.break_count ?? 0,
       end_time: new Date().toTimeString().slice(0, 8),
     });
-  }, [match, timer, updateMutation]);
+  }, [match, timer, persist]);
 
   const resetMatch = useCallback(() => {
     timer.reset();
+    timer.sync(0, false);
 
-    updateMutation.mutate({
+    persist({
       force_reset: true,
+      status: "scheduled",
+      total_duration: "00:00:00",
+      break_count: 0,
     });
-  }, [timer, updateMutation]);
+  }, [timer, persist]);
 
   // ==========================
   // PERMISSIONS
@@ -321,15 +333,14 @@ export function useMatchController({
   const canComplete =
     match?.status === "live" || match?.status === "round_break";
 
-  // ✅ Déjà correct dans use-match-controller.ts
   const canSetWinner =
     (match?.status === "live" || match?.status === "reclamation") &&
-    (!!match?.fighter1_id || !!match?.fighter2_id); // Un seul lutteur suffit
+    (!!match?.fighter1_id || !!match?.fighter2_id);
 
   const canSetDraw =
     (match?.status === "live" || match?.status === "reclamation") &&
     !!match?.fighter1_id &&
-    !!match?.fighter2_id; // Match nul nécessite les deux
+    !!match?.fighter2_id;
 
   return {
     match,
@@ -340,7 +351,7 @@ export function useMatchController({
     elapsed: timer.elapsed,
     formattedTime: formatSecondsToDuration(timer.elapsed),
     isRunning: timer.isRunning,
-    breakCount: match?.break_count ?? 0,
+    breakCount: match?.break_count ?? effectiveBreakCount,
 
     // actions
     startMatch,
@@ -360,7 +371,7 @@ export function useMatchController({
     canSetWinner,
     canSetDraw,
 
-    isUpdating: updateMutation.isPending,
+    isUpdating,
   };
 }
 
@@ -371,16 +382,4 @@ function formatSecondsToDuration(totalSeconds: number): string {
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
   return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-}
-
-function parseDurationToSeconds(duration?: string | null): number {
-  if (!duration) return 0;
-  const parts = duration.split(":").map(Number);
-  if (parts.length === 3) {
-    return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  }
-  if (parts.length === 2) {
-    return parts[0] * 60 + parts[1];
-  }
-  return 0;
 }

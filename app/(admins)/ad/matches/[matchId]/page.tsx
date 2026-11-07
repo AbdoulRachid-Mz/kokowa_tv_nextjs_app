@@ -196,12 +196,29 @@ export default function StandaloneMatchDetailPage() {
   } = useMatchController({
     matchId: parsedMatchId,
     subGroupId: parsedSubGroupId,
+    remoteMatch: realtimeMatchData as any,
   });
 
-  // Fusion des données locales et temps réel
+  // Fusion des données locales et temps réel (normalisation camelCase -> snake_case)
   const activeMatch = match ?? fetchedMatch;
-  const mergedMatch = realtimeMatchData
-    ? ({ ...activeMatch, ...realtimeMatchData } as Match)
+  const realtimeNormalized = realtimeMatchData
+    ? {
+        status: realtimeMatchData.status,
+        break_count: realtimeMatchData.breakCount,
+        total_duration: realtimeMatchData.totalDuration,
+        start_time2: realtimeMatchData.startTime,
+        fighter1_id: realtimeMatchData.fighter1Id,
+        fighter2_id: realtimeMatchData.fighter2Id,
+        winner_fighter_id: realtimeMatchData.winnerId,
+        loser_fighter_id: realtimeMatchData.loserId,
+        match_result: realtimeMatchData.matchResult,
+        audience_count: realtimeMatchData.audienceCount,
+        video_url: realtimeMatchData.videoUrl,
+        live_stream_url: realtimeMatchData.liveStreamUrl,
+      }
+    : null;
+  const mergedMatch = realtimeNormalized
+    ? ({ ...activeMatch, ...realtimeNormalized } as Match)
     : activeMatch;
   const isConnected = !isMatchListening;
 
@@ -686,6 +703,7 @@ export default function StandaloneMatchDetailPage() {
             canStart={canStart}
             canPause={canPause}
             canResume={canResume}
+            isUpdating={isUpdating}
           />
 
           <SubGroupRefereeManager
