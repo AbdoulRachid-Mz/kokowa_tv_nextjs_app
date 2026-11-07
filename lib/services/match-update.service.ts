@@ -6,6 +6,7 @@ import type { PoolClient } from "pg";
 import { emitMatchEvent } from "@/actions/realtime";
 import { getMatchById } from "@/actions/matches-2";
 import { syncEditionLiveMatch } from "../realtime/rtdb-sync";
+import { dlog } from "./match-update.debug";
 import { RealtimeLiveMatchInfo } from "@/types/realtime";
 import { syncMatchOfficialAchievements } from "@/actions/achievements";
 
@@ -451,12 +452,29 @@ export async function updateMatchAndRecompute(
   const client = await pool.connect();
 
   try {
+    dlog(`BEGIN matchId=${matchId}`);
+    await client.query("SET lock_timeout = '5s'");
+    await client.query("SET statement_timeout = '30s'");
     await client.query("BEGIN");
+    dlog("after BEGIN");
 
-    // 🔒 LOCK
-    await client.query(`SELECT id FROM matches WHERE id = $1 FOR UPDATE`, [
-      matchId,
-    ]);
+    // 🔒 LOCK (NOWAIT pour éviter un blocage indéfini si la ligne est déjà verrouillée)
+    try {
+      await client.query(`SELECT id FROM matches WHERE id = $1 FOR UPDATE NOWAIT`, [
+        matchId,
+      ]);
+    } catch (lockErr: any) {
+      if (lockErr?.code === "55P03") {
+        dlog("lock conflict, retrying after 200ms");
+        await new Promise((r) => setTimeout(r, 200));
+        await client.query(`SELECT id FROM matches WHERE id = $1 FOR UPDATE NOWAIT`, [
+          matchId,
+        ]);
+      } else {
+        throw lockErr;
+      }
+    }
+    dlog("after LOCK");
 
     const oldMatchRes = await client.query(
       `SELECT m.*, sg.region1_id, sg.region2_id, p.edition_id, sg.id as sub_group_id,
@@ -472,6 +490,7 @@ export async function updateMatchAndRecompute(
 
     if (!oldMatchRes.rowCount) throw new Error("Match introuvable");
     const oldMatch = oldMatchRes.rows[0];
+    dlog(`oldMatch loaded status=${oldMatch.status} subGroup=${oldMatch.sub_group_id}`);
 
     // 🟡 RESET MANUEL ou passage en réclamation
     if (
@@ -513,6 +532,7 @@ export async function updateMatchAndRecompute(
 
     // 🔥 GESTION DE L'UNICITÉ AVANT LA MISE À JOUR
     if (updates.status && updates.status !== oldMatch.status) {
+      dlog(`ensureUniqueLiveStates target=${updates.status}`);
       await ensureUniqueLiveStates(
         client,
         matchId,
@@ -521,12 +541,14 @@ export async function updateMatchAndRecompute(
       );
     }
 
+    dlog("before updateMatchInTransaction");
     // 🔄 UPDATE DU MATCH
     const updatedMatch = await updateMatchInTransaction(
       client,
       matchId,
       updates,
     );
+    dlog(`updatedMatch status=${updatedMatch.status}`);
 
     // 🔺 Si le match est maintenant terminé, recalculer l'état COMPLET
     if (
@@ -553,7 +575,9 @@ export async function updateMatchAndRecompute(
     // 🏁 Vérifier et mettre à jour le statut du sous-groupe ET du groupe parent
     await checkAndUpdateGroupStatus(client, oldMatch.sub_group_id);
 
+    dlog("before COMMIT");
     await client.query("COMMIT");
+    dlog("after COMMIT");
 
     // Mettre à jour le liveMatch dans l'édition
     const editionId = oldMatch.edition_id;
