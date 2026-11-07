@@ -132,9 +132,6 @@ export function useMatchController({
         setIsUpdating(true);
         try {
           const res = await updateMatch(matchId, updates);
-          if (res) {
-            queryClient.setQueryData(["match", matchId], res);
-          }
           queryClient.invalidateQueries({ queryKey: ["match", matchId] });
           return res;
         } catch (e) {
