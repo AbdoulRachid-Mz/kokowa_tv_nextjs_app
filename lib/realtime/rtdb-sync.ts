@@ -8,12 +8,25 @@ import { REALTIME_NODES, RealtimeLiveMatchInfo } from "@/types/realtime";
  * Met à jour un match dans RTDB.
  * Chemin : editions/{editionId}/subGroups/{subGroupId}/matches/{matchId}
  */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms),
+    ),
+  ]);
+}
+
 export async function syncMatchRealtime(
   matchId: number,
   event?: string
 ): Promise<void> {
   try {
-    const { payload, editionId, subGroupId } = await buildRealtimeMatchPayload(matchId);
+    const { payload, editionId, subGroupId } = await withTimeout(
+      buildRealtimeMatchPayload(matchId),
+      8000,
+      "buildRealtimeMatchPayload",
+    );
     
     // 🔥 On met à jour dans RTDB si le match est actif ou vient de se terminer
     if (payload.status === "scheduled") {
@@ -22,7 +35,7 @@ export async function syncMatchRealtime(
         const ref = db.ref(
           `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}/matches/${matchId}`,
         );
-        await ref.remove();
+        await withTimeout(ref.remove(), 8000, "rtdb ref.remove");
         console.log(`RTDB: match ${matchId} retire du temps reel (status scheduled)`);
       } catch (err) {
         console.error("RTDB remove error:", err);
@@ -35,7 +48,7 @@ export async function syncMatchRealtime(
       `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}/matches/${matchId}`
     );
     
-    await ref.update(payload);
+    await withTimeout(ref.update(payload), 8000, "rtdb ref.update");
 
     console.log(`✅ RTDB sync: match ${matchId} (edition ${editionId}, subGroup ${subGroupId}) | event: ${event ?? "none"} | live: ${payload.isLive}`);
   } catch (error) {
@@ -69,14 +82,18 @@ export async function syncSubGroupRealtime(
   event?: string
 ): Promise<void> {
   try {
-    const { payload, editionId } = await buildRealtimeSubGroupPayload(subGroupId);
+    const { payload, editionId } = await withTimeout(
+      buildRealtimeSubGroupPayload(subGroupId),
+      8000,
+      "buildRealtimeSubGroupPayload",
+    );
     
     const db = getAdminRTDB();
     const ref = db.ref(
       `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}`
     );
     
-    await ref.update(payload);
+    await withTimeout(ref.update(payload), 8000, "rtdb ref.update");
 
     console.log(`✅ RTDB sync: subGroup ${subGroupId} (edition ${editionId}) | event: ${event ?? "none"}`);
   } catch (error) {
@@ -101,11 +118,15 @@ export async function updateMatchLiveState(
       `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}/matches/${matchId}`
     );
     
-    await ref.update({
-      isLive,
-      status,
-      updatedAt: Date.now(),
-    });
+    await withTimeout(
+      ref.update({
+        isLive,
+        status,
+        updatedAt: Date.now(),
+      }),
+      8000,
+      "rtdb updateMatchLiveState",
+    );
   } catch (error) {
     console.error(`❌ RTDB updateMatchLiveState failed for match ${matchId}:`, error);
   }
@@ -129,7 +150,7 @@ export async function syncEditionLiveMatch(
     } else {
       update.liveMatch = liveMatchInfo;
     }
-    await ref.update(update);
+    await withTimeout(ref.update(update), 8000, "rtdb syncEditionLiveMatch");
     console.log(`✅ RTDB liveMatch sync for edition ${editionId}: ${liveMatchInfo ? `match ${liveMatchInfo.matchId}` : 'cleared'}`);
   } catch (error) {
     console.error(`❌ RTDB syncEditionLiveMatch failed for edition ${editionId}:`, error);

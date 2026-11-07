@@ -576,13 +576,14 @@ export async function updateMatchAndRecompute(
       console.error('syncEditionLiveMatch error:', err)
     );
 
-    // Émettre l'événement temps réel (au match et au sous-groupe)
-    await emitMatchEvent(
+    // Émettre l'événement temps réel (au match et au sous-groupe) — non bloquant
+    // pour ne pas faire attendre la réponse HTTP si RTDB est lent/indisponible.
+    emitMatchEvent(
       matchId,
       "match_updated",
       { match: updatedMatch },
       oldMatch.sub_group_id,
-    );
+    ).catch((err) => console.error("emitMatchEvent error:", err));
 
     return updatedMatch;
   } catch (error) {
