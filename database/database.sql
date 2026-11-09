@@ -540,7 +540,7 @@ CREATE TABLE IF NOT EXISTS fighter_cards (
     match_id INTEGER NOT NULL,
     card_type VARCHAR(10) CHECK (card_type IN ('yellow', 'red')) NOT NULL,
     card_reason TEXT,
-    minute_given TIME,
+    minute_given VARCHAR(20),
     is_cancelled BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (fighter_id) REFERENCES fighters (id) ON DELETE CASCADE,

@@ -664,7 +664,7 @@ export function MatchCard({
                   </Avatar>
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                    {match.fighter2 ? `${match.fighter2?.first_name[0]}${match?.fighter2?.last_name[0] || "?"}` : "?"}
+                    {match.fighter2 ? `${match.fighter2?.first_name?.[0] || ""}${match?.fighter2?.last_name?.[0] || "?"}` : "?"}
                   </div>
                 )}
               </div>
