@@ -198,6 +198,10 @@ export default function EditionDetailPage() {
     router.push(`/ad/editions/${editionId}/edit`);
   };
 
+  const handleManageAchievements = () => {
+    router.push(`/ad/achievements/create?editionId=${editionId}`);
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -264,6 +268,10 @@ export default function EditionDetailPage() {
           <Button variant="outline" onClick={handleEditEdition}>
             <Edit className="h-4 w-4 mr-2" />
             Modifier
+          </Button>
+          <Button variant="outline" onClick={handleManageAchievements}>
+            <Award className="h-4 w-4 mr-2" />
+            Gérer les palmarès
           </Button>
           <Button onClick={handleAddPhase}>
             <Plus className="h-4 w-4 mr-2" />

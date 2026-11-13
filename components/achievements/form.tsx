@@ -38,6 +38,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Typography } from "@/components/ui/typography";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Trophy, Medal, Calendar, MapPin, User } from "lucide-react";
 import { AdvancedUpload } from "../ui/advanced-upload";
 import { archiveFighterAchievement, createArchiveFighterAchievement } from "@/actions/archives";
@@ -46,6 +47,7 @@ interface AchievementFormProps {
   // Pour la création
   initialFighterId?: number;
   initialRegionId?: number;
+  initialEditionId?: number;
   // Pour l'édition
   achievementId?: number;
   // Callbacks
@@ -56,6 +58,7 @@ interface AchievementFormProps {
 export function AchievementForm({
   initialFighterId,
   initialRegionId,
+  initialEditionId,
   achievementId,
   onSuccess,
   onCancel,
@@ -71,6 +74,8 @@ export function AchievementForm({
   const [editionsLoading, setEditionsLoading] = useState(false);
   const [selectedFighter, setSelectedFighter] = useState<Fighter | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
+  const [existingAchievements, setExistingAchievements] = useState<any[]>([]);
+  const [duplicateAlert, setDuplicateAlert] = useState<string | null>(null);
 
   const isEditMode = !!achievementId;
 
@@ -220,11 +225,68 @@ export function AchievementForm({
         // Charger les infos du lutteur si fourni
         loadFighterDetails(initialFighterId);
       }
+      if (initialEditionId) {
+        form.setValue("edition_id", initialEditionId);
+      }
       setInitialLoading(false);
     };
 
     loadInitialData();
-  }, [achievementId, initialFighterId, initialRegionId]);
+  }, [achievementId, initialFighterId, initialRegionId, initialEditionId]);
+
+  // Détecteur de palmarès existants (non bloquant)
+  const checkExistingAchievements = async (editionId: number) => {
+    try {
+      const response = await fetch(
+        `/api/archives?edition_id=${editionId}&limit=100&with_fighter=true&with_region=true&with_edition=true`,
+      );
+      if (!response.ok) return;
+      const data = await response.json();
+      const list = data.data || data || [];
+      setExistingAchievements(list);
+
+      const currentType = form.getValues("type");
+      const currentPosition = form.getValues("position");
+      const currentFighterId = form.getValues("fighter_id");
+      const currentRegionId = form.getValues("region_id");
+
+      const duplicate = list.find((a: any) => {
+        if (a.type !== currentType) return false;
+        if (a.position !== currentPosition) return false;
+        if (a.fighter_id && a.fighter_id === currentFighterId) return true;
+        if (a.region_id && a.region_id === currentRegionId) return true;
+        return false;
+      });
+
+      if (duplicate) {
+        setDuplicateAlert(
+          `Un palmarès similaire existe déjà pour cette édition (type: ${duplicate.type}, position: ${duplicate.position}). Vous pouvez continuer la modification si nécessaire.`,
+        );
+      } else {
+        setDuplicateAlert(null);
+      }
+    } catch (error) {
+      console.error("Error checking existing achievements:", error);
+    }
+  };
+
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === "edition_id" || name === "type" || name === "position" || name === "fighter_id" || name === "region_id") {
+        const editionId = form.getValues("edition_id");
+        if (editionId) {
+          checkExistingAchievements(editionId);
+        }
+      }
+    });
+    // Initial check
+    const initialEdition = form.getValues("edition_id");
+    if (initialEdition) {
+      checkExistingAchievements(initialEdition);
+    }
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editions]);
 
   const loadFighterDetails = async (fighterId: number) => {
     try {
@@ -396,6 +458,12 @@ export function AchievementForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {duplicateAlert && (
+          <Alert>
+            <AlertTitle>Palmarès existant détecté</AlertTitle>
+            <AlertDescription>{duplicateAlert}</AlertDescription>
+          </Alert>
+        )}
         {/* En-tête */}
         <Card>
           <CardHeader>
