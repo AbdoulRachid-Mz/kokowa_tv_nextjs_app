@@ -135,6 +135,24 @@ export async function updateMatchLiveState(
 /**
  * Met à jour le match live de l'édition
  */
+export async function clearEditionLiveMatchIfMatches(
+  editionId: number,
+  matchId: number,
+): Promise<void> {
+  try {
+    const db = getAdminRTDB();
+    const ref = db.ref(`${REALTIME_NODES.EDITIONS}/${editionId}`);
+    const snap = await withTimeout(ref.once("value"), 8000, "rtdb clearEditionLiveMatch read");
+    const val = snap.val() as any;
+    if (val?.liveMatch && Number(val.liveMatch.matchId) === Number(matchId)) {
+      await withTimeout(ref.update({ liveMatch: null, updatedAt: Date.now() }), 8000, "rtdb clearEditionLiveMatch update");
+      console.log(`RTDB: liveMatch cleared for edition ${editionId} (match ${matchId})`);
+    }
+  } catch (error) {
+    console.error(`RTDB clearEditionLiveMatchIfMatches failed for edition ${editionId}:`, error);
+  }
+}
+
 export async function syncEditionLiveMatch(
   editionId: number,
   liveMatchInfo: RealtimeLiveMatchInfo | null
