@@ -5,7 +5,10 @@ import { pool, query } from "../db/neon-client";
 import type { PoolClient } from "pg";
 import { emitMatchEvent } from "@/actions/realtime";
 import { getMatchById } from "@/actions/matches-2";
-import { syncEditionLiveMatch } from "../realtime/rtdb-sync";
+import {
+  clearEditionLiveMatchIfMatches,
+  syncEditionLiveMatch,
+} from "../realtime/rtdb-sync";
 import { dlog } from "./match-update.debug";
 import { RealtimeLiveMatchInfo } from "@/types/realtime";
 import { syncMatchOfficialAchievements } from "@/actions/achievements";
@@ -354,92 +357,116 @@ async function checkAndUpdateGroupStatus(
 /**
  * 🔥 Gère l'unicité des matchs live et des sous-groupes ongoing
  */
+interface DisplacedLiveMatch {
+  id: number;
+  sub_group_id: number;
+  edition_id: number;
+}
+
+interface LiveTransitionEffects {
+  displacedMatches: DisplacedLiveMatch[];
+  changedSubGroupIds: number[];
+}
+
+/**
+ * Garantit un seul match au statut "live" dans toute l'application.
+ *
+ * Les matchs en round_break/reclamation sont volontairement conservés :
+ * ils restent dans leur statut et leur sous-groupe reste ongoing.
+ * Les écritures RTDB sont différées après le COMMIT PostgreSQL.
+ */
 async function ensureUniqueLiveStates(
   client: PoolClient,
   matchId: number,
   subGroupId: number,
   targetStatus: string,
-) {
-  // Si on passe en mode live
-  if (targetStatus === "live") {
-    console.log(`🔴 Passage du match ${matchId} en live`);
+): Promise<LiveTransitionEffects> {
+  const effects: LiveTransitionEffects = {
+    displacedMatches: [],
+    changedSubGroupIds: [],
+  };
 
-    // 1. Mettre fin à tous les autres matchs live
-    const liveMatchesRes = await client.query(
-      `UPDATE matches
-       SET status = 'scheduled',
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id != $1
-       AND status = 'live'
-       RETURNING id, sub_group_id`,
+  if (targetStatus === "live") {
+    // Le verrou advisory global est pris par l'appelant avant le verrou de ligne.
+    // Il sérialise les démarrages simultanés, toutes éditions confondues.
+    const liveMatchesRes = await client.query<DisplacedLiveMatch>(
+      `SELECT m.id, m.sub_group_id, p.edition_id
+       FROM matches m
+       JOIN sub_groups sg ON sg.id = m.sub_group_id
+       JOIN phase_groups pg ON pg.id = sg.group_id
+       JOIN phases p ON p.id = pg.phase_id
+       WHERE m.id <> $1
+         AND m.status = 'live'
+         AND m.is_active = true
+       FOR UPDATE OF m`,
       [matchId],
     );
 
-    if (liveMatchesRes.rowCount && liveMatchesRes.rowCount > 0) {
-      console.log(
-        `   → ${liveMatchesRes.rowCount} autre(s) match(s) live arrêté(s)`,
+    effects.displacedMatches = liveMatchesRes.rows;
+
+    if (effects.displacedMatches.length > 0) {
+      const displacedIds = effects.displacedMatches.map((match) => match.id);
+      const displacedSubGroupIds = [
+        ...new Set(effects.displacedMatches.map((match) => match.sub_group_id)),
+      ];
+
+      // On arrête uniquement les matchs réellement live.
+      // Le temps total et le nombre de pauses sont conservés.
+      await client.query(
+        `UPDATE matches
+         SET status = 'scheduled',
+             start_time2 = NULL,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ANY($1::int[])
+           AND status = 'live'`,
+        [displacedIds],
       );
+
+      // Un sous-groupe contenant encore un match suspendu reste ongoing.
+      // Les autres sous-groupes concernés repassent upcoming.
+      const subgroupRes = await client.query<{ id: number }>(
+        `UPDATE sub_groups sg
+         SET status = CASE
+           WHEN EXISTS (
+             SELECT 1
+             FROM matches m
+             WHERE m.sub_group_id = sg.id
+               AND m.is_active = true
+               AND m.status IN ('live', 'round_break', 'reclamation')
+           ) THEN 'ongoing'
+           ELSE 'upcoming'
+         END
+         WHERE sg.id = ANY($1::int[])
+           AND sg.id <> $2
+           AND sg.status <> 'completed'
+           AND sg.is_completed = false
+         RETURNING sg.id`,
+        [displacedSubGroupIds, subGroupId],
+      );
+
+      effects.changedSubGroupIds = subgroupRes.rows.map((row) => row.id);
     }
 
-    // 2. Mettre fin à tous les autres sous-groupes ongoing
-    const ongoingSubGroupsRes = await client.query(
-      `UPDATE sub_groups
-       SET status = 'upcoming'
-       WHERE id != $1
-       AND status = 'ongoing'
-       RETURNING id`,
-      [subGroupId],
-    );
-
-    if (ongoingSubGroupsRes.rowCount && ongoingSubGroupsRes.rowCount > 0) {
-      console.log(
-        `   → ${ongoingSubGroupsRes.rowCount} autre(s) sous-groupe(s) ongoing arrêté(s)`,
-      );
-
-      // 🧹 NETTOYAGE RTDB : Si on change de subGroup, on supprime les matches de l'ancien subGroup de RTDB
-      // On récupère l'editionId pour le nettoyage
-      const editionRes = await client.query(
-        `SELECT p.edition_id FROM sub_groups sg 
-         JOIN phase_groups pg ON sg.group_id = pg.id 
-         JOIN phases p ON pg.phase_id = p.id 
-         WHERE sg.id = $1`,
-        [subGroupId]
-      );
-      const editionId = editionRes.rows[0]?.edition_id;
-
-      if (editionId) {
-        const { deleteRealtimeSubGroupMatches } = await import("@/lib/realtime/rtdb-sync");
-        for (const sg of ongoingSubGroupsRes.rows) {
-           // Supprimer uniquement les matches de l'ancien subGroup de RTDB
-           await deleteRealtimeSubGroupMatches(sg.id, editionId);
-           console.log(`   → Matches du subGroup ${sg.id} supprimés de RTDB`);
-        }
-      }
-    }
-
-    // 3. Activer le sous-groupe du match (s'il n'est pas déjà terminé)
+    // Le sous-groupe du nouveau match devient ongoing.
     await client.query(
       `UPDATE sub_groups
        SET status = 'ongoing'
        WHERE id = $1
-       AND status != 'completed'`,
+         AND status <> 'completed'
+         AND is_completed = false`,
       [subGroupId],
     );
 
-    console.log(`   → Sous-groupe ${subGroupId} activé (ongoing)`);
-  }
-
-  // Si on passe en round_break, le match n'est plus live mais le sous-groupe reste ongoing
-  else if (targetStatus === "round_break" || targetStatus === "reclamation") {
-    console.log(`⏸️ Match ${matchId} en pause (${targetStatus})`);
-    // Le sous-groupe reste ongoing, on ne change rien
-  }
-
-  // Si on passe en completed, le match est terminé
-  else if (targetStatus === "completed") {
+    console.log(
+      `🔴 Match ${matchId} live ; ${effects.displacedMatches.length} ancien(s) match(s) live remplacé(s). Les matchs en pause/réclamation sont conservés.`,
+    );
+  } else if (targetStatus === "round_break" || targetStatus === "reclamation") {
+    console.log(`⏸️ Match ${matchId} conservé en ${targetStatus}`);
+  } else if (targetStatus === "completed") {
     console.log(`✅ Match ${matchId} terminé`);
-    // Le sous-groupe sera mis à jour par checkAndUpdateGroupStatus
   }
+
+  return effects;
 }
 
 /**
@@ -450,26 +477,39 @@ export async function updateMatchAndRecompute(
   updates: MatchUpdate,
 ) {
   const client = await pool.connect();
+  let transactionStarted = false;
+  let transactionCommitted = false;
 
   try {
     dlog(`BEGIN matchId=${matchId}`);
     await client.query("SET lock_timeout = '5s'");
     await client.query("SET statement_timeout = '30s'");
     await client.query("BEGIN");
+    transactionStarted = true;
     dlog("after BEGIN");
 
-    // 🔒 LOCK (NOWAIT pour éviter un blocage indéfini si la ligne est déjà verrouillée)
+    // Important : prendre le verrou global AVANT le verrou de la ligne cible.
+    // Sinon deux démarrages concurrents pourraient se bloquer mutuellement
+    // en verrouillant chacun leur match avant de demander le verrou global.
+    if (updates.status === "live") {
+      await client.query("SELECT pg_advisory_xact_lock(2026, 1109)");
+      dlog("after GLOBAL LIVE advisory lock");
+    }
+
+    // 🔒 LOCK du match cible
     try {
-      await client.query(`SELECT id FROM matches WHERE id = $1 FOR UPDATE NOWAIT`, [
-        matchId,
-      ]);
+      await client.query(
+        `SELECT id FROM matches WHERE id = $1 FOR UPDATE NOWAIT`,
+        [matchId],
+      );
     } catch (lockErr: any) {
       if (lockErr?.code === "55P03") {
         dlog("lock conflict, retrying after 200ms");
         await new Promise((r) => setTimeout(r, 200));
-        await client.query(`SELECT id FROM matches WHERE id = $1 FOR UPDATE NOWAIT`, [
-          matchId,
-        ]);
+        await client.query(
+          `SELECT id FROM matches WHERE id = $1 FOR UPDATE NOWAIT`,
+          [matchId],
+        );
       } else {
         throw lockErr;
       }
@@ -497,14 +537,12 @@ export async function updateMatchAndRecompute(
       updates.force_reset ||
       (oldMatch.status === "completed" && updates.status === "reclamation")
     ) {
-      // Recalculer l'état SANS ce match
       const stateWithoutMatch = await MatchStateCalculator.calculateState(
         client,
         oldMatch.sub_group_id,
         matchId,
       );
 
-      // Appliquer l'état recalculé
       await MatchStateCalculator.syncState(
         client,
         oldMatch.sub_group_id,
@@ -512,7 +550,7 @@ export async function updateMatchAndRecompute(
       );
     }
 
-    // 🧠 AUTO CALCUL DU LOSER (seulement si les deux fighters existent)
+    // 🧠 AUTO CALCUL DU LOSER
     if (
       updates.winner_fighter_id &&
       (updates.loser_fighter_id === undefined || updates.loser_fighter_id === null)
@@ -525,15 +563,18 @@ export async function updateMatchAndRecompute(
       } else if (updates.winner_fighter_id === fighter2 && fighter1) {
         updates.loser_fighter_id = fighter1;
       } else {
-        // Victoire par forfait - pas de loser
         updates.loser_fighter_id = null;
       }
     }
 
-    // 🔥 GESTION DE L'UNICITÉ AVANT LA MISE À JOUR
+    let liveTransitionEffects: LiveTransitionEffects = {
+      displacedMatches: [],
+      changedSubGroupIds: [],
+    };
+
     if (updates.status && updates.status !== oldMatch.status) {
       dlog(`ensureUniqueLiveStates target=${updates.status}`);
-      await ensureUniqueLiveStates(
+      liveTransitionEffects = await ensureUniqueLiveStates(
         client,
         matchId,
         oldMatch.sub_group_id,
@@ -542,7 +583,6 @@ export async function updateMatchAndRecompute(
     }
 
     dlog("before updateMatchInTransaction");
-    // 🔄 UPDATE DU MATCH
     const updatedMatch = await updateMatchInTransaction(
       client,
       matchId,
@@ -550,41 +590,69 @@ export async function updateMatchAndRecompute(
     );
     dlog(`updatedMatch status=${updatedMatch.status}`);
 
-    // 🔺 Si le match est maintenant terminé, recalculer l'état COMPLET
     if (
       oldMatch.status !== "completed" &&
       updatedMatch.status === "completed"
     ) {
-      // Recalculer l'état complet (avec tous les matchs)
       const fullState = await MatchStateCalculator.calculateState(
         client,
         oldMatch.sub_group_id,
       );
 
-      // Synchroniser
       await MatchStateCalculator.syncState(
         client,
         oldMatch.sub_group_id,
         fullState,
       );
-
-      // Notification push
-      // await sendMatchPush(matchId, 'Le match a été complété', '🔥 Match terminé');
     }
 
-    // 🏁 Vérifier et mettre à jour le statut du sous-groupe ET du groupe parent
     await checkAndUpdateGroupStatus(client, oldMatch.sub_group_id);
 
     dlog("before COMMIT");
     await client.query("COMMIT");
+    transactionCommitted = true;
     dlog("after COMMIT");
 
-    // Mettre à jour le liveMatch dans l'édition
-    const editionId = oldMatch.edition_id;
-    let liveMatchInfo: RealtimeLiveMatchInfo | null = null;
+    // PostgreSQL est maintenant libéré : aucune opération Firebase ne prolonge
+    // la transaction ni ne retarde la libération des verrous SQL.
+    const editionId = Number(oldMatch.edition_id);
     const newStatus = updatedMatch.status;
-    if (newStatus === 'live' || newStatus === 'round_break' || newStatus === 'reclamation') {
-      liveMatchInfo = {
+    const postCommitTasks: Promise<unknown>[] = [];
+
+    // Synchroniser chaque ancien match réellement live qui vient d'être arrêté.
+    for (const displaced of liveTransitionEffects.displacedMatches) {
+      postCommitTasks.push(
+        emitMatchEvent(
+          displaced.id,
+          "match_replaced",
+          undefined,
+          displaced.sub_group_id,
+        ),
+      );
+      postCommitTasks.push(
+        clearEditionLiveMatchIfMatches(
+          Number(displaced.edition_id),
+          displaced.id,
+        ),
+      );
+    }
+
+    // Publier le match cible et son sous-groupe une seule fois.
+    postCommitTasks.push(
+      emitMatchEvent(
+        matchId,
+        "match_updated",
+        { match: updatedMatch },
+        oldMatch.sub_group_id,
+      ),
+    );
+
+    if (
+      newStatus === "live" ||
+      newStatus === "round_break" ||
+      newStatus === "reclamation"
+    ) {
+      const liveMatchInfo: RealtimeLiveMatchInfo = {
         subGroupId: updatedMatch.sub_group_id,
         matchId: updatedMatch.id,
         status: newStatus,
@@ -592,26 +660,36 @@ export async function updateMatchAndRecompute(
         fighter2Id: updatedMatch.fighter2_id,
         startTime: updatedMatch.start_time2 || null,
       };
-    } else if (newStatus === 'completed' || newStatus === 'cancelled') {
-      liveMatchInfo = null;
+      postCommitTasks.push(syncEditionLiveMatch(editionId, liveMatchInfo));
+    } else if (
+      newStatus === "scheduled" ||
+      newStatus === "completed" ||
+      newStatus === "cancelled" ||
+      newStatus === "postponed"
+    ) {
+      // Ne pas effacer le pointeur d'un autre match de la même édition.
+      postCommitTasks.push(
+        clearEditionLiveMatchIfMatches(editionId, matchId),
+      );
     }
-    // Ne pas attendre la synchronisation pour ne pas ralentir la réponse
-    syncEditionLiveMatch(editionId, liveMatchInfo).catch(err =>
-      console.error('syncEditionLiveMatch error:', err)
-    );
 
-    // Émettre l'événement temps réel (au match et au sous-groupe) — non bloquant
-    // pour ne pas faire attendre la réponse HTTP si RTDB est lent/indisponible.
-    emitMatchEvent(
-      matchId,
-      "match_updated",
-      { match: updatedMatch },
-      oldMatch.sub_group_id,
-    ).catch((err) => console.error("emitMatchEvent error:", err));
+    void Promise.allSettled(postCommitTasks).then((results) => {
+      results.forEach((result) => {
+        if (result.status === "rejected") {
+          console.error("Post-commit realtime sync failed:", result.reason);
+        }
+      });
+    });
 
     return updatedMatch;
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (transactionStarted && !transactionCommitted) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rollbackError) {
+        console.error("❌ PostgreSQL rollback failed:", rollbackError);
+      }
+    }
     console.error("❌ updateMatchAndRecompute:", error);
     throw error;
   } finally {
