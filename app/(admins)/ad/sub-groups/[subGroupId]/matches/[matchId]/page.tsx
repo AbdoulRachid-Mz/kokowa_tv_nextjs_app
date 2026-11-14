@@ -36,6 +36,7 @@ import { useMatchController } from "@/hooks/use-match-controller";
 import { FighterControl } from "./fighter-control";
 import { MatchControls } from "./match-controls";
 import { MatchTimer } from "./match-timer";
+import { CancelLastCardButton } from "@/components/matches/cancel-last-card-button";
 import { addFighterCard, updateMatch } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
 import { FloatingMatchScore } from "./floating-match-score";
@@ -634,6 +635,18 @@ export default function MatchDetailPage() {
             canStart={canStart}
             canPause={canPause}
             canResume={canResume}
+          />
+
+          <CancelLastCardButton
+            matchId={mergedMatch?.id ?? 0}
+            lastCard={
+              (mergedMatch?.cards || [])
+                .filter((c: any) => !c.is_cancelled)
+                .sort((a: any, b: any) => (b.id ?? 0) - (a.id ?? 0))[0] || null
+            }
+            onDone={() => {
+              queryClient.invalidateQueries({ queryKey: ["match", parsedMatchId] });
+            }}
           />
 
           <MediaManager

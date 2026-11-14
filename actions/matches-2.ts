@@ -586,6 +586,49 @@ export async function addFighterCard(
   return result;
 }
 
+/**
+ * Annule (soft-delete) le dernier carton non annulé d'un match.
+ * Si fighterId est fourni, annule le dernier carton de ce lutteur.
+ */
+export async function cancelLastFighterCard(
+  matchId: number,
+  fighterId?: number
+): Promise<any> {
+  const findSql = `
+    SELECT id, fighter_id, card_type, card_reason, minute_given
+    FROM fighter_cards
+    WHERE match_id = $1 AND is_cancelled = false
+      ${fighterId ? 'AND fighter_id = $2' : ''}
+    ORDER BY created_at DESC, id DESC
+    LIMIT 1
+  `;
+  const findParams = fighterId ? [matchId, fighterId] : [matchId];
+  const card = await queryOne<any>(findSql, findParams);
+
+  if (!card) {
+    throw new Error('Aucun carton à annuler');
+  }
+
+  const sql = `
+    UPDATE fighter_cards
+    SET is_cancelled = true, updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+    RETURNING *
+  `;
+  const result = await queryOne(sql, [card.id]);
+
+  await emitMatchEvent(matchId, 'card_cancelled', {
+    card: result,
+    fighterId: card.fighter_id,
+  });
+
+  revalidatePath(`/ad/sub-groups/*/matches/${matchId}`);
+  revalidateTag("matches", {});
+  revalidateTag(`match:${matchId}`, {});
+
+  return result;
+}
+
 export async function removeFighterCard(cardId: number) {
   // Récupérer le match_id avant suppression
   const card = await queryOne<{ match_id: number }>(
