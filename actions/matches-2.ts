@@ -611,7 +611,7 @@ export async function cancelLastFighterCard(
 
   const sql = `
     UPDATE fighter_cards
-    SET is_cancelled = true, updated_at = CURRENT_TIMESTAMP
+    SET is_cancelled = true
     WHERE id = $1
     RETURNING *
   `;

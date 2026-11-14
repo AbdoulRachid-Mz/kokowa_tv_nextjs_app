@@ -1425,17 +1425,17 @@ export async function createEliminationMatch(
 
         if (period) {
           params.push(period);
-          updates.push(`period = ${params.length}`);
+          updates.push(`period = $${params.length}`);
         }
         // Pour les phases 'group' uniquement, l'arbitre est synchronisé sur le sous-groupe
         if (isGroupPhase && referee_id !== undefined && referee_id !== null) {
           params.push(referee_id);
-          updates.push(`main_referee_id = ${params.length}`);
+          updates.push(`main_referee_id = $${params.length}`);
           existingSubGroupMainRefereeId = referee_id;
         }
         if (updates.length > 0) {
           params.push(subGroupId);
-          await query(`UPDATE sub_groups SET ${updates.join(", ")} WHERE id = ${params.length}`, params);
+          await query(`UPDATE sub_groups SET ${updates.join(", ")} WHERE id = $${params.length}`, params);
         }
         // Si phase group et nouvel arbitre, synchroniser tous les matchs existants du sous-groupe
         if (isGroupPhase && referee_id) {
