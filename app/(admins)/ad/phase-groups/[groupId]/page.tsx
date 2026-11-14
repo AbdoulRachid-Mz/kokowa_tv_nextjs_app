@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { Typography } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,8 @@ import {
   Layers,
   Shield,
 } from "lucide-react";
-import { PhaseGroup, SubGroup } from "@/types";
+import { PhaseGroup, SubGroup, Match } from "@/types";
+import { getMatches } from "@/actions/matches";
 import { EntityList } from "@/components/shared/entity-list";
 import { useEntityList } from "@/hooks/use-entity-list";
 import { cn } from "@/lib/utils";
@@ -73,6 +75,21 @@ export default function PhaseGroupDetailPage() {
       group_id: parseInt(groupId),
     },
     defaultLimit: 10
+  });
+
+  // Chargement des matchs du groupe
+  const { data: groupMatches, isLoading: isLoadingGroupMatches } = useQuery({
+    queryKey: ["phase-group-matches", parseInt(groupId)],
+    queryFn: async () => {
+      const response = await getMatches({
+        group_id: parseInt(groupId),
+        limit: 100,
+        with_sub_group: true,
+        with_fighters: true,
+      });
+      return response.data || [];
+    },
+    enabled: !isNaN(parseInt(groupId)),
   });
 
   // Statistiques pour le groupe
@@ -488,23 +505,47 @@ export default function PhaseGroupDetailPage() {
         <TabsContent value="matches">
           <Card>
             <CardHeader>
-              {/* <CardTitle>Matchs du Groupe</CardTitle> */}
-              Matchs du Groupe
+              <CardTitle>Matchs du Groupe ({(groupMatches || []).length})</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12">
-                <Swords className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <Typography variant="h4" theme="muted" className="mb-2">
-                  Gestion des Matchs du Groupe
-                </Typography>
-                <Typography variant="body-sm" theme="muted" className="mb-4">
-                  Gérez les rencontres entre les sous-groupes de ce groupe
-                </Typography>
-                <Button onClick={handleManageGroupMatches}>
-                  <Swords className="h-4 w-4 mr-2" />
-                  Gérer les Matchs
-                </Button>
-              </div>
+              {isLoadingGroupMatches ? (
+                <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+              ) : (groupMatches || []).length === 0 ? (
+                <div className="text-center py-12">
+                  <Swords className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <Typography variant="h4" theme="muted" className="mb-2">
+                    Aucun match pour ce groupe
+                  </Typography>
+                  <Typography variant="body-sm" theme="muted" className="mb-4">
+                    Créez des matchs via l'onglet Rencontres ou le bouton ci-dessous
+                  </Typography>
+                  <Button onClick={handleManageGroupMatches}>
+                    <Swords className="h-4 w-4 mr-2" />
+                    Gérer les Matchs
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <MatchCard
+                  {(groupMatches || []).map((m: Match) => (
+                    <div key={m.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline">#{m.match_number || "?"}</Badge>
+                        <Typography variant="body-sm" weight="medium">
+                          {m.fighter1?.first_name} {m.fighter1?.last_name} vs {m.fighter2?.first_name} {m.fighter2?.last_name}
+                        </Typography>
+                        <Badge variant={m.status === "completed" ? "default" : m.status === "live" ? "destructive" : "secondary"}>
+                          {m.status}
+                        </Badge>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => router.push(`/ad/matches/${m.id}`)}>
+                        <Swords className="h-3.5 w-3.5 mr-1" />
+                        Superviser
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
