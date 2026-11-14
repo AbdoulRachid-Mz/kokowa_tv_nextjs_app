@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateSubGroupDialog } from "@/components/phase-groups/create-sub-group-dialog";
 import { CardStats } from "@/components/entities/card-stats";
-import { SubGroupCard } from "@/components/entities/entity-cards";
+import { MatchCard, SubGroupCard } from "@/components/entities/entity-cards";
 import { DeleteButton } from "@/components/shared/delete-button";
 
 export default function PhaseGroupDetailPage() {
@@ -525,24 +525,15 @@ export default function PhaseGroupDetailPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <MatchCard
+                <div className="space-y-3 grid grid-cols-2 gap-2">
                   {(groupMatches || []).map((m: Match) => (
-                    <div key={m.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline">#{m.match_number || "?"}</Badge>
-                        <Typography variant="body-sm" weight="medium">
-                          {m.fighter1?.first_name} {m.fighter1?.last_name} vs {m.fighter2?.first_name} {m.fighter2?.last_name}
-                        </Typography>
-                        <Badge variant={m.status === "completed" ? "default" : m.status === "live" ? "destructive" : "secondary"}>
-                          {m.status}
-                        </Badge>
-                      </div>
-                      <Button size="sm" variant="outline" onClick={() => router.push(`/ad/matches/${m.id}`)}>
-                        <Swords className="h-3.5 w-3.5 mr-1" />
-                        Superviser
-                      </Button>
-                    </div>
+                    <MatchCard
+                      key={m.id}
+                      item={m}
+                      viewMode="carousel"
+                      isCliquable={true}
+                      onView={(match) => router.push(`/ad/matches/${match.id}`)}
+                    />
                   ))}
                 </div>
               )}
