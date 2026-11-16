@@ -74,6 +74,8 @@ export function AchievementForm({
   const [editionsLoading, setEditionsLoading] = useState(false);
   const [selectedFighter, setSelectedFighter] = useState<Fighter | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null);
+  const [fighterSearch, setFighterSearch] = useState("");
+  const [fighterRegionFilter, setFighterRegionFilter] = useState<string>("all");
   const [existingAchievements, setExistingAchievements] = useState<any[]>([]);
   const [duplicateAlert, setDuplicateAlert] = useState<string | null>(null);
 
@@ -172,7 +174,34 @@ export function AchievementForm({
     return parts.join(" ") + ".";
   };
 
-  // Met à jour la description dynamiquement lors des changements
+  const generateDynamicTitle = (): string => {
+    const position = form.getValues("position");
+    const type = form.getValues("type");
+    const fighterId = form.getValues("fighter_id");
+    const regionId = form.getValues("region_id");
+    const editionId = form.getValues("edition_id");
+
+    const fighter = fighters.find((f) => f.id === fighterId);
+    const region = regions.find((r) => r.id === regionId);
+    const edition = editions.find((e) => e.id === editionId);
+
+    const posLabel =
+      position === "1st" ? "Champion" :
+      position === "2nd" ? "Vice-champion" :
+      position === "3rd" ? "3ème place" : "Distinction";
+
+    const editionStr = edition?.edition_number ? ` (Éd. ${edition.edition_number})` : "";
+
+    if (fighter) {
+      return `${posLabel} - ${fighter.first_name} ${fighter.last_name}${editionStr}`;
+    }
+    if (region) {
+      return `${posLabel} - ${region.name}${editionStr}`;
+    }
+    return `${posLabel}${editionStr}`;
+  };
+
+  // Met à jour la description et le titre dynamiquement lors des changements
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (
@@ -183,6 +212,10 @@ export function AchievementForm({
         name === "position" ||
         name === "type"
       ) {
+        const currentTitle = form.getValues("title");
+        if (!currentTitle || currentTitle.trim() === "") {
+          form.setValue("title", generateDynamicTitle(), { shouldDirty: false });
+        }
         const dynamicDesc = generateDynamicDescription();
         form.setValue("description", dynamicDesc, { shouldDirty: false });
       }
@@ -193,7 +226,7 @@ export function AchievementForm({
   // Charger les données initiales pour l'édition
   useEffect(() => {
     const loadInitialData = async () => {
-      await Promise.all([loadFighters(), loadRegions(), loadEditions()]);
+      await Promise.all([loadFighters(initialEditionId), loadRegions(), loadEditions()]);
 
       if (isEditMode) {
         try {
@@ -233,6 +266,22 @@ export function AchievementForm({
 
     loadInitialData();
   }, [achievementId, initialFighterId, initialRegionId, initialEditionId]);
+
+  // Recharger les lutteurs quand l'édition change
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === "edition_id") {
+        const edId = value.edition_id;
+        if (edId) {
+          loadFighters(edId);
+        } else {
+          loadFighters();
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Détecteur de palmarès existants (non bloquant)
   const checkExistingAchievements = async (editionId: number) => {
@@ -304,13 +353,24 @@ export function AchievementForm({
     }
   };
 
-  const loadFighters = async () => {
+  const loadFighters = async (editionId?: number) => {
     setFightersLoading(true);
     try {
-      const response = await fetch("/api/fighters?limit=100&is_active=true&with_region=true");
+      let url = "/api/fighters?limit=100&is_active=true&with_region=true";
+      if (editionId) {
+        url = `/api/editions/${editionId}/fighters?limit=200&with_fighter=true&with_region=true`;
+      }
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        const fightersList = data.data || data;
+        const raw = data.data || data;
+        const fightersList = editionId
+          ? raw.map((item: any) => ({
+              ...item.fighter,
+              region_id: item.region_id ?? item.fighter?.region_id,
+              region: item.region ?? item.fighter?.region,
+            })).filter(Boolean)
+          : raw;
         // Sort fighters alphabetically by last name, then first name
         fightersList.sort((a: Fighter, b: Fighter) => {
           const nameA = `${a.last_name} ${a.first_name}`.toLowerCase();
@@ -522,13 +582,51 @@ export function AchievementForm({
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {fighters.map((fighter) => (
-                                <SelectItem key={fighter.id} value={fighter.id.toString()}>
-                                  {fighter.first_name} {fighter.last_name}
-                                  {fighter.nickname && ` (${fighter.nickname})`}
-                                  {fighter.region && ` - ${fighter.region.name}`}
-                                </SelectItem>
-                              ))}
+                              <div className="p-2 space-y-2">
+                                <Input
+                                  placeholder="Rechercher un lutteur..."
+                                  value={fighterSearch}
+                                  onChange={(e) => setFighterSearch(e.target.value)}
+                                  className="h-8"
+                                />
+                                <Select
+                                  value={fighterRegionFilter}
+                                  onValueChange={setFighterRegionFilter}
+                                >
+                                  <SelectTrigger className="h-8">
+                                    <SelectValue placeholder="Toutes les régions" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="all">Toutes les régions</SelectItem>
+                                    {regions.map((r) => (
+                                      <SelectItem key={r.id} value={r.id.toString()}>
+                                        {r.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              {fighters
+                                .filter((f) => {
+                                  if (fighterRegionFilter !== "all") {
+                                    const rid = f.region_id ?? f.region?.id;
+                                    if (String(rid) !== fighterRegionFilter) return false;
+                                  }
+                                  if (fighterSearch.trim()) {
+                                    const q = fighterSearch.toLowerCase().trim();
+                                    const name = `${f.first_name} ${f.last_name}`.toLowerCase();
+                                    const nick = (f.nickname || "").toLowerCase();
+                                    if (!name.includes(q) && !nick.includes(q)) return false;
+                                  }
+                                  return true;
+                                })
+                                .map((fighter) => (
+                                  <SelectItem key={fighter.id} value={fighter.id.toString()}>
+                                    {fighter.first_name} {fighter.last_name}
+                                    {fighter.nickname && ` (${fighter.nickname})`}
+                                    {fighter.region && ` - ${fighter.region.name}`}
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                           <FormDescription>
