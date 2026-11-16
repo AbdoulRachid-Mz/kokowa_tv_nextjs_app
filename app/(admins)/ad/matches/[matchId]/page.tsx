@@ -38,6 +38,7 @@ import { FighterControl } from "./fighter-control";
 import { MatchControls } from "./match-controls";
 import { MatchTimer } from "./match-timer";
 import { CancelLastCardButton } from "@/components/matches/cancel-last-card-button";
+import { AwardAchievementButton } from "@/components/matches/award-achievement-button";
 import { addFighterCard, updateMatch, getMatchById } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
 import { FloatingMatchScore } from "./floating-match-score";
@@ -640,6 +641,12 @@ export default function StandaloneMatchDetailPage() {
                 })
               }
             />
+          </div>
+
+          {/* Attribution manuelle de palmares (finale / 3e place) */}
+          <div className="flex gap-3 flex-wrap mb-4">
+            <AwardAchievementButton match={mergedMatch} fighterSlot={1} />
+            <AwardAchievementButton match={mergedMatch} fighterSlot={2} />
           </div>
 
           {/* Panneau de contrôle (notes, réclamation, etc.) */}
