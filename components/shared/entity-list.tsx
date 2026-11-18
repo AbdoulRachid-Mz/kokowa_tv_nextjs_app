@@ -303,7 +303,7 @@ const getEntityFilters = (entityType: EntityType) => {
         label: "Catégorie",
         options: [
           { value: "all", label: "Toutes" },
-          { value: "match", label: "Match" },
+          { value: "match", label: "Combat" },
           { value: "interview", label: "Interview" },
           { value: "highlights", label: "Highlights" },
           { value: "training", label: "Entraînement" },
@@ -350,7 +350,7 @@ const getEntityFilters = (entityType: EntityType) => {
           { value: "comment", label: "Commentaire" },
           { value: "direct_message", label: "Message direct" },
           { value: "group_message", label: "Message groupe" },
-          { value: "match_commentary", label: "Commentaire match" },
+          { value: "match_commentary", label: "Commentaire combat" },
           { value: "system_notification", label: "Notification système" },
         ],
       },
@@ -361,7 +361,7 @@ const getEntityFilters = (entityType: EntityType) => {
         label: "Type de notification",
         options: [
           { value: "all", label: "Tous" },
-          { value: "match_update", label: "Mise à jour match" },
+          { value: "match_update", label: "Mise à jour combat" },
           { value: "fighter_update", label: "Mise à jour lutteur" },
           { value: "competition_update", label: "Mise à jour compétition" },
           { value: "system_notification", label: "Notification système" },
@@ -485,7 +485,7 @@ const getEntityFilters = (entityType: EntityType) => {
           { value: "fighter", label: "Lutteur" },
           { value: "article", label: "Article" },
           { value: "video", label: "Vidéo" },
-          { value: "match", label: "Match" },
+          { value: "match", label: "Combat" },
         ],
       },
       {

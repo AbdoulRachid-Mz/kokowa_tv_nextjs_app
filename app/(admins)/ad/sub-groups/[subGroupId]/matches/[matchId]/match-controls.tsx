@@ -94,7 +94,7 @@ export function MatchControls({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Flag className="h-5 w-5" />
-            Contrôles du match
+            Contrôles du combat
           </CardTitle>
           {getStatusBadge()}
         </div>
@@ -126,7 +126,7 @@ export function MatchControls({
                 <DialogTitle>Activer le mode réclamation</DialogTitle>
               </DialogHeader>
               <p>
-                Le mode réclamation vous permet de modifier le résultat du match.
+                Le mode réclamation vous permet de modifier le résultat du combat.
                 Êtes-vous sûr de vouloir continuer ?
               </p>
               <DialogFooter>
@@ -165,9 +165,9 @@ export function MatchControls({
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Annuler le match</DialogTitle>
+                <DialogTitle>Annuler le combat</DialogTitle>
               </DialogHeader>
-              <p>Êtes-vous sûr de vouloir annuler ce match ? Cette action est irréversible.</p>
+              <p>Êtes-vous sûr de vouloir annuler ce combat ? Cette action est irréversible.</p>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setConfirmDialog({ isOpen: false, type: "cancel" })}>
                   Annuler
@@ -207,10 +207,10 @@ export function MatchControls({
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Réinitialiser le match</DialogTitle>
+                <DialogTitle>Réinitialiser le combat</DialogTitle>
               </DialogHeader>
               <p>
-                Êtes-vous sûr de vouloir réinitialiser le match ? Cette action va :
+                Êtes-vous sûr de vouloir réinitialiser le combat ? Cette action va :
                 <br />
                 • Remettre le chrono à zéro
                 <br />
@@ -243,7 +243,7 @@ export function MatchControls({
         {/* Notes */}
         <div className="space-y-2 pt-2 border-t">
           <div className="flex items-center justify-between">
-            <Label>Notes du match</Label>
+            <Label>Notes du combat</Label>
             <Button
               onClick={handleSaveNotes}
               size="sm"

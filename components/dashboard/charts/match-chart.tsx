@@ -26,7 +26,7 @@ interface MatchChartProps {
   title?: string;
 }
 
-export function MatchChart({ data, loading = false, title = "Statistiques des Matchs" }: MatchChartProps) {
+export function MatchChart({ data, loading = false, title = "Statistiques des Combats" }: MatchChartProps) {
   if (loading) {
     return (
       <Card>
@@ -65,8 +65,8 @@ export function MatchChart({ data, loading = false, title = "Statistiques des Ma
         {/* Pie Chart - Répartition des statuts */}
         <Card>
           <CardHeader>
-            <CardTitle>Répartition des Matchs</CardTitle>
-            <CardDescription>Statuts des matchs</CardDescription>
+            <CardTitle>Répartition des Combats</CardTitle>
+            <CardDescription>Statuts des combats</CardDescription>
           </CardHeader>
           <CardContent>
             {statusData.length > 0 ? (
@@ -87,7 +87,7 @@ export function MatchChart({ data, loading = false, title = "Statistiques des Ma
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => [`${value} matchs`, "Quantité"]} />
+                    <Tooltip formatter={(value) => [`${value} combats`, "Quantité"]} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -129,7 +129,7 @@ export function MatchChart({ data, loading = false, title = "Statistiques des Ma
       <Card>
         <CardHeader>
           <CardTitle>Statistiques d'Audience</CardTitle>
-          <CardDescription>Données d'audience des matchs</CardDescription>
+          <CardDescription>Données d'audience des combats</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
@@ -231,8 +231,8 @@ export function MatchChart({ data, loading = false, title = "Statistiques des Ma
       {data.timeline && data.timeline.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Évolution des Matchs</CardTitle>
-            <CardDescription>Nombre de matchs et durée moyenne par période</CardDescription>
+            <CardTitle>Évolution des Combats</CardTitle>
+            <CardDescription>Nombre de combats et durée moyenne par période</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-64">
@@ -244,7 +244,7 @@ export function MatchChart({ data, loading = false, title = "Statistiques des Ma
                   <YAxis yAxisId="right" orientation="right" />
                   <Tooltip />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="count" name="Nombre de matchs" fill="#3b82f6" />
+                  <Bar yAxisId="left" dataKey="count" name="Nombre de combats" fill="#3b82f6" />
                   <Line yAxisId="right" type="monotone" dataKey="avg_duration" name="Durée moyenne (min)" stroke="#ef4444" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
@@ -253,11 +253,11 @@ export function MatchChart({ data, loading = false, title = "Statistiques des Ma
         </Card>
       )}
 
-      {/* Résultats des matchs */}
+      {/* Résultats des combats */}
       {data.results && data.results.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Résultats des Matchs</CardTitle>
+            <CardTitle>Résultats des Combats</CardTitle>
             <CardDescription>Répartition des résultats</CardDescription>
           </CardHeader>
           <CardContent>
@@ -280,7 +280,7 @@ export function MatchChart({ data, loading = false, title = "Statistiques des Ma
       {data.duration && data.duration.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Durée des Matchs</CardTitle>
+            <CardTitle>Durée des Combats</CardTitle>
             <CardDescription>Répartition par tranches de durée</CardDescription>
           </CardHeader>
           <CardContent>
@@ -301,7 +301,7 @@ export function MatchChart({ data, loading = false, title = "Statistiques des Ma
                       <Cell key={`cell-${index}`} fill={`hsl(${index * 45}, 70%, 50%)`} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value} matchs`, "Quantité"]} />
+                  <Tooltip formatter={(value) => [`${value} combats`, "Quantité"]} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -326,7 +326,7 @@ export function MatchChart({ data, loading = false, title = "Statistiques des Ma
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="matches" name="Matchs joués" fill="#3b82f6" />
+                  <Bar dataKey="matches" name="Combats joués" fill="#3b82f6" />
                   <Bar dataKey="wins" name="Victoires" fill="#10b981" />
                 </BarChart>
               </ResponsiveContainer>

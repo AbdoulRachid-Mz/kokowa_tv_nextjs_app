@@ -1603,6 +1603,6 @@ export async function createEliminationMatch(
     };
   } catch (error: any) {
     console.error("Error in createEliminationMatch:", error);
-    throw new Error(error.message || "Erreur lors de la création du match d'élimination");
+    throw new Error(error.message || "Erreur lors de la création du combat d'élimination");
   }
 }

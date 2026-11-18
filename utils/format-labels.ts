@@ -70,7 +70,7 @@ export const formatMatchResult = (result: string): string => {
     case 'fighter2_win':
       return 'Victoire lutteur 2';
     case 'draw':
-      return 'Match nul';
+      return 'Combat nul';
     case 'cancelled':
       return 'Annulé';
     case 'postponed':
@@ -212,7 +212,7 @@ export const formatMessageType = (type: string): string => {
     case 'group_message':
       return 'Message de groupe';
     case 'match_commentary':
-      return 'Commentaire de match';
+      return 'Commentaire de combat';
     case 'system_notification':
       return 'Notification système';
     default:
@@ -244,7 +244,7 @@ export const formatAchievementPosition = (position: string): string => {
 export const formatVideoCategory = (category: string): string => {
   switch (category) {
     case 'match':
-      return 'Match';
+      return 'Combat';
     case 'interview':
       return 'Interview';
     case 'highlights':

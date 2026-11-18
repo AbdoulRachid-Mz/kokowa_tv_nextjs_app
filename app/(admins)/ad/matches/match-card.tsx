@@ -71,7 +71,7 @@ export function MatchCard({ match, viewMode }: MatchCardProps) {
     const resultConfig = {
       fighter1_win: { label: 'Victoire F1', variant: 'success' },
       fighter2_win: { label: 'Victoire F2', variant: 'success' },
-      draw: { label: 'Match nul', variant: 'secondary' },
+      draw: { label: 'combat nul', variant: 'secondary' },
       cancelled: { label: 'Annulé', variant: 'destructive' },
       postponed: { label: 'Reporté', variant: 'warning' },
     };
@@ -191,7 +191,7 @@ export function MatchCard({ match, viewMode }: MatchCardProps) {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem>
                       <Play className="h-4 w-4 mr-2" />
-                      Démarrer le match
+                      Démarrer le combat
                     </DropdownMenuItem>
                   </>
                 )}

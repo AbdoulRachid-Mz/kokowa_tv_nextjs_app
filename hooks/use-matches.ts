@@ -61,7 +61,7 @@ export function useMatches({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Erreur lors de la mise à jour du match');
+        throw new Error(error.error || 'Erreur lors de la mise à jour du combat');
       }
 
       return response.json();
@@ -98,7 +98,7 @@ export function useMatches({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Erreur lors de la déclaration du match nul');
+        throw new Error(error.error || 'Erreur lors de la déclaration du combat nul');
       }
 
       return response.json();
@@ -121,7 +121,7 @@ export function useMatches({
         };
       });
 
-      toast.success('Match déclaré nul');
+      toast.success('Combat déclaré nul');
     }
   });
 

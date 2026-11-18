@@ -372,7 +372,7 @@ export default function EditionDetailPage() {
           <TabsTrigger value="phases">Phases</TabsTrigger>
           <TabsTrigger value="fighters">Lutteurs</TabsTrigger>
           <TabsTrigger value="regions">Régions</TabsTrigger>
-          <TabsTrigger value="matches">Matchs</TabsTrigger>
+          <TabsTrigger value="matches">Combats</TabsTrigger>
         </TabsList>
 
         {/* Vue d'ensemble */}
@@ -494,7 +494,7 @@ export default function EditionDetailPage() {
                   onClick={() => router.push(`/admin/editions/${editionId}/matches`)}
                 >
                   <Swords className="h-4 w-4 mr-2" />
-                  Voir les Matchs
+                  Voir les Combats
                 </Button>
                 <Button 
                   variant="outline" 
@@ -631,20 +631,20 @@ export default function EditionDetailPage() {
         <TabsContent value="matches">
           <Card>
             <CardHeader>
-              <CardTitle>Matchs de l'Édition</CardTitle>
+              <CardTitle>Combats de l'Édition</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-center py-12">
                 <Swords className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <Typography variant="h4" theme="muted" className="mb-2">
-                  Gestion des Matchs
+                  Gestion des Combats
                 </Typography>
                 <Typography variant="body-sm" theme="muted" className="mb-4">
-                  Consultez et gérez tous les matchs de cette édition
+                  Consultez et gérez tous les combats de cette édition
                 </Typography>
                 <Button onClick={() => router.push(`/admin/editions/${editionId}/matches`)}>
                   <Swords className="h-4 w-4 mr-2" />
-                  Voir les Matchs
+                  Voir les Combats
                 </Button>
               </div>
             </CardContent>

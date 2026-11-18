@@ -1,4 +1,4 @@
-// app/admin/achievements/create/page.tsx
+// app/ad/achievements/create/page.tsx
 "use client";
 
 import { useSearchParams } from "next/navigation";

@@ -848,7 +848,7 @@ export default function SubGroupFormV2({
                 className="flex items-center gap-1"
               >
                 <Divide className="h-4 w-4" />
-                Matchs Nuls
+                Combats Nuls
               </Label>
               <Input
                 id={`nulls-${index}`}

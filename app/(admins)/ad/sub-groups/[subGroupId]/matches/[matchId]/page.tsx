@@ -104,7 +104,7 @@ export default function MatchDetailPage() {
   const editionId = subGroup?.group?.phase?.edition?.id ?? null;
 
   // ==========================
-  // 2. Écouter les données temps réel (match et sous-groupe)
+  // 2. Écouter les données temps réel (combat et sous-groupe)
   // ==========================
   const { data: realtimeMatchData, isLoading: isMatchListening } =
     useRealtimeMatch(editionId, parsedSubGroupId, parsedMatchId);
@@ -235,7 +235,7 @@ export default function MatchDetailPage() {
     } else if (match?.fighter2_id === fighterId) {
       updates.fighter2_id = null;
     } else {
-      toast.error("Lutteur non trouvé dans ce match");
+      toast.error("Lutteur non trouvé dans ce combat");
       setIsDialogLoading(false);
       return;
     }
@@ -388,7 +388,7 @@ export default function MatchDetailPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <RefreshCw className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-          <Typography variant="h4">Chargement du match...</Typography>
+          <Typography variant="h4">Chargement du combat...</Typography>
         </div>
       </div>
     );
@@ -454,7 +454,7 @@ export default function MatchDetailPage() {
           </Button>
           <div className="text-center">
             <Typography variant="h3" weight="bold">
-              Match #{mergedMatch?.match_number || "N/A"}
+              Combat #{mergedMatch?.match_number || "N/A"}
             </Typography>
             <div className="flex items-center gap-2 justify-center mt-1">
               <Badge variant="outline" className="text-xs">
@@ -699,11 +699,11 @@ export default function MatchDetailPage() {
             {confirmDialog.type === "reclamation" &&
               "Êtes-vous sûr de vouloir activer le mode réclamation ?"}
             {confirmDialog.type === "reset" &&
-              "Êtes-vous sûr de vouloir réinitialiser le match ? Cette action est irréversible."}
+              "Êtes-vous sûr de vouloir réinitialiser le combat ? Cette action est irréversible."}
             {confirmDialog.type === "replaceFighter" &&
               "Êtes-vous sûr de vouloir remplacer ce lutteur ?"}
             {confirmDialog.type === "removeFighter" &&
-              "Êtes-vous sûr de vouloir retirer ce lutteur du match ? Cette action peut être annulée en réassignant un lutteur."}
+              "Êtes-vous sûr de vouloir retirer ce lutteur du combat ? Cette action peut être annulée en réassignant un lutteur."}
           </p>
           <DialogFooter>
             <Button
@@ -797,7 +797,7 @@ export default function MatchDetailPage() {
               console.log("  realtimeMatchData:", realtimeMatchData);
               console.log("  subGroup:", subGroup);
               toast.info(
-                `RTDB: ${isConnected ? "✅ Connecté" : "⏳ En attente"} | Match: ${match?.status}`,
+                `RTDB: ${isConnected ? "✅ Connecté" : "⏳ En attente"} | Combat: ${match?.status}`,
               );
             }}
           >

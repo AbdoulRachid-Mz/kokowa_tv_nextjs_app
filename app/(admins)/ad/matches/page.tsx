@@ -79,7 +79,7 @@ export default function MatchesPage() {
       {/* Statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 ">
         <StatsCard
-          title="Total des matchs"
+          title="Total des combats"
           value={stats.total}
           icon={Trophy}
           color="blue"
@@ -106,8 +106,8 @@ export default function MatchesPage() {
 
       {/* Composant de liste principal */}
       <EntityList
-        title="Matchs"
-        description="Gérez tous les matchs de lutte traditionnelle"
+        title="Combats"
+        description="Gérez tous les combats de lutte traditionnelle"
         entityType="matches"
         data={entities.data}
         total={entities.total}

@@ -46,27 +46,27 @@ export function MediaManager({
   const saveVideoUrl = () => {
     if (onUpdateSubGroup) {
       onUpdateSubGroup({ video_url: localVideoUrl || undefined });
-      toast.success("URL live de la vidéo de la rencontre sauvegardée");
+      toast.success("URL de la vidéo de la rencontre sauvegardée");
     }
   };
 
   const saveLiveStreamUrl = () => {
     onUpdateMatch({ video_url: localLiveStreamUrl || undefined });
-    toast.success("URL de la vidéo du match sauvegardée");
+    toast.success("URL de la vidéo du combat sauvegardée");
   };
 
   const clearVideoUrl = () => {
     setLocalVideoUrl("");
     if (onUpdateSubGroup) {
       onUpdateSubGroup({ video_url: undefined });
-      toast.success("URL de la vidéo supprimée");
+      toast.success("URL de la vidéo de la rencontre supprimée");
     }
   };
 
   const clearLiveStreamUrl = () => {
     setLocalLiveStreamUrl("");
     onUpdateMatch({ video_url: undefined });
-    toast.success("URL de la vidéo du match supprimée");
+    toast.success("URL de la vidéo du combat supprimée");
   };
 
   return (
@@ -81,7 +81,7 @@ export function MediaManager({
         {/* Vidéo du match */}
         <div className="space-y-2">
           <Label htmlFor="livestream-url" className="text-xs">
-            Lien vidéo / Replay du match
+            Lien vidéo / Replay du combat
           </Label>
           <div className="flex gap-2">
             <Input

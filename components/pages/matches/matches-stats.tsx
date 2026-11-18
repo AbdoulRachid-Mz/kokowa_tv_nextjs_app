@@ -31,7 +31,7 @@ interface MatchesStatsProps {
 export function MatchesStats({ stats }: MatchesStatsProps) {
   const statCards = [
     {
-      title: "Total des matches",
+      title: "Total des combats",
       value: stats.total,
       icon: Target,
       color: "text-blue-600",
@@ -44,7 +44,7 @@ export function MatchesStats({ stats }: MatchesStatsProps) {
       icon: TrendingUp,
       color: "text-red-600",
       bgColor: "bg-red-100",
-      description: "Matchs en cours"
+      description: "Combats en cours"
     },
     {
       title: "À venir",
@@ -52,7 +52,7 @@ export function MatchesStats({ stats }: MatchesStatsProps) {
       icon: Calendar,
       color: "text-indigo-600",
       bgColor: "bg-indigo-100",
-      description: "Programmés"
+      description: "Planifiés"
     },
     {
       title: "Terminés",
@@ -60,7 +60,7 @@ export function MatchesStats({ stats }: MatchesStatsProps) {
       icon: Trophy,
       color: "text-green-600",
       bgColor: "bg-green-100",
-      description: "Matchs finis"
+      description: "Combats finis"
     },
     {
       title: "Page actuelle",
@@ -92,7 +92,7 @@ export function MatchesStats({ stats }: MatchesStatsProps) {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-6">
             <div>
               <Typography variant="h4" weight="bold" className="mb-2">
-                Statistiques des matches
+                Statistiques des combats
               </Typography>
               <Typography variant="body-base" theme="muted">
                 Vue d'ensemble de toutes les rencontres
@@ -149,7 +149,7 @@ export function MatchesStats({ stats }: MatchesStatsProps) {
                   Répartition des statuts
                 </Typography>
                 <Typography variant="body-sm" weight="medium">
-                  {stats.total} matches
+                  {stats.total} combats
                 </Typography>
               </div>
               

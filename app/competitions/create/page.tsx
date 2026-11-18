@@ -256,7 +256,7 @@ export default function CreateCompetitionPage() {
           <h3 className="text-blue-800 font-semibold mb-2">ℹ️ Information</h3>
           <p className="text-blue-700 text-sm">
             Une édition automatique sera créée avec cette compétition. Vous pourrez ensuite 
-            ajouter des phases, groupes et matchs depuis la page de détail.
+            ajouter des phases, groupes et combats depuis la page de détail.
           </p>
         </div>
 

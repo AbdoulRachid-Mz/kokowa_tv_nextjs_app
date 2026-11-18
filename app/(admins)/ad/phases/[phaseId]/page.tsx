@@ -30,6 +30,7 @@ import { CardStats } from "@/components/entities/card-stats";
 import { toast } from "sonner";
 import { PhaseGroupCard } from "@/components/entities/entity-cards";
 import { DeleteButton } from "@/components/shared/delete-button";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
 
 export default function PhaseDetailPage() {
   const params = useParams();
@@ -95,11 +96,11 @@ export default function PhaseDetailPage() {
         description: "Rencontres totales",
       },
       {
-        label: "Matchs",
+        label: "Combats",
         value: phase?.matches_count || 0,
         icon: Swords,
         color: "text-purple-600",
-        description: "Matchs prévus",
+        description: "Combats prévus",
       },
       {
         label: "Progression",
@@ -229,17 +230,22 @@ export default function PhaseDetailPage() {
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {getPhaseStats().map((stat, index) => (
-          <CardStats
-            key={index}
-            label={stat.label}
-            icon={stat.icon}
-            value={stat.value}
-            color={stat.color}
-          />
-        ))}
-      </div>
+      <StatsCarousel
+        mode="auto"
+        gap={16}
+        itemsPerView={{
+          mobile: 1,
+          md: 2,
+          lg: 3,
+          xl: 4,
+        }}
+        data={getPhaseStats().map((stat) => ({
+          label: stat.label,
+          icon: stat.icon,
+          value: stat.value,
+          description: stat.description,
+        }))}
+      />
 
       {/* Informations et navigation */}
       <Tabs
@@ -502,16 +508,16 @@ export default function PhaseDetailPage() {
         <TabsContent value="matches">
           <Card>
             <CardHeader>
-              <CardTitle>Matchs de la Phase</CardTitle>
+              <CardTitle>Combats de la Phase</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-center py-12">
                 <Swords className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <Typography variant="h4" theme="muted" className="mb-2">
-                  Gestion des Matchs
+                  Gestion des Combats
                 </Typography>
                 <Typography variant="body-sm" theme="muted" className="mb-4">
-                  Consultez et gérez tous les matchs de cette phase
+                  Consultez et gérez tous les combats de cette phase
                 </Typography>
                 <Button
                   onClick={() =>
@@ -519,7 +525,7 @@ export default function PhaseDetailPage() {
                   }
                 >
                   <Swords className="h-4 w-4 mr-2" />
-                  Voir les Matchs
+                  Voir les Combats
                 </Button>
               </div>
             </CardContent>

@@ -97,7 +97,7 @@ export function FighterStats({ stats, fighter }: FighterStatsProps) {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <Swords className="h-4 w-4 text-muted-foreground" />
-                <Typography variant="body-sm">Matchs joués</Typography>
+                <Typography variant="body-sm">Combats joués</Typography>
               </div>
               <Typography variant="body-base" weight="medium">
                 {stats.totalMatches || 0}

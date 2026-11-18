@@ -151,7 +151,7 @@ export function CreateSubGroupDialog({
           <DialogTitle>Créer un nouveau sous-groupe</DialogTitle>
           <DialogDescription>
             Ajoutez un nouveau sous-groupe à ce groupe. Vous pourrez ensuite
-            assigner des ceintures et créer des matchs.
+            assigner des ceintures et créer des combats.
           </DialogDescription>
         </DialogHeader>
 

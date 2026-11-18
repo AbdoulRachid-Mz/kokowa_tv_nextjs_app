@@ -26,20 +26,20 @@ export function MatchesHeader() {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
               <Target className="h-4 w-4 text-primary" />
               <Typography variant="body-sm" weight="medium">
-                Centre des Matchs
+                Centre des Combats
               </Typography>
             </div>
 
             {/* Titre */}
             <Typography variant="h1" weight="bold" className="mb-4">
               Suivez tous les{' '}
-              <span className="text-primary">Matchs</span>{' '}
+              <span className="text-primary">Combats</span>{' '}
               en temps réel
             </Typography>
 
             {/* Description */}
             <Typography variant="body-lg" theme="muted" className="mb-8 max-w-2xl">
-              Accédez à tous les matchs de lutte traditionnelle, 
+              Accédez à tous les combats, de lutte traditionnelle, 
               des rencontres en direct aux résultats complets. 
               Filtrez par édition, phase ou groupe pour trouver exactement ce que vous cherchez.
             </Typography>
@@ -49,7 +49,7 @@ export function MatchesHeader() {
               <Button size="lg" className="gap-2" asChild>
                 <Link href="/matches/live">
                   <Target className="h-4 w-4" />
-                  Matchs en Direct
+                  Combats en Direct
                 </Link>
               </Button>
               <Button size="lg" variant="outline" className="gap-2" asChild>

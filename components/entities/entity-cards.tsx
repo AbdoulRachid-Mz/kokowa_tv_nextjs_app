@@ -500,7 +500,7 @@ export function MatchCard({
                 weight="bold"
                 className="truncate group-hover:text-primary transition-colors"
               >
-                Match {match.match_number || "N/A"}
+                Combat {match.match_number || "N/A"}
               </Typography>
 
               {!isListView && hasActions && (
@@ -512,7 +512,7 @@ export function MatchCard({
                     onEdit={() => onEdit?.(match)}
                     onView={() => onView?.(match)}
                     onDelete={() => onDelete?.(match)}
-                    entityName={`le match n°${match.match_number}`}
+                    entityName={`le combat n°${match.match_number}`}
                     extraActions={
                       onEnterScore
                         ? [
@@ -560,7 +560,7 @@ export function MatchCard({
                 onEdit={() => onEdit?.(match)}
                 onView={() => onView?.(match)}
                 onDelete={() => onDelete?.(match)}
-                entityName={`le match n°${match.match_number}`}
+                entityName={`le combat n°${match.match_number}`}
                 extraActions={
                   onEnterScore
                     ? [
@@ -776,7 +776,7 @@ export function SubGroupCard({
                         ? [
                             {
                               id: "matches",
-                              label: "Matchs",
+                              label: "Combats",
                               icon: Swords,
                               onClick: () => onManageMatches(subGroup),
                             },
@@ -796,7 +796,7 @@ export function SubGroupCard({
               </Badge>
               {subGroup.matches_count !== undefined && (
                 <Badge variant="outline" className="text-[9px] h-4 px-1">
-                  {subGroup.matches_count} match(s)
+                  {subGroup.matches_count} combat(s)
                 </Badge>
               )}
               {subGroup.period && (
@@ -825,7 +825,7 @@ export function SubGroupCard({
                     ? [
                         {
                           id: "matches",
-                          label: "Matchs",
+                          label: "Combats",
                           icon: Swords,
                           onClick: () => onManageMatches(subGroup),
                         },

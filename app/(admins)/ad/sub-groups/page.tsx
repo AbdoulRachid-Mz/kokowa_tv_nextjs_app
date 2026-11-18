@@ -58,7 +58,7 @@ export default function SubGroupsPage() {
         color: "text-yellow-600",
       },
       {
-        label: "Matchs Total",
+        label: "Combats Total",
         value: data.reduce((acc, sg) => acc + (Number(sg.matches_count) || sg.matches?.length || 0), 0),
         icon: Users,
         color: "text-purple-600",

@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     console.error('API GET /matches error:', error);
     return NextResponse.json(
       {
-        error: error.message || 'Erreur lors de la récupération des matches'
+        error: error.message || 'Erreur lors de la récupération des combats'
       },
       { status: 500 }
     );
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     console.error('API POST /matches error:', error);
     return NextResponse.json(
       {
-        error: error.message || 'Erreur lors de la création du match'
+        error: error.message || 'Erreur lors de la création du combat'
       },
       { status: 500 }
     );

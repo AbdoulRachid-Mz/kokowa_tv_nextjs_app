@@ -17,7 +17,7 @@ export function ChapterContexte() {
         <h2>2.2 Problèmes Identifiés Avant Kokowa TV</h2>
         <p>Avant la mise en place d&apos;une solution numérique dédiée, la gestion du Sabre National faisait face à plusieurs limitations importantes :</p>
         <ul>
-          <li><strong>Gestion manuelle des combats :</strong> Les tableaux de matchs, les scores et les résultats étaient gérés sur papier ou avec des outils bureautiques non adaptés aux contraintes d&apos;un tournoi en direct.</li>
+          <li><strong>Gestion manuelle des combats :</strong> Les tableaux de combats, les scores et les résultats étaient gérés sur papier ou avec des outils bureautiques non adaptés aux contraintes d&apos;un tournoi en direct.</li>
           <li><strong>Absence de diffusion en temps réel :</strong> Les supporters qui ne pouvaient pas se déplacer sur les sites de combat n&apos;avaient aucun moyen fiable de suivre les résultats en direct.</li>
           <li><strong>Perte d&apos;informations historiques :</strong> Les archives des éditions passées, les statistiques des lutteurs et les palmarès n&apos;étaient pas centralisés ni facilement accessibles.</li>
           <li><strong>Manque de visibilité nationale et internationale :</strong> La lutte traditionnelle nigérienne ne disposait d&apos;aucune vitrine numérique professionnelle pour valoriser ses athlètes et ses compétitions.</li>
@@ -29,7 +29,7 @@ export function ChapterContexte() {
         <h2>2.3 Comment Kokowa TV Répond à ces Besoins</h2>
         <div className="not-prose grid grid-cols-1 sm:grid-cols-2 gap-4 my-4">
           {[
-            { probleme: "Gestion manuelle et papier", solution: "Système de gestion de tournoi complet (phases, matchs, résultats) en base de données PostgreSQL" },
+            { probleme: "Gestion manuelle et papier", solution: "Système de gestion de tournoi complet (phases, combats, résultats) en base de données PostgreSQL" },
             { probleme: "Pas de résultats en direct", solution: "Live-scoring temps réel avec Firebase RTDB (< 500ms de latence)" },
             { probleme: "Archives perdues", solution: "Module d'archives historiques avec palmarès depuis 1975" },
             { probleme: "Faible visibilité", solution: "Portail web public + API mobile Flutter + flux d'actualités" },

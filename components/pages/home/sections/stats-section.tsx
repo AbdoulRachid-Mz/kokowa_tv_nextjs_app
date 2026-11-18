@@ -62,7 +62,7 @@ export function StatsSection() {
     },
     {
       icon: Target,
-      title: "Matchs Joués",
+      title: "Combats Joués",
       value: animatedValues.matches,
       suffix: "+",
       description: "Rencontres organisées",
@@ -187,7 +187,7 @@ export function StatsSection() {
             </div>
             <div className="text-center p-4 rounded-xl bg-muted/30">
               <Typography variant="body-sm" theme="muted" className="mb-1">
-                Matchs en Direct
+                Combat en Direct
               </Typography>
               <Typography variant="h4" weight="bold">
                 {stats.upcoming_matches}

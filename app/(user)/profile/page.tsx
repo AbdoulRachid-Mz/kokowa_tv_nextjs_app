@@ -296,16 +296,16 @@ export default function ProfilePage() {
           ) : userStats ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard
-                title="Matchs"
+                title="Combats"
                 value={userStats.total_matches}
-                description="Total des matchs suivis"
+                description="Total des combats suivis"
                 icon={<Activity className="h-6 w-6" />}
                 color="text-blue-600"
               />
               <StatCard
                 title="Victoires"
                 value={userStats.total_wins}
-                description="Matchs gagnés"
+                description="Combats gagnés"
                 icon={<Trophy className="h-6 w-6" />}
                 color="text-green-600"
               />
@@ -347,7 +347,7 @@ export default function ProfilePage() {
             <CardContent>
               <div className="space-y-4">
                 <ActivityItem
-                  title="Vous avez commenté un match"
+                  title="Vous avez commenté un combat"
                   description="Finale du championnat national 2024"
                   time="Il y a 2 heures"
                   icon={<MessageSquare className="h-4 w-4" />}
@@ -394,7 +394,7 @@ export default function ProfilePage() {
                 />
                 <AchievementCard
                   title="Fan de lutte"
-                  description="50 matchs suivis"
+                  description="50 combats suivis"
                   unlocked={userStats ? userStats.total_matches >= 50 : false}
                   icon="👑"
                 />

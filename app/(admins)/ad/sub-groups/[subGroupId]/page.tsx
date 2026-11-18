@@ -42,18 +42,18 @@ export default function SubGroupDetailPage() {
 
     return [
       {
-        label: "Total Matchs",
+        label: "Total Combats",
         value: subGroup.matches_count || 0,
         icon: Users,
         color: "text-blue-600",
-        description: "Matchs programmés",
+        description: "Combats programmés",
       },
       {
         label: "Terminés",
         value: subGroup.matches_completed_count || 0,
         icon: Trophy,
         color: "text-green-600",
-        description: "Matchs complétés",
+        description: "Combats complétés",
       },
       {
         label: "Lutteurs",
@@ -94,15 +94,15 @@ export default function SubGroupDetailPage() {
   };
 
   const handleDeleteMatch = async (matchId: number) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer ce match ?")) return;
+    if (!confirm("Êtes-vous sûr de vouloir supprimer ce combat ?")) return;
 
     try {
       await api.delete(`/api/matches/${matchId}`);
       matchesList.onRefresh();
       loadSubGroup(); // Recharger les données
     } catch (error) {
-      console.error("Erreur suppression match:", error);
-      alert("Erreur lors de la suppression du match");
+      console.error("Erreur suppression combat:", error);
+      alert("Erreur lors de la suppression du combat");
     }
   };
 
@@ -266,11 +266,11 @@ export default function SubGroupDetailPage() {
                 >
                   <Typography
                     hasTooltip
-                    tooltipContent="Ajouter Match"
+                    tooltipContent="Ajouter Combat"
                     className="flex gap-2 items-center text-white"
                   >
                     <Plus className="h-4 w-4" />
-                    <span className="max-md:hidden">Ajouter Match</span>
+                    <span className="max-md:hidden">Ajouter Combat</span>
                   </Typography>
                 </Button>
               </div>
@@ -299,7 +299,7 @@ export default function SubGroupDetailPage() {
             <TabsList className="flex justify-center mb-2">
               <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
               <TabsTrigger value="matches">
-                Matchs ({matchesList.total})
+                Combats ({matchesList.total})
               </TabsTrigger>
               <TabsTrigger value="organization">Detail</TabsTrigger>
             </TabsList>
@@ -322,7 +322,7 @@ export default function SubGroupDetailPage() {
             <TabsContent value="matches" className="space-y-4">
               <EntityList<Match>
                 entityType="match"
-                title="Liste des matchs"
+                title="Liste des combats"
                 data={matchesList.data}
                 loading={matchesList.loading}
                 total={matchesList.total}

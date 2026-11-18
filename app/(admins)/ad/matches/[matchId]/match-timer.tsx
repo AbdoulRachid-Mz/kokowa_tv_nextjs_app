@@ -131,7 +131,7 @@ export function MatchTimer({
                 className="gap-2 w-full bg-green-500 text-white"
                 disabled
               >
-                ✓ Match terminé
+                ✓ Combat terminé
               </Button>
             )}
           </div>
@@ -166,9 +166,9 @@ export function MatchTimer({
       <Dialog open={showStartDialog} onOpenChange={setShowStartDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Démarrer le match</DialogTitle>
+            <DialogTitle>Démarrer le combat</DialogTitle>
           </DialogHeader>
-          <p>Êtes-vous sûr de vouloir démarrer le match ?</p>
+          <p>Êtes-vous sûr de vouloir démarrer le combat ?</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowStartDialog(false)}>
               Annuler

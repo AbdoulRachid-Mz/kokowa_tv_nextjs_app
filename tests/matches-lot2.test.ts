@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { createEliminationMatch } from "@/actions/matches";
 import { assignSubGroupReferee } from "@/actions/sub-group-referee";
 
-describe("LOT 2 - Matchs & Phases Éliminatoires Tests", () => {
+describe("LOT 2 - Combats & Phases Éliminatoires Tests", () => {
   it("createEliminationMatch rejette la création si aucun lutteur n'est spécifié", async () => {
     try {
       await createEliminationMatch(1, {
@@ -15,7 +15,7 @@ describe("LOT 2 - Matchs & Phases Éliminatoires Tests", () => {
     }
   });
 
-  it("createEliminationMatch rejette un match où le même lutteur est sélectionné 2 fois", async () => {
+  it("createEliminationMatch rejette un combat où le même lutteur est sélectionné 2 fois", async () => {
     try {
       await createEliminationMatch(1, {
         fighter1_id: 10,

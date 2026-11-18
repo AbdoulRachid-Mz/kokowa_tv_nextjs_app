@@ -406,13 +406,13 @@ async function getFighterAchievements(fighterId: number) {
     });
     
     return {
-      // title: achievement.title,
+      title: achievement.title,
       position: achievement.position,
       // type: achievement.type,
       // description: achievement.description,
       // medalImage: achievement.medalImage,
-      // editionTheme: achievement.editionTheme,
-      // editionYear: achievement.editionYear,
+      editionTheme: achievement.editionTheme,
+      editionYear: achievement.editionYear,
       // competitionName: achievement.competitionName,
       // regionName: achievement.regionName,
       // regionFlagImage: achievement.regionFlagImage,

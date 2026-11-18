@@ -93,7 +93,7 @@ export default function CompetitionsPage() {
               </div>
               
               <Typography variant="body-lg" theme="muted" className="max-w-2xl mx-auto mb-8">
-                Découvrez toutes les compétitions de lutte traditionnelle. Suivez les matchs en direct, 
+                Découvrez toutes les compétitions de lutte traditionnelle. Suivez les combats en direct, 
                 consultez les résultats et préparez-vous pour les prochains événements.
               </Typography>
 

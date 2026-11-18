@@ -128,7 +128,7 @@ Récupère la liste des ligues régionales du Niger (Niamey, Zinder, Maradi, Tah
 Détails d'une région, historique des sacres et effectif actuel.
 
 #### `GET /api/mobile/regions/{regionId}/matches`
-Matches disputés par une région.
+Combats disputés par une région.
 - **Query Parameters** :
   - `editionId` (int, optionnel) : Filtrer par édition spécifique.
   - `all` (boolean, défaut: false) : Si `true`, retourne tout l'historique sans pagination.
@@ -193,10 +193,10 @@ Historique complet des combats disputés par le lutteur.
 
 ---
 
-### 2.5 Matches (`/matches`)
+### 2.5 Combats (`/matches`)
 
 #### `GET /api/mobile/matches`
-Liste des matches (programmés, en cours ou terminés).
+Liste des combats (programmés, en cours ou terminés).
 
 - **Query Parameters** :
   - `editionId` (int) : Filtrer par édition.
@@ -241,7 +241,7 @@ Liste des matches (programmés, en cours ou terminés).
 ```
 
 #### `GET /api/mobile/matches/{matchId}`
-Détails d'un match avec composition des arbitres, cartons infligés, chronomètre et liens vidéo.
+Détails d'un combat avec composition des arbitres, cartons infligés, chronomètre et liens vidéo.
 
 ---
 

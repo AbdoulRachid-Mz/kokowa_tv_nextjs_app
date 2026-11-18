@@ -37,13 +37,13 @@ export function MatchStats({ stats }: MatchStatsProps) {
 
   // Données pour la répartition par heure (simulées)
   const hourlyData = [
-    { hour: '08h', matches: 2 },
-    { hour: '10h', matches: 5 },
-    { hour: '12h', matches: 8 },
-    { hour: '14h', matches: 12 },
-    { hour: '16h', matches: 15 },
-    { hour: '18h', matches: 10 },
-    { hour: '20h', matches: 6 },
+    { hour: '08h', combats: 2 },
+    { hour: '10h', combats: 5 },
+    { hour: '12h', combats: 8 },
+    { hour: '14h', combats: 12 },
+    { hour: '16h', combats: 15 },
+    { hour: '18h', combats: 10 },
+    { hour: '20h', combats: 6 },
   ];
 
   const completionRate = stats.total > 0 
@@ -71,7 +71,7 @@ export function MatchStats({ stats }: MatchStatsProps) {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Matchs aujourd'hui</p>
+                <p className="text-sm font-medium text-muted-foreground">Combats aujourd'hui</p>
                 <p className="text-2xl font-bold">{stats.today}</p>
               </div>
               <Calendar className="h-8 w-8 text-blue-500" />
@@ -108,7 +108,7 @@ export function MatchStats({ stats }: MatchStatsProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Répartition des matchs</CardTitle>
+            <CardTitle className="text-sm">Répartition des combats</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[200px]">
@@ -139,7 +139,7 @@ export function MatchStats({ stats }: MatchStatsProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Matchs par heure</CardTitle>
+            <CardTitle className="text-sm">Combats par heure</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[200px]">

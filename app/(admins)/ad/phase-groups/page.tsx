@@ -75,7 +75,7 @@ export default function PhaseGroupsPage() {
         color: "text-purple-600",
       },
       {
-        label: "Avec Matchs",
+        label: "Avec Combats",
         value: groupsWithMatches,
         icon: Calendar,
         color: "text-orange-600",

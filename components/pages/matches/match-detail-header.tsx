@@ -162,7 +162,7 @@ export function MatchDetailHeader({ match }: MatchDetailHeaderProps) {
                   <Trophy className="h-3 w-3" />
                   {match.match_result === 'fighter1_win' ? 'Victoire Lutteur 1' :
                    match.match_result === 'fighter2_win' ? 'Victoire Lutteur 2' :
-                   'Match nul'}
+                   'Combat nul'}
                 </Badge>
               )}
             </div>
@@ -170,7 +170,7 @@ export function MatchDetailHeader({ match }: MatchDetailHeaderProps) {
             <div className="flex items-center gap-2">
               <Typography variant="body-sm" theme="muted" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Match {match.match_number || `#${match.id}`}
+                Combat {match.match_number || `#${match.id}`}
               </Typography>
             </div>
           </div>

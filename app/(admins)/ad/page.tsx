@@ -70,7 +70,7 @@ const tablist: tablistTypes[] = [
   { value: "competitions", label: "Compétitions", icon: Trophy },
   { value: "fighters", label: "Lutteurs", icon: Swords },
   { value: "regions", label: "Régions", icon: Globe },
-  { value: "matches", label: "Matchs", icon: Swords },
+  { value: "matches", label: "Combats", icon: Swords },
   { value: "transfers", label: "Transferts", icon: ArrowRightLeft },
   { value: "media", label: "Médias", icon: Video },
   { value: "users", label: "Utilisateurs", icon: Users },
@@ -147,7 +147,7 @@ export default function AdminPage() {
       trendPositive: true,
     },
     {
-      title: "Matchs à Venir",
+      title: "Combats à Venir",
       value: globalStats?.upcoming_matches || 0,
       icon: Calendar,
       color: "text-orange-600",
@@ -456,7 +456,7 @@ export default function AdminPage() {
         <TabsContent value="matches" className="space-y-6">
           <TabContent
             entity="matches"
-            title="Statistiques des Matchs"
+            title="Statistiques des Combats"
             description="Résultats, durée et analyses des rencontres"
           />
         </TabsContent>

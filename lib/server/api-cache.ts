@@ -39,7 +39,7 @@ export const CACHE_TTL = {
   STATIC_REFERENCE: 600,
   /** Données publiques fréquemment consultées (lutteurs, compétitions) : 60 secondes */
   PUBLIC_DATA: 60,
-  /** Données dynamiques en cours de match : 3 à 5 secondes */
+  /** Données dynamiques en cours de combat : 3 à 5 secondes */
   DYNAMIC_MATCH: 5,
   /** Données privées : jamais en cache partagé */
   NO_CACHE: 0,

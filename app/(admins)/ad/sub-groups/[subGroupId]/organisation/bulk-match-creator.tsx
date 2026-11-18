@@ -36,7 +36,7 @@ type SortOrder = 'asc' | 'desc';
 interface BulkMatchCreatorProps {
   region1Fighters: Fighter[];
   region2Fighters: Fighter[];
-  existingMatchFighterIds: Set<number>; // IDs des lutteurs déjà dans des matchs existants
+  existingMatchFighterIds: Set<number>; // IDs des lutteurs déjà dans des combats existants
   onCreateMatches: (
     matches: { fighter1Id: number; fighter2Id?: number }[]
   ) => void;
@@ -75,7 +75,7 @@ export function BulkMatchCreator({
     }
   }, [region1Fighters, existingMatchFighterIds]);
 
-  // Calculer les lutteurs région 1 disponibles (non utilisés dans les matchs existants ET non sélectionnés dans le bulk)
+  // Calculer les lutteurs région 1 disponibles (non utilisés dans les combats existants ET non sélectionnés dans le bulk)
   const availableRegion1Fighters = useMemo(() => {
     const selectedInBulk = new Set<number>();
     matches.forEach(match => {
@@ -83,7 +83,7 @@ export function BulkMatchCreator({
     });
 
     return region1Fighters
-      .filter(fighter => !existingMatchFighterIds.has(fighter.id)) // Exclure ceux déjà dans des matchs existants
+      .filter(fighter => !existingMatchFighterIds.has(fighter.id)) // Exclure ceux déjà dans des combats existants
       .filter(fighter => !selectedInBulk.has(fighter.id)) // Exclure ceux déjà sélectionnés dans le bulk
       .sort((a, b) => {
         const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
@@ -100,7 +100,7 @@ export function BulkMatchCreator({
     });
 
     return region2Fighters
-      .filter(fighter => !existingMatchFighterIds.has(fighter.id)) // Exclure ceux déjà dans des matchs existants
+      .filter(fighter => !existingMatchFighterIds.has(fighter.id)) // Exclure ceux déjà dans des combats existants
       .filter(fighter => !selectedInBulk.has(fighter.id)) // Exclure ceux déjà sélectionnés dans le bulk
       .sort((a, b) => {
         const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
@@ -232,7 +232,7 @@ export function BulkMatchCreator({
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Création multiple de matchs
+            Création multiple de combats
             <Badge variant="outline" className="ml-2">
               {readyMatchesCount}/{totalMatchesCount} avec lutteur 1
             </Badge>
@@ -296,7 +296,7 @@ export function BulkMatchCreator({
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Typography variant="body-sm" weight="medium">
-                      Match #{index + 1}
+                      Combat #{index + 1}
                     </Typography>
                     {!match.fighter1Id && (
                       <Badge variant="destructive" className="text-xs">
@@ -532,7 +532,7 @@ export function BulkMatchCreator({
               disabled={isSaving || availableRegion1Fighters.length === 0}
             >
               <Plus className="h-4 w-4" />
-              Ajouter un match
+              Ajouter un combat
             </Button>
 
             <Button
@@ -544,7 +544,7 @@ export function BulkMatchCreator({
               <SaveAll className="h-4 w-4" />
               {isSaving
                 ? "Création en cours..."
-                : `Créer ${readyMatchesCount} match(s)`}
+                : `Créer ${readyMatchesCount} combat(s)`}
             </Button>
           </div>
 

@@ -270,14 +270,14 @@ export function FloatingMatchScore({
                         </Card>
                     </div>
 
-                    {/* Matchs nuls */}
+                    {/* Combats nuls */}
                     {nulls > 0 && (
                         <Card className="bg-muted/20">
                             <CardContent className="p-3">
                                 <div className="flex items-center justify-center gap-2">
                                     <Minus className="h-4 w-4" />
                                     <Typography variant="body-base" weight="medium">
-                                        Matchs nuls : {nulls}
+                                        Combats nuls : {nulls}
                                     </Typography>
                                 </div>
                             </CardContent>

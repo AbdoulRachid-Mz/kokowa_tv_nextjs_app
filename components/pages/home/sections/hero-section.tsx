@@ -137,7 +137,7 @@ export function HeroSection() {
                 1000+
               </Typography>
               <Typography variant="body-sm" theme="muted">
-                Matchs
+                Combats
               </Typography>
             </div>
           </motion.div>

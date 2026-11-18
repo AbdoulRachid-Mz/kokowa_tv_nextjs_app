@@ -543,7 +543,7 @@ export function EliminationBulkMatchCreator({
   const handleAutoPair = () => {
     const pool = [...fightersPool];
     if (pool.length === 0) {
-      toast.error("Aucun lutteur disponible pour le tirage");
+      toast.error("Aucun lutteur disponible pour le tirage au sort");
       return;
     }
 
@@ -580,7 +580,7 @@ export function EliminationBulkMatchCreator({
 
   const handleSubmitAll = async () => {
     if (validMatches.length === 0) {
-      toast.error("Veuillez sélectionner au moins un lutteur dans une ligne de match");
+      toast.error("Veuillez sélectionner au moins un lutteur dans une ligne de combat");
       return;
     }
 

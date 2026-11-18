@@ -513,7 +513,7 @@ class _RegionPageState extends State<RegionPage>
 
         // Prochains matchs
         if (scheduledMatches.isNotEmpty) ...[
-          _buildSectionHeader('PROCHAINS MATCHS', Colors.orange),
+          _buildSectionHeader('PROCHAINS COMBATATS', Colors.orange),
           SizedBox(height: 12),
           ...scheduledMatches
               .take(3)
@@ -713,7 +713,7 @@ class _RegionPageState extends State<RegionPage>
               _isLoadingMatches
                   ? Center(child: CircularProgressIndicator())
                   : _matches.isEmpty
-                  ? Center(child: Text('Aucun match pour cette édition'))
+                  ? Center(child: Text('Aucun combat pour cette édition'))
                   : ListView.builder(
                     itemCount: _matches.length,
                     itemBuilder: (context, index) {
@@ -1117,7 +1117,7 @@ class _RegionPageState extends State<RegionPage>
                           tabs: [
                             Tab(text: 'Vue Générale'),
                             Tab(text: 'Effectifs'),
-                            Tab(text: 'Matchs'),
+                            Tab(text: 'Combats'),
                             Tab(text: 'Transferts'),
                             Tab(text: 'Titres'),
                           ],

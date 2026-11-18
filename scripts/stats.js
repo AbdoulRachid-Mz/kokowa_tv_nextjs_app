@@ -22,7 +22,7 @@ async function showStats() {
     console.log(`🤼 Lutteurs: ${stats[0].fighters} (${stats[0].fighters_actifs} actifs)`);
     console.log(`🏆 Compétitions: ${stats[0].competitions}`);
     console.log(`📋 Phases: ${stats[0].phases}`);
-    console.log(`⚔️ Matchs: ${stats[0].matches}`);
+    console.log(`⚔️ Combats: ${stats[0].matches}`);
     console.log(`🔄 Transferts: ${stats[0].transfers}`);
     console.log(`🎖️ Palmarès: ${stats[0].achievements}`);
 

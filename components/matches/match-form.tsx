@@ -159,7 +159,7 @@ export default function MatchForm({ match, subGroupId, subGroup, onSuccess }: Ma
     const newErrors: Partial<Record<keyof MatchFormData, string>> = {};
 
     if (!formData.sub_group_id) newErrors.sub_group_id = "Le sous-groupe est requis";
-    if (!formData.match_date) newErrors.match_date = "La date du match est requise";
+    if (!formData.match_date) newErrors.match_date = "La date du combat est requise";
 
     if (formData.fighter1_id && formData.fighter2_id && formData.fighter1_id === formData.fighter2_id) {
       newErrors.fighter2_id = "Les deux lutteurs doivent être différents";
@@ -209,7 +209,7 @@ export default function MatchForm({ match, subGroupId, subGroup, onSuccess }: Ma
       if (!response.ok) {
         throw new Error(
           result.error ||
-            `Erreur lors de ${match ? "la modification" : "la création"} du match`
+            `Erreur lors de ${match ? "la modification" : "la création"} du combat`
         );
       }
 
@@ -227,7 +227,7 @@ export default function MatchForm({ match, subGroupId, subGroup, onSuccess }: Ma
       alert(
         error instanceof Error
           ? error.message
-          : `Erreur lors de ${match ? "la modification" : "la création"} du match`
+          : `Erreur lors de ${match ? "la modification" : "la création"} du combat`
       );
     } finally {
       setIsSubmitting(false);
@@ -244,12 +244,12 @@ export default function MatchForm({ match, subGroupId, subGroup, onSuccess }: Ma
       <Card>
         <CardHeader>
           <CardTitle>
-            {match ? "Modifier le Match" : "Nouveau Match"}
+            {match ? "Modifier le Combat" : "Nouveau Combat"}
           </CardTitle>
           <CardDescription>
             {match 
-              ? "Modifiez les informations du match" 
-              : "Programmez un nouveau match entre deux lutteurs"
+              ? "Modifiez les informations du combat" 
+              : "Programmez un nouveau combat entre deux lutteurs"
             }
           </CardDescription>
         </CardHeader>
@@ -435,7 +435,7 @@ export default function MatchForm({ match, subGroupId, subGroup, onSuccess }: Ma
 
             {/* Statut */}
             <div className="space-y-2">
-              <Label htmlFor="status">Statut du match</Label>
+              <Label htmlFor="status">Statut du combat</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) => handleChange('status', value)}
@@ -469,7 +469,7 @@ export default function MatchForm({ match, subGroupId, subGroup, onSuccess }: Ma
             {(formData.fighter1_id || formData.fighter2_id) && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Résumé du match</CardTitle>
+                  <CardTitle className="text-lg">Résumé du combat</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -540,7 +540,7 @@ export default function MatchForm({ match, subGroupId, subGroup, onSuccess }: Ma
                 <Save className="h-4 w-4 mr-2" />
                 {isSubmitting
                   ? `${match ? "Modification..." : "Création..."}`
-                  : `${match ? "Modifier le match" : "Créer le match"}`
+                  : `${match ? "Modifier le combat" : "Créer le combat"}`
                 }
               </Button>
             </div>

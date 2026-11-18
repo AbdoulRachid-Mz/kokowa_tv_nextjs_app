@@ -33,10 +33,10 @@ export function MatchesGrid({ matches }: MatchesGridProps) {
       <div className="text-center py-12">
         <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
         <Typography variant="h4" className="mb-2">
-          Aucun match trouvé
+          Aucun combat trouvé
         </Typography>
         <Typography variant="body-base" theme="muted">
-          Aucun match ne correspond aux filtres sélectionnés.
+          Aucun combat ne correspond aux filtres sélectionnés.
         </Typography>
       </div>
     )

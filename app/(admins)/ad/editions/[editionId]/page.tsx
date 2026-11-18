@@ -127,11 +127,11 @@ export default function EditionDetailPage() {
         description: `Total des phases`,
       },
       {
-        label: "Matchs Total",
+        label: "Combats Total",
         value: edition.matches_count || 0,
         icon: Swords,
         color: "text-orange-600",
-        description: "Matchs prévus",
+        description: "Combats prévus",
       },
     ];
   };
@@ -296,7 +296,7 @@ export default function EditionDetailPage() {
           <TabsTrigger value="phases">Phases</TabsTrigger>
           <TabsTrigger value="fighters">Lutteurs</TabsTrigger>
           <TabsTrigger value="regions">Régions</TabsTrigger>
-          {/* <TabsTrigger value="matches">Matchs</TabsTrigger> */}
+          <TabsTrigger value="matches">Combats</TabsTrigger>
         </TabsList>
 
         {/* Vue d'ensemble */}
@@ -458,7 +458,7 @@ export default function EditionDetailPage() {
                   }
                 >
                   <Swords className="h-4 w-4 mr-2" />
-                  Voir les Matchs
+                  Voir les Combats
                 </Button>
                 <Button
                   variant="outline"

@@ -34,7 +34,7 @@ export async function buildRealtimeMatchPayload(
   );
 
   if (!rows.length) {
-    throw new Error(`Match ${matchId} introuvable ou inactif`);
+    throw new Error(`Combat ${matchId} introuvable ou inactif`);
   }
 
   const row = rows[0];

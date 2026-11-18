@@ -11,7 +11,7 @@ export async function GET(
 
     if (isNaN(id)) {
       return NextResponse.json(
-        { success: false, error: 'ID de match invalide' },
+        { success: false, error: 'ID de combat invalide' },
         { status: 400 }
       );
     }
@@ -45,9 +45,9 @@ export async function GET(
   } catch (error: any) {
     console.error(`API GET /matchs/${"matchId"} error:`, error);
 
-    if (error.message === 'Match non trouvé') {
+    if (error.message === 'Combat non trouvé') {
       return NextResponse.json(
-        { success: false, error: 'Match non trouvé' },
+        { success: false, error: 'Combat non trouvé' },
         { status: 404 }
       );
     }
@@ -69,7 +69,7 @@ export async function PUT(
 
     if (isNaN(id)) {
       return NextResponse.json(
-        { success: false, error: 'ID de match invalide' },
+        { success: false, error: 'ID de combat invalide' },
         { status: 400 }
       );
     }
@@ -82,9 +82,9 @@ export async function PUT(
   } catch (error: any) {
     console.error(`API PUT /matchs/${"matchId"} error:`, error);
 
-    if (error.message === 'Match non trouvé') {
+    if (error.message === 'Combat non trouvé') {
       return NextResponse.json(
-        { success: false, error: 'Match non trouvé' },
+        { success: false, error: 'Combat non trouvé' },
         { status: 404 }
       );
     }
@@ -106,7 +106,7 @@ export async function DELETE(
 
     if (isNaN(id)) {
       return NextResponse.json(
-        { success: false, error: 'ID de match invalide' },
+        { success: false, error: 'ID de combat invalide' },
         { status: 400 }
       );
     }
@@ -118,9 +118,9 @@ export async function DELETE(
   } catch (error: any) {
     console.error(`API DELETE /matchs/${"params.id"} error:`, error);
 
-    if (error.message === 'Match non trouvé') {
+    if (error.message === 'Combat non trouvé') {
       return NextResponse.json(
-        { success: false, error: 'Match non trouvé' },
+        { success: false, error: 'Combat non trouvé' },
         { status: 404 }
       );
     }

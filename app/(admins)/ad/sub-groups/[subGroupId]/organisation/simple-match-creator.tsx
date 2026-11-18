@@ -76,7 +76,7 @@ export function SimpleMatchCreator({
         <div className="flex justify-between items-center mb-6">
           <Typography variant="h5" weight="bold" className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            Créer un nouveau match
+            Créer un nouveau combat
           </Typography>
           <Button
             variant="ghost"
@@ -208,11 +208,11 @@ export function SimpleMatchCreator({
           </div>
         </div>
 
-        {/* Informations du match */}
+        {/* Informations du combat */}
         {(fighter1 || fighter2) && (
           <div className="mb-6 p-4 bg-muted/30 rounded-lg">
             <Typography variant="body-sm" weight="medium" className="mb-2">
-              Match à créer :
+              Combat à créer :
             </Typography>
             <div className="flex items-center justify-center gap-4">
               {fighter1 && (
@@ -294,7 +294,7 @@ export function SimpleMatchCreator({
             ) : (
               <>
                 <Plus className="h-4 w-4" />
-                Créer le match
+                Créer le combat
               </>
             )}
           </Button>
@@ -313,7 +313,7 @@ export function SimpleMatchCreator({
           <div className="flex items-start gap-2">
             <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5"></div>
             <Typography variant="body-sm">
-              Un lutteur peut participer à plusieurs matchs. Le badge "Xx" indique le nombre de fois qu'un lutteur est déjà sélectionné.
+              Un lutteur peut participer à plusieurs combats. Le badge "Xx" indique le nombre de fois qu'un lutteur est déjà sélectionné.
             </Typography>
           </div>
           <div className="flex items-start gap-2 mt-2">

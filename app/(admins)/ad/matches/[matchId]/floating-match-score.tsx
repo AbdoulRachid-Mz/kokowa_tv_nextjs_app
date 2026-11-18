@@ -279,7 +279,7 @@ export function FloatingMatchScore({
                 <div className="flex items-center justify-center gap-2">
                   <Minus className="h-4 w-4" />
                   <Typography variant="body-base" weight="medium">
-                    Matchs nuls : {nulls}
+                    Combats nuls : {nulls}
                   </Typography>
                 </div>
               </CardContent>

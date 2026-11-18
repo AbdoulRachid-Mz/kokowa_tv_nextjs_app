@@ -161,7 +161,7 @@ export function FeaturedContentSection() {
             </div>
             <Typography variant="body-base" theme="muted" className="mb-6">
               Ne manquez aucun événement important. Consultez le calendrier complet 
-              des compétitions, matchs et événements spéciaux.
+              des compétitions, combats et événements spéciaux.
             </Typography>
             <Button variant="outline" asChild>
               <Link href="/matches">

@@ -193,7 +193,7 @@ export async function emitRealtimeDelete(
         if (data?.editionId && data?.subGroupId) {
           await deleteRealtimeMatchDocument(id, data.editionId, data.subGroupId);
         } else {
-          console.warn(`[RTDB] Impossible de supprimer le match ${id} sans editionId/subGroupId dans les data.`);
+          console.warn(`[RTDB] Impossible de supprimer le combat ${id} sans editionId/subGroupId dans les data.`);
         }
         break;
 
@@ -201,7 +201,7 @@ export async function emitRealtimeDelete(
         if (data?.editionId) {
           await deleteRealtimeSubGroupDocument(id, data.editionId);
         } else {
-          console.warn(`[RTDB] Impossible de supprimer le subGroup ${id} sans editionId dans les data.`);
+          console.warn(`[RTDB] Impossible de supprimer le sous-groupe ${id} sans editionId dans les data.`);
         }
         break;
 

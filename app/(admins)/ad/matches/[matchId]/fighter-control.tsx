@@ -150,7 +150,7 @@ export function FighterControl({
     }
 
     if (matchStatus !== "live") {
-      toast.error("Le match doit être en cours");
+      toast.error("Le combat doit être en cours");
       return;
     }
 
@@ -413,7 +413,7 @@ export function FighterControl({
         {matchStatus === "completed" && (
           <div className="text-center pt-2 border-t">
             <Badge variant="secondary" className="bg-green-100 text-green-700">
-              ✓ Match terminé
+              ✓ Combat terminé
             </Badge>
           </div>
         )}

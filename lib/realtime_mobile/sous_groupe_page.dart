@@ -498,7 +498,7 @@ class _SousGroupePageState extends State<SousGroupePage> {
                           ),
                         ],
 
-                        // Match en direct (s'il existe)
+                        // Combat en direct (s'il existe)
                         if (_liveMatch != null) ...[
                           SliverToBoxAdapter(
                             child: Padding(
@@ -512,7 +512,7 @@ class _SousGroupePageState extends State<SousGroupePage> {
                                   ),
                                   SizedBox(width: 8),
                                   Text(
-                                    'MATCH EN DIRECT',
+                                    'COMBAT EN DIRECT',
                                     style: TextStyle(
                                       color: Colors.red.shade300,
                                       fontSize: 18,
@@ -555,7 +555,7 @@ class _SousGroupePageState extends State<SousGroupePage> {
                             child: Padding(
                               padding: EdgeInsets.all(32.0),
                               child: Text(
-                                'Aucun match programmé',
+                                'Aucun combat programmé',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: blackColor,

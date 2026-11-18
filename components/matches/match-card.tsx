@@ -173,7 +173,7 @@ export function SimpleMatchCard({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Typography variant="body-lg" weight="bold">
-              Match #{match.match_number}
+              Combat #{match.match_number}
             </Typography>
             {match.status === "live" && (
               <div className="flex items-center gap-1 animate-pulse">

@@ -109,7 +109,7 @@ export function FighterCards({ cards }: FighterCardsProps) {
                         </Typography>
                         {card.matchNumber && (
                           <Typography variant="body-sm" theme="muted">
-                            Match #{card.matchNumber}
+                            Combat #{card.matchNumber}
                           </Typography>
                         )}
                       </div>

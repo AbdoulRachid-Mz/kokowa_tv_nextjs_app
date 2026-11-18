@@ -60,7 +60,7 @@ export function EmptyMatchCard({
             weight="medium"
             className="text-primary"
           >
-            Nouveau Match
+            Nouveau Combat
           </Typography>
           <Button
             variant="ghost"
@@ -165,7 +165,7 @@ export function EmptyMatchCard({
           variant="default"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Créer le Match
+          Créer le Combat
         </Button>
       </CardContent>
     </Card>

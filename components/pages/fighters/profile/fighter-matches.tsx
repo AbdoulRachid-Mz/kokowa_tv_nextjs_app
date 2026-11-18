@@ -105,14 +105,14 @@ export function FighterMatches({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Swords className="h-5 w-5 text-primary" />
-            Matchs
+            Combats
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
             <Target className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
             <Typography variant="body-base" theme="muted" className="mb-4">
-              Aucun match enregistré pour le moment
+              Aucun combat enregistré pour le moment
             </Typography>
           </div>
         </CardContent>
@@ -131,11 +131,11 @@ export function FighterMatches({
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Swords className="h-5 w-5 text-primary" />
-              Matchs ({allMatches.length})
+              Combats ({allMatches.length})
             </CardTitle>
             <Badge variant="outline" className="gap-1">
               <TrendingUp className="h-3 w-3" />
-              {groupedMatches.completed?.length || 0} terminés
+              {groupedMatches.completed?.length || 0} complétés
             </Badge>
           </div>
         </CardHeader>
@@ -147,7 +147,7 @@ export function FighterMatches({
                 À venir ({groupedMatches.scheduled?.length || 0})
               </TabsTrigger>
               <TabsTrigger value="completed">
-                Terminés ({groupedMatches.completed?.length || 0})
+                Complétés ({groupedMatches.completed?.length || 0})
               </TabsTrigger>
               <TabsTrigger value="live">
                 En direct ({groupedMatches.live?.length || 0})
@@ -263,7 +263,7 @@ export function FighterMatches({
                 {(tab === "all" ? allMatches : groupedMatches[tab] || [])
                   .length > 5 && (
                   <div className="text-center pt-4">
-                    <Button variant="outline">Voir tous les matchs</Button>
+                    <Button variant="outline">Voir tous les combats</Button>
                   </div>
                 )}
               </TabsContent>

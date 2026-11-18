@@ -184,7 +184,7 @@ export default function VideoFormPage() {
   ];
 
   const categories = [
-    { value: "match", label: "Match" },
+    { value: "match", label: "Combat" },
     { value: "interview", label: "Interview" },
     { value: "highlights", label: "Highlights" },
     { value: "training", label: "Entraînement" },

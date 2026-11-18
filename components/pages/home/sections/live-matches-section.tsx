@@ -174,7 +174,7 @@ export function LiveMatchesSection() {
           ) : (
             <div className="text-center py-12 border-2 border-dashed rounded-3xl mb-8">
               <Typography variant="body-lg" theme="muted">
-                Aucun match en direct pour le moment.
+                Aucun combat en direct pour le moment.
               </Typography>
               <Button variant="link" asChild className="mt-2">
                 <Link href="/matches">Voir le calendrier</Link>
@@ -195,7 +195,7 @@ export function LiveMatchesSection() {
               <div className="grid lg:grid-cols-2 gap-8 items-center">
                 <div>
                   <Badge variant="destructive" className="mb-4">
-                    MATCH À LA UNE
+                    COMBAT À LA UNE
                   </Badge>
                   <Typography variant="h3" weight="bold" className="mb-4">
                     Suivi Temps Réel Activé

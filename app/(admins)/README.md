@@ -21,10 +21,10 @@ Ce dossier contient les pages et fonctionnalités de l'espace d'administration.
 - **Régions**: Gestion des régions
 - **Phases**: Gestion des phases de compétition
 - **Groupes de phase**: Gestion des sous-groupes
-- **Sous-groupes**: Gestion des sous-groupes et leurs matchs
-  - Création de matchs
-  - Contrôle en temps réel des matchs
-  - Timer de match
+- **Sous-groupes**: Gestion des sous-groupes et leurs combats
+  - Création de combats
+  - Contrôle en temps réel des combats
+  - Timer de combat
   - Gestion des médias
 
 ### Contenu et médias

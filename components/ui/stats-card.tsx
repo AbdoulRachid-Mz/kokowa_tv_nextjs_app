@@ -280,6 +280,7 @@ export function StatsCard({
       onClick={clickable ? onClick : undefined}
       {...props}
     >
+            <span className='absolute animate-pulse w-16 h-16 top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] bg-primary/30 px-2 rounded-full' />
       {/* Effet de brillance animé */}
       {(bgType === "animated" || bgType === "neon") && (
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-[shimmer_2s_infinite] pointer-events-none" />

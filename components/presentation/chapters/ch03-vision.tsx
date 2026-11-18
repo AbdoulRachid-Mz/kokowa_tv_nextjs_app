@@ -75,7 +75,7 @@ export function ChapterVision() {
         <ul>
           <li>Disponibilité de la plateforme : <strong>&gt; 99% durant le Sabre National</strong></li>
           <li>Latence de live-scoring : <strong>&lt; 500ms de bout en bout</strong></li>
-          <li>Couverture des combats : <strong>100% des matchs saisis en temps réel</strong></li>
+          <li>Couverture des combats : <strong>100% des combats saisis en temps réel</strong></li>
           <li>Téléchargements de l&apos;application mobile : <strong>[Cible à définir avec la FENILUTTE]</strong></li>
           <li>Articles publiés par édition : <strong>[Cible à définir avec l&apos;équipe éditoriale]</strong></li>
         </ul>

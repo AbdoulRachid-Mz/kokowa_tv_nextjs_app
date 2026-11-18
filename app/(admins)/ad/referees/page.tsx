@@ -119,7 +119,7 @@ export default function RefereesPage() {
   return (
     <EntityList
       title="Gestion des Arbitres"
-      description="Gérez l'ensemble des arbitres et leurs assignations aux matchs"
+      description="Gérez l'ensemble des arbitres et leurs assignations aux combats"
       entityType="referee"
       data={data}
       total={total}

@@ -175,11 +175,11 @@ export function EliminationMatchCreator({
             </div>
             <div>
               <CardTitle className="text-lg">
-                {isExceptional ? "Ajouter un Match Exceptionnel (3e place / repêchage)" : "Créer un Combat d'Élimination"}
+                {isExceptional ? "Ajouter un Combat Exceptionnel (3e place / repêchage)" : "Créer un Combat d'Élimination"}
               </CardTitle>
               <Typography variant="body-sm" theme="muted">
                 {isExceptional
-                  ? "Autorise la sélection de lutteurs déjà engagés ou éliminés pour les matchs de classement."
+                  ? "Autorise la sélection de lutteurs déjà engagés ou éliminés pour les combats de classement."
                   : "Sélectionnez un ou deux lutteurs pour programmer le combat."}
               </Typography>
             </div>
@@ -197,7 +197,7 @@ export function EliminationMatchCreator({
               className="text-xs gap-1.5 h-8"
             >
               <AlertTriangle className="h-3.5 w-3.5" />
-              {isExceptional ? "Mode Normal" : "Match Exceptionnel"}
+              {isExceptional ? "Mode Normal" : "Combat Exceptionnel"}
             </Button>
 
             <Badge variant="outline" className="gap-1">
@@ -219,7 +219,7 @@ export function EliminationMatchCreator({
         <div className="p-3 bg-muted/30 rounded-lg border flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs font-semibold">Période du match :</span>
+            <span className="text-xs font-semibold">Période du combat :</span>
             <div className="flex items-center gap-1 bg-background p-1 rounded-md border">
               <Button
                 variant={period === "matin" ? "default" : "ghost"}
@@ -539,11 +539,11 @@ export function EliminationMatchCreator({
                 </span>
               ) : fighter1 ? (
                 <span>
-                  Match individuel : <b>{fighter1.first_name} {fighter1.last_name}</b> (adversaire à définir)
+                  Combat individuel : <b>{fighter1.first_name} {fighter1.last_name}</b> (adversaire à définir)
                 </span>
               ) : (
                 <span>
-                  Match individuel : <b>{fighter2?.first_name} {fighter2?.last_name}</b> (adversaire à définir)
+                  Combat individuel : <b>{fighter2?.first_name} {fighter2?.last_name}</b> (adversaire à définir)
                 </span>
               )}
             </div>
@@ -562,7 +562,7 @@ export function EliminationMatchCreator({
               ) : (
                 <>
                   <Swords className="h-4 w-4" />
-                  Créer et Enregistrer le Match
+                  Créer et Enregistrer le Combat
                 </>
               )}
             </Button>

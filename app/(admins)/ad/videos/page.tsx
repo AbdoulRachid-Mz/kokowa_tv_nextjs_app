@@ -173,7 +173,7 @@ export default function VideosPage() {
       label: "Catégorie",
       options: [
         { value: "all", label: "Toutes" },
-        { value: "match", label: "Matchs" },
+        { value: "match", label: "Combats" },
         { value: "interview", label: "Interviews" },
         { value: "highlights", label: "Highlights" },
         { value: "training", label: "Entraînements" },

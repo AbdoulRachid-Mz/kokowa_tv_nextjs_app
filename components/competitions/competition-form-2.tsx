@@ -385,8 +385,8 @@ export default function CompetitionForm({
               {competition
                 ? "Modifiez les informations de la compétition. Les changements seront visibles immédiatement."
                 : createWithEdition
-                ? "La compétition sera créée avec une première édition automatique. Vous pourrez ensuite ajouter des phases et matchs."
-                : "La compétition sera créée sans édition. Vous devrez créer manuellement une édition pour pouvoir ajouter des phases et matchs."}
+                ? "La compétition sera créée avec une première édition automatique. Vous pourrez ensuite ajouter des phases et combats."
+                : "La compétition sera créée sans édition. Vous devrez créer manuellement une édition pour pouvoir ajouter des phases et combats."}
             </AlertDescription>
           </Alert> */}
 

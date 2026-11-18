@@ -12,7 +12,7 @@ export async function POST(
     
     if (isNaN(id)) {
       return NextResponse.json(
-        { success: false, error: 'ID de match invalide' },
+        { success: false, error: 'ID de combat invalide' },
         { status: 400 }
       );
     }
@@ -24,15 +24,15 @@ export async function POST(
   } catch (error: any) {
     console.error('API POST /matches/[matchId]/draw error:', error);
     
-    if (error.message === 'Match non trouvé') {
+    if (error.message === 'Combat non trouvé') {
       return NextResponse.json(
-        { success: false, error: 'Match non trouvé' },
+        { success: false, error: 'Combat non trouvé' },
         { status: 404 }
       );
     }
     
     return NextResponse.json(
-      { success: false, error: error.message || 'Erreur lors de la déclaration du match nul' },
+      { success: false, error: error.message || 'Erreur lors de la déclaration du combat nul' },
       { status: 500 }
     );
   }

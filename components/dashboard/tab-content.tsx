@@ -113,8 +113,8 @@ export function TabContent({ entity, title, description }: TabContentProps) {
         return (
           <MatchChart
             data={data}
-            title="Statistiques des Matchs"
-            // description="Répartition des matchs par statut"
+            title="Statistiques des Combats"
+            // description="Répartition des combats par statut"
           />
         );
 

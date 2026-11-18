@@ -97,16 +97,16 @@ export default function MatchDetailPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
           <Typography variant="h3" className="text-destructive mb-4">
-            Match non trouvé
+            Combat non trouvé
           </Typography>
           <Typography variant="body-base" theme="muted" className="mb-6">
-            Le match que vous recherchez n'existe pas ou a été supprimé.
+            Le combat que vous recherchez n'existe pas ou a été supprimé.
           </Typography>
           <div className="flex gap-4 justify-center">
             <Button asChild>
               <Link href="/matches">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour aux matches
+                Retour aux combats
               </Link>
             </Button>
             <Button variant="outline" onClick={() => router.refresh()}>
@@ -142,13 +142,13 @@ export default function MatchDetailPage() {
             Match non trouvé
           </Typography>
           <Typography variant="body-base" theme="muted" className="mb-6">
-            Le match que vous recherchez n'existe pas ou a été supprimé.
+            Le combat que vous recherchez n'existe pas ou a été supprimé.
           </Typography>
           <div className="flex gap-4 justify-center">
             <Button asChild>
               <Link href="/matches">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour aux matches
+                Retour aux combats
               </Link>
             </Button>
             <Button variant="outline" onClick={() => router.refresh()}>
@@ -430,7 +430,7 @@ export default function MatchDetailPage() {
                     <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                       <Zap className="h-4 w-4 text-green-600 animate-pulse" />
                       <span className="text-xs text-green-700 dark:text-green-400 font-medium">
-                        {isLive ? "🔴 Match en direct" : "Temps réel actif"}
+                        {isLive ? "🔴 Combat en direct" : "Temps réel actif"}
                       </span>
                     </div>
                   )}
@@ -441,7 +441,7 @@ export default function MatchDetailPage() {
                     disabled={interactionLoading}
                   >
                     <Bell className={`h-4 w-4 ${followed ? "fill-current" : ""}`} />
-                    {followed ? "Match suivi" : "Suivre ce match"}
+                    {followed ? "Combat suivi" : "Suivre ce combat"}
                   </Button>
                   <Button
                     variant={liked ? "default" : "outline"}
@@ -566,7 +566,7 @@ export default function MatchDetailPage() {
               <Button variant="ghost" className="w-full gap-2" asChild>
                 <Link href="/matches">
                   <ArrowLeft className="h-4 w-4" />
-                  Retour aux matches
+                  Retour aux combats
                 </Link>
               </Button>
             </div>

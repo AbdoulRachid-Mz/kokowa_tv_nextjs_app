@@ -37,13 +37,13 @@ export function MatchTimeline({ match }: MatchTimelineProps) {
     // Événements de base pour tous les matchs
     events.push({
       time: '00:00',
-      event: 'Début du match',
+      event: 'Début du combat',
       type: 'start',
       icon: Flag,
       color: 'text-green-600 bg-green-100'
     })
 
-    // Si le match est terminé ou en cours, ajouter des événements
+    // Si le combat est terminé ou en cours, ajouter des événements
     if (match.status === 'completed' || match.status === 'live') {
       events.push(
         {
@@ -88,7 +88,7 @@ export function MatchTimeline({ match }: MatchTimelineProps) {
       )
     }
 
-    // Si le match est terminé, ajouter la fin
+    // Si le combat est terminé, ajouter la fin
     if (match.status === 'completed') {
       events.push({
         time: match.total_duration || '18:45',
@@ -96,7 +96,7 @@ export function MatchTimeline({ match }: MatchTimelineProps) {
           ? `Victoire de ${match.fighter1?.first_name}`
           : match.match_result === 'fighter2_win'
           ? `Victoire de ${match.fighter2?.first_name}`
-          : 'Match nul',
+          : 'Combat nul',
         type: 'result',
         icon: Trophy,
         color: 'text-yellow-600 bg-yellow-100'
@@ -114,9 +114,9 @@ export function MatchTimeline({ match }: MatchTimelineProps) {
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <CardTitle>Chronologie du match</CardTitle>
+            <CardTitle>Chronologie du combat</CardTitle>
             <CardDescription>
-              Événements et moments clés du match
+              Événements et moments clés du combat
             </CardDescription>
           </div>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
@@ -185,11 +185,11 @@ export function MatchTimeline({ match }: MatchTimelineProps) {
                             <div className="flex items-center gap-2 mb-2">
                               <Users className="h-4 w-4 text-muted-foreground" />
                               <Typography variant="body-sm" weight="medium">
-                                Impact sur le match
+                                Impact sur le combat
                               </Typography>
                             </div>
                             <Typography variant="body-sm" theme="muted">
-                              Cette action a changé la dynamique du match en faveur du lutteur {event.fighter}.
+                              Cette action a changé la dynamique du combat en faveur du lutteur {event.fighter}.
                             </Typography>
                           </div>
                         )}
@@ -256,7 +256,7 @@ export function MatchTimeline({ match }: MatchTimelineProps) {
                 Aucun carton
               </Typography>
               <Typography variant="body-base" theme="muted">
-                Aucun carton n'a été donné pendant ce match.
+                Aucun carton n'a été donné pendant ce combat.
               </Typography>
             </div>
           ) : (
@@ -333,13 +333,13 @@ export function MatchTimeline({ match }: MatchTimelineProps) {
                                   <li className="flex items-center gap-2">
                                     <div className="h-1.5 w-1.5 rounded-full bg-red-500" />
                                     <Typography variant="body-sm">
-                                      Exclusion immédiate du match
+                                      Exclusion immédiate du combat
                                     </Typography>
                                   </li>
                                   <li className="flex items-center gap-2">
                                     <div className="h-1.5 w-1.5 rounded-full bg-red-500" />
                                     <Typography variant="body-sm">
-                                      Suspension possible pour le prochain match
+                                      Suspension possible pour le prochain combat
                                     </Typography>
                                   </li>
                                 </>

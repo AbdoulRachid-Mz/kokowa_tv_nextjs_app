@@ -15,7 +15,7 @@ export function ChapterApi() {
               <li>• <code>/api/auth/*</code> : Gestion des sessions Firebase</li>
               <li>• <code>/api/upload</code> : Upload de fichiers vers Firebase Storage</li>
               <li>• <code>/api/admin/*</code> : Actions d'administration système</li>
-              <li>• <code>/api/live/*</code> : Endpoints de supervision des matchs</li>
+              <li>• <code>/api/live/*</code> : Endpoints de supervision des combats</li>
               <li>• Utilisée par l'interface web Next.js uniquement</li>
             </ul>
           </div>

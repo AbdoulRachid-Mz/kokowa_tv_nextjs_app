@@ -122,7 +122,7 @@ export default function NotificationsPage() {
       label: "Type",
       options: [
         { value: "all", label: "Tous" },
-        { value: "match_update", label: "Match" },
+        { value: "match_update", label: "Combat" },
         { value: "fighter_update", label: "Lutteur" },
         { value: "competition_update", label: "Compétition" },
         { value: "system_notification", label: "Système" },

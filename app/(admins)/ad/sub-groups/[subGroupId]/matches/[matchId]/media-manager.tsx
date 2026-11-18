@@ -50,7 +50,7 @@ export function MediaManager({
 
   const saveLiveStreamUrl = () => {
     onUpdateMatch({ video_url: localLiveStreamUrl || undefined });
-    toast.success("URL de la vidéo du match sauvegardée");
+    toast.success("URL de la vidéo du combat sauvegardée");
   };
 
   const clearVideoUrl = () => {
@@ -118,7 +118,7 @@ export function MediaManager({
         <div className="space-y-3">
           <Label className="flex items-center gap-2">
             <Globe className="h-4 w-4" />
-            URL de la vidéo (Match)
+            URL de la vidéo (Combat)
           </Label>
 
           <div className="flex gap-2">
@@ -154,7 +154,7 @@ export function MediaManager({
             )}
           </div>
           <Typography variant="body-sm" theme="muted">
-            Lien de streaming en direct pour ce match uniquement
+            Lien de streaming en direct pour ce combat uniquement
           </Typography>
         </div>
       </CardContent>

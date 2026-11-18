@@ -47,13 +47,13 @@ export default function RealtimeAdminPage() {
 
   const handleForceSyncMatch = async () => {
     const id = parseInt(syncMatchId);
-    if (isNaN(id)) return toast.error('ID de match invalide');
+    if (isNaN(id)) return toast.error('ID de combat invalide');
 
     setIsSyncing(true);
     try {
       const result = await forceSyncMatch(id);
       if (result.success) {
-        toast.success(`✅ Match ${id} synchronisé avec RTDB`);
+        toast.success(`✅ Combat ${id} synchronisé avec RTDB`);
         await loadStats();
       } else {
         toast.error(`Erreur: ${result.error}`);
@@ -168,7 +168,7 @@ export default function RealtimeAdminPage() {
                   ) : (
                     <Zap className="h-4 w-4 mr-2" />
                   )}
-                  Synchroniser Match
+                  Synchroniser Combat
                 </Button>
               </CardContent>
             </Card>

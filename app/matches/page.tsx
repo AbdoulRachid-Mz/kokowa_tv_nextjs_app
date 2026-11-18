@@ -372,10 +372,10 @@ function MatchesContent() {
                 ) : matchesByStatus.live.length === 0 ? (
                   <div className="text-center py-12">
                     <Typography variant="h4" className="mb-4">
-                      Aucun match en direct
+                      Aucun combat en direct
                     </Typography>
                     <Typography variant="body-base" theme="muted">
-                      Aucun match n'est actuellement en cours.
+                      Aucun combat n'est actuellement en cours.
                     </Typography>
                   </div>
                 ) : viewMode === "grid" ? (
@@ -398,10 +398,10 @@ function MatchesContent() {
                 ) : matchesByStatus.upcoming.length === 0 ? (
                   <div className="text-center py-12">
                     <Typography variant="h4" className="mb-4">
-                      Aucun match à venir
+                      Aucun combat à venir
                     </Typography>
                     <Typography variant="body-base" theme="muted">
-                      Aucun match n'est programmé pour le moment.
+                      Aucun combat n'est programmé pour le moment.
                     </Typography>
                   </div>
                 ) : viewMode === "grid" ? (
@@ -424,10 +424,10 @@ function MatchesContent() {
                 ) : matchesByStatus.completed.length === 0 ? (
                   <div className="text-center py-12">
                     <Typography variant="h4" className="mb-4">
-                      Aucun match terminé
+                      Aucun combat terminé
                     </Typography>
                     <Typography variant="body-base" theme="muted">
-                      Aucun match n'a été terminé récemment.
+                      Aucun combat n'a été terminé récemment.
                     </Typography>
                   </div>
                 ) : viewMode === "grid" ? (
@@ -502,7 +502,7 @@ export default function MatchesPage() {
         <div className="container mx-auto px-4 py-12 text-center">
           <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary mb-4" />
           <Typography variant="body-base" theme="muted">
-            Chargement des matches...
+            Chargement des combats...
           </Typography>
         </div>
       }

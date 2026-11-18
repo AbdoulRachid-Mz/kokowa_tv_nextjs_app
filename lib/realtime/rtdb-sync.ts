@@ -169,14 +169,14 @@ export async function syncEditionLiveMatch(
       update.liveMatch = liveMatchInfo;
     }
     await withTimeout(ref.update(update), 8000, "rtdb syncEditionLiveMatch");
-    console.log(`✅ RTDB liveMatch sync for edition ${editionId}: ${liveMatchInfo ? `match ${liveMatchInfo.matchId}` : 'cleared'}`);
+    console.log(`✅ RTDB liveMatch sync for edition ${editionId}: ${liveMatchInfo ? `combat ${liveMatchInfo.matchId}` : 'cleared'}`);
   } catch (error) {
     console.error(`❌ RTDB syncEditionLiveMatch failed for edition ${editionId}:`, error);
   }
 }
 
 /**
- * Supprime un match de RTDB
+ * Supprime un combat de RTDB
  */
 export async function deleteRealtimeMatchDocument(
   matchId: number,
@@ -189,14 +189,14 @@ export async function deleteRealtimeMatchDocument(
       `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}/matches/${matchId}`
     );
     await ref.remove();
-    console.log(`🗑️ RTDB: match ${matchId} supprimé (edition ${editionId}, subGroup ${subGroupId})`);
+    console.log(`🗑️ RTDB: combat ${matchId} supprimé (edition ${editionId}, subGroup ${subGroupId})`);
   } catch (error) {
-    console.error(`❌ RTDB delete failed for match ${matchId}:`, error);
+    console.error(`❌ RTDB delete failed for combat ${matchId}:`, error);
   }
 }
 
 /**
- * Supprime un sous-groupe (y compris ses matchs imbriqués)
+ * Supprime un sous-groupe (y compris ses combats imbriqués)
  */
 export async function deleteRealtimeSubGroupDocument(
   subGroupId: number,

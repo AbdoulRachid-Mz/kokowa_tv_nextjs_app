@@ -568,7 +568,7 @@ export default function SubGroupForm({
               <div className="space-y-2">
                 <Label htmlFor="nulls" className="flex items-center gap-1">
                   <Divide className="h-4 w-4" />
-                  Matchs Nuls
+                  Combats Nuls
                 </Label>
                 <Input
                   id="nulls"

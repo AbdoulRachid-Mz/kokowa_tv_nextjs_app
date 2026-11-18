@@ -273,7 +273,7 @@ export default function StandaloneMatchDetailPage() {
     } else if (mergedMatch?.fighter2_id === fighterId) {
       updates.fighter2_id = null;
     } else {
-      toast.error("Lutteur non trouvé dans ce match");
+      toast.error("Lutteur non trouvé dans ce combat");
       setIsDialogLoading(false);
       return;
     }
@@ -419,7 +419,7 @@ export default function StandaloneMatchDetailPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <RefreshCw className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-          <Typography variant="h4">Chargement du match...</Typography>
+          <Typography variant="h4">Chargement du combat...</Typography>
         </div>
       </div>
     );
@@ -450,7 +450,7 @@ export default function StandaloneMatchDetailPage() {
             <Typography className="flex max-md:flex-col gap-2">
               <span className="font-bold">
                 {isEliminationPhase && subGroup?.group?.name
-                  ? `${subGroup.group.name} - Match #${mergedMatch?.match_number || parsedMatchId}`
+                  ? `${subGroup.group.name} - Combat #${mergedMatch?.match_number || parsedMatchId}`
                   : subGroup.name}
               </span>
               <span className="max-md:hidden">-</span>
@@ -464,7 +464,7 @@ export default function StandaloneMatchDetailPage() {
             </Typography>
           ) : (
             <Typography className="font-bold">
-              Match #{mergedMatch?.match_number || parsedMatchId}
+              Combat #{mergedMatch?.match_number || parsedMatchId}
             </Typography>
           )}
 
@@ -504,7 +504,7 @@ export default function StandaloneMatchDetailPage() {
             </Button>
             <div className="text-center">
               <Typography variant="h3" weight="bold">
-                Match #{mergedMatch?.match_number || "N/A"}
+                Combat #{mergedMatch?.match_number || "N/A"}
               </Typography>
               <div className="flex items-center gap-2 justify-center mt-1">
                 <Badge variant="outline" className="text-xs">
@@ -744,7 +744,7 @@ export default function StandaloneMatchDetailPage() {
           <DialogHeader>
             <DialogTitle>
               {confirmDialog.type === "winner" && "Confirmer la victoire"}
-              {confirmDialog.type === "draw" && "Confirmer le match nul"}
+              {confirmDialog.type === "draw" && "Confirmer le combat nul"}
               {confirmDialog.type === "cancel" && "Confirmer l'annulation"}
               {confirmDialog.type === "reclamation" &&
                 "Confirmer la réclamation"}
@@ -760,17 +760,17 @@ export default function StandaloneMatchDetailPage() {
             {confirmDialog.type === "winner" &&
               "Êtes-vous sûr de vouloir désigner ce lutteur vainqueur ?"}
             {confirmDialog.type === "draw" &&
-              "Êtes-vous sûr de vouloir déclarer le match nul ?"}
+              "Êtes-vous sûr de vouloir déclarer le combat nul ?"}
             {confirmDialog.type === "cancel" &&
-              "Êtes-vous sûr de vouloir annuler ce match ?"}
+              "Êtes-vous sûr de vouloir annuler ce combat ?"}
             {confirmDialog.type === "reclamation" &&
               "Êtes-vous sûr de vouloir activer le mode réclamation ?"}
             {confirmDialog.type === "reset" &&
-              "Êtes-vous sûr de vouloir réinitialiser le match ? Cette action est irréversible."}
+              "Êtes-vous sûr de vouloir réinitialiser le combat ? Cette action est irréversible."}
             {confirmDialog.type === "replaceFighter" &&
               "Êtes-vous sûr de vouloir remplacer ce lutteur ?"}
             {confirmDialog.type === "removeFighter" &&
-              "Êtes-vous sûr de vouloir retirer ce lutteur du match ? Cette action peut être annulée en réassignant un lutteur."}
+              "Êtes-vous sûr de vouloir retirer ce lutteur du combat ? Cette action peut être annulée en réassignant un lutteur."}
           </p>
           <DialogFooter>
             <Button
@@ -860,11 +860,11 @@ export default function StandaloneMatchDetailPage() {
               console.log("🔍 [DEBUG] Realtime State:");
               console.log("  isConnected (RTDB):", isConnected);
               console.log("  hasLiveMatch (subGroup):", hasLiveMatch);
-              console.log("  match status:", mergedMatch?.status);
+              console.log("  combat status:", mergedMatch?.status);
               console.log("  realtimeMatchData:", realtimeMatchData);
               console.log("  subGroup:", subGroup);
               toast.info(
-                `RTDB: ${isConnected ? "✅ Connecté" : "⏳ En attente"} | Match: ${mergedMatch?.status}`,
+                `RTDB: ${isConnected ? "✅ Connecté" : "⏳ En attente"} | Combat: ${mergedMatch?.status}`,
               );
             }}
           >

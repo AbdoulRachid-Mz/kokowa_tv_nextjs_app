@@ -248,7 +248,7 @@ export default function ClientFighterDetailPage({
             <TabsContent value="stats">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Stat
-                  label="Matchs totaux"
+                  label="Combats totaux"
                   value={fighter.total_matches || 0}
                 />
                 <Stat label="Victoires" value={fighter.total_wins || 0} />

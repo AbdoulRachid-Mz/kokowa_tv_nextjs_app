@@ -265,8 +265,8 @@ export function useMatchController({
 
         if (winnerInitialState === "eliminated") {
           updates.notes = match.notes
-            ? `${match.notes}\n⚠️ Attention: Le vainqueur était déjà éliminé avant le match!`
-            : "⚠️ Attention: Le vainqueur était déjà éliminé avant le match!";
+            ? `${match.notes}\n⚠️ Attention: Le vainqueur était déjà éliminé avant le combat!`
+            : "⚠️ Attention: Le vainqueur était déjà éliminé avant le combat!";
         }
       } else {
         updates.match_result =

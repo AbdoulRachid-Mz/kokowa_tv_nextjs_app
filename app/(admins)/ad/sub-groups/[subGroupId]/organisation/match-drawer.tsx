@@ -63,7 +63,7 @@ export function MatchDrawer({
       setIsSaving(true);
       await onEdit(updatedMatch);
     } catch (error) {
-      console.error("Erreur mise à jour match:", error);
+      console.error("Erreur mise à jour combat:", error);
     } finally {
       setIsSaving(false);
     }
@@ -177,7 +177,7 @@ export function MatchDrawer({
       <DrawerContent className="max-h-[90vh]">
         <DrawerHeader>
           <DrawerTitle className="flex items-center justify-between">
-            <span>Match #{match.match_number} - Contrôles</span>
+            <span>Combat #{match.match_number} - Contrôles</span>
             <div className="flex items-center gap-2">
               {isSaving && (
                 <Badge variant="outline" className="text-xs">
@@ -189,7 +189,7 @@ export function MatchDrawer({
               </Badge>
             </div>
           </DrawerTitle>
-          <DrawerDescription>Contrôles globaux du match</DrawerDescription>
+          <DrawerDescription>Contrôles globaux du combat</DrawerDescription>
         </DrawerHeader>
 
         <div className="px-3 overflow-y-auto">
@@ -259,7 +259,7 @@ export function MatchDrawer({
             <CardContent className="p-2">
               <Typography variant="h4" className="mb-3 flex items-center">
                 <Timer className="h-5 w-5 mr-2" />
-                Contrôles du match
+                Contrôles du combat
               </Typography>
 
               {/* Timer et pauses */}
@@ -319,10 +319,10 @@ export function MatchDrawer({
                 </Button>
               </div>
 
-              {/* Statut du match */}
+              {/* Statut du combat */}
               <div className="space-y-2">
                 <Typography variant="body-sm" weight="medium">
-                  Statut du match
+                  Statut du combat
                 </Typography>
                 <Select
                   value={match.status}

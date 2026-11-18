@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     template: "%s | Lutte Traditionnelle"
   },
   description: "Plateforme de gestion des compétitions de lutte traditionnelle",
-  keywords: ["lutte", "traditionnelle", "compétition", "sport", "match", "lutteur"],
+  keywords: ["lutte", "traditionnelle", "compétition", "sport", "match", "lutteur", "combat"],
   authors: [{ name: "Lutte Traditionnelle" }],
   creator: "Lutte Traditionnelle",
   publisher: "Lutte Traditionnelle",

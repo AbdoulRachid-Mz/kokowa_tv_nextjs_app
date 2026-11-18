@@ -32,6 +32,7 @@ import { CreateSubGroupDialog } from "@/components/phase-groups/create-sub-group
 import { CardStats } from "@/components/entities/card-stats";
 import { MatchCard, SubGroupCard } from "@/components/entities/entity-cards";
 import { DeleteButton } from "@/components/shared/delete-button";
+import { StatsCarousel } from "@/components/shared/stats-carousel";
 
 export default function PhaseGroupDetailPage() {
   const params = useParams();
@@ -99,6 +100,7 @@ export default function PhaseGroupDetailPage() {
     return [
       {
         value: group?.sub_groups_count || 0,
+        label: "Total de Rencontres",
         icon: Layers,
         color: "text-blue-600",
         description: "Rencontres créées",
@@ -188,7 +190,7 @@ export default function PhaseGroupDetailPage() {
     <div className="space-y-6">
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 max-lg:flex-wrap">
           <Button
             variant="outline"
             size="sm"
@@ -252,17 +254,22 @@ export default function PhaseGroupDetailPage() {
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-        {getGroupStats().map((stat, index) => (
-          <CardStats
-            key={index}
-            label={stat.label ?? ""}
-            icon={stat.icon}
-            value={stat.value}
-            color={stat.color}
-          />
-        ))}
-      </div>
+      <StatsCarousel
+        mode="carousel"
+        gap={6}
+        itemsPerView={{
+          mobile: 1,
+          md: 2,
+          lg: 3,
+          xl: 4,
+        }}
+        data={getGroupStats().map((stat) => ({
+          label: stat.label ?? "",
+          icon: stat.icon,
+          value: stat.value,
+          color: stat.color,
+        }))}
+      />
 
       {/* Informations et navigation */}
       <Tabs
@@ -380,7 +387,7 @@ export default function PhaseGroupDetailPage() {
                   onClick={handleManageGroupMatches}
                 >
                   <Swords className="h-4 w-4 mr-2" />
-                  Gérer les Matchs
+                  Gérer les Combats
                 </Button> */}
                 {/* <Button
                   variant="outline"
@@ -439,7 +446,7 @@ export default function PhaseGroupDetailPage() {
                         className="mb-2"
                       >
                         Ordre {subGroup.sub_group_order} •{" "}
-                        {subGroup.matches?.length || 0} match(s) {" "}
+                        {subGroup.matches?.length || 0} combat(s) {" "}
                         {subGroup.period && (
                     <Badge variant="outline">
                       {subGroup.period === "matin" ? "Matin" : "Soir"}
@@ -501,11 +508,11 @@ export default function PhaseGroupDetailPage() {
           />
         </TabsContent>
 
-        {/* Matchs du groupe */}
+        {/* Combats du groupe */}
         <TabsContent value="matches">
           <Card>
             <CardHeader>
-              <CardTitle>Matchs du Groupe ({(groupMatches || []).length})</CardTitle>
+              <CardTitle>Combats du Groupe ({(groupMatches || []).length})</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoadingGroupMatches ? (
@@ -514,14 +521,14 @@ export default function PhaseGroupDetailPage() {
                 <div className="text-center py-12">
                   <Swords className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <Typography variant="h4" theme="muted" className="mb-2">
-                    Aucun match pour ce groupe
+                    Aucun combat pour ce groupe
                   </Typography>
                   <Typography variant="body-sm" theme="muted" className="mb-4">
-                    Créez des matchs via l'onglet Rencontres ou le bouton ci-dessous
+                    Créez des combats via l'onglet Rencontres ou le bouton ci-dessous
                   </Typography>
                   <Button onClick={handleManageGroupMatches}>
                     <Swords className="h-4 w-4 mr-2" />
-                    Gérer les Matchs
+                    Gérer les Combats
                   </Button>
                 </div>
               ) : (

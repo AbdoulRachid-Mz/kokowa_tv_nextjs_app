@@ -40,8 +40,8 @@ export const publicMenuGroups: HeaderMenuGroup[] = [
     items: [
       { title: "Compétitions", url: "/competitions", icon: TrophyIcon, description: "Toutes les compétitions" },
       { title: "Editions", url: "/editions", icon: TrophyIcon, description: "Toutes les éditions" },
-      { title: "Matchs en direct", url: "/matches?live=true", icon: CalendarDays, description: "Matchs en direct" },
-      { title: "Calendrier", url: "/matches", icon: Calendar, description: "Calendrier des matchs" },
+      { title: "Combats en direct", url: "/matches?live=true", icon: CalendarDays, description: "Combats en direct" },
+      { title: "Calendrier", url: "/matches", icon: Calendar, description: "Calendrier des combats" },
     ]
   },
   {
@@ -105,7 +105,7 @@ export const adminMenuGroups: HeaderMenuGroup[] = [
       { title: "Compétitions", url: "/ad/competitions", icon: Trophy, description: "Gérer les compétitions", requiresAdmin: true },
       { title: "Éditions", url: "/ad/editions", icon: Calendar, description: "Éditions et saisons", requiresAdmin: true },
       { title: "Phases", url: "/ad/phases", icon: Activity, description: "Phases et groupes", requiresAdmin: true },
-      { title: "Matchs", url: "/ad/matches", icon: Swords, description: "Matchs et résultats", requiresAdmin: true },
+      { title: "Combats", url: "/ad/matches", icon: Swords, description: "Combats et résultats", requiresAdmin: true },
     ]
   },
   {

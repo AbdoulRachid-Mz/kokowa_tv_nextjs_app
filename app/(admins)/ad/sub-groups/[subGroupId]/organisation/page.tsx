@@ -204,14 +204,14 @@ export default function SubGroupOrganizationPage() {
       queryClient.invalidateQueries({ queryKey: ["sub-group-org", id] });
       return response;
     } catch (error: any) {
-      console.error("Erreur création match:", error);
-      const errorMessage = error?.message || "Erreur lors de la création du match";
+      console.error("Erreur création combat:", error);
+      const errorMessage = error?.message || "Erreur lors de la création du combat";
       toast.error(errorMessage);
       throw error;
     }
   };
 
-  // Fonction pour créer plusieurs matchs en une fois
+  // Fonction pour créer plusieurs combats en une fois
   const handleBulkCreateMatches = async (
     matchesToCreate: { fighter1Id: number; fighter2Id: number }[]
   ) => {
@@ -226,11 +226,11 @@ export default function SubGroupOrganizationPage() {
 
       await Promise.all(promises);
 
-      toast.success(`${promises.length} match(s) créé(s) avec succès`);
+      toast.success(`${promises.length} combat(s) créé(s) avec succès`);
       setShowBulkCreator(false); // Masquer le créateur en masse
     } catch (error) {
       console.error("Erreur création en masse:", error);
-      toast.error("Erreur lors de la création des matchs");
+      toast.error("Erreur lors de la création des combats");
     } finally {
       setIsBulkCreating(false);
     }
@@ -253,17 +253,17 @@ export default function SubGroupOrganizationPage() {
     try {
       // Validation des données
       if (editFormData.match_number < 1) {
-        toast.error("Le numéro de match doit être supérieur à 0");
+        toast.error("Le numéro de combat doit être supérieur à 0");
         return;
       }
 
-      // Vérifier si le numéro de match est déjà utilisé par un autre match
+      // Vérifier si le numéro de combat est déjà utilisé par un autre combat
       const existingMatchWithNumber = matches.find(
         (m) => m.match_number === editFormData.match_number && m.id !== matchToEdit.id
       );
 
       if (existingMatchWithNumber) {
-        toast.error(`Le match #${editFormData.match_number} existe déjà`);
+        toast.error(`Le combat #${editFormData.match_number} existe déjà un autre combat`);
         return;
       }
 
@@ -275,16 +275,16 @@ export default function SubGroupOrganizationPage() {
       });
 
       if (updatedMatch) {
-        toast.success("Match mis à jour avec succès");
+        toast.success("Combat mis à jour avec succès");
         queryClient.invalidateQueries({ queryKey: ["sub-group-org", id] });
         setMatchToEdit(null);
         setEditFormData({ status: "", notes: "", match_number: 0, fighter1_id: 0, fighter2_id: 0 });
       } else {
-        toast.error("Erreur lors de la mise à jour du match");
+        toast.error("Erreur lors de la mise à jour du combat");
       }
     } catch (error) {
-      console.error("Erreur édition match:", error);
-      toast.error("Erreur lors de l'édition du match");
+      console.error("Erreur édition combat:", error);
+      toast.error("Erreur lors de l'édition du combat");
     }
   };
 
@@ -297,12 +297,12 @@ export default function SubGroupOrganizationPage() {
 
     try {
       await api.delete(`/api/matches/${matchToDelete}`);
-      toast.success("Match supprimé");
+      toast.success("Combat supprimé");
       queryClient.invalidateQueries({ queryKey: ["sub-group-org", id] });
       setMatchToDelete(null);
     } catch (error) {
-      console.error("Erreur suppression match:", error);
-      toast.error("Erreur lors de la suppression du match");
+      console.error("Erreur suppression combat:", error);
+      toast.error("Erreur lors de la suppression du combat");
     }
   };
 
@@ -405,10 +405,10 @@ export default function SubGroupOrganizationPage() {
           <div className="flex justify-between items-center">
             <div>
               <Typography variant="h5" weight="bold" className="mb-1">
-                Création multiple de matchs
+                Création multiple de combats
               </Typography>
               <Typography variant="body-sm" theme="muted">
-                Créez plusieurs matchs en une seule fois
+                Créez plusieurs combats en une seule fois
               </Typography>
             </div>
             <div className="flex items-center gap-2">
@@ -436,10 +436,10 @@ export default function SubGroupOrganizationPage() {
                 for (const match of matches) {
                   await handleCreateMatch(match.fighter1Id, match.fighter2Id);
                 }
-                toast.success(`${matches.length} match(s) créé(s) avec succès`);
+                toast.success(`${matches.length} combat(s) créé(s) avec succès`);
                 setShowBulkCreator(false);
               } catch (error) {
-                toast.error("Erreur lors de la création des matchs");
+                toast.error("Erreur lors de la création des combats");
               } finally {
                 setIsBulkCreating(false);
               }
@@ -447,13 +447,13 @@ export default function SubGroupOrganizationPage() {
             onCancel={() => setShowBulkCreator(false)}
           />
 
-          {/* Aperçu des matchs existants */}
+          {/* Aperçu des combats existants */}
           {matches.length > 0 && (
             <Card className="mt-4">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <Typography variant="body-lg" weight="medium">
-                    Matchs existants ({matches.length})
+                    Combats existants ({matches.length})
                   </Typography>
                   <Badge variant="secondary">
                     {usedFighterIds.size} lutteurs déjà utilisés
@@ -513,7 +513,7 @@ export default function SubGroupOrganizationPage() {
                       theme="muted"
                       className="text-center"
                     >
-                      ... et {matches.length - 5} autres matchs
+                      ... et {matches.length - 5} autres combats
                     </Typography>
                   )}
                 </div>
@@ -539,7 +539,7 @@ export default function SubGroupOrganizationPage() {
         <div className="space-y-4 col-span-6">
           <div className="flex justify-between items-center">
             <Typography variant="h5" weight="bold">
-              Matchs Programmes ({matches.length})
+              Combats Programmes ({matches.length})
             </Typography>
             {!showBulkCreator && matches.length > 0 && (
               <Badge variant="outline">
@@ -609,10 +609,10 @@ export default function SubGroupOrganizationPage() {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              Modifier le match #{matchToEdit?.match_number}
+              Modifier le combat #{matchToEdit?.match_number}
             </DialogTitle>
             <DialogDescription>
-              Ajustez les détails du match. Les modifications seront prises en compte immédiatement.
+              Ajustez les détails du combat. Les modifications seront prises en compte immédiatement.
             </DialogDescription>
           </DialogHeader>
 
@@ -661,7 +661,7 @@ export default function SubGroupOrganizationPage() {
                   >
                     {matchToEdit.match_result === 'fighter1_win' && '🏆 Victoire ' + matchToEdit.fighter1?.first_name?.split(' ')[0]}
                     {matchToEdit.match_result === 'fighter2_win' && '🏆 Victoire ' + matchToEdit.fighter2?.first_name?.split(' ')[0]}
-                    {matchToEdit.match_result === 'draw' && '🤝 Match nul'}
+                    {matchToEdit.match_result === 'draw' && '🤝 Combat nul'}
                     {matchToEdit.match_result === 'cancelled' && '❌ Annulé'}
                     {matchToEdit.match_result === 'postponed' && '⏱️ Reporté'}
                   </Badge>
@@ -672,7 +672,7 @@ export default function SubGroupOrganizationPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="match_number" className="text-sm font-medium">
-                    Numéro du match
+                    Numéro du combat
                   </Label>
                   <Input
                     id="match_number"
@@ -688,7 +688,7 @@ export default function SubGroupOrganizationPage() {
                     className="col-span-3"
                   />
                   <Typography variant="caption1" theme="muted">
-                    Ordre d'affichage des matchs
+                    Ordre d'affichage des combats
                   </Typography>
                 </div>
 
@@ -750,7 +750,7 @@ export default function SubGroupOrganizationPage() {
               {matchToEdit.total_duration && matchToEdit.total_duration !== '00:00:00' && (
                 <div className="p-3 bg-muted/20 rounded-lg">
                   <Typography variant="body-sm" weight="medium" className="mb-2">
-                    ⏱️ Durée du match
+                    ⏱️ Durée du combat
                   </Typography>
                   <Typography variant="body-base">
                     {matchToEdit.total_duration}
@@ -947,11 +947,11 @@ function MatchesColumn({
           {matches.length === 0 ? (
             <div className="text-center py-8">
               <Typography variant="h4" theme="muted" className="mb-2">
-                Aucun match programmé
+                Aucun combat programmé
               </Typography>
               <Typography variant="body-sm" theme="muted">
                 Utilisez le bouton "Création multiple" pour créer plusieurs
-                matchs
+                combats
               </Typography>
             </div>
           ) : (

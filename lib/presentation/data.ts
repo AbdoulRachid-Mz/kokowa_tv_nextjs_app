@@ -120,7 +120,7 @@ export const PRESENTATION_DATA = {
       domaine: "Communauté & Interaction",
       statut: "✅ Opérationnel",
       items: [
-        "Commentaires et tchat en direct sur les matchs",
+        "Commentaires et tchat en direct sur les combats",
         "Likes et favoris sur articles, vidéos, lutteurs",
         "Notifications push et in-app",
         "Profil utilisateur et gestion du compte",
@@ -132,7 +132,7 @@ export const PRESENTATION_DATA = {
       items: [
         "API REST dédiée documentée (/api/mobile/*)",
         "Abonnement temps réel Firebase RTDB pour les scores live",
-        "Catalogue des lutteurs, régions, éditions et matchs",
+        "Catalogue des lutteurs, régions, éditions et combats",
         "Flux d'actualités et commentaires",
         "Interactions utilisateur (likes, favoris) sécurisées",
       ],

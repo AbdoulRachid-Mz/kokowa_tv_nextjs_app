@@ -336,7 +336,7 @@ export default function EliminationMatchOrganisationPage() {
         referee_id: refereeId,
       });
 
-      toast.success("Match créé avec succès !");
+      toast.success("Combat créé avec succès !");
 
       // Invalider les caches pour mettre à jour l'interface
       await Promise.all([
@@ -354,8 +354,8 @@ export default function EliminationMatchOrganisationPage() {
         }),
       ]);
     } catch (error: any) {
-      console.error("Erreur création match élimination:", error);
-      toast.error(error.message || "Erreur lors de la création du match");
+      console.error("Erreur création combat élimination:", error);
+      toast.error(error.message || "Erreur lors de la création du combat");
     } finally {
       setIsCreating(false);
     }
@@ -400,13 +400,13 @@ export default function EliminationMatchOrganisationPage() {
       ]);
     } catch (error: any) {
       console.error("Erreur création multiple:", error);
-      toast.error(error.message || "Erreur lors de la création des matchs");
+      toast.error(error.message || "Erreur lors de la création des combats");
     } finally {
       setIsCreating(false);
     }
   };
 
-  // Édition d'un match
+  // Édition d'un combat
   const handleEditMatch = (match: Match) => {
     setMatchToEdit(match);
     setEditFormData({
@@ -426,13 +426,13 @@ export default function EliminationMatchOrganisationPage() {
         match_number: editFormData.match_number,
       });
 
-      toast.success("Match mis à jour");
+      toast.success("Combat mis à jour");
       queryClient.invalidateQueries({
         queryKey: ["phase-group-matches", parsedGroupId],
       });
       setMatchToEdit(null);
     } catch (error: any) {
-      console.error("Erreur mise à jour match:", error);
+      console.error("Erreur mise à jour combat:", error);
       toast.error(error.message || "Erreur lors de la modification");
     }
   };
@@ -443,14 +443,14 @@ export default function EliminationMatchOrganisationPage() {
 
     try {
       await api.delete(`/api/matches/${matchToDelete}`);
-      toast.success("Match supprimé");
+      toast.success("Combat supprimé");
       await queryClient.invalidateQueries({
         queryKey: ["phase-group-matches", parsedGroupId],
       });
       setMatchToDelete(null);
     } catch (error) {
-      console.error("Erreur suppression match:", error);
-      toast.error("Erreur lors de la suppression du match");
+      console.error("Erreur suppression combat:", error);
+      toast.error("Erreur lors de la suppression du combat");
     }
   };
 
@@ -461,7 +461,7 @@ export default function EliminationMatchOrganisationPage() {
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <RefreshCw className="h-10 w-10 animate-spin text-primary" />
         <Typography variant="body-base" theme="muted">
-          Chargement de l'organisation des matchs...
+          Chargement de l'organisation des combats...
         </Typography>
       </div>
     );
@@ -546,7 +546,7 @@ export default function EliminationMatchOrganisationPage() {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <Typography variant="caption1" theme="muted">
-                Matchs du Tour
+                Combats du Tour
               </Typography>
               <Typography variant="h4" weight="bold">
                 {matches.length}
@@ -663,7 +663,7 @@ export default function EliminationMatchOrganisationPage() {
 
       {/* Liste des Combats Déjà Programmés avec EntityList */}
       <EntityList<Match>
-        title="Matchs de la Phase"
+        title="Combats de la Phase"
         description={`Combats organisés pour cette phase (${matches.length})`}
         entityType="matches"
         data={paginatedMatches}
@@ -708,7 +708,7 @@ export default function EliminationMatchOrganisationPage() {
             <div>
               <Typography variant="h5" weight="bold" className="flex items-center gap-2">
                 <Swords className="h-5 w-5 text-primary" />
-                Matchs de la Phase ({matches.length})
+                Combats de la Phase ({matches.length})
               </Typography>
               <Typography variant="body-sm" theme="muted">
                 Consultez, supervisez et organisez les combats de ce tour d'élimination
@@ -895,7 +895,7 @@ export default function EliminationMatchOrganisationPage() {
                     onClick={() => router.push(`/ad/matches/${match.id}`)}
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
-                    Superviser le Match #{match.match_number}
+                    Superviser le Combat #{match.match_number}
                   </Button>
                 </div>
               </CardContent>
@@ -904,11 +904,11 @@ export default function EliminationMatchOrganisationPage() {
         }}
       />
 
-      {/* Dialog d'Édition du Match */}
+      {/* Dialog d'Édition du Combat */}
       <Dialog open={!!matchToEdit} onOpenChange={(open) => !open && setMatchToEdit(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Modifier le Match #{matchToEdit?.match_number}</DialogTitle>
+            <DialogTitle>Modifier le Combat #{matchToEdit?.match_number}</DialogTitle>
             <DialogDescription>
               Modifiez les paramètres du combat sélectionné.
             </DialogDescription>
@@ -917,7 +917,7 @@ export default function EliminationMatchOrganisationPage() {
           <div className="space-y-4 py-2">
             <div className="space-y-1">
               <Label htmlFor="match-number" className="text-xs">
-                Numéro du match
+                Numéro du combat
               </Label>
               <Input
                 id="match-number"
@@ -995,7 +995,7 @@ export default function EliminationMatchOrganisationPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer ce match ? Cette action est irréversible.
+              Êtes-vous sûr de vouloir supprimer ce combat ? Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

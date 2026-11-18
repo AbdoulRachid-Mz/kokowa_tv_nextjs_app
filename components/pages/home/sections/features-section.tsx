@@ -25,8 +25,8 @@ export function FeaturesSection() {
       features: ["Fiches détaillées", "Palmarès", "Transferts"]
     },
     {
-      title: "Matchs en Direct",
-      description: "Diffusez et suivez les matchs en direct avec commentaires et statistiques en temps réel.",
+      title: "Combats en Direct",
+      description: "Diffusez et suivez les combats en direct avec commentaires et statistiques en temps réel.",
       icon: Target,
       color: "text-purple-600",
       features: ["Streaming live", "Statistiques live", "Chat interactif"]
@@ -74,7 +74,7 @@ export function FeaturesSection() {
             </TabsTrigger>
             <TabsTrigger value="matches" className="gap-2">
               <Target className="h-4 w-4" />
-              Matchs
+              Combats
             </TabsTrigger>
             <TabsTrigger value="admin" className="gap-2">
               <Shield className="h-4 w-4" />

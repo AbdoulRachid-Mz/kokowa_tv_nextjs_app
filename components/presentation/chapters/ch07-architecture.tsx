@@ -96,7 +96,7 @@ export function ChapterArchitecture() {
           <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
             <h3 className="font-semibold text-green-700 dark:text-green-300 mb-2">🖥️ Server Components (RSC)</h3>
             <ul className="text-sm space-y-1 text-muted-foreground">
-              <li>• Pages de consultation publique (lutteurs, matchs, articles)</li>
+              <li>• Pages de consultation publique (lutteurs, combats, articles)</li>
               <li>• Layouts administrateur (protection RBAC côté serveur)</li>
               <li>• Chargement initial des données via Server Actions</li>
               <li>• Génération des métadonnées SEO (<code>generateMetadata</code>)</li>

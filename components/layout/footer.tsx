@@ -31,7 +31,7 @@ export function Footer() {
     { label: "Compétitions", href: "/competitions" },
     { label: "Lutteurs", href: "/fighters" },
     { label: "Régions", href: "/regions" },
-    { label: "Matchs", href: "/matches" },
+    { label: "Combats", href: "/matches" },
     { label: "Médias", href: "/media" },
   ];
 

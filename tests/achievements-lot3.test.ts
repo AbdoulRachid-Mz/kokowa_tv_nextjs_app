@@ -49,7 +49,7 @@ describe("LOT 3 - Automatisation des Palmarès Tests", () => {
     expect(descRegion).toContain("Tahoua");
   });
 
-  it("syncMatchOfficialAchievements gère gracieusement un match inexistant sans crasher", async () => {
+  it("syncMatchOfficialAchievements gère gracieusement un combat inexistant sans crasher", async () => {
     const res = await syncMatchOfficialAchievements(99999999);
     expect(res.success).toBe(false);
     expect(res.reason).toContain("non trouvé");

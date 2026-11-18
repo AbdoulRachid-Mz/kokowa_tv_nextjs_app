@@ -86,14 +86,14 @@ export function MatchStatistics({ match }: MatchStatisticsProps) {
         <CardHeader>
           <CardTitle>Statistiques</CardTitle>
           <CardDescription>
-            Statistiques détaillées du match
+            Statistiques détaillées du combat
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
             <TargetIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <Typography variant="body-base" theme="muted">
-              Les statistiques ne sont pas disponibles pour ce match
+              Les statistiques ne sont pas disponibles pour ce combat
             </Typography>
           </div>
         </CardContent>
@@ -411,7 +411,7 @@ export function MatchStatistics({ match }: MatchStatisticsProps) {
             <CardHeader>
               <CardTitle>Répartition des attaques</CardTitle>
               <CardDescription>
-                Types d'attaques utilisés pendant le match
+                Types d'attaques utilisés pendant le combat
               </CardDescription>
             </CardHeader>
             <CardContent>

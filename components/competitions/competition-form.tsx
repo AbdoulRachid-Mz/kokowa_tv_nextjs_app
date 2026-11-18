@@ -388,7 +388,7 @@ export default function CompetitionForm({
             <AlertDescription>
               {competition
                 ? "Modifiez les informations de la compétition. Les changements seront visibles immédiatement."
-                : "La compétition sera créée avec le statut 'À venir'. Vous pourrez ensuite ajouter des éditions, phases et matchs."}
+                : "La compétition sera créée avec le statut 'À venir'. Vous pourrez ensuite ajouter des éditions, phases et combats."}
             </AlertDescription>
           </Alert>
 

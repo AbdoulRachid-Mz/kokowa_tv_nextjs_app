@@ -62,7 +62,7 @@ export function AwardAchievementButton({ match, fighterSlot }: AwardAchievementB
         year: year,
         position: position,
         type: type,
-        description: `Palmarès attribué manuellement pour le match #${match?.match_number}.`,
+        description: `Palmarès attribué manuellement pour le combat #${match?.match_number}.`,
         medal_image: null,
       });
       if (result?.success) {
@@ -124,7 +124,7 @@ export function AwardAchievementButton({ match, fighterSlot }: AwardAchievementB
                 <span className="text-muted-foreground">Position :</span> {posLabel}
               </div>
               <div>
-                <span className="text-muted-foreground">Match :</span> #{match?.match_number}
+                <span className="text-muted-foreground">Combat :</span> #{match?.match_number}
               </div>
             </div>
           </div>

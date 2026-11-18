@@ -11,7 +11,7 @@ export function CtaSection() {
   const benefits = [
     "Gestion complète des compétitions",
     "Statistiques en temps réel",
-    "Streaming des matchs en direct",
+    "Streaming des combats en direct",
     "Communauté active",
     "Support technique 24/7",
     "Formations gratuites"

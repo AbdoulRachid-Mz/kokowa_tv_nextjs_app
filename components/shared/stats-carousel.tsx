@@ -96,7 +96,7 @@ export function StatsCarousel({
         key={index}
         {...item}
         // bgType={`gradient-${((index % 6) + 1) as 1 | 2 | 3 | 4 | 5 | 6}`}
-        className={cn("w-full h-full", item.className)}
+        className={cn("w-full h-full border-t-primary border-b-green-500 border-2", item.className)}
       />
     ))
   }

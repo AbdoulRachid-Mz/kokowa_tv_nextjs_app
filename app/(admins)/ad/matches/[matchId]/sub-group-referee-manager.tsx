@@ -74,7 +74,7 @@ export function SubGroupRefereeManager({
         if (!subGroup?.id) throw new Error("Sous-groupe non trouvé");
         return await assignSubGroupReferee(subGroup.id, refereeId);
       } else {
-        if (!match?.id) throw new Error("Match non trouvé");
+        if (!match?.id) throw new Error("Combat non trouvé");
         return await assignMatchReferee(match.id, refereeId);
       }
     },
@@ -153,11 +153,11 @@ export function SubGroupRefereeManager({
             <Typography variant="caption2" theme="muted" className="block text-[11px] leading-relaxed pt-1">
               {isGroupPhase ? (
                 <>
-                  ⚠️ <b>Phase de poule</b> : L'arbitre est affecté au sous-groupe (<code>{subGroup?.name}</code>). Tout changement s'appliquera automatiquement à <b>tous les matchs</b> de cette rencontre.
+                  ⚠️ <b>Phase de poule</b> : L'arbitre est affecté au sous-groupe (<code>{subGroup?.name}</code>). Tout changement s'appliquera automatiquement à <b>tous les combats</b> de cette rencontre.
                 </>
               ) : (
                 <>
-                  ℹ️ <b>Phase éliminatoire</b> : L'arbitre est affecté <b>directement à ce match</b>. La modification de cet arbitre ne modifie pas les autres matchs du même groupe.
+                  ℹ️ <b>Phase éliminatoire</b> : L'arbitre est affecté <b>directement à ce combat</b>. La modification de cet arbitre ne modifie pas les autres combats du même groupe.
                 </>
               )}
             </Typography>
@@ -199,7 +199,7 @@ export function SubGroupRefereeManager({
               <AlertCircle className={`h-5 w-5 ${isGroupPhase ? "text-amber-500" : "text-primary"}`} />
               {isGroupPhase
                 ? "Changement de l'arbitre de la rencontre"
-                : `Affectation de l'arbitre du match #${currentMatchNumber || ""}`}
+                : `Affectation de l'arbitre du combat #${currentMatchNumber || ""}`}
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2 text-sm pt-2">
               {isGroupPhase ? (
@@ -217,7 +217,7 @@ export function SubGroupRefereeManager({
                     Vous affectez un nouvel arbitre pour le <b>combat #{currentMatchNumber || ""}</b>.
                   </p>
                   <p className="p-2.5 bg-primary/10 border border-primary/20 rounded-md text-primary text-xs font-medium">
-                    Cette affectation s'applique <b>uniquement à ce match</b> et ne modifie pas les autres combats du groupe.
+                    Cette affectation s'applique <b>uniquement à ce combat</b> et ne modifie pas les autres combats du groupe.
                   </p>
                 </>
               )}
@@ -242,7 +242,7 @@ export function SubGroupRefereeManager({
               {assignMutation.isPending && (
                 <Loader2 className="h-4 w-4 animate-spin" />
               )}
-              {isGroupPhase ? "Confirmer pour toute la rencontre" : "Confirmer pour ce match"}
+              {isGroupPhase ? "Confirmer pour toute la rencontre" : "Confirmer pour ce combat"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

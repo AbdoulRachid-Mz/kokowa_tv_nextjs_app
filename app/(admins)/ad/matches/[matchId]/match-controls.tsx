@@ -129,11 +129,11 @@ export function MatchControls({
         break;
       case "cancel":
         onCancelMatch();
-        toast.warning("Match annulé");
+        toast.warning("Combat annulé");
         break;
       case "reset":
         onResetMatch();
-        toast.info("Match réinitialisé");
+        toast.info("Combat réinitialisé");
         break;
     }
     setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
@@ -167,7 +167,7 @@ export function MatchControls({
               Réclamation
             </Button>
 
-            {/* Annuler le match */}
+            {/* Annuler le combat */}
             <Button
               variant="outline"
               size="sm"
@@ -179,7 +179,7 @@ export function MatchControls({
               Annuler
             </Button>
 
-            {/* Réinitialiser le match */}
+            {/* Réinitialiser le combat */}
             <Button
               variant="outline"
               size="sm"
@@ -192,11 +192,11 @@ export function MatchControls({
             </Button>
           </div>
 
-          {/* Notes du match */}
+          {/* Notes du combat */}
           <div className="space-y-2 pt-2 border-t">
             <div className="flex justify-between items-center">
               <Label htmlFor="match-notes" className="text-xs">
-                Notes du match
+                Notes du combat
               </Label>
               <Button
                 variant="ghost"
@@ -260,17 +260,17 @@ export function MatchControls({
           <DialogHeader>
             <DialogTitle>
               {confirmDialog.type === "reclamation" && "Activer le mode réclamation"}
-              {confirmDialog.type === "cancel" && "Annuler le match"}
-              {confirmDialog.type === "reset" && "Réinitialiser le match"}
+              {confirmDialog.type === "cancel" && "Annuler le combat"}
+              {confirmDialog.type === "reset" && "Réinitialiser le combat"}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             {confirmDialog.type === "reclamation" &&
               "Le chronomètre sera mis en pause et le statut passera à 'reclamation'. Les arbitres pourront examiner la situation."}
             {confirmDialog.type === "cancel" &&
-              "Le match sera marqué comme annulé. Aucun vainqueur ne sera désigné et les points ne seront pas attribués."}
+              "Le combat sera marqué comme annulé. Aucun vainqueur ne sera désigné et les points ne seront pas attribués."}
             {confirmDialog.type === "reset" &&
-              "Le match sera remis à zéro : statut 'programmé', chronomètre remis à zéro, vainqueur et cartons supprimés. Cette action est irréversible."}
+              "Le combat sera remis à zéro : statut 'programmé', chronomètre remis à zéro, vainqueur et cartons supprimés. Cette action est irréversible."}
           </p>
           <DialogFooter>
             <Button

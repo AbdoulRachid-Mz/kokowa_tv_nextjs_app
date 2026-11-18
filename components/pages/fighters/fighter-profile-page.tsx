@@ -37,7 +37,7 @@ export default function FighterProfilePage({ fighterId }: FighterProfilePageProp
     queryFn: async () => {
       const result = await getMobileFighterMatches(fighterId)
       if (!result.success || !result.data) {
-        throw new Error(result.error?.message || 'Erreur lors du chargement des matchs')
+        throw new Error(result.error?.message || 'Erreur lors du chargement des combats')
       }
       return result.data
     },

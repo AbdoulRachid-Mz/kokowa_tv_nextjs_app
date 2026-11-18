@@ -38,7 +38,7 @@ export function FighterTimeline({ matches, fighterId }: FighterTimelineProps) {
         id: `match-${match.id}`,
         type: 'match',
         date: match.matchDate || match.startTime,
-        title: match.status === 'completed' ? 'Match terminé' : 'Match programmé',
+        title: match.status === 'completed' ? 'Combat terminé' : 'Combat programmé',
         description: `Contre ${opponent?.nickname || opponent?.firstName || '?' }`,
         result: isWinner ? 'victoire' : (isLoser ? 'défaite' : 'en cours'),
         icon: Swords,

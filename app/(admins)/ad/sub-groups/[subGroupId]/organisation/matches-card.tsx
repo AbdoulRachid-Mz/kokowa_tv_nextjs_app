@@ -126,7 +126,7 @@ export function MatchCard({ match, onDelete, onEdit }: MatchCardProps) {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-2">
               <Typography variant="body-sm" weight="medium">
-                Match #{match.match_number}
+                Combat #{match.match_number}
               </Typography>
               <Badge
                 variant={getStatusVariant(match.status)}
@@ -411,7 +411,7 @@ export function MatchCard({ match, onDelete, onEdit }: MatchCardProps) {
               <Badge variant="outline" className="text-xs">
                 {match.match_result === "fighter1_win" && "Victoire 1"}
                 {match.match_result === "fighter2_win" && "Victoire 2"}
-                {match.match_result === "draw" && "Match nul"}
+                {match.match_result === "draw" && "Combat nul"}
                 {match.match_result === "cancelled" && "Annulé"}
                 {match.match_result === "postponed" && "Reporté"}
               </Badge>

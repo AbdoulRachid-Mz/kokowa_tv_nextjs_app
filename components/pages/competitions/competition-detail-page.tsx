@@ -561,7 +561,7 @@ export default function CompetitionDetailPage({ competitionId }: CompetitionDeta
                           {competition.matches?.length || 0}
                         </Typography>
                         <Typography variant="body-sm" theme="muted">
-                          Matchs
+                          Combats
                         </Typography>
                       </div>
                       

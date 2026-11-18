@@ -150,7 +150,7 @@ export function FighterControl({
     }
 
     if (matchStatus !== "live") {
-      toast.error("Le match doit être en cours");
+      toast.error("Le combat doit être en cours");
       return;
     }
 
@@ -373,7 +373,7 @@ export function FighterControl({
             </DialogContent>
           </Dialog>
  
-          {/* Match nul - désactivé si l'autre lutteur n'est pas assigné */}
+          {/* Combat nul - désactivé si l'autre lutteur n'est pas assigné */}
           <Button
             disabled={matchStatus === "completed" || !otherFighterAssigned}
             variant="outline"
@@ -381,7 +381,7 @@ export function FighterControl({
             size="sm"
             className={`flex flex-col items-center justify-center h-auto py-2 border-blue-500 hover:bg-blue-50 ${!otherFighterAssigned ? 'opacity-50 cursor-not-allowed' : ''
               }`}
-            title={!otherFighterAssigned ? "Match nul impossible sans adversaire" : ""}
+            title={!otherFighterAssigned ? "Combat nul impossible sans adversaire" : ""}
           >
             <Equal className="h-4 w-4 text-blue-600 mb-1" />
             <span className="text-xs">Nul</span>
@@ -414,7 +414,7 @@ export function FighterControl({
         {matchStatus === "completed" && (
           <div className="text-center pt-2 border-t">
             <Badge variant="secondary" className="bg-green-100 text-green-700">
-              ✓ Match terminé
+              ✓ Combat terminé
             </Badge>
           </div>
         )}

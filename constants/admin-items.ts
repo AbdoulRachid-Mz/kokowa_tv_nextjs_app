@@ -202,7 +202,7 @@ export const competitionItems = [
   { title: "Phases", url: "/ad/phases", icon: Activity, description: "Phases et groupes" },
   { title: "Groupes", url: "/ad/phase-groups", icon: Activity, description: "Groupes et rencontres" },
   { title: "Rencontres", url: "/ad/sub-groups", icon: Activity, description: "Gestion des Rencontres" },
-  { title: "Matchs", url: "/ad/matches", icon: Swords, description: "Matchs et résultats" },
+  { title: "Combats", url: "/ad/matches", icon: Swords, description: "Combats et résultats" },
 ]
 
 export const contentItems = [
@@ -218,7 +218,7 @@ export const communicationItems = [
 ]
 
 export const test = [
-  { title: "Temp reel", url: "/ad/realtime", icon: Radio, description: "Surveillance des matchs en temps réel" },
+  { title: "Temp reel", url: "/ad/realtime", icon: Radio, description: "Surveillance des combats en temps réel" },
 ]
 
 export const systemItems = [

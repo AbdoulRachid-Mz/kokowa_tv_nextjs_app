@@ -5,7 +5,7 @@ export function ChapterInfrastructure() {
       nom: "Neon PostgreSQL Serverless",
       categorie: "Base de données",
       tier: "Pro recommandé en prod",
-      description: "Base de données principale. Stocke lutteurs, matchs, éditions, phases, articles, utilisateurs. Connexions serverless avec pooling Neon. SSL/TLS obligatoire. Retry automatique avec backoff exponentiel.",
+      description: "Base de données principale. Stocke lutteurs, combats, éditions, phases, articles, utilisateurs. Connexions serverless avec pooling Neon. SSL/TLS obligatoire. Retry automatique avec backoff exponentiel.",
       envVars: ["DATABASE_URL"],
       icon: "🐘",
     },

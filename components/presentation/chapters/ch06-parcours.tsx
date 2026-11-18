@@ -8,7 +8,7 @@ export function ChapterParcours() {
         { action: "Accéder au portail web public ou ouvrir l'application Flutter", acteur: "Supporter" },
         { action: "Naviguer vers la page de l'édition en cours du Sabre National", acteur: "Supporter" },
         { action: "Consulter le programme des combats du jour (matin / soir)", acteur: "Supporter" },
-        { action: "Ouvrir la page du combat (match) de son choix", acteur: "Supporter" },
+        { action: "Ouvrir la page du combat (combat) de son choix", acteur: "Supporter" },
         { action: "Voir le score en direct synchronisé depuis Firebase RTDB (< 500ms)", acteur: "Système" },
         { action: "Commenter le combat via le tchat intégré", acteur: "Supporter authentifié" },
         { action: "Liker le combat ou ajouter son lutteur en favori", acteur: "Supporter authentifié" },
@@ -19,7 +19,7 @@ export function ChapterParcours() {
       emoji: "👨‍⚖️",
       etapes: [
         { action: "Se connecter au back-office /ad avec ses identifiants (rôle moderator)", acteur: "Arbitre" },
-        { action: "Accéder à la page du match en cours depuis la liste des matchs", acteur: "Arbitre" },
+        { action: "Accéder à la page du combat en cours depuis la liste des combats", acteur: "Arbitre" },
         { action: "Démarrer le chronomètre de combat via le bouton de contrôle", acteur: "Arbitre" },
         { action: "Enregistrer un avertissement si nécessaire (carton jaune/rouge)", acteur: "Arbitre" },
         { action: "Désigner le vainqueur (chute, points, disqualification ou forfait)", acteur: "Arbitre" },
@@ -36,8 +36,8 @@ export function ChapterParcours() {
         { action: "Sélectionner les lutteurs non éliminés via le sélecteur avec recherche et filtre région", acteur: "Admin" },
         { action: "Apparier deux lutteurs pour créer un combat (avec choix du créneau matin/soir)", acteur: "Admin" },
         { action: "Le système crée automatiquement le sous-groupe régional si nécessaire", acteur: "Système" },
-        { action: "Le match est créé avec statut 'scheduled' et apparaît dans la liste", acteur: "Système" },
-        { action: "Les matchs nouvellement créés sont visibles en temps réel par l'équipe", acteur: "Arbitres / Éditeurs" },
+        { action: "Le combat est créé avec statut 'scheduled' et apparaît dans la liste", acteur: "Système" },
+        { action: "Les combats nouvellement créés sont visibles en temps réel par l'équipe", acteur: "Arbitres / Éditeurs" },
       ],
     },
   ];
@@ -75,7 +75,7 @@ export function ChapterParcours() {
         </section>
       ))}
       <section>
-        <h2>6.2 Cycle de Vie d&apos;un Match</h2>
+        <h2>6.2 Cycle de Vie d&apos;un Combat</h2>
         <div className="not-prose flex flex-wrap items-center gap-2 my-4 text-sm font-mono">
           {["scheduled", "→", "live", "→", "completed"].map((step, i) => (
             <span
@@ -96,7 +96,7 @@ export function ChapterParcours() {
           <span className="text-muted-foreground text-xs ml-2">ou cancelled / interrupted</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          Un match passe de <code>scheduled</code> (programmé) à <code>live</code> (en cours) lors du démarrage
+          Un combat passe de <code>scheduled</code> (programmé) à <code>live</code> (en cours) lors du démarrage
           du chronomètre, puis à <code>completed</code> à la désignation du vainqueur. Chaque transition
           déclenche une mise à jour synchrone en base PostgreSQL ET en temps réel sur Firebase RTDB.
         </p>

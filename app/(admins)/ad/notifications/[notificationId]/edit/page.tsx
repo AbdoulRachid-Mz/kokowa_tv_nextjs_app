@@ -187,7 +187,7 @@ export default function NotificationFormPage() {
 
   const notificationTypes = [
     { value: "system_notification", label: "Système" },
-    { value: "match_update", label: "Mise à jour de match" },
+    { value: "match_update", label: "Mise à jour de combat" },
     { value: "fighter_update", label: "Mise à jour de lutteur" },
     { value: "competition_update", label: "Mise à jour de compétition" },
     { value: "achievement", label: "Récompense" },
@@ -203,7 +203,7 @@ export default function NotificationFormPage() {
   const entityTypes = [
     { value: "", label: "Aucune" },
     { value: "article", label: "Article" },
-    { value: "match", label: "Match" },
+    { value: "match", label: "Combat" },
     { value: "fighter", label: "Lutteur" },
     { value: "competition", label: "Compétition" },
     { value: "user", label: "Utilisateur" },
