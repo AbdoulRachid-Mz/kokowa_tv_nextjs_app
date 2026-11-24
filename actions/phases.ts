@@ -1,5 +1,6 @@
 // @/actions/phases.ts - VERSION CORRIGÉE POUR NOUVELLE STRUCTURE
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { phaseSchema } from '@/validation/schemas';
@@ -347,6 +348,7 @@ export async function getPhaseById(id: number, options: {
 }
 
 export async function createPhase(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       edition_id: formData.get('edition_id'),
@@ -467,6 +469,7 @@ export async function createPhase(formData: FormData) {
 }
 
 export async function updatePhase(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getPhaseById(id, { with_relations: false });
     if (!existing) {
@@ -545,6 +548,7 @@ export async function updatePhase(id: number, formData: FormData) {
 }
 
 export async function deletePhase(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getPhaseById(id, { with_relations: false });
     if (!existing) {
@@ -582,6 +586,7 @@ export async function deletePhase(id: number) {
 }
 
 export async function togglePhaseStatus(id: number, isActive: boolean) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getPhaseById(id, { with_relations: false });
     if (!existing) {

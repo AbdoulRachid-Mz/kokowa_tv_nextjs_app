@@ -1,5 +1,6 @@
 // @/actions/editions.ts
 "use server";
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from "@/lib/db/neon-client";
 import {
@@ -806,6 +807,7 @@ export async function getEditionById(
 }
 
 export async function createEdition(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       competition_id: formData.get("competition_id"),
@@ -898,6 +900,7 @@ export async function createEdition(formData: FormData) {
 }
 
 export async function updateEdition(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   revalidateTag("editions", {});
   revalidateTag(`edition:${id}`, {});
   try {
@@ -958,6 +961,7 @@ export async function updateEdition(id: number, formData: FormData) {
 }
 
 export async function deleteEdition(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getEditionById(id, { with_relations: false });
     if (!existing) {
@@ -1305,6 +1309,7 @@ export async function addFighterToEdition(
   status: string = "registered",
   regionId?: number,
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const validatedData = editionFighterSchema.parse({
       edition_id: editionId,
@@ -1394,6 +1399,7 @@ export async function addRegionToEdition(
   regionId: number,
   status: string = "registered",
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const validatedData = editionRegionSchema.parse({
       edition_id: editionId,
@@ -1438,6 +1444,7 @@ export async function removeFighterFromEdition(
   editionId: number,
   fighterId: number,
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const sql = `
       DELETE FROM edition_fighters
@@ -1466,6 +1473,7 @@ export async function removeRegionFromEdition(
   editionId: number,
   regionId: number,
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const sql = `
       DELETE FROM edition_regions
@@ -1500,6 +1508,7 @@ export async function updateEditionFighter(
     >
   >,
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const allowed: (keyof EditionFighter)[] = [
       "status",
@@ -1550,6 +1559,7 @@ export async function updateEditionRegion(
   regionId: number,
   updates: Partial<Pick<EditionRegion, "status" | "is_eliminated" | "points">>,
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const allowed: (keyof EditionRegion)[] = [
       "status",

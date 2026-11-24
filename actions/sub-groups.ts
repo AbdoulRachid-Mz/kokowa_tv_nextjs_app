@@ -1,5 +1,6 @@
 // @/actions/sub-groups.ts
 "use server";
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { pool, query, queryOne } from "@/lib/db/neon-client";
 import { subGroupSchema } from "@/validation/schemas";
@@ -692,6 +693,7 @@ export async function getSubGroupById(
 }
 
 export async function createSubGroup(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       group_id: formData.get("group_id"),
@@ -776,6 +778,7 @@ export async function createSubGroup(formData: FormData) {
 }
 
 export async function updateSubGroup(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       group_id: formData.get("group_id"),
@@ -875,6 +878,7 @@ export async function updateSubGroup(id: number, formData: FormData) {
 }
 
 export async function deleteSubGroup(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const subGroup = await getSubGroupById(id, { with_relations: false });
     if (!subGroup) throw new Error("Rencontre non trouvée");
@@ -897,6 +901,7 @@ export async function deleteSubGroup(id: number) {
 }
 
 export async function completeSubGroup(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const sql =
       "UPDATE sub_groups SET is_completed = true, status = 'completed' WHERE id = $1";

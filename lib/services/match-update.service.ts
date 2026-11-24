@@ -233,36 +233,51 @@ class MatchStateCalculator {
       ],
     );
 
-    // 2. Mettre à jour edition_regions
+    // 2 & 3. Mettre à jour edition_regions et edition_fighters en DEUX requêtes
+    // (auparavant : une requête par région et par lutteur, chacune recalculant
+    // l'édition avec 3 jointures -> ~40 allers-retours à chaque action d'arbitre).
+    const editionIdSubquery = `(
+      SELECT p.edition_id
+      FROM sub_groups sg
+      JOIN phase_groups pg ON sg.group_id = pg.id
+      JOIN phases p ON pg.phase_id = p.id
+      WHERE sg.id = $1
+    )`;
+
+    const regionIds: number[] = [];
+    const regionPoints: number[] = [];
+    const regionEliminated: boolean[] = [];
     for (const [regionId, regionState] of calculatedState.edition_regions) {
+      regionIds.push(regionId);
+      regionPoints.push(regionState.points);
+      regionEliminated.push(regionState.is_eliminated);
+    }
+    if (regionIds.length > 0) {
       await client.query(
-        `UPDATE edition_regions
-         SET points = $1,
-             is_eliminated = $2
-         WHERE edition_id = (
-           SELECT p.edition_id
-           FROM sub_groups sg
-           JOIN phase_groups pg ON sg.group_id = pg.id
-           JOIN phases p ON pg.phase_id = p.id
-           WHERE sg.id = $3
-         ) AND region_id = $4`,
-        [regionState.points, regionState.is_eliminated, subGroupId, regionId],
+        `UPDATE edition_regions er
+         SET points = v.points,
+             is_eliminated = v.is_eliminated
+         FROM unnest($2::int[], $3::int[], $4::boolean[]) AS v(region_id, points, is_eliminated)
+         WHERE er.edition_id = ${editionIdSubquery}
+           AND er.region_id = v.region_id`,
+        [subGroupId, regionIds, regionPoints, regionEliminated],
       );
     }
 
-    // 3. Mettre à jour edition_fighters
+    const fighterIds: number[] = [];
+    const fighterEliminated: boolean[] = [];
     for (const [fighterId, fighterState] of calculatedState.edition_fighters) {
+      fighterIds.push(fighterId);
+      fighterEliminated.push(fighterState.is_eliminated);
+    }
+    if (fighterIds.length > 0) {
       await client.query(
-        `UPDATE edition_fighters
-         SET is_eliminated = $1
-         WHERE edition_id = (
-           SELECT p.edition_id
-           FROM sub_groups sg
-           JOIN phase_groups pg ON sg.group_id = pg.id
-           JOIN phases p ON pg.phase_id = p.id
-           WHERE sg.id = $2
-         ) AND fighter_id = $3`,
-        [fighterState.is_eliminated, subGroupId, fighterId],
+        `UPDATE edition_fighters ef
+         SET is_eliminated = v.is_eliminated
+         FROM unnest($2::int[], $3::boolean[]) AS v(fighter_id, is_eliminated)
+         WHERE ef.edition_id = ${editionIdSubquery}
+           AND ef.fighter_id = v.fighter_id`,
+        [subGroupId, fighterIds, fighterEliminated],
       );
     }
   }

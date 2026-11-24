@@ -52,3 +52,11 @@ front-end.rar
 /services/google-services*.json
 /database/*firebase-adminsdk*.json
 database/*firebase-adminsdk*.json
+
+# --- Sécurité : données réelles et clés, jamais dans le dépôt ---
+# Exports de la base (contiennent e-mails, téléphones, empreintes de mots de passe)
+/database/data/
+/database/backups/
+# Clés de compte de service Firebase
+*firebase-adminsdk*.json
+*-service-account*.json

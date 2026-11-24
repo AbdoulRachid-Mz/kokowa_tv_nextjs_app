@@ -1,5 +1,6 @@
 // actions/matches-2.ts
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { pool, query, queryOne } from '@/lib/db/neon-client';
 import { revalidatePath, cacheTag, revalidateTag, cacheLife } from 'next/cache';
@@ -219,6 +220,7 @@ export async function updateMatch(
   matchId: number,
   updates: MatchUpdate
 ): Promise<Match | null> {
+  await requireStaff(); // accès contrôlé côté serveur
   // Récupérer le match existant pour connaître son édition
   const existingMatch = await getMatchById(matchId);
 
@@ -389,6 +391,7 @@ export async function restoreMatchInitialState(
   client: PoolClient,
   matchId: number
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   const res = await client.query(
     `SELECT initial_state, sub_group_id,
             (SELECT p.edition_id
@@ -467,6 +470,7 @@ export async function createMatch(
     notes?: string | null;
   }
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   const client = await pool.connect();
 
   try {
@@ -555,6 +559,7 @@ export async function addFighterCard(
   minuteGiven: string,
   reason?: string
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   const sql = `
     INSERT INTO fighter_cards (
       match_id, fighter_id, card_type, minute_given, card_reason
@@ -594,6 +599,7 @@ export async function cancelLastFighterCard(
   matchId: number,
   fighterId?: number
 ): Promise<any> {
+  await requireStaff(); // accès contrôlé côté serveur
   const findSql = `
     SELECT id, fighter_id, card_type, card_reason, minute_given
     FROM fighter_cards
@@ -630,6 +636,7 @@ export async function cancelLastFighterCard(
 }
 
 export async function removeFighterCard(cardId: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   // Récupérer le match_id avant suppression
   const card = await queryOne<{ match_id: number }>(
     'SELECT match_id FROM fighter_cards WHERE id = $1',
@@ -711,6 +718,7 @@ export async function removeFighterCard(cardId: number) {
 
 // actions/sub-groups.ts (ajout)
 export async function completeSubGroup(subGroupId: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     // Vérifier que tous les matchs sont terminés
     const checkRes = await query(`

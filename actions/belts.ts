@@ -1,5 +1,6 @@
 // @/actions/belts.ts
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { beltSchema } from '@/validation/schemas';
@@ -207,6 +208,7 @@ export async function getBeltById(id: number) {
 
 // Créer une ceinture
 export async function createBelt(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       color: formData.get('color') as string,
@@ -266,6 +268,7 @@ export async function createBelt(formData: FormData) {
 
 // Mettre à jour une ceinture
 export async function updateBelt(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   // "use cache";
   // // cacheTag("belts", `belt:${id}`);
   // cacheLife({
@@ -340,6 +343,7 @@ export async function updateBelt(id: number, formData: FormData) {
 
 // Supprimer une ceinture
 export async function deleteBelt(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   // "use cache";
   try {
     const existing = await getBeltById(id);
@@ -375,6 +379,7 @@ export async function deleteBelt(id: number) {
 
 // Activer/désactiver une ceinture
 export async function toggleBeltStatus(id: number, is_active: boolean) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getBeltById(id);
     if (!existing) {

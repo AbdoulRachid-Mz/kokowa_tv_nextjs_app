@@ -1,5 +1,6 @@
 // actions/sub-group-referee.ts
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { revalidatePath, revalidateTag } from 'next/cache';
@@ -80,6 +81,7 @@ export async function assignMatchReferee(
   matchId: number,
   refereeId: number | null
 ): Promise<{ success: boolean; message: string; matchId: number; refereeId: number | null }> {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     if (!matchId || isNaN(matchId)) {
       throw new Error("Identifiant de match invalide");
@@ -177,6 +179,7 @@ export async function assignSubGroupReferee(
   subGroupId: number,
   refereeId: number | null
 ): Promise<{ success: boolean; message: string; subGroupId: number; refereeId: number | null }> {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     if (!subGroupId || isNaN(subGroupId)) {
       throw new Error("Identifiant de sous-groupe invalide");

@@ -33,13 +33,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       return null;
     }
 
-    // Créer une requête simulée pour utiliser verifyFirebaseToken
-    const mockRequest = new Request('http://localhost', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Cookie': `firebase_session=${token}; token=${token}`
-      }
-    });
+    // Requête SANS en-tête Authorization : verifyFirebaseToken lit alors lui-même
+    // les cookies et vérifie le cookie de session web (verifySessionCookie).
+    // Auparavant le cookie était passé en « Bearer », chemin réservé aux ID tokens
+    // mobiles : la vérification échouait et getCurrentUser renvoyait toujours null,
+    // ce qui bloquait tous les contrôles de rôle côté serveur (hasRole, assertAdmin).
+    const mockRequest = new Request('http://localhost');
 
     const authResult = await verifyFirebaseToken(mockRequest as any);
     

@@ -87,12 +87,10 @@ const ChartTooltipContent = React.forwardRef<
   ) => {
     const { config } = useChart();
 
-    if (!active || !payload?.length) {
-      return null;
-    }
-
+    // Le hook doit être appelé à chaque rendu, AVANT tout return anticipé :
+    // sinon React plante (« Rendered more hooks ») quand l'infobulle apparaît.
     const tooltipLabel = React.useMemo(() => {
-      if (hideLabel || !payload[0]) {
+      if (hideLabel || !payload?.[0]) {
         return null;
       }
 
@@ -117,6 +115,10 @@ const ChartTooltipContent = React.forwardRef<
       labelClassName,
       label,
     ]);
+
+    if (!active || !payload?.length) {
+      return null;
+    }
 
     return (
       <div

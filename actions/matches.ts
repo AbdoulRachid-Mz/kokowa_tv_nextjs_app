@@ -1,5 +1,6 @@
 // @/actions/matches.ts
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { pool, query, queryOne } from '@/lib/db/neon-client';
 import { matchSchema } from '@/validation/schemas';
@@ -7,7 +8,7 @@ import { revalidatePath, cacheTag, revalidateTag, cacheLife } from 'next/cache';
 import { Match, MatchFilters, PaginatedResponse } from '@/types';
 import { z } from 'zod';
 import { updateMatchAndRecompute } from '@/lib/services/match-update.service';
-import { sendPushNotification, sendPushToTopic } from '@/lib/push';
+import { sendPushToCategory } from '@/lib/push';
 import { PoolClient } from 'pg';
 
 import { emitMatchEvent, emitRealtimeEvent } from './realtime';
@@ -697,6 +698,7 @@ async function ensureEditionFightersQualified(editionId: number, fighterIds: num
 
 // ✅ NOUVELLE FONCTION updateMatch avec recomputation
 export async function updateMatch(id: number, data: Record<string, any>) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     // 1️⃣ Vérifier si le sous-groupe est déjà terminé
     const subGroupCheck = await queryOne<{ is_completed: boolean }>(`
@@ -789,6 +791,7 @@ export async function updateMatch(id: number, data: Record<string, any>) {
 
 // ✅ NOUVELLE FONCTION pour match nul
 export async function setMatchDraw(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getMatchById(id, { with_relations: false });
     if (!existing) {
@@ -825,6 +828,7 @@ export async function addFighterCard(cardData: {
   card_reason?: string;
   minute_given?: string;
 }) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const sql = `
       INSERT INTO fighter_cards (match_id, fighter_id, card_type, card_reason, minute_given)
@@ -864,6 +868,7 @@ export async function addFighterCard(cardData: {
 
 // ✅ NOUVELLE FONCTION pour supprimer un carton
 export async function deleteFighterCard(cardId: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     // Récupérer le match_id avant suppression
     const cardInfo = await query<{ match_id: number; fighter_id: number }>(`
@@ -951,6 +956,7 @@ export async function createMatch(
     notes?: string | null;
   }
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   const client = await pool.connect();
 
   try {
@@ -1097,16 +1103,19 @@ export async function createMatch(
 }
 
 export async function sendMatchPush(matchId: number, description?: string, title?: string) {
-  await sendPushToTopic(
-    `global`,
+  await requireStaff(); // accès contrôlé côté serveur
+  await sendPushToCategory(
+    'live',
     title || '🔥 Match en direct',
-    description || 'Un match est en direct !'
+    description || 'Un match est en direct !',
+    { matchId: matchId.toString() }
   );
 }
 
 
 
 export async function deleteMatch(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getMatchById(id, { with_relations: false });
     if (!existing) {
@@ -1149,6 +1158,7 @@ export async function deleteMatch(id: number) {
 }
 
 export async function updateMatchStatus(id: number, status: string) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const validStatuses = ['scheduled', 'live', 'round_break', 'completed', 'cancelled', 'postponed', 'reclamation'];
     if (!validStatuses.includes(status)) {
@@ -1171,8 +1181,8 @@ export async function updateMatchStatus(id: number, status: string) {
     });
 
     if (status === 'live') {
-      await sendPushToTopic(
-        `global`,
+      await sendPushToCategory(
+        'live',
         '🔥 Match en direct !',
         'Le match vient de commencer',
         { matchId: id.toString() }
@@ -1180,8 +1190,8 @@ export async function updateMatchStatus(id: number, status: string) {
     }
 
     if (status === 'completed') {
-      await sendPushToTopic(
-        `global`,
+      await sendPushToCategory(
+        'results',
         '✅ Match terminé',
         'Le match est terminé, découvrez le résultat',
         { matchId: id.toString() }
@@ -1212,6 +1222,7 @@ export async function updateLiveMatchData(id: number, updates: {
   audience_count?: number;
   notes?: string;
 }) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getMatchById(id, { with_relations: false });
     if (!existing) {
@@ -1284,6 +1295,7 @@ export async function createEliminationMatch(
     referee_id?: number | null;
   }
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const {
       fighter1_id,

@@ -32,6 +32,7 @@ import { MiniFighterCard, MiniRegionCard } from "@/components/entities/mini-enti
 import { CardStats } from "@/components/entities/card-stats";
 import { StatsCarousel } from "@/components/shared/stats-carousel";
 import { toast } from "sonner"
+import { LiveStreamControl } from "@/components/editions/live-stream-control";
 
 export default function EditionDetailPage() {
   const params = useParams();
@@ -301,6 +302,9 @@ export default function EditionDetailPage() {
 
         {/* Vue d'ensemble */}
         <TabsContent value="overview" className="space-y-4">
+          {/* Direct vidéo : visible dans l'app mobile dès son lancement */}
+          <LiveStreamControl editionId={Number(editionId)} />
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Informations principales */}
             <Card className="lg:col-span-2 p-2">

@@ -1,5 +1,6 @@
 // @/actions/competitions.ts
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { competitionSchema, competitionEditionSchema } from '@/validation/schemas';
@@ -303,6 +304,7 @@ export async function createCompetition(
   formData: FormData, 
   options: { with_edition?: boolean } = { with_edition: false }
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const { with_edition = false } = options;
     
@@ -532,6 +534,7 @@ export async function createCompetition(
 }
 
 export async function updateCompetition(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getCompetitionById(id, { with_relations: false });
     if (!existing) {
@@ -690,6 +693,7 @@ export async function updateCompetition(id: number, formData: FormData) {
 
 
 export async function deleteCompetition(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   revalidateTag("competitions", {});
   revalidateTag(`competition:${id}`, {});
   try {
@@ -794,6 +798,7 @@ export async function getCompetitionStats() {
   }
 }
 export async function updateCompetitionStatus(id: number, status: string) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const validStatuses = ['upcoming', 'ongoing', 'completed', 'cancelled', 'postponed'];
     if (!validStatuses.includes(status)) {
@@ -831,6 +836,7 @@ export async function updateCompetitionStatus(id: number, status: string) {
 // =============================================
 
 export async function createCompetitionEdition(competitionId: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       edition_number: formData.get('edition_number'),

@@ -1,5 +1,6 @@
 // @/actions/notifications.ts
 'use server';
+import { requireStaff, requireUser } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { notificationSchema } from '@/validation/schemas';
@@ -167,6 +168,7 @@ export async function getNotificationById(id: number, options: {
 
 
 export async function createNotification(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       user_id: formData.get('user_id'),
@@ -260,6 +262,7 @@ export async function createNotification(formData: FormData) {
 
 
 export async function markNotificationAsRead(id: number) {
+  await requireUser(); // accès contrôlé côté serveur
   try {
     const sql = `
       UPDATE notifications 
@@ -278,6 +281,7 @@ export async function markNotificationAsRead(id: number) {
 }
 
 export async function markAllNotificationsAsRead(userId: number) {
+  await requireUser(); // accès contrôlé côté serveur
   try {
     const sql = `
       UPDATE notifications 
@@ -296,6 +300,7 @@ export async function markAllNotificationsAsRead(userId: number) {
 }
 
 export async function deleteNotification(id: number) {
+  await requireUser(); // accès contrôlé côté serveur
   try {
     const existing = await getNotificationById(id, { with_relations: false });
     if (!existing) {
@@ -345,6 +350,7 @@ export async function createMatchNotification(
   message: string,
   priority: 'low' | 'medium' | 'high' = 'medium'
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   const formData = new FormData();
   formData.append('user_id', userId.toString());
   formData.append('title', title);
@@ -364,6 +370,7 @@ export async function createSystemNotification(
   message: string,
   priority: 'low' | 'medium' | 'high' = 'medium'
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   const formData = new FormData();
   formData.append('user_id', userId.toString());
   formData.append('title', title);
@@ -380,6 +387,7 @@ export async function createAchievementNotification(
   title: string,
   message: string
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   const formData = new FormData();
   formData.append('user_id', userId.toString());
   formData.append('title', title);

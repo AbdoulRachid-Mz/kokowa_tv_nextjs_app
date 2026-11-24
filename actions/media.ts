@@ -1,5 +1,6 @@
 // @/actions/media.ts
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { mediaSchema } from '@/validation/schemas';
@@ -175,6 +176,7 @@ export async function getMediaById(id: number, options: {
 }
 
 export async function createMedia(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       title: formData.get('title'),
@@ -243,6 +245,7 @@ export async function createMedia(formData: FormData) {
 }
 
 export async function updateMedia(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getMediaById(id, { with_relations: false });
     if (!existing) {
@@ -319,6 +322,7 @@ export async function updateMedia(id: number, formData: FormData) {
 }
 
 export async function deleteMedia(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getMediaById(id, { with_relations: false });
     if (!existing) {

@@ -1,6 +1,7 @@
 // @/actions/archives.ts
 // archives
 "use server";
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from "@/lib/db/neon-client";
 import { revalidatePath, cacheTag, revalidateTag, cacheLife } from "next/cache";
@@ -259,6 +260,7 @@ export async function getArchiveFighterAchievement(
 
 
 export async function archiveFighterAchievement(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const sql = `
       INSERT INTO fighter_achievements (
@@ -296,6 +298,7 @@ export async function archiveFighterAchievement(id: number) {
 }
 
 export async function restoreArchiveFighterAchievement(archiveId: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const sql = `
       INSERT INTO fighter_achievements (
@@ -335,6 +338,7 @@ export async function restoreArchiveFighterAchievement(archiveId: number) {
 
 // Archive CRUD operations
 export async function createArchiveFighterAchievement(validatedData: any) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const sql = `
       INSERT INTO fighter_achievements (
@@ -390,6 +394,7 @@ export async function updateArchiveFighterAchievement(
   id: number,
   formData: FormData,
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await queryOne<any>(
       "SELECT * FROM fighter_achievements WHERE id = $1",
@@ -461,6 +466,7 @@ export async function updateArchiveFighterAchievement(
 }
 
 export async function deleteArchiveFighterAchievement(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await queryOne<any>(
       "SELECT * FROM fighter_achievements WHERE id = $1",

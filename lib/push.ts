@@ -1,6 +1,21 @@
 // lib/push/index.ts
 import admin from './firebase-admin';
 
+/** Canal de notifications créé par l'application mobile (NotificationService). */
+const ANDROID_CHANNEL_ID = 'high_importance_channel';
+
+/**
+ * Catégories de notifications que l'utilisateur peut activer/couper dans l'app
+ * (Paramètres > Notifications). Chaque catégorie = un sujet FCM du même nom.
+ */
+export type PushCategory = 'live' | 'results' | 'news' | 'transfers';
+
+/**
+ * Sujet « marqueur » auquel s'abonnent les versions de l'app qui gèrent les
+ * catégories. Les anciennes versions ne sont abonnées qu'à `global`.
+ */
+const PREFS_MARKER_TOPIC = 'prefs_v2';
+
 export async function sendPushNotification(
   fcmToken: string,
   title: string,
@@ -18,7 +33,7 @@ export async function sendPushNotification(
       android: {
         priority: 'high' as const,
         notification: {
-          channelId: 'default',
+          channelId: ANDROID_CHANNEL_ID,
           sound: 'default',
         },
       },
@@ -65,7 +80,7 @@ export async function sendPushToTopic(
       android: {
         priority: 'high' as const,
         notification: {
-          channelId: 'match_channel',
+          channelId: ANDROID_CHANNEL_ID,
           sound: 'default',
           priority: 'high' as const,
         },
@@ -90,6 +105,39 @@ export async function sendPushToTopic(
     return { success: true, response };
   } catch (error) {
     console.error('❌ Erreur push topic:', error);
+    return { success: false, error };
+  }
+}
+
+/**
+ * Envoie une notification d'une catégorie donnée en respectant les choix de
+ * l'utilisateur, sans couper les anciennes versions de l'app :
+ *  - app récente (abonnée à `prefs_v2`) : reçue seulement si la catégorie est activée ;
+ *  - ancienne app (abonnée seulement à `global`) : reçue comme avant.
+ * FCM n'envoie qu'une fois par appareil même si plusieurs sujets correspondent.
+ */
+export async function sendPushToCategory(
+  category: PushCategory,
+  title: string,
+  body: string,
+  data: Record<string, string> = {}
+) {
+  const condition =
+    `'${category}' in topics || ('global' in topics && !('${PREFS_MARKER_TOPIC}' in topics))`;
+  try {
+    const response = await admin.messaging().send({
+      condition,
+      notification: { title, body },
+      data: { ...data, category },
+      android: {
+        priority: 'high',
+        notification: { channelId: ANDROID_CHANNEL_ID, sound: 'default' },
+      },
+      apns: { payload: { aps: { sound: 'default' } } },
+    });
+    return { success: true, response };
+  } catch (error) {
+    console.error(`❌ Erreur push catégorie ${category}:`, error);
     return { success: false, error };
   }
 }

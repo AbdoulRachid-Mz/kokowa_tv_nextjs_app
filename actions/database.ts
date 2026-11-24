@@ -1,5 +1,6 @@
 // @/actions/database.ts
 'use server';
+import { requireAdmin } from "@/lib/server/action-guard";
 
 import { query, queryOne, QueryValue } from '@/lib/db/neon-client';
 import { hasRole } from '@/lib/auth';
@@ -337,6 +338,7 @@ export async function getMultipleTablesInfo(tableNames: string[]): Promise<Table
 
 // Fonction pour obtenir toutes les tables avec leurs relations
 export async function getAllTablesWithRelations(): Promise<TableInfo[]> {
+  await requireAdmin(); // accès contrôlé côté serveur
   try {
     const tableNames = await getAllTableNames();
     const tablesInfo = await getMultipleTablesInfo(tableNames);
@@ -403,6 +405,7 @@ export async function deleteAllTables() {
 
 // Fonction pour créer une table (exemple avec users)
 export async function setupDefaultTables() {
+  await requireAdmin(); // accès contrôlé côté serveur
   try {
     // Ici vous pouvez inclure vos scripts SQL de création des tables
     // Pour cet exemple, nous allons simplement retourner un message

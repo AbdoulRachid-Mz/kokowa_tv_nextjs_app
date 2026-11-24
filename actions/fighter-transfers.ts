@@ -1,5 +1,6 @@
 // @/actions/fighter-transfers.ts
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { fighterTransferSchema } from '@/validation/schemas';
@@ -242,6 +243,7 @@ export async function getFighterTransferById(id: number, options: {
 }
 
 export async function createFighterTransfer(validatedData: any, userId?: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     // Vérifier que le lutteur existe
     const fighterCheck = await queryOne(
@@ -306,6 +308,7 @@ export async function createFighterTransfer(validatedData: any, userId?: number)
 }
 
 export async function updateFighterTransfer(id: number, formData: FormData, userId?: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getFighterTransferById(id, { with_relations: false });
     if (!existing) {
@@ -414,6 +417,7 @@ export async function updateFighterTransfer(id: number, formData: FormData, user
 }
 
 export async function deleteFighterTransfer(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getFighterTransferById(id, { with_relations: false });
     if (!existing) {

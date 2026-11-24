@@ -25,6 +25,7 @@ import { CompetitionEdition, Phase, Fighter, Region } from "@/types";
 import { EntityList } from "@/components/shared/entity-list";
 import { useEntityList } from "@/hooks/use-entity-list";
 import { PhaseCard } from "@/components/entities/entity-cards";
+import { LiveStreamControl } from "@/components/editions/live-stream-control";
 
 export default function EditionDetailPage() {
   const params = useParams();
@@ -377,6 +378,9 @@ export default function EditionDetailPage() {
 
         {/* Vue d'ensemble */}
         <TabsContent value="overview" className="space-y-6">
+          {/* Direct vidéo : visible dans l'app mobile dès son lancement */}
+          <LiveStreamControl editionId={Number(editionId)} />
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Informations principales */}
             <Card className="lg:col-span-2">

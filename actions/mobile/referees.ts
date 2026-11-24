@@ -1,4 +1,5 @@
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 // @/actions/mobile/referees.ts
 
 import { query } from '@/lib/db/neon-client';
@@ -106,7 +107,8 @@ export async function getMobileReferees(filters: MobileRefereeFilters = {}) {
     // Déterminer le tri
     let orderByClause = 'ORDER BY r.last_name ASC, r.first_name ASC';
     const sortBy = filters.sortBy || 'name';
-    const sortOrder = filters.sortOrder || 'desc';
+    // Valeur venant de l'URL publique : uniquement ASC ou DESC (anti-injection SQL)
+    const sortOrder = String(filters.sortOrder || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
 
     if (sortBy === 'experience') {
       orderByClause = `ORDER BY r.experience_years ${sortOrder.toUpperCase()}, r.last_name ASC`;
@@ -260,6 +262,7 @@ export async function getMobileRefereeById(id: number, options: {
 }
 
 export async function createMobileReferee(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       firstName: formData.get('firstName'),
@@ -372,6 +375,7 @@ export async function createMobileReferee(formData: FormData) {
 }
 
 export async function updateMobileReferee(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     // Vérifier si l'arbitre existe
     const existsResult = await query('SELECT id FROM referees WHERE id = $1', [id]);
@@ -531,6 +535,7 @@ export async function updateMobileReferee(id: number, formData: FormData) {
 }
 
 export async function deleteMobileReferee(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     // Vérifier si l'arbitre existe
     const existsResult = await query('SELECT id FROM referees WHERE id = $1', [id]);

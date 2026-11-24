@@ -1,5 +1,6 @@
 // @/actions/videos.ts
 'use server';
+import { requireStaff, requireUser } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { videoSchema } from '@/validation/schemas';
@@ -149,6 +150,7 @@ export async function getVideoBySlug(slug: string) {
 }
 
 export async function createVideo(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       title: formData.get('title'),
@@ -218,6 +220,7 @@ export async function createVideo(formData: FormData) {
 }
 
 export async function updateVideo(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getVideoById(id);
     if (!existing) {
@@ -299,6 +302,7 @@ export async function updateVideo(id: number, formData: FormData) {
 }
 
 export async function deleteVideo(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getVideoById(id);
     if (!existing) {
@@ -340,6 +344,7 @@ export async function incrementVideoViewCount(id: number) {
 }
 
 export async function likeVideo(id: number) {
+  await requireUser(); // accès contrôlé côté serveur
   try {
     const sql = `
       UPDATE videos 

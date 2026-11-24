@@ -1,6 +1,7 @@
 // @/actions/phase-groups.ts
 
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { phaseGroupSchema, subGroupSchema } from '@/validation/schemas';
@@ -370,6 +371,7 @@ export async function createPhaseGroup(
   formData: FormData, 
   options: { create_sub_groups?: number } = { create_sub_groups: 0 }
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const { create_sub_groups = 0 } = options;
     
@@ -546,6 +548,7 @@ export async function createPhaseGroup(
 }
 
 export async function updatePhaseGroup(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getPhaseGroupById(id, { with_relations: false });
     if (!existing) {
@@ -608,6 +611,7 @@ export async function updatePhaseGroup(id: number, formData: FormData) {
 }
 
 export async function deletePhaseGroup(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getPhaseGroupById(id, { with_relations: false });
     if (!existing) {
@@ -648,6 +652,7 @@ export async function addSubGroupsToPhaseGroup(
   count: number, 
   prefix: string = 'Sous-groupe'
 ) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getPhaseGroupById(groupId, { with_relations: false });
     if (!existing) {

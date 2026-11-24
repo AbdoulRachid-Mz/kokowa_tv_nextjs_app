@@ -1,5 +1,6 @@
 // @/actions/articles.ts
 "use server";
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from "@/lib/db/neon-client";
 import { articleSchema } from "@/validation/schemas";
@@ -530,6 +531,7 @@ export async function getArticleBySlug(
 }
 
 export async function createArticle(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       title: formData.get("title"),
@@ -614,6 +616,7 @@ export async function createArticle(formData: FormData) {
 }
 
 export async function updateArticle(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   // "use cache";
   // cacheTag("articles", `article:${id}`);
   try {
@@ -702,6 +705,7 @@ export async function updateArticle(id: number, formData: FormData) {
 }
 
 export async function deleteArticle(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getArticleById(id, { with_relations: false });
     if (!existing) {

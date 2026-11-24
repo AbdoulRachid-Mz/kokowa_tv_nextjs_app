@@ -1,4 +1,5 @@
 "use server"
+import { requireAdmin } from "@/lib/server/action-guard";
 
 import { pool, query, queryOne } from '@/lib/db/neon-client';
 import { AppSettings, AppSettingFilters, AppSetting } from '@/types';
@@ -42,6 +43,7 @@ export async function createAppSetting(
   value: string,
   description?: string
 ): Promise<AppSetting> {
+  await requireAdmin(); // accès contrôlé côté serveur
   const sql = `
     INSERT INTO app_settings (setting_key, setting_value, description)
     VALUES ($1, $2, $3)
@@ -62,6 +64,7 @@ export async function updateAppSetting(
   value: string,
   description?: string
 ): Promise<AppSetting | null> {
+  await requireAdmin(); // accès contrôlé côté serveur
   const sql = `
     UPDATE app_settings
     SET setting_value = $2,
@@ -73,6 +76,7 @@ export async function updateAppSetting(
 }
 
 export async function deleteAppSetting(key: string): Promise<boolean> {
+  await requireAdmin(); // accès contrôlé côté serveur
   const sql = `DELETE FROM app_settings WHERE setting_key = $1`;
   const res = await pool.query(sql, [key]);
   return res.rowCount !== null && res.rowCount > 0;

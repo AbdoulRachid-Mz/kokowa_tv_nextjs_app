@@ -3,8 +3,13 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 // Configuration de la connexion PostgreSQL
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL manquant (fichier .env)');
+  process.exit(1);
+}
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_NW4aH3cJrSUD@ep-round-king-abilpiun-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require',
+  // Jamais de mot de passe en dur : la connexion vient uniquement de .env
+  connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 

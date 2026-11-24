@@ -1,5 +1,6 @@
 // @/actions/interactions.ts
 'use server';
+import { requireUser } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { interactionSchema } from '@/validation/schemas';
@@ -148,6 +149,7 @@ export async function getInteractionById(id: number, options: {
 }
 
 export async function createInteraction(jsonData: any) {
+  await requireUser(); // accès contrôlé côté serveur
   try {
     const rawData = {
       user_id: jsonData.user_id,
@@ -202,6 +204,7 @@ export async function createInteraction(jsonData: any) {
 }
 
 export async function deleteInteraction(id: number) {
+  await requireUser(); // accès contrôlé côté serveur
   try {
     const existing = await getInteractionById(id, { with_relations: false });
     if (!existing) {

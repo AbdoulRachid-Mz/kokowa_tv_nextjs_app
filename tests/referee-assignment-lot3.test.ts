@@ -1,5 +1,7 @@
 // tests/referee-assignment-lot3.test.ts
 import { describe, it, expect } from "bun:test";
+// Simule un membre de l'équipe connecté (les actions vérifient l'appelant)
+import "./helpers/mock-staff-session";
 import { pool } from "@/lib/db/neon-client";
 import {
   assignMatchReferee,

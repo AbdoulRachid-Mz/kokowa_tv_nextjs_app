@@ -3,6 +3,7 @@
 import { query } from "@/lib/db/neon-client";
 import { formatDateTime, formatDuration } from "@/utils/duration";
 import { getCardsForMatches } from "@/utils/match-utils";
+import { getEditionLiveStream } from "@/actions/live-stream";
 
 export async function getMobileEditionById(editionId: number) {
   try {
@@ -30,6 +31,9 @@ export async function getMobileEditionById(editionId: number) {
     // Fetch live match
     const liveMatch = await getLiveMatchForEdition(editionId);
 
+    // Direct vidéo de l'édition (lien YouTube/Facebook Live), lu par l'app
+    const liveStream = await getEditionLiveStream(editionId);
+
     return {
       success: true,
       data: {
@@ -37,6 +41,9 @@ export async function getMobileEditionById(editionId: number) {
           ...editionInfo,
           phases,
           liveMatch,
+          liveUrl: liveStream?.liveUrl ?? null,
+          liveTitle: liveStream?.liveTitle ?? null,
+          liveStartedAt: liveStream?.liveStartedAt ?? null,
         },
       },
       message: "Édition récupérée avec succès",

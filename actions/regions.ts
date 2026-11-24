@@ -1,6 +1,7 @@
 // @/actions/regions.ts
 
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { regionSchema } from '@/validation/schemas';
@@ -226,6 +227,7 @@ export async function getRegionById(id: number, options: { with_relations?: bool
 }
 
 export async function createRegion(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       name: formData.get('name'),
@@ -270,6 +272,7 @@ export async function createRegion(formData: FormData) {
 }
 
 export async function updateRegion(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getRegionById(id, { with_relations: false });
     if (!existing) {
@@ -321,6 +324,7 @@ export async function updateRegion(id: number, formData: FormData) {
 }
 
 export async function deleteRegion(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getRegionById(id, { with_relations: false });
     if (!existing) {

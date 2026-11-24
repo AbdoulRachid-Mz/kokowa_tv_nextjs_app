@@ -3,6 +3,12 @@
 
 import { query, queryOne } from '@/lib/db/neon-client';
 
+/** Unité de DATE_TRUNC : liste fermée (la valeur vient de l'URL -> anti-injection SQL). */
+function safeGroupBy(value: unknown): 'day' | 'week' | 'month' | 'year' {
+  return value === 'day' || value === 'week' || value === 'year' ? value : 'month';
+}
+
+
 // Types étendus
 export interface StatsFilters {
   entity?: string;
@@ -385,11 +391,11 @@ export async function getUserStats(filters: StatsFilters = {}) {
         count: string;
       }>(`
         SELECT 
-          DATE_TRUNC('${filters.group_by || 'month'}', created_at) as period,
+          DATE_TRUNC('${safeGroupBy(filters.group_by)}', created_at) as period,
           COUNT(*) as count
         FROM users
         ${whereClause}
-        GROUP BY DATE_TRUNC('${filters.group_by || 'month'}', created_at)
+        GROUP BY DATE_TRUNC('${safeGroupBy(filters.group_by)}', created_at)
         ORDER BY period
       `);
       return {
@@ -526,11 +532,11 @@ export async function getCompetitionStats(filters: StatsFilters = {}) {
         count: string;
       }>(`
         SELECT 
-          DATE_TRUNC('${filters.group_by || 'month'}', created_at) as period,
+          DATE_TRUNC('${safeGroupBy(filters.group_by)}', created_at) as period,
           COUNT(*) as count
         FROM competitions
         ${whereClause}
-        GROUP BY DATE_TRUNC('${filters.group_by || 'month'}', created_at)
+        GROUP BY DATE_TRUNC('${safeGroupBy(filters.group_by)}', created_at)
         ORDER BY period
       `);
       return {
@@ -915,12 +921,12 @@ export async function getMatchStats(filters: StatsFilters = {}) {
         avg_duration: string;
       }>(`
         SELECT 
-          DATE_TRUNC('${filters.group_by || 'month'}', match_date) as period,
+          DATE_TRUNC('${safeGroupBy(filters.group_by)}', match_date) as period,
           COUNT(*) as count,
           AVG(EXTRACT(EPOCH FROM total_duration)/60) as avg_duration
         FROM matches
         ${whereClause}
-        GROUP BY DATE_TRUNC('${filters.group_by || 'month'}', match_date)
+        GROUP BY DATE_TRUNC('${safeGroupBy(filters.group_by)}', match_date)
         ORDER BY period
       `);
       return {
@@ -1087,14 +1093,14 @@ export async function getTransferStats(filters: StatsFilters = {}) {
         avg_fee: string;
       }>(`
         SELECT 
-          DATE_TRUNC('${filters.group_by || 'month'}', transfer_date) as period,
+          DATE_TRUNC('${safeGroupBy(filters.group_by)}', transfer_date) as period,
           COUNT(*) as count,
           COALESCE(SUM(transfer_fee), 0) as total_fees,
           AVG(transfer_fee) as avg_fee
         FROM fighter_transfers
         WHERE status = 'approved'
         ${whereClause}
-        GROUP BY DATE_TRUNC('${filters.group_by || 'month'}', transfer_date)
+        GROUP BY DATE_TRUNC('${safeGroupBy(filters.group_by)}', transfer_date)
         ORDER BY period
       `);
       return {
@@ -1421,6 +1427,8 @@ export interface RecentActivity {
 
 export async function getRecentActivities(limit: number = 10): Promise<RecentActivity[]> {
   try {
+    // limit vient du corps de la requête : entier borné (anti-injection SQL)
+    limit = Math.min(Math.max(1, Math.trunc(Number(limit)) || 10), 100);
     // Requête corrigée avec types cohérents
     const activities = await query<any>(`
       (

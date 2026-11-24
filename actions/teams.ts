@@ -1,4 +1,5 @@
 "use server";
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { revalidatePath, cacheTag, revalidateTag, cacheLife } from "next/cache";
 import { 
@@ -77,7 +78,7 @@ export async function getTeamMembers(filters: TeamMemberFilters = {}): Promise<P
   const dataQuery = `
     SELECT * FROM team_members
     ${whereClause}
-    ORDER BY ${sortBy} ${sortOrder}
+    ORDER BY ${/^[a-z_][a-z0-9_]*$/i.test(String(sortBy)) ? sortBy : 'position_order'} ${String(sortOrder).toUpperCase() === 'DESC' ? 'DESC' : 'ASC'}
     LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
   `;
   
@@ -157,6 +158,7 @@ export async function getTeamMemberById(id: number, with_achievements = true): P
  * Crée un nouveau membre de l'équipe
  */
 export async function createTeamMember(data: TeamMemberInput) {
+  await requireStaff(); // accès contrôlé côté serveur
   const validatedData = teamMemberSchema.parse(data);
   
   // Stringify JSON fields for database storage
@@ -188,6 +190,7 @@ export async function createTeamMember(data: TeamMemberInput) {
  * Met à jour un membre de l'équipe
  */
 export async function updateTeamMember(id: number, data: Partial<TeamMemberInput>) {
+  await requireStaff(); // accès contrôlé côté serveur
   // Process JSON fields and boolean to tinyint conversion
   const processedData: Record<string, any> = {};
   for (const [key, value] of Object.entries(data)) {
@@ -220,6 +223,7 @@ export async function updateTeamMember(id: number, data: Partial<TeamMemberInput
  * Supprime un membre de l'équipe
  */
 export async function deleteTeamMember(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   await query(`DELETE FROM team_members WHERE id = $1`, [id]);
   revalidatePath("/(admins)/ad/teams", "page");
   revalidateTag("teams", {});
@@ -251,6 +255,7 @@ export async function getTeamAchievements(memberId: number): Promise<TeamAchieve
  * Ajoute un accomplissement
  */
 export async function addTeamAchievement(data: TeamAchievementInput) {
+  await requireStaff(); // accès contrôlé côté serveur
   const validatedData = teamAchievementSchema.parse(data);
   
   const fields = Object.keys(validatedData);
@@ -274,6 +279,7 @@ export async function addTeamAchievement(data: TeamAchievementInput) {
  * Met à jour un accomplissement d'équipe
  */
 export async function updateTeamAchievement(id: number, data: Partial<TeamAchievementInput>) {
+  await requireStaff(); // accès contrôlé côté serveur
   const processedData: Record<string, any> = {};
   
   // Ne pas inclure team_member_id dans la mise à jour (optionnel)
@@ -306,6 +312,7 @@ export async function updateTeamAchievement(id: number, data: Partial<TeamAchiev
  * Supprime un accomplissement
  */
 export async function deleteTeamAchievement(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   const res = await query<{ team_member_id: number }>(`DELETE FROM team_achievements WHERE id = $1 RETURNING team_member_id`, [id]);
   if (res.length > 0) {
     revalidatePath(`/(admins)/ad/teams/${res[0].team_member_id}`, "page");

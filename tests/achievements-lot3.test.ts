@@ -1,4 +1,6 @@
 import { describe, it, expect } from "bun:test";
+// Simule un membre de l'équipe connecté (les actions vérifient l'appelant)
+import "./helpers/mock-staff-session";
 import {
   buildAchievementTitle,
   buildAchievementDescription,

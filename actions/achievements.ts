@@ -1,5 +1,6 @@
 // actions/achievements.ts
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { revalidatePath } from 'next/cache';
@@ -101,6 +102,7 @@ export async function upsertAchievement(
   achievement: AchievementRecord,
   dbClient?: PoolClient
 ): Promise<number> {
+  await requireStaff(); // accès contrôlé côté serveur
   const executeQuery = dbClient
     ? (sql: string, params: any[]) => dbClient.query(sql, params).then(res => res.rows)
     : (sql: string, params: any[]) => query(sql, params);
@@ -198,6 +200,7 @@ export async function syncMatchOfficialAchievements(
   matchId: number,
   dbClient?: PoolClient
 ): Promise<{ success: boolean; applied: boolean; count: number; reason?: string }> {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const executeQuery = dbClient
       ? (sql: string, params: any[]) => dbClient.query(sql, params).then(res => res.rows)

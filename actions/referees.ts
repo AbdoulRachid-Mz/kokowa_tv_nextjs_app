@@ -1,5 +1,6 @@
 // @/actions/referees.ts
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { refereeSchema } from '@/validation/schemas';
@@ -626,6 +627,7 @@ export async function getRefereeEncounters(refereeId: number, options: {
 }
 
 export async function createReferee(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       first_name: formData.get('first_name'),
@@ -688,6 +690,7 @@ export async function createReferee(formData: FormData) {
 }
 
 export async function updateReferee(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       first_name: formData.get('first_name'),
@@ -765,6 +768,7 @@ export async function updateReferee(id: number, formData: FormData) {
 }
 
 export async function deleteReferee(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     // Vérifier si l'arbitre est utilisé dans des sous-groupes
     const checkSql = 'SELECT ((SELECT COUNT(*) FROM sub_groups WHERE main_referee_id = $1) + (SELECT COUNT(*) FROM matches WHERE referee_id = $1)) as count';

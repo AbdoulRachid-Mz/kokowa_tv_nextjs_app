@@ -1,4 +1,5 @@
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { advertisementSchema } from '@/validation/schemas';
@@ -204,6 +205,7 @@ export async function getAdvertisementById(id: number, options: {
 }
 
 export async function createAdvertisement(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       title: formData.get('title'),
@@ -290,6 +292,7 @@ export async function createAdvertisement(formData: FormData) {
 }
 
 export async function updateAdvertisement(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getAdvertisementById(id, { with_stats: false });
     if (!existing) {
@@ -385,6 +388,7 @@ export async function updateAdvertisement(id: number, formData: FormData) {
 }
 
 export async function deleteAdvertisement(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getAdvertisementById(id, { with_stats: false });
     if (!existing) {

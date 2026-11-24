@@ -7,4 +7,7 @@ declare module "bun:test" {
   export function afterAll(fn: () => void | Promise<void>): void;
   export function beforeEach(fn: () => void | Promise<void>): void;
   export function afterEach(fn: () => void | Promise<void>): void;
+  export const mock: {
+    module(path: string, factory: () => Record<string, unknown>): void;
+  };
 }

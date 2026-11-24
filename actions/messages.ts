@@ -1,5 +1,6 @@
 // @/actions/messages.ts
 'use server';
+import { requireUser } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { messageSchema } from '@/validation/schemas';
@@ -228,6 +229,7 @@ export async function getMessageById(id: number, options: {
 }
 
 export async function createMessage(formData: FormData) {
+  await requireUser(); // accès contrôlé côté serveur
   try {
     const rawData = {
       content: formData.get('content'),
@@ -303,6 +305,7 @@ export async function createMessage(formData: FormData) {
 }
 
 export async function updateMessage(id: number, formData: FormData) {
+  await requireUser(); // accès contrôlé côté serveur
   try {
     const existing = await getMessageById(id, { with_relations: false });
     if (!existing) {
@@ -393,6 +396,7 @@ export async function updateMessage(id: number, formData: FormData) {
 }
 
 export async function deleteMessage(id: number) {
+  await requireUser(); // accès contrôlé côté serveur
   try {
     const existing = await getMessageById(id, { with_relations: false });
     if (!existing) {
@@ -426,6 +430,7 @@ export async function deleteMessage(id: number) {
 }
 
 export async function markMessageAsRead(id: number) {
+  await requireUser(); // accès contrôlé côté serveur
   try {
     const sql = `
       UPDATE messages 
@@ -444,6 +449,7 @@ export async function markMessageAsRead(id: number) {
 }
 
 export async function likeMessage(id: number) {
+  await requireUser(); // accès contrôlé côté serveur
   try {
     const sql = `
       UPDATE messages 

@@ -1,5 +1,6 @@
 // @/actions/fighter-cards.ts
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { fighterCardSchema } from '@/validation/schemas';
@@ -180,6 +181,7 @@ export async function getFighterCardById(id: number, options: {
 }
 
 export async function createFighterCard(formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const rawData = {
       fighter_id: formData.get('fighter_id'),
@@ -228,6 +230,7 @@ export async function createFighterCard(formData: FormData) {
 }
 
 export async function updateFighterCard(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getFighterCardById(id, { with_relations: false });
     if (!existing) {
@@ -279,6 +282,7 @@ export async function updateFighterCard(id: number, formData: FormData) {
 }
 
 export async function deleteFighterCard(id: number, {revalidate = true}: {revalidate?: boolean} = {}) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getFighterCardById(id, { with_relations: false });
     if (!existing) {

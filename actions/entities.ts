@@ -756,7 +756,7 @@ class EntityQueryBuilder {
       FROM ${this.tableName}
       ${this.joins.join(' ')}
       ${whereClause}
-      ORDER BY ${this.tableName}.${sortBy} ${sortOrder}
+      ORDER BY ${this.tableName}.${/^[a-z_][a-z0-9_]*$/i.test(String(sortBy)) ? sortBy : 'created_at'} ${String(sortOrder).toUpperCase() === 'ASC' ? 'ASC' : 'DESC'}
       LIMIT $${this.params.length + 1} OFFSET $${this.params.length + 2}
     `;
 

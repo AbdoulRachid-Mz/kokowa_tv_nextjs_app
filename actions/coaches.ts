@@ -1,5 +1,6 @@
 // @/actions/coaches.ts
 'use server';
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { coachSchema } from '@/validation/schemas';
@@ -172,6 +173,7 @@ export async function getCoachById(id: number, options: {
 }
 
 export async function createCoach(validatedData: any) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const sql = `
       INSERT INTO coaches (
@@ -216,6 +218,7 @@ export async function createCoach(validatedData: any) {
 }
 
 export async function updateCoach(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getCoachById(id, { with_relations: false });
     if (!existing) {
@@ -306,6 +309,7 @@ export async function updateCoach(id: number, formData: FormData) {
 }
 
 export async function deleteCoach(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getCoachById(id, { with_relations: false });
     if (!existing) {

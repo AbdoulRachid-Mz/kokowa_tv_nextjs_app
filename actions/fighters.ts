@@ -1,5 +1,6 @@
 // @/actions/fighters.ts
 "use server";
+import { requireStaff } from "@/lib/server/action-guard";
 
 import { query, queryOne } from "@/lib/db/neon-client";
 import { fighterSchema } from "@/validation/schemas";
@@ -255,6 +256,7 @@ export async function getFighterById(
 
 // lib/actions/fighters.ts
 export async function createFighter(validatedData: any) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const sql = `
       INSERT INTO fighters (
@@ -312,6 +314,7 @@ export async function createFighter(validatedData: any) {
 }
 
 export async function updateFighter(id: number, formData: FormData) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getFighterById(id, { with_relations: false });
     if (!existing) {
@@ -425,6 +428,7 @@ export async function updateFighter(id: number, formData: FormData) {
 }
 
 export async function deleteFighter(id: number) {
+  await requireStaff(); // accès contrôlé côté serveur
   try {
     const existing = await getFighterById(id, { with_relations: false });
     if (!existing) {

@@ -1,5 +1,6 @@
 // lib/actions/app-settings.ts
 'use server';
+import { requireAdmin } from "@/lib/server/action-guard";
 
 import { query, queryOne } from '@/lib/db/neon-client';
 import { appSettingSchema, appSettingUpdateSchema } from '@/validation/schemas';
@@ -244,6 +245,7 @@ export async function getAllAppSettings(): Promise<AppSettings> {
 }
 
 export async function createAppSetting(formData: FormData) {
+  await requireAdmin(); // accès contrôlé côté serveur
   try {
     const rawData = {
       setting_key: formData.get('setting_key'),
@@ -299,6 +301,7 @@ export async function createAppSetting(formData: FormData) {
 }
 
 export async function updateAppSetting(key: string, formData: FormData) {
+  await requireAdmin(); // accès contrôlé côté serveur
   try {
     const existing = await getAppSettingByKey(key);
     if (!existing) {
@@ -344,6 +347,7 @@ export async function updateAppSetting(key: string, formData: FormData) {
 }
 
 export async function deleteAppSetting(key: string) {
+  await requireAdmin(); // accès contrôlé côté serveur
   try {
     const existing = await getAppSettingByKey(key);
     if (!existing) {
@@ -472,6 +476,7 @@ export async function getMaintenanceMode(): Promise<boolean> {
 }
 
 export async function setMaintenanceMode(enabled: boolean) {
+  await requireAdmin(); // accès contrôlé côté serveur
   const formData = new FormData();
   formData.append('setting_value', enabled.toString());
   return updateAppSetting('maintenance_mode', formData);
