@@ -7,15 +7,51 @@ export const GET = publicHandler(
   async (request: NextRequest) => {
     try {
       const { searchParams } = new URL(request.url);
+
+      // Validation des paramètres entrants
+      const rawEntityType = searchParams.get('entityType');
+      const allowedEntityTypes = ['fighter', 'region', 'others', 'all'];
+      if (rawEntityType && !allowedEntityTypes.includes(rawEntityType)) {
+        return Response.json(
+          { success: false, error: { code: 400, message: 'entityType invalide', timestamp: new Date().toISOString() } },
+          { status: 400 },
+        );
+      }
+
+      const rawEditionId = searchParams.get('editionId');
+      const editionId = rawEditionId ? Number(rawEditionId) : undefined;
+      if (rawEditionId && (isNaN(editionId!) || editionId! <= 0)) {
+        return Response.json(
+          { success: false, error: { code: 400, message: 'editionId invalide', timestamp: new Date().toISOString() } },
+          { status: 400 },
+        );
+      }
+
+      const rawYear = searchParams.get('year');
+      const year = rawYear ? Number(rawYear) : undefined;
+      if (rawYear && (isNaN(year!) || year! < 1900 || year! > 2100)) {
+        return Response.json(
+          { success: false, error: { code: 400, message: 'year invalide', timestamp: new Date().toISOString() } },
+          { status: 400 },
+        );
+      }
+
+      const rawLimit = searchParams.get('limit');
+      const limit = rawLimit ? Number(rawLimit) : undefined;
+      if (rawLimit && (isNaN(limit!) || limit! <= 0 || limit! > 500)) {
+        return Response.json(
+          { success: false, error: { code: 400, message: 'limit invalide (1-500)', timestamp: new Date().toISOString() } },
+          { status: 400 },
+        );
+      }
+
       const filters = {
-        entityType: (searchParams.get('entityType') as any) || undefined,
+        entityType: (rawEntityType as any) || undefined,
         type: searchParams.get('type') || undefined,
-        editionId: searchParams.get('editionId')
-          ? Number(searchParams.get('editionId'))
-          : undefined,
-        year: searchParams.get('year') ? Number(searchParams.get('year')) : undefined,
+        editionId,
+        year,
         position: searchParams.get('position') || undefined,
-        limit: searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined,
+        limit,
       };
 
       const result = await getMobileAchievements(filters);
@@ -42,5 +78,5 @@ export const GET = publicHandler(
       );
     }
   },
-  { allowedMethods: ['GET'], cacheControl: 'public, s-maxage=120, stale-while-revalidate=600' },
+  { allowedMethods: ['GET'], cacheControl: 'no-store' },
 );

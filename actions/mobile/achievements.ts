@@ -74,6 +74,16 @@ export async function getMobileAchievements(
   try {
     const entityType = filters?.entityType || "all";
 
+    // Validation des filtres
+    const allowedEntityTypes = ["fighter", "region", "others", "all"];
+    if (!allowedEntityTypes.includes(entityType)) {
+      return {
+        success: false,
+        message: "entityType invalide",
+        error: { code: 400, timestamp: new Date().toISOString() },
+      };
+    }
+
     const conditions: string[] = [];
     const params: any[] = [];
     let idx = 1;
