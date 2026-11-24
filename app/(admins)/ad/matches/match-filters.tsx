@@ -18,10 +18,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { CalendarIcon, X } from 'lucide-react';
+import { CalendarIcon, X, Layers } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useEntityList } from '@/hooks/use-entity-list';
 
 interface MatchFiltersProps {
   filters: MatchFiltersType;
@@ -43,6 +44,28 @@ export function MatchFilters({
   const [dateTo, setDateTo] = useState<Date | undefined>(
     filters.date_to ? new Date(filters.date_to) : undefined
   );
+
+  // Cascading filters: edition -> phase -> group -> sub-group
+  const { data: editions } = useEntityList<any>({
+    entityType: 'editions',
+    defaultFilters: { is_active: true, limit: 100 },
+    defaultLimit: 100,
+  });
+  const { data: phases } = useEntityList<any>({
+    entityType: 'phases',
+    defaultFilters: { edition_id: filters.edition_id, limit: 100 },
+    defaultLimit: 100,
+  });
+  const { data: groups } = useEntityList<any>({
+    entityType: 'phase-groups',
+    defaultFilters: { phase_id: filters.phase_id, limit: 100 },
+    defaultLimit: 100,
+  });
+  const { data: subGroups } = useEntityList<any>({
+    entityType: 'sub-groups',
+    defaultFilters: { group_id: filters.group_id, limit: 100 },
+    defaultLimit: 100,
+  });
 
   // Synchroniser les dates avec les filtres
   useEffect(() => {
@@ -176,6 +199,92 @@ export function MatchFilters({
         )}
       </div>
 
+      {/* Filtre par édition */}
+      <div>
+        <label className="text-sm font-medium mb-1 block">Édition</label>
+        <Select
+          value={filters.edition_id?.toString() || 'all'}
+          onValueChange={(value) => {
+            const v = value === 'all' ? undefined : parseInt(value);
+            onFilterChange('edition_id', v as any);
+            if (!v) {
+              onFilterChange('phase_id', undefined as any);
+              onFilterChange('group_id', undefined as any);
+              onFilterChange('sub_group_id', undefined as any);
+            }
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Toutes les éditions" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes les éditions</SelectItem>
+            {(editions || []).map((e: any) => (
+              <SelectItem key={e.id} value={e.id.toString()}>
+                {e.competition?.name || e.name || `Édition ${e.id}`} {e.edition_number ? `(#${e.edition_number})` : ''}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Filtre par phase */}
+      <div>
+        <label className="text-sm font-medium mb-1 block">Phase</label>
+        <Select
+          value={filters.phase_id?.toString() || 'all'}
+          onValueChange={(value) => {
+            const v = value === 'all' ? undefined : parseInt(value);
+            onFilterChange('phase_id', v as any);
+            if (!v) {
+              onFilterChange('group_id', undefined as any);
+              onFilterChange('sub_group_id', undefined as any);
+            }
+          }}
+          disabled={!filters.edition_id}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Toutes les phases" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes les phases</SelectItem>
+            {(phases || []).map((p: any) => (
+              <SelectItem key={p.id} value={p.id.toString()}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Filtre par groupe */}
+      <div>
+        <label className="text-sm font-medium mb-1 block">Groupe</label>
+        <Select
+          value={filters.group_id?.toString() || 'all'}
+          onValueChange={(value) => {
+            const v = value === 'all' ? undefined : parseInt(value);
+            onFilterChange('group_id', v as any);
+            if (!v) {
+              onFilterChange('sub_group_id', undefined as any);
+            }
+          }}
+          disabled={!filters.phase_id}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Tous les groupes" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les groupes</SelectItem>
+            {(groups || []).map((g: any) => (
+              <SelectItem key={g.id} value={g.id.toString()}>
+                {g.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Filtre par sous-groupe */}
       <div>
         <label className="text-sm font-medium mb-1 block">Sous-groupe</label>
@@ -190,7 +299,11 @@ export function MatchFilters({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous les sous-groupes</SelectItem>
-            {/* Les options seront chargées dynamiquement */}
+            {(subGroups || []).map((sg: any) => (
+              <SelectItem key={sg.id} value={sg.id.toString()}>
+                {sg.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
