@@ -45,8 +45,8 @@ export const metadata: Metadata = {
   icons: {
     icon: "/logo/primary.jpeg",
   },
-  description: "Plateforme de gestion des compétitions de lutte traditionnelle",
-  keywords: ["lutte", "traditionnelle", "compétition", "sport", "match", "lutteur", "combat"],
+  description: "Kokowa TV — Plateforme officielle de gestion, de couverture en direct et de diffusion de la lutte traditionnelle nigérienne (Sabre National). Back-office administratif, scores temps réel, API mobile et gestion des palmarès.",
+  keywords: ["lutte", "traditionnelle", "kokowa", "sabre national", "compétition", "sport", "match", "lutteur", "combat", "niger", "palmares", "temps reel"],
   authors: [{ name: "Lutte Traditionnelle" }],
   creator: "Lutte Traditionnelle",
   publisher: "Lutte Traditionnelle",
@@ -60,13 +60,13 @@ export const metadata: Metadata = {
     locale: "fr_FR",
     url: "https://lutte-traditionnelle.com",
     title: "Lutte Traditionnelle",
-    description: "Plateforme de gestion des compétitions de lutte traditionnelle",
+    description: "Kokowa TV — Plateforme officielle de gestion, de couverture en direct et de diffusion de la lutte traditionnelle nigérienne (Sabre National).",
     siteName: "Lutte Traditionnelle",
   },
   twitter: {
     card: "summary_large_image",
     title: "Lutte Traditionnelle",
-    description: "Plateforme de gestion des compétitions de lutte traditionnelle",
+    description: "Kokowa TV — Plateforme officielle de gestion, de couverture en direct et de diffusion de la lutte traditionnelle nigérienne (Sabre National).",
     creator: "@lutte_traditionnelle",
   },
   robots: {
