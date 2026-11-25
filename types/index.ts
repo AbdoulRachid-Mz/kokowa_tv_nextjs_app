@@ -973,9 +973,15 @@ export interface AppSettings {
   app_name: string;
   app_description: string;
   app_version: string;
+  latest_app_version: string;
   
   // System
   maintenance_mode: boolean;
+  is_under_maintenance: boolean;
+  test_mode: boolean;
+  
+  // Updates
+  is_update_required: boolean;
   
   // Auth
   registration_enabled: boolean;
