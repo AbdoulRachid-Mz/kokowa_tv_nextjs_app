@@ -700,18 +700,19 @@ export async function updateMatchAndRecompute(
     // Notifications push (non bloquantes) selon le nouveau statut
     const wasPaused = oldMatch.status === "round_break" || oldMatch.status === "reclamation";
     if (newStatus === "live") {
+      //on doit mettre numerode match_number au lieu de matchId
       if (wasPaused) {
-        sendMatchPush(matchId, `Combat #${matchId} repris.`, "Combat repris").catch(() => {});
+        sendMatchPush(matchId, `Combat #${updatedMatch.match_number} repris.`, "Combat repris").catch(() => {});
       } else {
-        sendMatchPush(matchId, `Combat #${matchId} en direct !`, "Combat en direct").catch(() => {});
+        sendMatchPush(matchId, `Combat #${updatedMatch.match_number} en direct !`, "Combat en direct").catch(() => {});
       }
     } else if (newStatus === "round_break") {
-      sendMatchPush(matchId, `Combat #${matchId} en pause.`, "⏸Combat en pause").catch(() => {});
+      sendMatchPush(matchId, `Combat #${updatedMatch.match_number} en pause.`, "⏸Combat en pause").catch(() => {});
     } else if (newStatus === "completed") {
-      sendMatchPush(matchId, `Combat #${matchId} terminé.`, "Combat terminé").catch(() => {});
+      sendMatchPush(matchId, `Combat #${updatedMatch.match_number} terminé.`, "Combat terminé").catch(() => {});
     } 
     // else if (newStatus === "reclamation") {
-    //   sendMatchPush(matchId, `Combat #${matchId} en reclamation.`, "Reclamation").catch(() => {});
+    //   sendMatchPush(matchId, `Combat #${updatedMatch.match_number} en reclamation.`, "Reclamation").catch(() => {});
     // }
 
     return updatedMatch;
