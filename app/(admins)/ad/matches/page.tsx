@@ -136,8 +136,8 @@ export default function MatchesPage() {
         }}
         onAdd={() => {}}
         onViewModeChange={setViewMode}
-        renderCard={(match, viewMode) => (
-          <MatchCard item={match} viewMode={viewMode} />
+        renderCard={(match) => (
+          <MatchCard item={match} />
         )}
         availableFilters={availableFilters}
       />
