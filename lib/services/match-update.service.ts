@@ -697,24 +697,39 @@ export async function updateMatchAndRecompute(
       });
     });
 
-    // Notifications push (non bloquantes) selon le nouveau statut
+    // Recuperer les noms des lutteurs pour un message de notification precis
+    let fighter1Name = "Lutteur 1";
+    let fighter2Name = "Lutteur 2";
+    try {
+      const fRes = await query<{ id: number; first_name: string; last_name: string }>(
+        `SELECT id, first_name, last_name FROM fighters WHERE id = ANY($1::int[])`,
+        [[updatedMatch.fighter1_id, updatedMatch.fighter2_id].filter(Boolean)],
+      );
+      const f1 = fRes.find((f) => f.id === updatedMatch.fighter1_id);
+      const f2 = fRes.find((f) => f.id === updatedMatch.fighter2_id);
+      if (f1) fighter1Name = `${f1.first_name} ${f1.last_name}`;
+      if (f2) fighter2Name = `${f2.first_name} ${f2.last_name}`;
+    } catch (e) {
+      // garder les valeurs par defaut
+    }
+    const matchup = `${fighter1Name} vs ${fighter2Name}`;
+
+    // Notifications push (non bloquantes) selon le nouveau statut.
+    // La reprise est detectee si le statut precedent etait une pause/reclamation.
     const wasPaused = oldMatch.status === "round_break" || oldMatch.status === "reclamation";
     if (newStatus === "live") {
-      //on doit mettre numerode match_number au lieu de matchId
       if (wasPaused) {
-        sendMatchPush(matchId, `Combat #${updatedMatch.match_number} repris.`, "Combat repris").catch(() => {});
+        sendMatchPush(matchId, `Reprise de combat entre ${matchup}.`, "Combat repris").catch(() => {});
       } else {
-        sendMatchPush(matchId, `Combat #${updatedMatch.match_number} en direct !`, "Combat en direct").catch(() => {});
+        sendMatchPush(matchId, `Combat entre ${matchup} en direct !`, "Combat en direct").catch(() => {});
       }
     } else if (newStatus === "round_break") {
-      sendMatchPush(matchId, `Combat #${updatedMatch.match_number} en pause.`, "⏸Combat en pause").catch(() => {});
+      sendMatchPush(matchId, `Combat entre ${matchup} en pause.`, "Combat en pause").catch(() => {});
     } else if (newStatus === "completed") {
-      sendMatchPush(matchId, `Combat #${updatedMatch.match_number} terminé.`, "Combat terminé").catch(() => {});
-    } 
-    // else if (newStatus === "reclamation") {
-    //   sendMatchPush(matchId, `Combat #${updatedMatch.match_number} en reclamation.`, "Reclamation").catch(() => {});
-    // }
-
+      sendMatchPush(matchId, `Combat entre ${matchup} est termine.`, "Combat termine").catch(() => {});
+    } else if (newStatus === "reclamation") {
+      sendMatchPush(matchId, `Combat entre ${matchup} en reclamation.`, "Reclamation").catch(() => {});
+    }
     return updatedMatch;
   } catch (error) {
     if (transactionStarted && !transactionCommitted) {
