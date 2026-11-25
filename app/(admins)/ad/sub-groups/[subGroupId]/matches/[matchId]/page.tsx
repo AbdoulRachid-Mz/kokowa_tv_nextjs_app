@@ -677,7 +677,7 @@ export default function MatchDetailPage() {
           <DialogHeader>
             <DialogTitle>
               {confirmDialog.type === "winner" && "Confirmer la victoire"}
-              {confirmDialog.type === "draw" && "Confirmer le match nul"}
+              {confirmDialog.type === "draw" && "Confirmer le combat nul"}
               {confirmDialog.type === "cancel" && "Confirmer l'annulation"}
               {confirmDialog.type === "reclamation" &&
                 "Confirmer la réclamation"}
@@ -693,9 +693,9 @@ export default function MatchDetailPage() {
             {confirmDialog.type === "winner" &&
               "Êtes-vous sûr de vouloir désigner ce lutteur vainqueur ?"}
             {confirmDialog.type === "draw" &&
-              "Êtes-vous sûr de vouloir déclarer le match nul ?"}
+              "Êtes-vous sûr de vouloir déclarer le combat nul ?"}
             {confirmDialog.type === "cancel" &&
-              "Êtes-vous sûr de vouloir annuler ce match ?"}
+              "Êtes-vous sûr de vouloir annuler ce combat ?"}
             {confirmDialog.type === "reclamation" &&
               "Êtes-vous sûr de vouloir activer le mode réclamation ?"}
             {confirmDialog.type === "reset" &&

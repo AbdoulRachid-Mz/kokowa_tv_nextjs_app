@@ -165,7 +165,7 @@ class MatchStateCalculator {
     match: any,
     fighterRegionMap: Map<number, number>,
   ) {
-    // Match nul
+    // Combat nul
     if (match.match_result === "draw") {
       state.sub_group.nulls += 1;
 
@@ -696,6 +696,23 @@ export async function updateMatchAndRecompute(
         }
       });
     });
+
+    // Notifications push (non bloquantes) selon le nouveau statut
+    const wasPaused = oldMatch.status === "round_break" || oldMatch.status === "reclamation";
+    if (newStatus === "live") {
+      if (wasPaused) {
+        sendMatchPush(matchId, `Combat #${matchId} repris.`, "Combat repris").catch(() => {});
+      } else {
+        sendMatchPush(matchId, `Combat #${matchId} en direct !`, "Combat en direct").catch(() => {});
+      }
+    } else if (newStatus === "round_break") {
+      sendMatchPush(matchId, `Combat #${matchId} en pause.`, "⏸Combat en pause").catch(() => {});
+    } else if (newStatus === "completed") {
+      sendMatchPush(matchId, `Combat #${matchId} terminé.`, "Combat terminé").catch(() => {});
+    } 
+    // else if (newStatus === "reclamation") {
+    //   sendMatchPush(matchId, `Combat #${matchId} en reclamation.`, "Reclamation").catch(() => {});
+    // }
 
     return updatedMatch;
   } catch (error) {

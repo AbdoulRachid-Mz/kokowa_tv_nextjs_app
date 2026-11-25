@@ -220,7 +220,7 @@ export function MatchCard({ match, onDelete, onEdit }: MatchCardProps) {
                       </div>
                     )}
 
-                    {/* Badge match nul */}
+                    {/* Badge combat nul */}
                     {match.match_result === "draw" && (
                       <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-1">
                         <Minus className="w-3 h-3" />

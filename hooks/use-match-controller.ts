@@ -8,7 +8,7 @@ import { useMatchTimer } from "./use-match-timer-2";
 import { getMatchById, updateMatch, updateMatchWithResult } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
 import { updateSubGroup } from "@/actions/sub-groups";
-import { sendMatchPush } from "@/actions/matches";
+// push notifications are handled server-side in match-update.service.ts
 import type { RealtimeMatchDocument } from "@/types/realtime";
 
 interface UseMatchControllerProps {
@@ -199,10 +199,6 @@ export function useMatchController({
       total_duration: formatSecondsToDuration(current),
     });
 
-    sendMatchPush(
-      matchId,
-      `Combat entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} debute !`,
-    ).catch(() => {});
   }, [match, timer, persist, matchId]);
 
   const pauseMatch = useCallback(() => {
@@ -217,7 +213,8 @@ export function useMatchController({
       total_duration: formatSecondsToDuration(currentDuration),
       break_count: (match.break_count ?? 0) + 1,
     });
-  }, [match, timer, persist]);
+
+  }, [match, timer, persist, matchId]);
 
   const reclamation = useCallback(() => {
     if (!match) return;

@@ -33,7 +33,7 @@ export const POST = (request: NextRequest, context: ApiContext) =>
         let needsRefresh = true;
         // 'adminAuth' is possibly 'null'. We need to check if it's not null.
         if (!adminAuth) {
-          throw new Error("Firebase Admin Auth not initialized");
+          throw new Error("Firebase Admin Auth non initialisé");
         }
         
         if (existing && adminAuth.verifySessionCookie !== undefined) {

@@ -50,7 +50,7 @@ function resultLabel(match: Match) {
     case 'fighter2_win':
       return `Victoire de ${fighterName(match.fighter2)}`
     case 'draw':
-      return 'Match nul'
+      return 'Combat nul'
     case 'cancelled':
       return 'Combat annulé'
     case 'postponed':

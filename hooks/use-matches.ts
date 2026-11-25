@@ -89,7 +89,7 @@ export function useMatches({
     }
   });
 
-  // Mutation pour match nul
+  // Mutation pour combat nul
   const setMatchDrawMutation = useMutation({
     mutationFn: async (matchId: number) => {
       const response = await fetch(`/api/matches/${matchId}/draw`, {

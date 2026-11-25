@@ -340,7 +340,7 @@ export function MatchesList({ matches }: MatchesListProps) {
                         <Typography variant="body-sm" theme="muted">
                           {match.match_result === 'fighter1_win' ? 'Victoire Lutteur 1' :
                            match.match_result === 'fighter2_win' ? 'Victoire Lutteur 2' :
-                           'Match nul'}
+                           'Combat nul'}
                         </Typography>
                       </div>
                     )}

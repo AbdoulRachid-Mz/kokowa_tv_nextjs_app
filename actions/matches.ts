@@ -1309,7 +1309,7 @@ export async function createEliminationMatch(
 
     // A. Validation : au moins un lutteur requis
     if (!fighter1_id && !fighter2_id) {
-      throw new Error("Au moins un lutteur doit être sélectionné pour créer un match");
+      throw new Error("Au moins un lutteur doit être sélectionné pour créer un combat");
     }
 
     if (fighter1_id && fighter2_id && fighter1_id === fighter2_id) {
@@ -1385,7 +1385,7 @@ export async function createEliminationMatch(
 
     // 3. Vérifier la participation dans le groupe
     // En mode normal : interdire les doublons dans le tour
-    // En mode exceptionnel : autoriser les lutteurs même s'ils ont déjà un match (ex: 3e place)
+    // En mode exceptionnel : autoriser les lutteurs même s'ils ont déjà un combat (ex: 3e place)
     if (!is_exceptional && requestedFighterIds.length > 0) {
       const existingGroupMatchesSql = `
         SELECT m.id, m.match_number, m.fighter1_id, m.fighter2_id
