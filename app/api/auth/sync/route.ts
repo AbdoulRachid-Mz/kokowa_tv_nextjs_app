@@ -31,7 +31,12 @@ export const POST = (request: NextRequest, context: ApiContext) =>
         const cookieStore = await cookies();
         const existing = cookieStore.get("firebase_session")?.value;
         let needsRefresh = true;
-        if (existing) {
+        // 'adminAuth' is possibly 'null'. We need to check if it's not null.
+        if (!adminAuth) {
+          throw new Error("Firebase Admin Auth not initialized");
+        }
+        
+        if (existing && adminAuth.verifySessionCookie !== undefined) {
           try {
             const decoded = await adminAuth.verifySessionCookie(existing, false);
             const expiresAt = (decoded as any).exp ? (decoded as any).exp * 1000 : 0;
