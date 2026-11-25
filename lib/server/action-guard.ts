@@ -8,7 +8,8 @@
 
 import { getCurrentUser, type CurrentUser } from "@/lib/auth";
 
-/** Rôles de l'équipe autorisés dans l'administration (mêmes que le layout /ad). */
+/** Rôles de l'équipe autorisés dans l'administration (mêmes que le layout /ad).
+ *  Le rôle "admin" est explicitement inclus et dispose d'un accès complet. */
 export const STAFF_ROLES = ["admin", "editor", "moderator", "fighter_manager"] as const;
 
 export class ActionAuthError extends Error {
@@ -25,19 +26,25 @@ export async function requireUser(): Promise<CurrentUser> {
   return user;
 }
 
-/** Exige un membre de l'équipe (admin, éditeur, modérateur, gestionnaire de lutteurs). */
+/** Exige un membre de l'équipe (admin, éditeur, modérateur, gestionnaire de lutteurs).
+ *  Le rôle administrateur dispose d'un accès complet à toutes les opérations. */
 export async function requireStaff(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user?.role || !(STAFF_ROLES as readonly string[]).includes(user.role)) {
+  const role = (user?.role || "").toLowerCase().trim();
+  // L'administrateur a un accès complet, même si son rôle est stocké avec une casse différente
+  if (role === "admin") {
+    return user as CurrentUser;
+  }
+  if (!role || !(STAFF_ROLES as readonly string[]).map((r) => r.toLowerCase()).includes(role)) {
     throw new ActionAuthError("Accès refusé : réservé à l'équipe Kokowa TV.");
   }
-  return user;
+  return user as CurrentUser;
 }
 
 /** Exige un administrateur. */
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (user?.role !== "admin") {
+  if ((user?.role || "").toLowerCase().trim() !== "admin") {
     throw new ActionAuthError("Accès refusé : privilèges administrateur requis.");
   }
   return user;

@@ -82,7 +82,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
  */
 export async function hasRole(requiredRole: string): Promise<boolean> {
   const user = await getCurrentUser();
-  return user?.role === requiredRole;
+  return (user?.role || "").toLowerCase() === requiredRole.toLowerCase();
 }
 
 /**
@@ -90,7 +90,9 @@ export async function hasRole(requiredRole: string): Promise<boolean> {
  */
 export async function hasAnyRole(requiredRoles: string[]): Promise<boolean> {
   const user = await getCurrentUser();
-  return user?.role ? requiredRoles.includes(user.role) : false;
+  if (!user?.role) return false;
+  const role = user.role.toLowerCase();
+  return requiredRoles.map((r) => r.toLowerCase()).includes(role);
 }
 
 /**
