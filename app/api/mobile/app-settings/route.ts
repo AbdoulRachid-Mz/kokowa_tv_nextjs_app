@@ -15,6 +15,7 @@ export const GET = publicHandler(
         app_name: map.app_name ?? "Kokowa TV",
         app_version: map.app_version ?? "1.0.0",
         latest_app_version: map.latest_app_version ?? map.app_version ?? "1.0.0",
+        app_update_url: map.app_update_url ?? "",
         is_under_maintenance: map.is_under_maintenance ?? map.maintenance_mode ?? false,
         maintenance_mode: map.maintenance_mode ?? false,
         test_mode: map.test_mode ?? false,
