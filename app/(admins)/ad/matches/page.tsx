@@ -12,9 +12,11 @@ import { MatchStats } from "./match-stats";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { EntityList } from "@/components/shared/entity-list";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { MatchCard } from "@/components/entities/entity-cards";
 
 export default function MatchesPage() {
+  const router = useRouter();
   const entities = useEntities<Match, MatchFilters>({
     entityType: "matches",
     initialFilters: {
@@ -137,7 +139,7 @@ export default function MatchesPage() {
         onAdd={() => {}}
         onViewModeChange={setViewMode}
         renderCard={(match) => (
-          <MatchCard item={match} />
+          <MatchCard item={match} onView={(m: any) => router.push(`/ad/matches/${m.id}`)} />
         )}
         availableFilters={availableFilters}
       />

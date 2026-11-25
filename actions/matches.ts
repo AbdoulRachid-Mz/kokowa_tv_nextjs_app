@@ -1106,8 +1106,8 @@ export async function sendMatchPush(matchId: number, description?: string, title
   await requireStaff(); // accès contrôlé côté serveur
   await sendPushToCategory(
     'live',
-    title || '🔥 Match en direct',
-    description || 'Un match est en direct !',
+    title || 'Combat en direct',
+    description || 'Un combat est en direct !',
     { matchId: matchId.toString() }
   );
 }
@@ -1119,7 +1119,7 @@ export async function deleteMatch(id: number) {
   try {
     const existing = await getMatchById(id, { with_relations: false });
     if (!existing) {
-      throw new Error('Match non trouvé');
+      throw new Error('Combat non trouvé');
     }
 
     // Récupérer l'édition pour revalidation
@@ -1149,11 +1149,11 @@ export async function deleteMatch(id: number) {
 
     return {
       success: true,
-      message: 'Match supprimé avec succès'
+      message: 'Combat supprimé avec succès'
     };
   } catch (error) {
     console.error('Error in deleteMatch:', error);
-    throw new Error('Erreur lors de la suppression du match');
+    throw new Error('Erreur lors de la suppression du combat');
   }
 }
 
@@ -1183,8 +1183,8 @@ export async function updateMatchStatus(id: number, status: string) {
     if (status === 'live') {
       await sendPushToCategory(
         'live',
-        '🔥 Match en direct !',
-        'Le match vient de commencer',
+        'Combat en direct !',
+        'Le combat vient de commencer',
         { matchId: id.toString() }
       );
     }
@@ -1192,8 +1192,8 @@ export async function updateMatchStatus(id: number, status: string) {
     if (status === 'completed') {
       await sendPushToCategory(
         'results',
-        '✅ Match terminé',
-        'Le match est terminé, découvrez le résultat',
+        'Résultats du combat',
+        'Le combat est terminé, découvrez le résultat',
         { matchId: id.toString() }
       );
     }
@@ -1205,15 +1205,15 @@ export async function updateMatchStatus(id: number, status: string) {
 
     return {
       success: true,
-      message: `Statut du match mis à jour: ${status}`
+      message: `Statut du combat mis à jour: ${status}`
     };
   } catch (error) {
     console.error('Error in updateMatchStatus:', error);
-    throw new Error('Erreur lors de la mise à jour du statut');
+    throw new Error('Erreur lors de la mise à jour du statut de combat');
   }
 }
 
-// NOUVELLE FONCTION pour les mises à jour en temps réel pendant les matches
+// NOUVELLE FONCTION pour les mises à jour en temps réel pendant les combats
 export async function updateLiveMatchData(id: number, updates: {
   status?: string;
   start_time?: string;
@@ -1269,12 +1269,12 @@ export async function updateLiveMatchData(id: number, updates: {
 
     return {
       success: true,
-      message: 'Données du match mises à jour',
+      message: 'Données du combat mises à jour',
       match: updatedMatch
     };
   } catch (error) {
     console.error('Error in updateLiveMatchData:', error);
-    throw new Error('Erreur lors de la mise à jour des données du match');
+    throw new Error('Erreur lors de la mise à jour des données du combat');
   }
 }
 

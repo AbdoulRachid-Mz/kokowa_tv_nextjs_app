@@ -5,7 +5,7 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useMatchTimer } from "./use-match-timer-2";
-import { getMatchById, updateMatch } from "@/actions/matches-2";
+import { getMatchById, updateMatch, updateMatchWithResult } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
 import { updateSubGroup } from "@/actions/sub-groups";
 import { sendMatchPush } from "@/actions/matches";
@@ -131,12 +131,17 @@ export function useMatchController({
         isUpdatingRef.current = true;
         setIsUpdating(true);
         try {
-          const res = await updateMatch(matchId, updates);
+          const res = await updateMatchWithResult(matchId, updates);
+          if (res.error) {
+            throw new Error(res.error);
+          }
           queryClient.invalidateQueries({ queryKey: ["match", matchId] });
-          return res;
+          return res.match;
         } catch (e) {
           console.error("updateMatch error:", e);
-          toast.error("Erreur lors de la synchronisation");
+          toast.error("Erreur lors de la synchronisation", {
+            description: (e as any)?.message,
+          });
           queryClient.invalidateQueries({ queryKey: ["match", matchId] });
           throw e;
         } finally {
@@ -196,7 +201,7 @@ export function useMatchController({
 
     sendMatchPush(
       matchId,
-      `Match entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} debute !`,
+      `Combat entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} debute !`,
     ).catch(() => {});
   }, [match, timer, persist, matchId]);
 

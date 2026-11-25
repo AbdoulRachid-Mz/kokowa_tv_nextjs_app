@@ -266,6 +266,24 @@ export async function updateMatch(
   return freshMatch;
 }
 
+/**
+ * Variante de updateMatch qui ne lève pas d'exception : renvoie { match, error }.
+ * Permet d'afficher la cause précise côté client (prod masque les messages).
+ */
+export async function updateMatchWithResult(
+  matchId: number,
+  updates: MatchUpdate
+): Promise<{ match: Match | null; error?: string }> {
+  try {
+    const match = await updateMatch(matchId, updates);
+    return { match };
+  } catch (e: any) {
+    const code = e?.code ? ` (code ${e.code})` : "";
+    const message = e?.message ? `${e.message}${code}` : `Erreur inconnue${code}`;
+    return { match: null, error: message };
+  }
+}
+
 // export async function updateMatch(
 //   matchId: number, 
 //   updates: MatchUpdate

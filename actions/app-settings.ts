@@ -200,7 +200,12 @@ export async function getAllAppSettings(): Promise<AppSettings> {
       app_name: 'Lutte Traditionnelle',
       app_description: 'Plateforme de gestion des compétitions de lutte traditionnelle',
       app_version: '1.0.0',
+      latest_app_version: '1.0.0',
+      app_update_url: '',
       maintenance_mode: false,
+      is_under_maintenance: false,
+      test_mode: false,
+      is_update_required: false,
       registration_enabled: true,
       max_file_size: 10485760,
       allowed_file_types: ['image/jpeg', 'image/png', 'image/gif', 'video/mp4'],
@@ -214,7 +219,7 @@ export async function getAllAppSettings(): Promise<AppSettings> {
       contact_email: '',
       analytics_tracking_id: '',
     };
-
+ 
     // ✅ Fusionner avec les valeurs par défaut
     const finalSettings = { ...defaultSettings, ...settings };
     cachedSettings = finalSettings;
@@ -227,7 +232,12 @@ export async function getAllAppSettings(): Promise<AppSettings> {
       app_name: 'Lutte Traditionnelle',
       app_description: 'Plateforme de gestion des compétitions de lutte traditionnelle',
       app_version: '1.0.0',
+      latest_app_version: '1.0.0',
+      app_update_url: '',
       maintenance_mode: false,
+      is_under_maintenance: false,
+      test_mode: false,
+      is_update_required: false,
       registration_enabled: true,
       max_file_size: 10485760,
       allowed_file_types: ['image/jpeg', 'image/png', 'image/gif', 'video/mp4'],

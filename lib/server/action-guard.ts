@@ -30,17 +30,14 @@ export async function requireUser(): Promise<CurrentUser> {
  *  Le rôle administrateur dispose d'un accès complet à toutes les opérations. */
 export async function requireStaff(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  const role = (user?.role || "").toLowerCase().trim();
-  console.log("role: ", role)
-  // L'administrateur a un accès complet, même si son rôle est stocké avec une casse différente
-  if (role === "admin") {
-    return user as CurrentUser;
+  if (!user) {
+    throw new ActionAuthError("Session expirée : rechargez la page ou reconnectez-vous.");
   }
-
-  // if (role !== "admin") {
-  //   throw new ActionAuthError("Accès refusé : réservé à l'équipe Kokowa TV.");
-  // }
-  return user as CurrentUser;
+  const role = String(user.role || "").trim().toLowerCase();
+  if (!STAFF_ROLES.map((r) => r.toLowerCase()).includes(role)) {
+    throw new ActionAuthError("Accès refusé : réservé à l'équipe Kokowa TV.");
+  }
+  return user;
 }
 
 /** Exige un administrateur. */

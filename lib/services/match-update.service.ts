@@ -499,6 +499,7 @@ export async function updateMatchAndRecompute(
     dlog(`BEGIN matchId=${matchId}`);
     await client.query("SET lock_timeout = '5s'");
     await client.query("SET statement_timeout = '30s'");
+    await client.query("SET idle_in_transaction_session_timeout = '15s'");
     await client.query("BEGIN");
     transactionStarted = true;
     dlog("after BEGIN");

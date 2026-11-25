@@ -131,9 +131,9 @@ export function SubGroupRefereeManager({
                 {isGroupPhase ? "Arbitre de la rencontre (Poule)" : "Arbitre du combat"}
               </CardTitle>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <Badge variant="outline" className="text-[10px]">
-                {isGroupPhase ? "Affectation par rencontre" : "Affectation par match"}
+                {isGroupPhase ? "Affectation par rencontre" : "Affectation par combat"}
               </Badge>
               {subGroup?.name && (
                 <Badge variant="secondary" className="text-[10px]">
