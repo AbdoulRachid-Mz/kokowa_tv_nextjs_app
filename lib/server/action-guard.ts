@@ -31,6 +31,7 @@ export async function requireUser(): Promise<CurrentUser> {
 export async function requireStaff(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   const role = (user?.role || "").toLowerCase().trim();
+  console.log("role", role)
   // L'administrateur a un accès complet, même si son rôle est stocké avec une casse différente
   if (role === "admin") {
     return user as CurrentUser;
@@ -44,7 +45,7 @@ export async function requireStaff(): Promise<CurrentUser> {
 /** Exige un administrateur. */
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if ((user?.role || "").toLowerCase().trim() !== "admin") {
+  if (!user || (user.role || "").toLowerCase().trim() !== "admin") {
     throw new ActionAuthError("Accès refusé : privilèges administrateur requis.");
   }
   return user;
