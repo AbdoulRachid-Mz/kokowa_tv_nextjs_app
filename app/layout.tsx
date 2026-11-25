@@ -42,6 +42,9 @@ export const metadata: Metadata = {
     default: "Lutte Traditionnelle",
     template: "%s | Lutte Traditionnelle"
   },
+  icons: {
+    icon: "/logo/primary.jpeg",
+  },
   description: "Plateforme de gestion des compétitions de lutte traditionnelle",
   keywords: ["lutte", "traditionnelle", "compétition", "sport", "match", "lutteur", "combat"],
   authors: [{ name: "Lutte Traditionnelle" }],
