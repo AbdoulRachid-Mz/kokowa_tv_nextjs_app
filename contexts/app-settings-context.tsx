@@ -17,6 +17,17 @@ interface AppSettings {
   app_version?: string;
   maintenance_mode?: boolean;
   send_match_push?: boolean;
+  maintenance_message?: string;
+  min_app_version?: string;
+  force_update?: boolean;
+  ranking_points_loss?: number;
+  notifications_enabled?: boolean;
+  app_logo_url?: string;
+  support_email?: string;
+  terms_url?: string;
+  privacy_url?: string;
+  match_timeout_seconds?: number;
+  max_cards_per_match?: number;
   registration_enabled?: boolean;
   max_file_size?: number;
   default_language?: string;

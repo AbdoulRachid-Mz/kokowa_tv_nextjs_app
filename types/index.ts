@@ -976,6 +976,29 @@ export interface AppSettings {
   latest_app_version: string;
   app_update_url: string;
   send_match_push: boolean;
+
+  // System / maintenance
+  maintenance_message: string;
+  min_app_version: string;
+  force_update: boolean;
+
+  // Ranking
+  ranking_points_loss: number;
+
+  // Notifications
+  notifications_enabled: boolean;
+
+  // General
+  app_logo_url: string;
+
+  // Contact / legal
+  support_email: string;
+  terms_url: string;
+  privacy_url: string;
+
+  // Matches
+  match_timeout_seconds: number;
+  max_cards_per_match: number;
   
   // System
   maintenance_mode: boolean;
