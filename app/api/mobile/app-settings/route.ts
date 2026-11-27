@@ -12,15 +12,15 @@ export const GET = publicHandler(
         map[s.setting_key] = s.setting_value;
       }
       const data = {
-        sub_group_default_period: map.sub_group_default_period ?? "matin",
-        latest_app_version: map.latest_app_version ?? "1.0.0",
-        points_per_draw: map.points_per_draw ?? 1,
-        points_per_win: map.points_per_win ?? 3,
-        is_under_maintenance: map.is_under_maintenance ?? false,
-        is_update_required: map.is_update_required ?? false,
-        test_mode: map.test_mode ?? false,
-        send_match_push: map.send_match_push ?? true,
-        app_update_url: map.app_update_url ?? "",
+        subGroupDefaultPeriod: map.sub_group_default_period ?? "matin",
+        latestAppVersion: map.latest_app_version ?? "1.0.0",
+        pointsPerDraw: map.points_per_draw ?? 1,
+        pointsPerWin: map.points_per_win ?? 3,
+        isUnderMaintenance: map.is_under_maintenance ?? false,
+        isUpdateRequired: map.is_update_required ?? false,
+        testMode: map.test_mode ?? false,
+        sendMatchPush: map.send_match_push ?? true,
+        appUpdateUrl: map.app_update_url ?? "",
       };
       return Response.json({ success: true, data });
     } catch (error) {
