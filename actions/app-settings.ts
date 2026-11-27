@@ -204,6 +204,7 @@ export async function getAllAppSettings(): Promise<AppSettings> {
       is_under_maintenance: false,
       is_update_required: false,
       test_mode: false,
+      test_message: 'Mode test active.',
       send_match_push: true,
       app_update_url: '',
     };
@@ -224,6 +225,7 @@ export async function getAllAppSettings(): Promise<AppSettings> {
       is_under_maintenance: false,
       is_update_required: false,
       test_mode: false,
+      test_message: 'Mode test active.',
       send_match_push: true,
       app_update_url: '',
     };

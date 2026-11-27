@@ -8,7 +8,7 @@ import { useMatchTimer } from "./use-match-timer-2";
 import { getMatchById, updateMatch, updateMatchWithResult } from "@/actions/matches-2";
 import { MatchUpdate } from "@/lib/services/match-update.service";
 import { updateSubGroup } from "@/actions/sub-groups";
-// push notifications are handled server-side in match-update.service.ts
+import { sendMatchPush } from "@/actions/matches";
 import type { RealtimeMatchDocument } from "@/types/realtime";
 
 interface UseMatchControllerProps {
@@ -199,6 +199,12 @@ export function useMatchController({
       total_duration: formatSecondsToDuration(current),
     });
 
+    const wasPaused = match.status === "round_break" || match.status === "reclamation";
+    if (wasPaused) {
+      sendMatchPush(matchId, `Reprise de combat entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name}.`, "Combat repris").catch(() => {});
+    } else {
+      sendMatchPush(matchId, `Combat entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} en direct !`, "Combat en direct").catch(() => {});
+    }
   }, [match, timer, persist, matchId]);
 
   const pauseMatch = useCallback(() => {
@@ -214,6 +220,7 @@ export function useMatchController({
       break_count: (match.break_count ?? 0) + 1,
     });
 
+    sendMatchPush(matchId, `Combat entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} en pause.`, "Combat en pause").catch(() => {});
   }, [match, timer, persist, matchId]);
 
   const reclamation = useCallback(() => {
@@ -287,8 +294,10 @@ export function useMatchController({
       }
 
       persist(updates);
+
+      sendMatchPush(matchId, `Combat entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} est terminé.`, "Combat terminé").catch(() => {});
     },
-    [match, timer, persist],
+    [match, timer, persist, matchId],
   );
 
   const setDraw = useCallback(() => {
@@ -306,7 +315,9 @@ export function useMatchController({
       break_count: match.break_count ?? 0,
       end_time: new Date().toTimeString().slice(0, 8),
     });
-  }, [match, timer, persist]);
+
+    sendMatchPush(matchId, `Combat entre ${match.fighter1?.first_name} ${match.fighter1?.last_name} et ${match.fighter2?.first_name} ${match.fighter2?.last_name} déclaré nul.`, "Match nul").catch(() => {});
+  }, [match, timer, persist, matchId]);
 
   const resetMatch = useCallback(() => {
     timer.reset();

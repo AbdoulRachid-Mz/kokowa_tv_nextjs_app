@@ -9,6 +9,7 @@ import { Match, MatchFilters, PaginatedResponse } from '@/types';
 import { z } from 'zod';
 import { updateMatchAndRecompute } from '@/lib/services/match-update.service';
 import { sendPushToCategory } from '@/lib/push';
+import { isMatchPushEnabled } from '@/actions/app-settings';
 import { PoolClient } from 'pg';
 
 import { emitMatchEvent, emitRealtimeEvent } from './realtime';
@@ -1104,6 +1105,8 @@ export async function createMatch(
 
 export async function sendMatchPush(matchId: number, description?: string, title?: string) {
   await requireStaff(); // accès contrôlé côté serveur
+  const enabled = await isMatchPushEnabled().catch(() => true);
+  if (!enabled) return;
   await sendPushToCategory(
     'live',
     title || 'Combat en direct',

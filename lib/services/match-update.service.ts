@@ -706,12 +706,6 @@ export async function updateMatchAndRecompute(
     });
 
     const oldStatus = oldMatch.status;
-    after(() =>
-      sendStatusPush(matchId, oldStatus, updatedMatch).catch((error) => {
-        console.error("❌ Notification de combat non envoyée:", error);
-      }),
-    );
-
     return updatedMatch;
   } catch (error) {
     if (transactionStarted && !transactionCommitted) {
@@ -814,51 +808,3 @@ async function updateMatchInTransaction(
 
 
 /**
- * Notification push correspondant au nouveau statut d'un combat
- * (appelée via after(), une fois la réponse renvoyée à l'admin).
- * L'action appelante a déjà vérifié les droits : pas de requireStaff() ici.
- */
-async function sendStatusPush(
-  matchId: number,
-  oldStatus: string,
-  updatedMatch: { status: string; fighter1_id: number; fighter2_id: number },
-) {
-  const newStatus = updatedMatch.status;
-  if (!["live", "round_break", "completed", "reclamation"].includes(newStatus)) return;
-
-  // Vérifier le paramètre send_match_push avant tout envoi
-  const pushEnabled = await isMatchPushEnabled().catch(() => true);
-  if (!pushEnabled) return;
-
-  // Noms des lutteurs pour un message précis
-  let fighter1Name = "Lutteur 1";
-  let fighter2Name = "Lutteur 2";
-  try {
-    const fRes = await query<{ id: number; first_name: string; last_name: string }>(
-      `SELECT id, first_name, last_name FROM fighters WHERE id = ANY($1::int[])`,
-      [[updatedMatch.fighter1_id, updatedMatch.fighter2_id].filter(Boolean)],
-    );
-    const f1 = fRes.find((f) => f.id === updatedMatch.fighter1_id);
-    const f2 = fRes.find((f) => f.id === updatedMatch.fighter2_id);
-    if (f1) fighter1Name = `${f1.first_name} ${f1.last_name}`;
-    if (f2) fighter2Name = `${f2.first_name} ${f2.last_name}`;
-  } catch {
-    // garder les valeurs par défaut
-  }
-  const matchup = `${fighter1Name} vs ${fighter2Name}`;
-
-  // La reprise est détectée si le statut précédent était une pause/réclamation.
-  const wasPaused = oldStatus === "round_break" || oldStatus === "reclamation";
-  const [title, body] =
-    newStatus === "live"
-      ? wasPaused
-        ? ["Combat repris", `Reprise du combat entre ${matchup}.`]
-        : ["Combat en direct", `Combat entre ${matchup} en direct !`]
-      : newStatus === "round_break"
-        ? ["Combat en pause", `Combat entre ${matchup} en pause.`]
-        : newStatus === "completed"
-          ? ["Combat terminé", `Le combat entre ${matchup} est terminé.`]
-          : ["Réclamation", `Combat entre ${matchup} en réclamation.`];
-
-  await sendPushToCategory("live", title, body, { matchId: matchId.toString() });
-}

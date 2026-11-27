@@ -70,6 +70,7 @@ export async function buildRealtimeMatchPayload(
     liveStreamUrl: row.live_stream_url,
     updatedAt: Date.now(),
     startTime: row.start_time2 || null,
+    endTime: row.end_time ? String(row.end_time) : null,
     totalDuration: row.total_duration || null,
     allCards: cards,
   };

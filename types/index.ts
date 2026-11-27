@@ -977,6 +977,7 @@ export interface AppSettings {
   is_under_maintenance: boolean;
   is_update_required: boolean;
   test_mode: boolean;
+  test_message: string;
 
   // Nouveaux (alignés code/DB)
   send_match_push: boolean;

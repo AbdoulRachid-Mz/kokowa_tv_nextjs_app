@@ -19,6 +19,7 @@ interface AppSettings {
   is_under_maintenance?: boolean;
   is_update_required?: boolean;
   test_mode?: boolean;
+  test_message?: string;
   send_match_push?: boolean;
   app_update_url?: string;
   [key: string]: any;

@@ -69,7 +69,9 @@ export interface RealtimeMatchDocument {
   videoUrl: string | null;
   liveStreamUrl: string | null;
   
-  startTime: string | null;
+  startTime: string | null; // immutable: set once at match start
+
+  endTime: string | null; // set when match completes
 
   totalDuration: string | null;
 

@@ -27,6 +27,24 @@ export async function syncMatchRealtime(
       8000,
       "buildRealtimeMatchPayload",
     );
+
+    // start_time est une date fixe définie au démarrage : ne jamais l'écraser
+    // une fois qu'elle est enregistrée dans RTDB.
+    try {
+      const db = getAdminRTDB();
+      const existingRef = db.ref(
+        `${REALTIME_NODES.EDITIONS}/${editionId}/subGroups/${subGroupId}/matches/${matchId}`,
+      );
+      const snap = await withTimeout(existingRef.once("value"), 5000, "rtdb read existing");
+      const existing = snap.val() as any;
+      if (existing?.startTime) {
+        payload.startTime = existing.startTime;
+      }
+      // end_time : toujours mettre à jour (y compris null tant que le combat n'est pas terminé)
+      // (déjà dans payload.endTime)
+    } catch (e) {
+      // conserver la valeur calculée
+    }
     
     // 🔥 On met à jour dans RTDB si le match est actif ou vient de se terminer
     if (payload.status === "scheduled") {

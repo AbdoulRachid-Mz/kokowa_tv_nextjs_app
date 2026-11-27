@@ -12,10 +12,9 @@ export const GET = publicHandler(
         map[s.setting_key] = s.setting_value;
       }
       const data = {
-        subGroupDefaultPeriod: map.sub_group_default_period ?? "matin",
+        // test message
+        testMessage: map.test_message ?? "",
         latestAppVersion: map.latest_app_version ?? "1.0.0",
-        pointsPerDraw: map.points_per_draw ?? 1,
-        pointsPerWin: map.points_per_win ?? 3,
         isUnderMaintenance: map.is_under_maintenance ?? false,
         isUpdateRequired: map.is_update_required ?? false,
         testMode: map.test_mode ?? false,

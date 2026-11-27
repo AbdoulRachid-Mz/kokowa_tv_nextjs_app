@@ -907,6 +907,7 @@ INSERT INTO app_settings (setting_key, setting_value, setting_type, category, de
 ('maintenance_mode', 'false', 'boolean', 'system', 'Mode maintenance', TRUE, TRUE),
 ('is_under_maintenance', 'false', 'boolean', 'system', 'Application en maintenance', TRUE, TRUE),
 ('test_mode', 'false', 'boolean', 'system', 'Mode test', FALSE, TRUE),
+('test_message', 'Mode test active.', 'string', 'system', 'Message affiche en mode test', TRUE, TRUE),
 ('latest_app_version', '1.0.0', 'string', 'general', 'Derniere version disponible', TRUE, TRUE),
 ('is_update_required', 'false', 'boolean', 'system', 'Mise a jour obligatoire', TRUE, TRUE),
 ('app_update_url', '', 'string', 'general', 'URL de mise a jour de l application', TRUE, TRUE),
