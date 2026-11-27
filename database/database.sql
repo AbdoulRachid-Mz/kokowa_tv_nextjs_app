@@ -910,6 +910,7 @@ INSERT INTO app_settings (setting_key, setting_value, setting_type, category, de
 ('latest_app_version', '1.0.0', 'string', 'general', 'Derniere version disponible', TRUE, TRUE),
 ('is_update_required', 'false', 'boolean', 'system', 'Mise a jour obligatoire', TRUE, TRUE),
 ('app_update_url', '', 'string', 'general', 'URL de mise a jour de l application', TRUE, TRUE),
+('send_match_push', 'true', 'boolean', 'notifications', 'Envoyer les notifications de correspondance', FALSE, TRUE),
 ('registration_enabled', 'true', 'boolean', 'auth', 'Inscription des utilisateurs activée', TRUE, TRUE),
 ('max_file_size', '10485760', 'number', 'media', 'Taille maximale des fichiers uploadés (en bytes)', FALSE, TRUE),
 ('allowed_file_types', '["image/jpeg", "image/png", "image/gif", "video/mp4"]', 'json', 'media', 'Types de fichiers autorisés', FALSE, TRUE),

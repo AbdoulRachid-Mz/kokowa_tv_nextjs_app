@@ -16,6 +16,7 @@ interface AppSettings {
   app_description?: string;
   app_version?: string;
   maintenance_mode?: boolean;
+  send_match_push?: boolean;
   registration_enabled?: boolean;
   max_file_size?: number;
   default_language?: string;

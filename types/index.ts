@@ -975,6 +975,7 @@ export interface AppSettings {
   app_version: string;
   latest_app_version: string;
   app_update_url: string;
+  send_match_push: boolean;
   
   // System
   maintenance_mode: boolean;

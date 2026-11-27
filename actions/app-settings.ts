@@ -485,6 +485,16 @@ export async function getMaintenanceMode(): Promise<boolean> {
   }
 }
 
+export async function isMatchPushEnabled(): Promise<boolean> {
+  try {
+    const setting = await getAppSettingByKey('send_match_push');
+    const val = setting.setting_value;
+    return val === true || val === 'true' || val === 1 || val === '1';
+  } catch (error) {
+    return true; // par défaut activé
+  }
+}
+
 export async function setMaintenanceMode(enabled: boolean) {
   await requireAdmin(); // accès contrôlé côté serveur
   const formData = new FormData();

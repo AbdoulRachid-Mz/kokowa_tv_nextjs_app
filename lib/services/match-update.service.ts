@@ -12,6 +12,7 @@ import {
 import { dlog } from "./match-update.debug";
 import { RealtimeLiveMatchInfo } from "@/types/realtime";
 import { syncMatchOfficialAchievements } from "@/actions/achievements";
+import { isMatchPushEnabled } from "@/actions/app-settings";
 
 export interface MatchUpdate {
   sub_group_id?: number;
@@ -697,6 +698,9 @@ export async function updateMatchAndRecompute(
       });
     });
 
+    // Vérifier le paramètre send_match_push avant tout envoi
+    const pushEnabled = await isMatchPushEnabled().catch(() => true);
+
     // Recuperer les noms des lutteurs pour un message de notification precis
     let fighter1Name = "Lutteur 1";
     let fighter2Name = "Lutteur 2";
@@ -717,6 +721,7 @@ export async function updateMatchAndRecompute(
     // Notifications push (non bloquantes) selon le nouveau statut.
     // La reprise est detectee si le statut precedent etait une pause/reclamation.
     const wasPaused = oldMatch.status === "round_break" || oldMatch.status === "reclamation";
+    if (pushEnabled) {
     if (newStatus === "live") {
       if (wasPaused) {
         sendMatchPush(matchId, `Reprise de combat entre ${matchup}.`, "Combat repris").catch(() => {});
@@ -729,6 +734,7 @@ export async function updateMatchAndRecompute(
       sendMatchPush(matchId, `Combat entre ${matchup} est termine.`, "Combat termine").catch(() => {});
     } else if (newStatus === "reclamation") {
       sendMatchPush(matchId, `Combat entre ${matchup} en reclamation.`, "Reclamation").catch(() => {});
+    }
     }
     return updatedMatch;
   } catch (error) {

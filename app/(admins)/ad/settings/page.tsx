@@ -12,6 +12,21 @@ import { toast } from "sonner";
 import { getAppSettings, updateAppSetting } from "@/actions/app-settings";
 import type { AppSetting } from "@/types";
 import { Save, Settings } from "lucide-react";
+import { ResponsiveTabs } from "@/components/shared/responsive-tabs";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  general: "Général",
+  system: "Système",
+  auth: "Authentification",
+  media: "Médias",
+  localization: "Localisation",
+  matches: "Matchs",
+  ranking: "Classement",
+  social: "Réseaux sociaux",
+  contact: "Contact",
+  analytics: "Analytics",
+  notifications: "Notifications",
+};
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSetting[]>([]);
@@ -62,6 +77,60 @@ export default function SettingsPage() {
     return acc;
   }, {});
 
+  const tabs = Object.entries(grouped).map(([category, items]) => ({
+    value: category,
+    label: CATEGORY_LABELS[category] || category,
+    content: (
+      <Card>
+        <CardHeader>
+          <CardTitle className="capitalize">{CATEGORY_LABELS[category] || category}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {items.map((s) => (
+            <div key={s.setting_key} className="flex flex-col sm:flex-row sm:items-center gap-3 border-b pb-3 last:border-0">
+              <div className="flex-1">
+                <Label className="font-medium">{s.setting_key}</Label>
+                {s.description && (
+                  <p className="text-xs text-muted-foreground">{s.description}</p>
+                )}
+                <div className="flex gap-2 mt-1">
+                  <Badge variant="outline" className="text-xs">{s.setting_type}</Badge>
+                  {s.is_public && <Badge variant="secondary" className="text-xs">public</Badge>}
+                  {!s.is_editable && <Badge variant="destructive" className="text-xs">non modifiable</Badge>}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {s.setting_type === "boolean" ? (
+                  <Switch
+                    checked={values[s.setting_key] === "true"}
+                    onCheckedChange={(v) => setValues({ ...values, [s.setting_key]: v ? "true" : "false" })}
+                    disabled={!s.is_editable}
+                  />
+                ) : (
+                  <Input
+                    value={values[s.setting_key] ?? ""}
+                    onChange={(e) => setValues({ ...values, [s.setting_key]: e.target.value })}
+                    disabled={!s.is_editable}
+                    className="w-64"
+                  />
+                )}
+                {s.is_editable && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleSave(s.setting_key)}
+                    disabled={savingKey === s.setting_key}
+                  >
+                    <Save className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    ),
+  }));
+
   if (loading) {
     return <div className="p-6">Chargement...</div>;
   }
@@ -72,56 +141,7 @@ export default function SettingsPage() {
         <Settings className="h-6 w-6" />
         <h1 className="text-2xl font-bold">Paramètres de l'application</h1>
       </div>
-
-      {Object.entries(grouped).map(([category, items]) => (
-        <Card key={category}>
-          <CardHeader>
-            <CardTitle className="capitalize">{category}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {items.map((s) => (
-              <div key={s.setting_key} className="flex flex-col sm:flex-row sm:items-center gap-3 border-b pb-3 last:border-0">
-                <div className="flex-1">
-                  <Label className="font-medium">{s.setting_key}</Label>
-                  {s.description && (
-                    <p className="text-xs text-muted-foreground">{s.description}</p>
-                  )}
-                  <div className="flex gap-2 mt-1">
-                    <Badge variant="outline" className="text-xs">{s.setting_type}</Badge>
-                    {s.is_public && <Badge variant="secondary" className="text-xs">public</Badge>}
-                    {!s.is_editable && <Badge variant="destructive" className="text-xs">non modifiable</Badge>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {s.setting_type === "boolean" ? (
-                    <Switch
-                      checked={values[s.setting_key] === "true"}
-                      onCheckedChange={(v) => setValues({ ...values, [s.setting_key]: v ? "true" : "false" })}
-                      disabled={!s.is_editable}
-                    />
-                  ) : (
-                    <Input
-                      value={values[s.setting_key] ?? ""}
-                      onChange={(e) => setValues({ ...values, [s.setting_key]: e.target.value })}
-                      disabled={!s.is_editable}
-                      className="w-64"
-                    />
-                  )}
-                  {s.is_editable && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleSave(s.setting_key)}
-                      disabled={savingKey === s.setting_key}
-                    >
-                      <Save className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      ))}
+      <ResponsiveTabs tabs={tabs} defaultValue={tabs[0]?.value} />
     </div>
   );
 }
