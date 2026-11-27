@@ -12,20 +12,15 @@ export const GET = publicHandler(
         map[s.setting_key] = s.setting_value;
       }
       const data = {
-        app_name: map.app_name ?? "Kokowa TV",
-        app_version: map.app_version ?? "1.0.0",
-        latest_app_version: map.latest_app_version ?? map.app_version ?? "1.0.0",
-        app_update_url: map.app_update_url ?? "",
-        maintenance_message: map.maintenance_message ?? "",
-        min_app_version: map.min_app_version ?? map.app_version ?? "1.0.0",
-        force_update: map.force_update ?? false,
-        is_under_maintenance: map.is_under_maintenance ?? map.maintenance_mode ?? false,
-        maintenance_mode: map.maintenance_mode ?? false,
-        test_mode: map.test_mode ?? false,
+        sub_group_default_period: map.sub_group_default_period ?? "matin",
+        latest_app_version: map.latest_app_version ?? "1.0.0",
+        points_per_draw: map.points_per_draw ?? 1,
+        points_per_win: map.points_per_win ?? 3,
+        is_under_maintenance: map.is_under_maintenance ?? false,
         is_update_required: map.is_update_required ?? false,
-        registration_enabled: map.registration_enabled ?? true,
-        default_language: map.default_language ?? "fr",
-        supported_languages: map.supported_languages ?? ["fr"],
+        test_mode: map.test_mode ?? false,
+        send_match_push: map.send_match_push ?? true,
+        app_update_url: map.app_update_url ?? "",
       };
       return Response.json({ success: true, data });
     } catch (error) {

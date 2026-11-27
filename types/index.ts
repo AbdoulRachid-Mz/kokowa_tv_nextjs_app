@@ -969,77 +969,21 @@ export interface AppSettingFilters extends BaseFilters {
 
 // Types pour les valeurs des settings avec typage fort
 export interface AppSettings {
-  // General
-  app_name: string;
-  app_description: string;
-  app_version: string;
+  // Existant en DB
+  sub_group_default_period: string;
   latest_app_version: string;
-  app_update_url: string;
-  send_match_push: boolean;
-
-  // System / maintenance
-  maintenance_message: string;
-  min_app_version: string;
-  force_update: boolean;
-
-  // Ranking
-  ranking_points_loss: number;
-
-  // Notifications
-  notifications_enabled: boolean;
-
-  // General
-  app_logo_url: string;
-
-  // Contact / legal
-  support_email: string;
-  terms_url: string;
-  privacy_url: string;
-
-  // Matches
-  match_timeout_seconds: number;
-  max_cards_per_match: number;
-  
-  // System
-  maintenance_mode: boolean;
+  points_per_draw: number;
+  points_per_win: number;
   is_under_maintenance: boolean;
-  test_mode: boolean;
-  
-  // Updates
   is_update_required: boolean;
-  
-  // Auth
-  registration_enabled: boolean;
-  
-  // Media
-  max_file_size: number;
-  allowed_file_types: string[];
-  
-  // Localization
-  default_language: string;
-  supported_languages: string[];
-  
-  // Matches
-  match_duration: number;
-  max_breaks_per_match: number;
-  
-  // Ranking
-  ranking_points_win: number;
-  ranking_points_draw: number;
-  
-  // Social
-  social_links: {
-    facebook?: string;
-    twitter?: string;
-    instagram?: string;
-    youtube?: string;
-  };
-  
-  // Contact
-  contact_email: string;
-  
-  // Analytics
-  analytics_tracking_id: string;
+  test_mode: boolean;
+
+  // Nouveaux (alignés code/DB)
+  send_match_push: boolean;
+  app_update_url: string;
+
+  // Index signature pour les clés dynamiques
+  [key: string]: any;
 }
 
 

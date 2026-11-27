@@ -12,33 +12,15 @@ import { getAllAppSettings } from "@/actions/app-settings";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface AppSettings {
-  app_name?: string;
-  app_description?: string;
-  app_version?: string;
-  maintenance_mode?: boolean;
+  sub_group_default_period?: string;
+  latest_app_version?: string;
+  points_per_draw?: number;
+  points_per_win?: number;
+  is_under_maintenance?: boolean;
+  is_update_required?: boolean;
+  test_mode?: boolean;
   send_match_push?: boolean;
-  maintenance_message?: string;
-  min_app_version?: string;
-  force_update?: boolean;
-  ranking_points_loss?: number;
-  notifications_enabled?: boolean;
-  app_logo_url?: string;
-  support_email?: string;
-  terms_url?: string;
-  privacy_url?: string;
-  match_timeout_seconds?: number;
-  max_cards_per_match?: number;
-  registration_enabled?: boolean;
-  max_file_size?: number;
-  default_language?: string;
-  supported_languages?: string[];
-  match_duration?: number;
-  max_breaks_per_match?: number;
-  ranking_points_win?: number;
-  ranking_points_draw?: number;
-  social_links?: { [key: string]: string };
-  contact_email?: string;
-  analytics_tracking_id?: string;
+  app_update_url?: string;
   [key: string]: any;
 }
 
