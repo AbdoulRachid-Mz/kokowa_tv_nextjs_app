@@ -805,6 +805,3 @@ async function updateMatchInTransaction(
   ]);
   return res.rows[0];
 }
-
-
-/**
